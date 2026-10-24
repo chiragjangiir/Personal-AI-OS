@@ -1,0 +1,132 @@
+import Foundation
+
+/// The public display snapshot. The server owns task state and completion decisions.
+struct CentralActivityUpdate: Codable, Equatable, Sendable {
+    let operation: String
+    let session_id: String
+    let processed_event_id: String
+    let card: CentralActivityCard
+}
+
+struct CentralActivityProgress: Codable, Equatable, Sendable {
+    let version: Int
+    let value: Double
+    let total: Double
+    var accessibilityLabel: String { "进度 " + (value / total).formatted(.percent.precision(.fractionLength(0))) }
+}
+
+struct CentralActivityCard: Codable, Equatable, Sendable, Identifiable {
+    enum State: String, Codable, Sendable { case running, succeeded, failed, partial, cancelled }
+    enum Source: String, Codable, Sendable { case agent_intent, subagent_goal, tool_status, generic }
+    struct Counts: Codable, Equatable, Sendable {
+        let total: Int
+        let running: Int
+        let succeeded: Int
+        let failed: Int
+        let cancelled: Int
+        let partial: Int?
+    }
+    struct Item: Codable, Equatable, Sendable, Identifiable {
+        enum Kind: String, Codable, Sendable { case subagent, errand, task }
+        enum State: String, Codable, Sendable { case running, succeeded, failed, partial, cancelled }
+        let id: String
+        let kind: Kind
+        let state: State
+        let summary: String
+        let step_summary: String?
+        let started_at: String
+        let elapsed_ms: Int
+        let completed_at: String?
+        let failure_reason: String?
+        var progress: CentralActivityProgress? = nil
+        var statusLabel: String {
+            switch state {
+            case .running: return "正在做"
+            case .succeeded: return "已完成"
+            case .failed: return "未办成"
+            case .partial: return "部分完成"
+            case .cancelled: return "已取消"
+            }
+        }
+    }
+    let id: String
+    let revision: Int
+    let state: State
+    let summary: String
+    let step_summary: String?
+    let summary_source: Source
+    let started_at: String
+    let observed_at: String
+    let last_progress_at: String
+    let elapsed_ms: Int
+    let completed_at: String?
+    let counts: Counts
+    let items: [Item]
+    let omitted_items: Int
+    let failure_reason: String?
+    var progress: CentralActivityProgress? = nil
+}
+
+/// Local presentation time starts on arrival, independent of device/server clock skew.
+struct ActivityPresentation: Identifiable, Equatable, Sendable {
+    let update: CentralActivityUpdate
+    let arrivedAt: Date
+    var id: String { card.id }
+    var card: CentralActivityCard { update.card }
+    var processedEventID: String { update.processed_event_id }
+    func elapsed(at now: Date) -> Int {
+        card.elapsed_ms + (card.state == .running ? Int(max(0, now.timeIntervalSince(arrivedAt)) * 1000) : 0)
+    }
+    func slowSeconds(at now: Date) -> Int? {
+        guard card.state == .running else { return nil }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        guard let observed = formatter.date(from: card.observed_at),
+              let progress = formatter.date(from: card.last_progress_at) else { return nil }
+        let seconds = Int(max(0, observed.timeIntervalSince(progress)) + max(0, now.timeIntervalSince(arrivedAt)))
+        return seconds >= 30 ? seconds : nil
+    }
+    func collapsed(replyProcessedIDs: Set<String>) -> Bool {
+        card.state == .succeeded && replyProcessedIDs.contains(processedEventID)
+    }
+    var heading: String {
+        switch card.state {
+        case .running: return "依米正在做"
+        case .succeeded: return "已完成"
+        case .failed: return "结果待核对"
+        case .partial: return "部分完成"
+        case .cancelled: return "已取消"
+        }
+    }
+    var pill: String {
+        if let reason = card.failure_reason { return "\(heading) · \(reason)" }
+        if card.state != .running { return "\(heading) · \(card.summary)" }
+        return card.step_summary ?? card.summary
+    }
+    func accessibilityLabel(at now: Date) -> String {
+        var parts = [heading, card.summary]
+        if let step = card.step_summary { parts.append(step) }
+        if let progress = card.progress { parts.append(progress.accessibilityLabel) }
+        if let reason = card.failure_reason { parts.append(reason) }
+        if let seconds = slowSeconds(at: now) { parts.append("这一步较慢，\(seconds) 秒没有新进度") }
+        parts.append("用时 \(Self.duration(elapsed(at: now)))")
+        return parts.joined(separator: "，") + "。"
+    }
+    static func duration(_ milliseconds: Int) -> String {
+        let seconds = milliseconds / 1000
+        if seconds < 60 { return "\(seconds)秒" }
+        if seconds < 3600 { return String(format: "%d分%02d秒", seconds / 60, seconds % 60) }
+        return String(format: "%d小时%02d分%02d秒", seconds / 3600, seconds / 60 % 60, seconds % 60)
+    }
+}
+
+struct CentralActivityStore: Equatable, Sendable {
+    private(set) var cards: [ActivityPresentation] = []
+    mutating func accept(_ update: CentralActivityUpdate, at date: Date = Date()) {
+        let next = ActivityPresentation(update: update, arrivedAt: date)
+        if let index = cards.firstIndex(where: { $0.id == update.card.id }) {
+            guard update.card.revision > cards[index].card.revision else { return }
+            cards[index] = next
+        } else { cards.append(next) }
+    }
+}

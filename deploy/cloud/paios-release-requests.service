@@ -1,0 +1,13 @@
+[Unit]
+Description=Build, test, stage and package queued product repair candidates for production (one release lock with operators)
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/paios/current
+ExecStart=/usr/bin/flock /tmp/paios-builder-heavy.lock /usr/bin/python3 /srv/paios/current/deploy/cloud/release.py --config /etc/paios/release-builder.json requests
+UMask=0077
+Nice=10
+TimeoutStartSec=infinity
+KillMode=control-group

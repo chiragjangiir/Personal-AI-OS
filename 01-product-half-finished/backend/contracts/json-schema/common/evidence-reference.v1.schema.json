@@ -1,0 +1,206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-ai-os.local/contracts/common/evidence-reference.v1.schema.json",
+  "title": "CanonicalEvidenceReference",
+  "$comment": "schema_version=1.0.0",
+  "$ref": "#/$defs/EvidenceReference",
+  "$defs": {
+    "EvidenceObjectVersionRef": {
+      "type": "object",
+      "required": [
+        "ref_type",
+        "ref_id",
+        "object_version",
+        "canonical_payload_sha256"
+      ],
+      "properties": {
+        "ref_type": { "type": "string" },
+        "ref_id": {
+          "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/UuidV7"
+        },
+        "object_version": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        },
+        "canonical_payload_sha256": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+        }
+      },
+      "oneOf": [
+        { "properties": { "ref_type": { "const": "TextEvidence" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/TextEvidenceId" } } },
+        { "properties": { "ref_type": { "const": "DomainDeletionAttestation" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/DomainDeletionAttestationId" } } },
+        { "properties": { "ref_type": { "const": "DeletionProof" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/DeletionProofId" } } },
+        { "properties": { "ref_type": { "const": "AuditExport" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/AuditExportId" } } },
+        { "properties": { "ref_type": { "const": "ToolResultArtifact" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ToolResultArtifactId" } } },
+        { "properties": { "ref_type": { "const": "ActionAudit" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ActionAuditId" } } },
+        { "properties": { "ref_type": { "const": "FinalTranscriptEvidence" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/FinalTranscriptEvidenceId" } } },
+        { "properties": { "ref_type": { "const": "RiskEvidencePackage" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/RiskEvidencePackageId" } } },
+        { "properties": { "ref_type": { "const": "ReplayRun" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ReplayRunId" } } },
+        { "properties": { "ref_type": { "const": "Regression" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/RegressionId" } } },
+        { "properties": { "ref_type": { "const": "ReleaseGate" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ReleaseGateId" } } },
+        { "properties": { "ref_type": { "const": "CriticalViolation" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/CriticalViolationId" } } }
+      ],
+      "additionalProperties": false
+    },
+    "EvidenceOrigin": {
+      "type": "string",
+      "enum": ["external", "internal"]
+    },
+    "EvidenceContentMode": {
+      "type": "string",
+      "enum": ["immutable_bytes", "metadata_only"]
+    },
+    "EvidenceMetadataHashProjection": {
+      "type": "object",
+      "required": [
+        "evidence_ref",
+        "evidence_origin",
+        "content_mode",
+        "schema_id",
+        "schema_version"
+      ],
+      "properties": {
+        "evidence_ref": { "$ref": "#/$defs/EvidenceObjectVersionRef" },
+        "evidence_origin": { "$ref": "#/$defs/EvidenceOrigin" },
+        "content_mode": { "$ref": "#/$defs/EvidenceContentMode" },
+        "schema_id": {
+          "const": "https://personal-ai-os.local/contracts/common/evidence-reference.v1.schema.json"
+        },
+        "schema_version": { "const": "1.0.0" },
+        "content_sha256": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+        },
+        "source_artifact_id": {
+          "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/SourceArtifactId"
+        },
+        "artifact_version_id": {
+          "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ArtifactVersionId"
+        },
+        "evidence_span_id": {
+          "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/EvidenceSpanId"
+        },
+        "internal_input_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/CanonicalRef"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "content_mode": { "const": "immutable_bytes" } },
+            "required": ["content_mode"]
+          },
+          "then": { "required": ["content_sha256"] },
+          "else": { "not": { "required": ["content_sha256"] } }
+        },
+        {
+          "if": {
+            "properties": { "evidence_origin": { "const": "external" } },
+            "required": ["evidence_origin"]
+          },
+          "then": {
+            "required": [
+              "source_artifact_id",
+              "artifact_version_id",
+              "evidence_span_id"
+            ],
+            "not": { "required": ["internal_input_refs"] }
+          },
+          "else": {
+            "required": ["internal_input_refs"],
+            "not": {
+              "anyOf": [
+                { "required": ["source_artifact_id"] },
+                { "required": ["artifact_version_id"] },
+                { "required": ["evidence_span_id"] }
+              ]
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "EvidenceReference": {
+      "type": "object",
+      "required": [
+        "evidence_ref",
+        "evidence_origin",
+        "content_mode",
+        "schema_id",
+        "schema_version",
+        "metadata_sha256"
+      ],
+      "properties": {
+        "evidence_ref": { "$ref": "#/$defs/EvidenceObjectVersionRef" },
+        "evidence_origin": { "$ref": "#/$defs/EvidenceOrigin" },
+        "content_mode": { "$ref": "#/$defs/EvidenceContentMode" },
+        "schema_id": {
+          "const": "https://personal-ai-os.local/contracts/common/evidence-reference.v1.schema.json"
+        },
+        "schema_version": { "const": "1.0.0" },
+        "metadata_sha256": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+        },
+        "content_sha256": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+        },
+        "source_artifact_id": {
+          "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/SourceArtifactId"
+        },
+        "artifact_version_id": {
+          "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ArtifactVersionId"
+        },
+        "evidence_span_id": {
+          "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/EvidenceSpanId"
+        },
+        "internal_input_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/CanonicalRef"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "content_mode": { "const": "immutable_bytes" } },
+            "required": ["content_mode"]
+          },
+          "then": { "required": ["content_sha256"] },
+          "else": { "not": { "required": ["content_sha256"] } }
+        },
+        {
+          "if": {
+            "properties": { "evidence_origin": { "const": "external" } },
+            "required": ["evidence_origin"]
+          },
+          "then": {
+            "required": [
+              "source_artifact_id",
+              "artifact_version_id",
+              "evidence_span_id"
+            ],
+            "not": { "required": ["internal_input_refs"] }
+          },
+          "else": {
+            "required": ["internal_input_refs"],
+            "not": {
+              "anyOf": [
+                { "required": ["source_artifact_id"] },
+                { "required": ["artifact_version_id"] },
+                { "required": ["evidence_span_id"] }
+              ]
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    }
+  }
+}

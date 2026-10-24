@@ -1,0 +1,36 @@
+# Inactive template. Fill only provider-confirmed endpoint/model/context values.
+# Frozen upstream f97608f178d1ffeca59860195ab7da295f7c8e5f supports these env refs.
+model:
+  provider: custom
+  default: ${PAIOS_MODEL_ID}
+  base_url: ${PAIOS_MODEL_BASE_URL}
+  api_key: ${PAIOS_MODEL_API_KEY}
+  api_mode: chat_completions
+  context_length: ${PAIOS_MODEL_CONTEXT_LENGTH}
+memory:
+  provider: personal_aios
+cron:
+  wrap_response: false
+plugins:
+  entries:
+    personal_aios:
+      allow_tool_override: true
+platforms:
+  personal_aios:
+    enabled: true
+personal_aios:
+  internal_base_url: http://127.0.0.1:18641
+  internal_key_file: ${PAIOS_INTERNAL_KEY_FILE}
+platform_toolsets:
+  api_server:
+  - memory
+  - session_search
+  - cronjob
+auxiliary:
+  background_review:
+    enabled: false
+  title_generation:
+    model_upgrade_enabled: false
+gateway:
+  api_server:
+    max_concurrent_runs: 2

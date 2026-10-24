@@ -1,0 +1,27 @@
+name: dk-int-kernel
+services:
+  proof:
+    build:
+      context: ../..
+      dockerfile: deploy/cloud/Dockerfile.workshop
+    image: dk-int-kernel-proof:local
+    privileged: true
+    network_mode: none
+    entrypoint: ["/bin/bash", "-euc"]
+    command:
+      - |
+        python3 -m venv --system-site-packages /run/proof-venv
+        /run/proof-venv/bin/pip install --no-index --find-links=/wheels pytest
+        mkdir -p /workshop
+        cd /repo
+        /run/proof-venv/bin/python -m pytest -q -s tests/hermes/test_workshop_kernel.py tests/hermes/test_office_package_edit.py
+    volumes:
+      - ../..:/repo:ro
+      - proof-data:/var/lib/workshop-proof
+      - ${DK_KERNEL_WHEELS:?Set DK_KERNEL_WHEELS to a directory containing pytest wheels}:/wheels:ro
+    tmpfs:
+      - /run
+      - /tmp
+
+volumes:
+  proof-data:

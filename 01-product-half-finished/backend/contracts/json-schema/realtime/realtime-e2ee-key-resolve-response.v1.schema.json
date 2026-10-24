@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-ai-os.local/contracts/realtime/realtime-e2ee-key-resolve-response.v1.schema.json",
+  "title": "RealtimeE2eeKeyResolveResponse",
+  "$comment": "Sole E2EE key-delivery response. Ciphertext-only fixed RFC 9180 suite: KEM 0x0020, KDF 0x0001, AEAD 0x0002.",
+  "type": "object",
+  "required": [
+    "operation",
+    "status",
+    "request_id",
+    "idempotency_context",
+    "realtime_session_ref",
+    "device_lease_ref",
+    "continuity_id",
+    "connection_epoch",
+    "transport_aliases",
+    "key_envelope_ref",
+    "key_index",
+    "key_generation",
+    "device_id",
+    "recipient_device_credential_ref",
+    "participant_audience",
+    "expires_at",
+    "cipher_suite",
+    "encapsulated_key",
+    "ciphertext",
+    "aad_sha256",
+    "governance"
+  ],
+  "properties": {
+    "operation": { "const": "realtime_e2ee_key_resolve" },
+    "status": { "const": "key_resolved" },
+    "request_id": {
+      "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/IdempotencyKey"
+    },
+    "idempotency_context": {
+      "$ref": "https://personal-ai-os.local/contracts/common/idempotency-replay.v1.schema.json#/$defs/IdempotencyContext"
+    },
+    "realtime_session_ref": {
+      "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/CanonicalObjectVersionRef"
+    },
+    "device_lease_ref": {
+      "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/CanonicalObjectVersionRef"
+    },
+    "continuity_id": {
+      "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ContinuityId"
+    },
+    "connection_epoch": { "$ref": "#/$defs/ConnectionEpoch" },
+    "transport_aliases": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ExternalAlias"
+      }
+    },
+    "key_envelope_ref": {
+      "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ExternalAlias"
+    },
+    "key_index": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "key_generation": { "$ref": "#/$defs/KeyGeneration" },
+    "device_id": {
+      "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/DeviceId"
+    },
+    "recipient_device_credential_ref": {
+      "allOf": [
+        {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/CanonicalObjectVersionRef"
+        },
+        {
+          "properties": {
+            "ref_type": { "const": "DeviceCredential" }
+          },
+          "required": ["ref_type"]
+        }
+      ]
+    },
+    "participant_audience": {
+      "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ExternalAlias"
+    },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "cipher_suite": {
+      "enum": ["DHKEM(X25519, HKDF-SHA256), HKDF-SHA256, AES-256-GCM"]
+    },
+    "encapsulated_key": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "ciphertext": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "aad_sha256": {
+      "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+    },
+    "governance": { "$ref": "#/$defs/GovernanceRefs" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "ConnectionEpoch": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]{0,37}$"
+    },
+    "KeyGeneration": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]{0,37}$"
+    },
+    "GovernanceRefs": {
+      "type": "object",
+      "required": [
+        "purpose_scopes",
+        "consent_record_refs",
+        "policy_decision_refs",
+        "purpose_token_refs",
+        "capability_grant_refs"
+      ],
+      "properties": {
+        "purpose_scopes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "https://personal-ai-os.local/contracts/common/governance-context.v1.schema.json#/$defs/PurposeScope"
+          }
+        },
+        "consent_record_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ConsentRecordId"
+          }
+        },
+        "policy_decision_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/PolicyDecisionId"
+          }
+        },
+        "purpose_token_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/PurposeTokenId"
+          }
+        },
+        "capability_grant_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/CapabilityGrantId"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

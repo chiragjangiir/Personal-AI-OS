@@ -1,0 +1,2576 @@
+[
+  {
+    "name": "zero_origin_unpaid",
+    "expected": "unknown",
+    "state": "unpaid",
+    "non_debit": [
+      "支付状态：未支付"
+    ],
+    "scope_unresolved": false,
+    "unsafe": true,
+    "plausibility": "zero-area/offscreen native text if Accessibility provider reports visible; current Java retains these bounds",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#26410;&#25903;&#20184;\" bounds=\"[0,0][0,0]\" /></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "zero_point_below_heading_unpaid",
+    "expected": "unknown",
+    "state": "unpaid",
+    "non_debit": [
+      "支付状态：未支付"
+    ],
+    "scope_unresolved": false,
+    "unsafe": true,
+    "plausibility": "zero-area/offscreen native text if Accessibility provider reports visible; current Java retains these bounds",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#26410;&#25903;&#20184;\" bounds=\"[100,800][100,800]\" /></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "zero_width_unpaid",
+    "expected": "unknown",
+    "state": "unpaid",
+    "non_debit": [
+      "支付状态：未支付"
+    ],
+    "scope_unresolved": false,
+    "unsafe": true,
+    "plausibility": "zero-area/offscreen native text if Accessibility provider reports visible; current Java retains these bounds",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#26410;&#25903;&#20184;\" bounds=\"[100,800][100,835]\" /></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "zero_height_unpaid",
+    "expected": "unknown",
+    "state": "unpaid",
+    "non_debit": [
+      "支付状态：未支付"
+    ],
+    "scope_unresolved": false,
+    "unsafe": true,
+    "plausibility": "zero-area/offscreen native text if Accessibility provider reports visible; current Java retains these bounds",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#26410;&#25903;&#20184;\" bounds=\"[0,800][220,800]\" /></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "negative_offscreen_unpaid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": false,
+    "plausibility": "zero-area/offscreen native text if Accessibility provider reports visible; current Java retains these bounds",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#26410;&#25903;&#20184;\" bounds=\"[0,-200][220,-165]\" /></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "below_offscreen_unpaid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": false,
+    "plausibility": "zero-area/offscreen native text if Accessibility provider reports visible; current Java retains these bounds",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#26410;&#25903;&#20184;\" bounds=\"[0,1601][220,1636]\" /></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "partially_scrolled_unpaid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": false,
+    "plausibility": "zero-area/offscreen native text if Accessibility provider reports visible; current Java retains these bounds",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#26410;&#25903;&#20184;\" bounds=\"[0,-10][220,25]\" /></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "missing_status_bounds_unpaid",
+    "expected": "unknown",
+    "state": "absent",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": false,
+    "plausibility": "invalid current Java producer contract: native node always has bounds",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[0,600][450,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[0,650][220,690]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#26410;&#25903;&#20184;\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "missing_foreign_heading_bounds_unpaid",
+    "expected": "unknown",
+    "state": "unpaid",
+    "non_debit": [
+      "支付状态：未支付"
+    ],
+    "scope_unresolved": false,
+    "unsafe": true,
+    "plausibility": "invalid current Java producer contract: native node always has bounds",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[0,600][450,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#26410;&#25903;&#20184;\" bounds=\"[0,800][220,835]\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "missing_foreign_container_bounds_unpaid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": false,
+    "plausibility": "invalid current Java producer contract: native node always has bounds",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[0,650][220,690]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#26410;&#25903;&#20184;\" bounds=\"[0,800][220,835]\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "partial_overlap_0_450_unpaid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": false,
+    "plausibility": "synthetic partial-overlap/straddle geometry",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[0,600][450,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[0,650][450,690]\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ],
+      [
+        "支付状态：未支付",
+        0,
+        800,
+        220,
+        835
+      ]
+    ]
+  },
+  {
+    "name": "partial_overlap_100_450_unpaid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": true,
+    "unsafe": false,
+    "plausibility": "synthetic partial-overlap/straddle geometry",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[100,600][450,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[100,650][450,690]\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ],
+      [
+        "支付状态：未支付",
+        0,
+        800,
+        220,
+        835
+      ]
+    ]
+  },
+  {
+    "name": "partial_overlap_200_450_unpaid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": true,
+    "unsafe": false,
+    "plausibility": "synthetic partial-overlap/straddle geometry",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[200,600][450,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[200,650][450,690]\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ],
+      [
+        "支付状态：未支付",
+        0,
+        800,
+        220,
+        835
+      ]
+    ]
+  },
+  {
+    "name": "partial_overlap_-1_450_unpaid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": false,
+    "plausibility": "synthetic partial-overlap/straddle geometry",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[-1,600][450,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[0,650][450,690]\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ],
+      [
+        "支付状态：未支付",
+        0,
+        800,
+        220,
+        835
+      ]
+    ]
+  },
+  {
+    "name": "partial_overlap_100_219_unpaid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": true,
+    "unsafe": false,
+    "plausibility": "synthetic partial-overlap/straddle geometry",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[100,600][219,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[100,650][219,690]\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ],
+      [
+        "支付状态：未支付",
+        0,
+        800,
+        220,
+        835
+      ]
+    ]
+  },
+  {
+    "name": "partial_overlap_219_450_unpaid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": true,
+    "unsafe": false,
+    "plausibility": "synthetic partial-overlap/straddle geometry",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[219,600][450,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[219,650][450,690]\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ],
+      [
+        "支付状态：未支付",
+        0,
+        800,
+        220,
+        835
+      ]
+    ]
+  },
+  {
+    "name": "partial_overlap_220_450_unpaid",
+    "expected": "unpaid",
+    "state": "unpaid",
+    "non_debit": [
+      "支付状态：未支付"
+    ],
+    "scope_unresolved": false,
+    "unsafe": false,
+    "plausibility": "exact edge touch is a legitimate current-section field",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[220,600][450,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[220,650][450,690]\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ],
+      [
+        "支付状态：未支付",
+        0,
+        800,
+        220,
+        835
+      ]
+    ]
+  },
+  {
+    "name": "root_zero_area_unpaid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": true,
+    "unsafe": false,
+    "plausibility": "provider geometry/visibility contradiction; no recorded real screen",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][0,0]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#26410;&#25903;&#20184;\" bounds=\"[0,800][220,835]\" /></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "root_offscreen_all_unpaid",
+    "expected": "unknown",
+    "state": "unpaid",
+    "non_debit": [
+      "支付状态：未支付"
+    ],
+    "scope_unresolved": false,
+    "unsafe": true,
+    "plausibility": "provider geometry/visibility contradiction; no recorded real screen",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,1800][1000,3200]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,1880][220,1915]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,1800][200,1840]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,2090][220,2125]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,2160][220,2195]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,2230][220,2265]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,1950][220,1985]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,2020][220,2055]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,3000][220,3050]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#26410;&#25903;&#20184;\" bounds=\"[0,2600][220,2635]\" /></node></hierarchy>",
+    "ocr": []
+  },
+  {
+    "name": "sibling_equal_heading_overlap_unpaid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": false,
+    "plausibility": "provider geometry/visibility contradiction; no recorded real screen",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[0,600][400,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[0,650][220,690]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#26410;&#25903;&#20184;\" bounds=\"[250,800][470,835]\" /></node><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[200,600][600,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[200,650][420,690]\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "native_sibling_status_outside_ancestry_unpaid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": false,
+    "plausibility": "provider geometry/visibility contradiction; no recorded real screen",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[0,600][400,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[0,650][220,690]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#26410;&#25903;&#20184;\" bounds=\"[250,800][470,835]\" /></node><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[200,600][600,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[200,650][420,690]\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "zero_origin_paid",
+    "expected": "unknown",
+    "state": "paid",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": true,
+    "plausibility": "zero-area/offscreen native text if Accessibility provider reports visible; current Java retains these bounds",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#24050;&#25903;&#20184;\" bounds=\"[0,0][0,0]\" /></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "zero_point_below_heading_paid",
+    "expected": "unknown",
+    "state": "paid",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": true,
+    "plausibility": "zero-area/offscreen native text if Accessibility provider reports visible; current Java retains these bounds",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#24050;&#25903;&#20184;\" bounds=\"[100,800][100,800]\" /></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "zero_width_paid",
+    "expected": "unknown",
+    "state": "paid",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": true,
+    "plausibility": "zero-area/offscreen native text if Accessibility provider reports visible; current Java retains these bounds",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#24050;&#25903;&#20184;\" bounds=\"[100,800][100,835]\" /></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "zero_height_paid",
+    "expected": "unknown",
+    "state": "paid",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": true,
+    "plausibility": "zero-area/offscreen native text if Accessibility provider reports visible; current Java retains these bounds",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#24050;&#25903;&#20184;\" bounds=\"[0,800][220,800]\" /></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "negative_offscreen_paid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": false,
+    "plausibility": "zero-area/offscreen native text if Accessibility provider reports visible; current Java retains these bounds",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#24050;&#25903;&#20184;\" bounds=\"[0,-200][220,-165]\" /></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "below_offscreen_paid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": false,
+    "plausibility": "zero-area/offscreen native text if Accessibility provider reports visible; current Java retains these bounds",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#24050;&#25903;&#20184;\" bounds=\"[0,1601][220,1636]\" /></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "partially_scrolled_paid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": false,
+    "plausibility": "zero-area/offscreen native text if Accessibility provider reports visible; current Java retains these bounds",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#24050;&#25903;&#20184;\" bounds=\"[0,-10][220,25]\" /></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "missing_status_bounds_paid",
+    "expected": "unknown",
+    "state": "absent",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": false,
+    "plausibility": "invalid current Java producer contract: native node always has bounds",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[0,600][450,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[0,650][220,690]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#24050;&#25903;&#20184;\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "missing_foreign_heading_bounds_paid",
+    "expected": "unknown",
+    "state": "paid",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": true,
+    "plausibility": "invalid current Java producer contract: native node always has bounds",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[0,600][450,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#24050;&#25903;&#20184;\" bounds=\"[0,800][220,835]\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "missing_foreign_container_bounds_paid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": false,
+    "plausibility": "invalid current Java producer contract: native node always has bounds",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[0,650][220,690]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#24050;&#25903;&#20184;\" bounds=\"[0,800][220,835]\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "partial_overlap_0_450_paid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": false,
+    "plausibility": "synthetic partial-overlap/straddle geometry",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[0,600][450,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[0,650][450,690]\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ],
+      [
+        "支付状态：已支付",
+        0,
+        800,
+        220,
+        835
+      ]
+    ]
+  },
+  {
+    "name": "partial_overlap_100_450_paid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": true,
+    "unsafe": false,
+    "plausibility": "synthetic partial-overlap/straddle geometry",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[100,600][450,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[100,650][450,690]\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ],
+      [
+        "支付状态：已支付",
+        0,
+        800,
+        220,
+        835
+      ]
+    ]
+  },
+  {
+    "name": "partial_overlap_200_450_paid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": true,
+    "unsafe": false,
+    "plausibility": "synthetic partial-overlap/straddle geometry",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[200,600][450,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[200,650][450,690]\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ],
+      [
+        "支付状态：已支付",
+        0,
+        800,
+        220,
+        835
+      ]
+    ]
+  },
+  {
+    "name": "partial_overlap_-1_450_paid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": false,
+    "plausibility": "synthetic partial-overlap/straddle geometry",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[-1,600][450,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[0,650][450,690]\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ],
+      [
+        "支付状态：已支付",
+        0,
+        800,
+        220,
+        835
+      ]
+    ]
+  },
+  {
+    "name": "partial_overlap_100_219_paid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": true,
+    "unsafe": false,
+    "plausibility": "synthetic partial-overlap/straddle geometry",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[100,600][219,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[100,650][219,690]\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ],
+      [
+        "支付状态：已支付",
+        0,
+        800,
+        220,
+        835
+      ]
+    ]
+  },
+  {
+    "name": "partial_overlap_219_450_paid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": true,
+    "unsafe": false,
+    "plausibility": "synthetic partial-overlap/straddle geometry",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[219,600][450,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[219,650][450,690]\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ],
+      [
+        "支付状态：已支付",
+        0,
+        800,
+        220,
+        835
+      ]
+    ]
+  },
+  {
+    "name": "partial_overlap_220_450_paid",
+    "expected": "paid",
+    "state": "paid",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": false,
+    "plausibility": "exact edge touch is a legitimate current-section field",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[220,600][450,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[220,650][450,690]\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ],
+      [
+        "支付状态：已支付",
+        0,
+        800,
+        220,
+        835
+      ]
+    ]
+  },
+  {
+    "name": "root_zero_area_paid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": true,
+    "unsafe": false,
+    "plausibility": "provider geometry/visibility contradiction; no recorded real screen",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][0,0]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#24050;&#25903;&#20184;\" bounds=\"[0,800][220,835]\" /></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "root_offscreen_all_paid",
+    "expected": "unknown",
+    "state": "paid",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": true,
+    "plausibility": "provider geometry/visibility contradiction; no recorded real screen",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,1800][1000,3200]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,1880][220,1915]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,1800][200,1840]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,2090][220,2125]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,2160][220,2195]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,2230][220,2265]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,1950][220,1985]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,2020][220,2055]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,3000][220,3050]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#24050;&#25903;&#20184;\" bounds=\"[0,2600][220,2635]\" /></node></hierarchy>",
+    "ocr": []
+  },
+  {
+    "name": "sibling_equal_heading_overlap_paid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": false,
+    "plausibility": "provider geometry/visibility contradiction; no recorded real screen",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[0,600][400,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[0,650][220,690]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#24050;&#25903;&#20184;\" bounds=\"[250,800][470,835]\" /></node><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[200,600][600,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[200,650][420,690]\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  },
+  {
+    "name": "native_sibling_status_outside_ancestry_paid",
+    "expected": "unknown",
+    "state": "unknown",
+    "non_debit": [],
+    "scope_unresolved": false,
+    "unsafe": false,
+    "plausibility": "provider geometry/visibility contradiction; no recorded real screen",
+    "xml": "<hierarchy><node resource-id=\"\" text=\"\" bounds=\"[0,0][1000,1400]\"><node resource-id=\"\" text=\"&#35746;&#21333;&#21495;&#65306;order-A\" bounds=\"[0,80][220,115]\" /><node resource-id=\"\" text=\"&#20184;&#27454;&#32467;&#26524;\" bounds=\"[0,0][200,40]\" /><node resource-id=\"\" text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" bounds=\"[0,290][220,325]\" /><node resource-id=\"\" text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" bounds=\"[0,360][220,395]\" /><node resource-id=\"\" text=\"&#25968;&#37327;&#65306;1\" bounds=\"[0,430][220,465]\" /><node resource-id=\"\" text=\"&#24635;&#35745; &#165;16.60\" bounds=\"[0,150][220,185]\" /><node resource-id=\"\" text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" bounds=\"[0,220][220,255]\" /><node resource-id=\"\" text=\"&#30830;&#35748;&#20184;&#27454;\" bounds=\"[0,1200][220,1250]\" /><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[0,600][400,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[0,650][220,690]\" /><node resource-id=\"app:id/payment_status\" visible-to-user=\"true\" text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#24050;&#25903;&#20184;\" bounds=\"[250,800][470,835]\" /></node><node resource-id=\"\" visible-to-user=\"true\" text=\"\" bounds=\"[200,600][600,1100]\"><node resource-id=\"\" visible-to-user=\"true\" text=\"&#35746;&#21333;&#35814;&#24773;\" bounds=\"[200,650][420,690]\" /></node></node></hierarchy>",
+    "ocr": [
+      [
+        "规格：中杯",
+        0,
+        360,
+        220,
+        395
+      ],
+      [
+        "商品名称：柠檬茶",
+        0,
+        290,
+        220,
+        325
+      ],
+      [
+        "收款方：shop-A",
+        0,
+        220,
+        220,
+        255
+      ],
+      [
+        "数量：1",
+        0,
+        430,
+        220,
+        465
+      ],
+      [
+        "付款结果",
+        0,
+        0,
+        200,
+        40
+      ],
+      [
+        "订单号：order-A",
+        0,
+        80,
+        220,
+        115
+      ],
+      [
+        "总计 ¥16.60",
+        0,
+        150,
+        220,
+        185
+      ]
+    ]
+  }
+]

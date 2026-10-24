@@ -1,0 +1,55 @@
+# OpenList alone holds drive credentials. Gateway uses scoped WebDAV credentials.
+services:
+  cold-webdav: &cold-webdav
+    image: openlistteam/openlist:v4.2.6
+    profiles: [production]
+    restart: unless-stopped
+    entrypoint: [/bin/sh, -c]
+    command: ["umask 077; exec /opt/openlist/openlist server --log-std=false"]
+    environment: {UMASK: "077"}
+    logging: {driver: none}
+    ports: ["127.0.0.1:${PAIOS_COLD_ADMIN_PORT:-5244}:5244"]
+    networks: [cold]
+    mem_limit: 192m
+    memswap_limit: 256m # RAM + 64 MiB swap; cold WebDAV state
+    cpus: 0.25
+    cpu_shares: 16
+    blkio_config: {weight: 10}
+    volumes:
+      - type: bind
+        source: ${PAIOS_COLD_CONFIG_DIR:?}
+        target: /opt/openlist/data
+        bind: {create_host_path: false}
+  cold-webdav-staging:
+    <<: *cold-webdav
+    profiles: [staging]
+    ports: ["127.0.0.1:${PAIOS_STAGING_COLD_ADMIN_PORT:-15244}:5244"]
+    networks: [cold-staging]
+    volumes:
+      - type: bind
+        source: ${PAIOS_STAGING_COLD_CONFIG_DIR:?}
+        target: /opt/openlist/data
+        bind: {create_host_path: false}
+  gateway-staging:
+    volumes:
+      - type: bind
+        source: ${PAIOS_STAGING_SECRETS_DIR:?}/cold-webdav.password
+        target: /run/secrets/cold-webdav.password
+        read_only: true
+        bind: {create_host_path: false}
+  front-staging:
+    networks: # the default network keeps the default route (see front in compose.yaml)
+      default: {gw_priority: 1}
+      cold-staging: {}
+  gateway:
+    volumes:
+      - type: bind
+        source: ${PAIOS_SECRETS_DIR:?}/cold-webdav.password
+        target: /run/secrets/cold-webdav.password
+        read_only: true
+        bind: {create_host_path: false}
+  front:
+    networks: [default, cold]
+networks:
+  cold: {}
+  cold-staging: {}

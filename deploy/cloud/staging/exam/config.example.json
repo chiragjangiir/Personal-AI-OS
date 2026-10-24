@@ -1,0 +1,29 @@
+{
+  "exam_id": "capability-fixtures",
+  "test_mode": false,
+  "hermes_pid": 0,
+  "fixture_root": "/exam/fixtures",
+  "isolation_receipt": "/exam/control/isolation.json",
+  "observer_log": "/exam/control/effects.jsonl",
+  "registry_root": "/opt/data/skills/workshop",
+  "gateway_origin": "http://127.0.0.1:18661",
+  "device_key_file": "/exam/control/fixture-device.key",
+  "profiles": {
+    "owner": {
+      "origin": "http://127.0.0.1:18662",
+      "home": "/opt/data",
+      "key_file": "/run/secrets/hermes-api.key"
+    }
+  },
+  "fixture_bind": "0.0.0.0",
+  "fixture_port": 19004,
+  "imap_port": 19143,
+  "smtp_port": 19025,
+  "mailbox_public_host": "exam-fixtures",
+  "fixture_public_origin": "http://exam-fixtures:19004",
+  "agent_inputs": "/owner/in/exam",
+  "agent_outputs": "$OUT",
+  "workshop_output_root": "/exam/workshop-out",
+  "timeout_s": 900,
+  "poll_s": 2
+}

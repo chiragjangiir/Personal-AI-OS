@@ -1,0 +1,8 @@
+.build/
+.env
+secrets/
+tls/
+vendor/hermes-checkout/
+vendor/bundle-check/
+vendor/hermes-source.tar.gz
+vendor/*.bundle

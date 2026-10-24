@@ -1,0 +1,687 @@
+// !$*UTF8*$!
+{
+	"archiveVersion" = "1";
+	"classes" = {
+	};
+	"objectVersion" = "77";
+	"objects" = {
+        "A021C0A00000000000000001" = { "isa" = "PBXShellScriptBuildPhase"; "buildActionMask" = "2147483647"; "files" = (); "inputPaths" = ("$(SRCROOT)/scripts/package-opengcua.py", "$(SRCROOT)/Helpers/opengcua/run.py", "$(SRCROOT)/Resources/OpenGCUA-Licenses"); "name" = "Bundle embedded OpenGCUA"; "outputPaths" = ("$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/opengcua/run.py", "$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/opengcua/python/bin/python3.12", "$(TARGET_BUILD_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/CuaDriver.app"); "runOnlyForDeploymentPostprocessing" = "0"; "shellPath" = "/bin/sh"; "shellScript" = "set -eu\nOGC_TOOLCHAIN=\"${YIMI_OPENGCUA_TOOLCHAIN:?Set YIMI_OPENGCUA_TOOLCHAIN to the prepared OpenGCUA toolchain}\"\n\"$OGC_TOOLCHAIN/.venv/bin/python\" \"$SRCROOT/scripts/package-opengcua.py\" --app \"$TARGET_BUILD_DIR/$WRAPPER_NAME\" --toolchain \"$OGC_TOOLCHAIN\"\n"; };
+        "AC7100000000000000000001" = {
+            "isa" = "PBXFileReference";
+            "lastKnownFileType" = "sourcecode.swift";
+            "path" = "../PersonalAIOSPhase0/OpenSource/apple-health-exporter/app/App/YimiActivityCard.swift";
+            "sourceTree" = "SOURCE_ROOT";
+        };
+        "AC7100000000000000000002" = { "isa" = "PBXBuildFile"; "fileRef" = "AC7100000000000000000001"; };
+        "AC7100000000000000000003" = { "isa" = "PBXBuildFile"; "fileRef" = "AC7100000000000000000001"; };
+        "A01955000000000000000001" = { "isa" = "PBXShellScriptBuildPhase"; "buildActionMask" = "2147483647"; "files" = (); "inputPaths" = ("$(SRCROOT)/Helpers/OwnerSSHAudit.swift", "$(SRCROOT)/Helpers/AndroidControl.swift", "$(SRCROOT)/Helpers/AndroidProcessGuard.swift", "$(SRCROOT)/DesktopKit/Sources/DesktopKit/AndroidControlSocket.swift", "$(SRCROOT)/scripts/package-owner-ssh.sh", "$(SRCROOT)/../../../../../../../integrations/connectors/phone_executor/phone-apks.json"); "name" = "Bundle owner SSH executables"; "outputPaths" = ("$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/owner-ssh-audit", "$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/android-control", "$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/android-process-guard", "$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/frpc", "$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/phone-apks.json"); "runOnlyForDeploymentPostprocessing" = "0"; "shellPath" = "/bin/sh"; "shellScript" = "\"$SRCROOT/scripts/package-owner-ssh.sh\""; };
+
+        "F01240000000000000000001" = { "isa" = "XCLocalSwiftPackageReference"; "relativePath" = "../VoiceWake"; };
+        "F01250000000000000000001" = { "isa" = "XCSwiftPackageProductDependency"; "package" = "F01240000000000000000001"; "productName" = "VoiceWake"; };
+        "F01210000000000000000001" = { "isa" = "PBXBuildFile"; "productRef" = "F01250000000000000000001"; };
+        "F01210000000000000000002" = { "isa" = "PBXBuildFile"; "productRef" = "F01250000000000000000001"; };
+		"AD180000000000000001000A" = { "isa" = "PBXFileReference"; "lastKnownFileType" = "wrapper.framework"; "path" = ".vendor/artc/AliRTCSdk.framework"; "sourceTree" = "SOURCE_ROOT"; };
+		"AD1800000000000000010014" = { "isa" = "PBXBuildFile"; "fileRef" = "AD180000000000000001000A"; };
+		"AD1800000000000000010015" = { "isa" = "PBXBuildFile"; "fileRef" = "AD180000000000000001000A"; "settings" = { "ATTRIBUTES" = ("CodeSignOnCopy", "RemoveHeadersOnCopy"); }; };
+		"AD1800000000000000010016" = { "isa" = "PBXBuildFile"; "fileRef" = "AD180000000000000001000A"; };
+		"AD1800000000000000010017" = { "isa" = "PBXBuildFile"; "fileRef" = "AD180000000000000001000A"; "settings" = { "ATTRIBUTES" = ("CodeSignOnCopy", "RemoveHeadersOnCopy"); }; };
+		"AD180000000000000001000B" = { "isa" = "PBXFileReference"; "lastKnownFileType" = "wrapper.framework"; "path" = ".vendor/artc/openhevc.framework"; "sourceTree" = "SOURCE_ROOT"; };
+		"AD1800000000000000010018" = { "isa" = "PBXBuildFile"; "fileRef" = "AD180000000000000001000B"; };
+		"AD1800000000000000010019" = { "isa" = "PBXBuildFile"; "fileRef" = "AD180000000000000001000B"; "settings" = { "ATTRIBUTES" = ("CodeSignOnCopy", "RemoveHeadersOnCopy"); }; };
+		"AD180000000000000001001A" = { "isa" = "PBXBuildFile"; "fileRef" = "AD180000000000000001000B"; };
+		"AD180000000000000001001B" = { "isa" = "PBXBuildFile"; "fileRef" = "AD180000000000000001000B"; "settings" = { "ATTRIBUTES" = ("CodeSignOnCopy", "RemoveHeadersOnCopy"); }; };
+		"AD180000000000000001000C" = { "isa" = "PBXFileReference"; "lastKnownFileType" = "wrapper.framework"; "path" = ".vendor/artc/UTDID.framework"; "sourceTree" = "SOURCE_ROOT"; };
+		"AD180000000000000001001C" = { "isa" = "PBXBuildFile"; "fileRef" = "AD180000000000000001000C"; };
+		"AD180000000000000001001D" = { "isa" = "PBXBuildFile"; "fileRef" = "AD180000000000000001000C"; "settings" = { "ATTRIBUTES" = ("CodeSignOnCopy", "RemoveHeadersOnCopy"); }; };
+		"AD180000000000000001001E" = { "isa" = "PBXBuildFile"; "fileRef" = "AD180000000000000001000C"; };
+		"AD180000000000000001001F" = { "isa" = "PBXBuildFile"; "fileRef" = "AD180000000000000001000C"; "settings" = { "ATTRIBUTES" = ("CodeSignOnCopy", "RemoveHeadersOnCopy"); }; };
+		"AD1800000000000000010028" = { "isa" = "PBXCopyFilesBuildPhase"; "buildActionMask" = "2147483647"; "dstPath" = ""; "dstSubfolderSpec" = "10"; "files" = ("AD1800000000000000010015","AD1800000000000000010019","AD180000000000000001001D",); "name" = "Embed ARTC"; "runOnlyForDeploymentPostprocessing" = "0"; };
+		"AD1800000000000000010029" = { "isa" = "PBXCopyFilesBuildPhase"; "buildActionMask" = "2147483647"; "dstPath" = ""; "dstSubfolderSpec" = "10"; "files" = ("AD1800000000000000010017","AD180000000000000001001B","AD180000000000000001001F",); "name" = "Embed ARTC"; "runOnlyForDeploymentPostprocessing" = "0"; };
+
+		"AB65063B0DF2429081B94C08" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "folder";
+			"path" = "../PersonalAIOSPhase0/OpenSource/apple-health-exporter/app/Contracts";
+			"sourceTree" = "SOURCE_ROOT";
+		};
+		"EEA3930064DD4FD9AD5769BF" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "AB65063B0DF2429081B94C08";
+		};
+		"2ECA7CFA4FBB485EA5570EFE" = {
+			"isa" = "PBXResourcesBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+				"EEA3930064DD4FD9AD5769BF",
+				"AD34AB82AE7C46B9BD90A593",
+				"37F09ED803A64C688D3A14EE",
+				"988A0645E0FE47968C09E387",
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"9F4A23D55EB74600AD9DD862" = {
+			"isa" = "XCRemoteSwiftPackageReference";
+			"repositoryURL" = "https://github.com/livekit/client-sdk-swift.git";
+			"requirement" = {
+				"kind" = "exactVersion";
+				"version" = "2.17.0";
+			};
+		};
+		"0A682064FC734031AEBFA90E" = {
+			"isa" = "XCSwiftPackageProductDependency";
+			"package" = "9F4A23D55EB74600AD9DD862";
+			"productName" = "LiveKit";
+		};
+		"753B9E9039CF43A79FC20B6F" = {
+			"isa" = "PBXBuildFile";
+			"productRef" = "0A682064FC734031AEBFA90E";
+		};
+		"F82DD530417B49AFA0C4963B" = {
+			"isa" = "XCRemoteSwiftPackageReference";
+			"repositoryURL" = "https://github.com/groue/GRDB.swift.git";
+			"requirement" = {
+				"kind" = "exactVersion";
+				"version" = "7.11.1";
+			};
+		};
+		"847BBE464C7643C8B96FBE8B" = {
+			"isa" = "XCSwiftPackageProductDependency";
+			"package" = "F82DD530417B49AFA0C4963B";
+			"productName" = "GRDB";
+		};
+		"3AD0A8DC5E8A44C188967601" = {
+			"isa" = "PBXBuildFile";
+			"productRef" = "847BBE464C7643C8B96FBE8B";
+		};
+		"BBB151708AB140A4A17AF45E" = {
+			"isa" = "XCRemoteSwiftPackageReference";
+			"repositoryURL" = "https://github.com/modelcontextprotocol/swift-sdk.git";
+			"requirement" = {
+				"kind" = "exactVersion";
+				"version" = "0.12.1";
+			};
+		};
+		"287672886E0B4DAC8B801D0B" = {
+			"isa" = "XCSwiftPackageProductDependency";
+			"package" = "BBB151708AB140A4A17AF45E";
+			"productName" = "MCP";
+		};
+		"EEC6488076E544C29EC9D2E4" = {
+			"isa" = "PBXBuildFile";
+			"productRef" = "287672886E0B4DAC8B801D0B";
+		};
+		"2619D20B09414B619D9C748B" = {
+			"isa" = "XCRemoteSwiftPackageReference";
+			"repositoryURL" = "https://github.com/sindresorhus/KeyboardShortcuts";
+			"requirement" = {
+				"kind" = "exactVersion";
+				"version" = "3.1.0";
+			};
+		};
+		"4C99B675C1A841D4989EE048" = {
+			"isa" = "XCSwiftPackageProductDependency";
+			"package" = "2619D20B09414B619D9C748B";
+			"productName" = "KeyboardShortcuts";
+		};
+		"FC9EFEEA57B3420086FF14A9" = {
+			"isa" = "PBXBuildFile";
+			"productRef" = "4C99B675C1A841D4989EE048";
+		};
+		"430B07F6EB454DFA8DC85D77" = {
+			"isa" = "PBXFrameworksBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+				"AD1800000000000000010014",
+				"AD1800000000000000010018",
+				"AD180000000000000001001C",
+				"753B9E9039CF43A79FC20B6F",
+				"3AD0A8DC5E8A44C188967601",
+				"EEC6488076E544C29EC9D2E4",
+				"FC9EFEEA57B3420086FF14A9",
+				"70D663295CCF420C8D620230",
+                "F01210000000000000000001",
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"5FFA450FCF704EE385C4305A" = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+				"EC506883F2B447AD98561D86",
+                "AC7100000000000000000002",
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"4FC5B91948934ED0A061736F" = {
+			"isa" = "PBXFileReference";
+			"explicitFileType" = "wrapper.application";
+			"includeInIndex" = "0";
+			"path" = "YimiDesktop.app";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
+		};
+		"F608047911D74940B9560E7E" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"4FC5B91948934ED0A061736F",
+				"29F248DE39A04296A76A9D79",
+			);
+			"name" = "Products";
+			"sourceTree" = "<group>";
+		};
+		"0B656308AD804612AAF8F5DF" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"AD180000000000000001000A",
+				"AD180000000000000001000B",
+				"AD180000000000000001000C",
+				"AB65063B0DF2429081B94C08",
+				"F608047911D74940B9560E7E",
+				"4095449EB5464E83A222928D",
+                "AC7100000000000000000001",
+				"617F8FEE6D534C86B84A3E0B",
+				"DF802ACCC48E4062A08E8BAF",
+				"1F4923BDAAFB45CC893A837A",
+				"85996698184747E688900670",
+				"D2674522A9D04D318CD024F4",
+				"7D2DB6962F2B4AC8A031CD70",
+				"FCC145944BAE439CA54B029D",
+			);
+			"sourceTree" = "<group>";
+		};
+		"727BC25A3C29452E85266F9F" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Debug";
+			"buildSettings" = {
+				"FRAMEWORK_SEARCH_PATHS" = ("$(inherited)", "$(SRCROOT)/.vendor/artc");
+				"ARCHS" = "arm64";
+				"ONLY_ACTIVE_ARCH" = "YES";
+				"SDKROOT" = "macosx";
+				"SUPPORTED_PLATFORMS" = "macosx";
+				"MACOSX_DEPLOYMENT_TARGET" = "14.0";
+				"SWIFT_VERSION" = "5.0";
+				"CLANG_ENABLE_MODULES" = "YES";
+				"ENABLE_HARDENED_RUNTIME" = "YES";
+				"ENABLE_APP_SANDBOX" = "NO";
+				"CODE_SIGN_STYLE" = "Manual";
+				"CODE_SIGN_INJECT_BASE_ENTITLEMENTS" = "NO";
+				"PROVISIONING_PROFILE_SPECIFIER" = "";
+				"PROVISIONING_PROFILE" = "";
+				"CODE_SIGN_IDENTITY" = "Apple Development";
+				"DEVELOPMENT_TEAM" = "";
+				"CODE_SIGN_ENTITLEMENTS" = "YimiDesktop.entitlements";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "ai.paios.personal.desktop";
+				"PRODUCT_NAME" = "YimiDesktop";
+				"INFOPLIST_FILE" = "Info.plist";
+				"GENERATE_INFOPLIST_FILE" = "NO";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				"SWIFT_STRICT_CONCURRENCY" = "targeted";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf";
+				"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+				"ENABLE_TESTABILITY" = "YES";
+			};
+		};
+		"AF0E69C62A884222B1051C19" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Debug";
+			"buildSettings" = {
+				"MACOSX_DEPLOYMENT_TARGET" = "14.0";
+				"SWIFT_VERSION" = "5.0";
+			};
+		};
+		"A08E070D9984441295213F88" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Release";
+			"buildSettings" = {
+				"FRAMEWORK_SEARCH_PATHS" = ("$(inherited)", "$(SRCROOT)/.vendor/artc");
+				"ARCHS" = "arm64";
+				"ONLY_ACTIVE_ARCH" = "YES";
+				"SDKROOT" = "macosx";
+				"SUPPORTED_PLATFORMS" = "macosx";
+				"MACOSX_DEPLOYMENT_TARGET" = "14.0";
+				"SWIFT_VERSION" = "5.0";
+				"CLANG_ENABLE_MODULES" = "YES";
+				"ENABLE_HARDENED_RUNTIME" = "YES";
+				"ENABLE_APP_SANDBOX" = "NO";
+				"CODE_SIGN_STYLE" = "Manual";
+				"CODE_SIGN_INJECT_BASE_ENTITLEMENTS" = "NO";
+				"PROVISIONING_PROFILE_SPECIFIER" = "";
+				"PROVISIONING_PROFILE" = "";
+				"CODE_SIGN_IDENTITY" = "Apple Development";
+				"DEVELOPMENT_TEAM" = "";
+				"CODE_SIGN_ENTITLEMENTS" = "YimiDesktop.entitlements";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "ai.paios.personal.desktop";
+				"PRODUCT_NAME" = "YimiDesktop";
+				"INFOPLIST_FILE" = "Info.plist";
+				"GENERATE_INFOPLIST_FILE" = "NO";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				"SWIFT_STRICT_CONCURRENCY" = "targeted";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf-with-dsym";
+				"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+				"ENABLE_TESTABILITY" = "YES";
+			};
+		};
+		"C6C82FAA031743AFB89BEB8A" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Release";
+			"buildSettings" = {
+				"MACOSX_DEPLOYMENT_TARGET" = "14.0";
+				"SWIFT_VERSION" = "5.0";
+			};
+		};
+		"756DC8A0C8B04C209E168F05" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = (
+				"727BC25A3C29452E85266F9F",
+				"A08E070D9984441295213F88",
+			);
+			"defaultConfigurationIsVisible" = "0";
+			"defaultConfigurationName" = "Release";
+		};
+		"196975D50D3B4382B5489887" = {
+			"isa" = "PBXNativeTarget";
+			"buildConfigurationList" = "756DC8A0C8B04C209E168F05";
+			"buildPhases" = (
+				"AD1800000000000000010028",
+				"5FFA450FCF704EE385C4305A",
+				"430B07F6EB454DFA8DC85D77",
+				"2ECA7CFA4FBB485EA5570EFE",
+                "A01955000000000000000001",
+                "A021C0A00000000000000001",
+			);
+			"buildRules" = (
+			);
+			"dependencies" = (
+			);
+			"name" = "YimiDesktop";
+			"packageProductDependencies" = (
+				"0A682064FC734031AEBFA90E",
+				"847BBE464C7643C8B96FBE8B",
+				"287672886E0B4DAC8B801D0B",
+				"4C99B675C1A841D4989EE048",
+				"A772CC07455141AD94C1BB98",
+                "F01250000000000000000001",
+			);
+			"productName" = "YimiDesktop";
+			"productReference" = "4FC5B91948934ED0A061736F";
+			"productType" = "com.apple.product-type.application";
+			"fileSystemSynchronizedGroups" = (
+				"DF802ACCC48E4062A08E8BAF",
+				"1F4923BDAAFB45CC893A837A",
+				"85996698184747E688900670",
+				"D2674522A9D04D318CD024F4",
+			);
+		};
+		"6CA749081CE04E57A391E241" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = (
+				"AF0E69C62A884222B1051C19",
+				"C6C82FAA031743AFB89BEB8A",
+			);
+			"defaultConfigurationIsVisible" = "0";
+			"defaultConfigurationName" = "Release";
+		};
+		"E4B02E865F454434AA5098C0" = {
+			"isa" = "PBXProject";
+			"attributes" = {
+				"LastSwiftUpdateCheck" = "2660";
+				"LastUpgradeCheck" = "2660";
+				"TargetAttributes" = {
+					"196975D50D3B4382B5489887" = {
+						"CreatedOnToolsVersion" = "26.6";
+						"DevelopmentTeam" = "6D9NG238CN";
+						"ProvisioningStyle" = "Manual";
+					};
+				};
+			};
+			"buildConfigurationList" = "6CA749081CE04E57A391E241";
+			"developmentRegion" = "zh-Hans";
+			"hasScannedForEncodings" = "0";
+			"knownRegions" = (
+				"en",
+				"zh-Hans",
+				"Base",
+			);
+			"mainGroup" = "0B656308AD804612AAF8F5DF";
+			"packageReferences" = (
+				"9F4A23D55EB74600AD9DD862",
+				"F82DD530417B49AFA0C4963B",
+				"BBB151708AB140A4A17AF45E",
+				"2619D20B09414B619D9C748B",
+				"B6F7079F5C9E4BEC8FACAC79",
+                "F01240000000000000000001",
+			);
+			"productRefGroup" = "F608047911D74940B9560E7E";
+			"projectDirPath" = "";
+			"projectRoot" = "";
+			"targets" = (
+				"196975D50D3B4382B5489887",
+				"C0B4868593E64FBC8A652F58",
+			);
+			"preferredProjectObjectVersion" = "77";
+		};
+		"2560D4FB25B24E5983C68E0C" = {
+			"isa" = "PBXBuildFile";
+			"productRef" = "4C99B675C1A841D4989EE048";
+		};
+		"37F09ED803A64C688D3A14EE" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "92E9A0B185614F2D80BF3C3B";
+		};
+		"3CE4B70FF97D4AE18F2F47B1" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "4095449EB5464E83A222928D";
+		};
+		"70D663295CCF420C8D620230" = {
+			"isa" = "PBXBuildFile";
+			"productRef" = "A772CC07455141AD94C1BB98";
+		};
+		"70F239F555BC43C9A97DDCCE" = {
+			"isa" = "PBXBuildFile";
+			"productRef" = "A772CC07455141AD94C1BB98";
+		};
+		"79F61473EEF744E799EB5D37" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "92E9A0B185614F2D80BF3C3B";
+		};
+		"809BD0B367E3442D96252955" = {
+			"isa" = "PBXBuildFile";
+			"productRef" = "287672886E0B4DAC8B801D0B";
+		};
+		"8719B7AA623745E5BD0A60C1" = {
+			"isa" = "PBXBuildFile";
+			"productRef" = "847BBE464C7643C8B96FBE8B";
+		};
+		"988A0645E0FE47968C09E387" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "F52791297C1A405F8B40BA64";
+		};
+		"AD34AB82AE7C46B9BD90A593" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "617F8FEE6D534C86B84A3E0B";
+		};
+		"BA263547EE0C40B1BEEC1C07" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "F52791297C1A405F8B40BA64";
+		};
+		"D10CCBBD368F49138A10E49D" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "AB65063B0DF2429081B94C08";
+		};
+		"EC506883F2B447AD98561D86" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "4095449EB5464E83A222928D";
+		};
+		"F1D6ADBA5BA545249A54722C" = {
+			"isa" = "PBXBuildFile";
+			"productRef" = "0A682064FC734031AEBFA90E";
+		};
+		"F52791297C1A405F8B40BA64" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "text.json";
+			"path" = "../../../../../../../integrations/contracts/desktop-tools.v1.json";
+			"sourceTree" = "SOURCE_ROOT";
+		};
+		"4095449EB5464E83A222928D" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "../PersonalAIOSPhase0/OpenSource/apple-health-exporter/app/App/YimiDesign.swift";
+			"sourceTree" = "SOURCE_ROOT";
+		};
+		"92E9A0B185614F2D80BF3C3B" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "folder";
+			"path" = "../PersonalAIOSPhase0/OpenSource/apple-health-exporter/app/Avatar";
+			"sourceTree" = "SOURCE_ROOT";
+		};
+		"617F8FEE6D534C86B84A3E0B" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "folder.assetcatalog";
+			"path" = "Assets.xcassets";
+			"sourceTree" = "SOURCE_ROOT";
+		};
+		"29F248DE39A04296A76A9D79" = {
+			"isa" = "PBXFileReference";
+			"explicitFileType" = "wrapper.cfbundle";
+			"path" = "YimiDesktopTests.xctest";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
+		};
+		"307B50E3021D42E0A64DBF67" = {
+			"isa" = "PBXFileSystemSynchronizedBuildFileExceptionSet";
+			"membershipExceptions" = (
+				"BackgroundSyncRegistrar.swift",
+				"AssistantLocalOperationDatabase.swift.orig",
+			);
+			"target" = "196975D50D3B4382B5489887";
+		};
+		"44D82FDE50D64E28811AFB61" = {
+			"isa" = "PBXFileSystemSynchronizedBuildFileExceptionSet";
+			"membershipExceptions" = (
+				"DesktopSpike.swift",
+				"DesktopStreamSpike.swift",
+			);
+			"target" = "196975D50D3B4382B5489887";
+		};
+		"634E296E57AC473F8524F037" = {
+			"isa" = "PBXFileSystemSynchronizedBuildFileExceptionSet";
+			"membershipExceptions" = (
+				"DesktopSpike.swift",
+				"DesktopStreamSpike.swift",
+				"DesktopMain.swift",
+			);
+			"target" = "C0B4868593E64FBC8A652F58";
+		};
+		"C7365F7A59754885BE41A9D3" = {
+			"isa" = "PBXFileSystemSynchronizedBuildFileExceptionSet";
+			"membershipExceptions" = (
+				"BackgroundSyncRegistrar.swift",
+				"AssistantLocalOperationDatabase.swift.orig",
+			);
+			"target" = "C0B4868593E64FBC8A652F58";
+		};
+		"1F4923BDAAFB45CC893A837A" = {
+			"isa" = "PBXFileSystemSynchronizedRootGroup";
+			"exceptions" = (
+				"307B50E3021D42E0A64DBF67",
+				"C7365F7A59754885BE41A9D3",
+			);
+			"explicitFileTypes" = {
+			};
+			"explicitFolders" = (
+			);
+			"path" = "../PersonalAIOSPhase0/OpenSource/apple-health-exporter/app/Core";
+			"sourceTree" = "SOURCE_ROOT";
+		};
+		"85996698184747E688900670" = {
+			"isa" = "PBXFileSystemSynchronizedRootGroup";
+			"exceptions" = (
+			);
+			"explicitFileTypes" = {
+			};
+			"explicitFolders" = (
+			);
+			"path" = "../PersonalAIOSPhase0/OpenSource/apple-health-exporter/app/Shared";
+			"sourceTree" = "SOURCE_ROOT";
+		};
+		"D2674522A9D04D318CD024F4" = {
+			"isa" = "PBXFileSystemSynchronizedRootGroup";
+			"exceptions" = (
+			);
+			"explicitFileTypes" = {
+			};
+			"explicitFolders" = (
+			);
+			"path" = "../PersonalAIOSPhase0/OpenSource/apple-health-exporter/app/WatchShared";
+			"sourceTree" = "SOURCE_ROOT";
+		};
+		"DF802ACCC48E4062A08E8BAF" = {
+			"isa" = "PBXFileSystemSynchronizedRootGroup";
+			"exceptions" = (
+				"44D82FDE50D64E28811AFB61",
+				"634E296E57AC473F8524F037",
+			);
+			"explicitFileTypes" = {
+			};
+			"explicitFolders" = (
+			);
+			"path" = "Sources";
+			"sourceTree" = "SOURCE_ROOT";
+		};
+		"7D2DB6962F2B4AC8A031CD70" = {
+			"isa" = "PBXFileSystemSynchronizedRootGroup";
+			"explicitFileTypes" = {
+			};
+			"explicitFolders" = (
+			);
+			"path" = "Tests";
+			"sourceTree" = "SOURCE_ROOT";
+		};
+		"24863FBAC4B548D3BAA67FBF" = {
+			"isa" = "PBXFrameworksBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+				"AD1800000000000000010016",
+				"AD180000000000000001001A",
+				"AD180000000000000001001E",
+				"F1D6ADBA5BA545249A54722C",
+				"8719B7AA623745E5BD0A60C1",
+				"809BD0B367E3442D96252955",
+				"2560D4FB25B24E5983C68E0C",
+				"70F239F555BC43C9A97DDCCE",
+                "F01210000000000000000002",
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"FCC145944BAE439CA54B029D" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"92E9A0B185614F2D80BF3C3B",
+				"F52791297C1A405F8B40BA64",
+			);
+			"name" = "Resources";
+			"sourceTree" = "<group>";
+		};
+		"C0B4868593E64FBC8A652F58" = {
+			"isa" = "PBXNativeTarget";
+			"buildConfigurationList" = "00005465C6544B17AC12DC64";
+			"buildPhases" = (
+				"AD1800000000000000010029",
+				"279CBC91CFBF4D1ABDD6AD61",
+				"24863FBAC4B548D3BAA67FBF",
+				"3C294362EF774841A61C742C",
+			);
+			"buildRules" = (
+			);
+			"dependencies" = (
+			);
+			"fileSystemSynchronizedGroups" = (
+				"DF802ACCC48E4062A08E8BAF",
+				"1F4923BDAAFB45CC893A837A",
+				"85996698184747E688900670",
+				"D2674522A9D04D318CD024F4",
+				"7D2DB6962F2B4AC8A031CD70",
+			);
+			"name" = "YimiDesktopTests";
+			"packageProductDependencies" = (
+				"0A682064FC734031AEBFA90E",
+				"847BBE464C7643C8B96FBE8B",
+				"287672886E0B4DAC8B801D0B",
+				"4C99B675C1A841D4989EE048",
+				"A772CC07455141AD94C1BB98",
+                "F01250000000000000000001",
+			);
+			"productName" = "YimiDesktopTests";
+			"productReference" = "29F248DE39A04296A76A9D79";
+			"productType" = "com.apple.product-type.bundle.unit-test";
+		};
+		"3C294362EF774841A61C742C" = {
+			"isa" = "PBXResourcesBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+				"D10CCBBD368F49138A10E49D",
+				"79F61473EEF744E799EB5D37",
+				"BA263547EE0C40B1BEEC1C07",
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"279CBC91CFBF4D1ABDD6AD61" = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+				"3CE4B70FF97D4AE18F2F47B1",
+                "AC7100000000000000000003",
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"617670E2CA9A44FDA4A58C6A" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"FRAMEWORK_SEARCH_PATHS" = ("$(inherited)", "$(SRCROOT)/.vendor/artc");
+				"ARCHS" = "arm64";
+				"CODE_SIGNING_ALLOWED" = "NO";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@loader_path/../Frameworks",
+				);
+				"MACOSX_DEPLOYMENT_TARGET" = "14.0";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "ai.paios.personal.desktop.tests";
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"SDKROOT" = "macosx";
+				"SUPPORTED_PLATFORMS" = "macosx";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+				"SWIFT_STRICT_CONCURRENCY" = "targeted";
+				"SWIFT_VERSION" = "5.0";
+			};
+			"name" = "Debug";
+		};
+		"262152C84B2A465D8E752060" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"FRAMEWORK_SEARCH_PATHS" = ("$(inherited)", "$(SRCROOT)/.vendor/artc");
+				"ARCHS" = "arm64";
+				"CODE_SIGNING_ALLOWED" = "NO";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@loader_path/../Frameworks",
+				);
+				"MACOSX_DEPLOYMENT_TARGET" = "14.0";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "ai.paios.personal.desktop.tests";
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"SDKROOT" = "macosx";
+				"SUPPORTED_PLATFORMS" = "macosx";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+				"SWIFT_STRICT_CONCURRENCY" = "targeted";
+				"SWIFT_VERSION" = "5.0";
+			};
+			"name" = "Release";
+		};
+		"00005465C6544B17AC12DC64" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = (
+				"617670E2CA9A44FDA4A58C6A",
+				"262152C84B2A465D8E752060",
+			);
+			"defaultConfigurationIsVisible" = "0";
+			"defaultConfigurationName" = "Debug";
+		};
+		"B6F7079F5C9E4BEC8FACAC79" = {
+			"isa" = "XCLocalSwiftPackageReference";
+			"relativePath" = "DesktopKit";
+		};
+		"A772CC07455141AD94C1BB98" = {
+			"isa" = "XCSwiftPackageProductDependency";
+			"package" = "B6F7079F5C9E4BEC8FACAC79";
+			"productName" = "DesktopKit";
+		};
+	};
+	"rootObject" = "E4B02E865F454434AA5098C0";
+}

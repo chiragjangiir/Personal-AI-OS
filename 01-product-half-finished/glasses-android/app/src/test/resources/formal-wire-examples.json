@@ -1,0 +1,16 @@
+{
+  "wear_state": [
+    {
+      "operation": "wear_state",
+      "control_id": "ctl-1",
+      "worn": true,
+      "lock_cycle": 1
+    },
+    {
+      "operation": "wear_state",
+      "control_id": "ctl-1",
+      "worn": false,
+      "lock_cycle": 2
+    }
+  ]
+}

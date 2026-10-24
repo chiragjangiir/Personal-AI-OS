@@ -1,0 +1,44 @@
+name: Bug report / 问题报告
+description: Report a reproducible defect with sanitized evidence / 提交可复现问题
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Personal-AI-OS lets people self-host their own personal assistant, Yimi (依米). Help improve 0.0.1 with a reproducible report.
+        Do not post credentials, personal records or security exploits. Use Security → Advisories → Report a vulnerability for security issues.
+        不要上传密钥、个人记录或漏洞利用细节。安全问题请走私密报告。
+  - type: input
+    id: version
+    attributes:
+      label: Version and environment / 版本与环境
+      description: Release or commit, operating system, relevant client and optional dependencies. No device IDs.
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component / 模块
+      options: [Gateway, Integration, Hermes plugin, Executor or connector, Workshop, iPhone, Watch, Mac, Glasses, Deployment or docs]
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction / 复现步骤
+      description: Small numbered steps using synthetic data. Include the exact local command when relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Expected and actual result / 预期与实际结果
+      description: Distinguish queued, accepted, partial, failed and completed outcomes.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized evidence / 脱敏证据
+      description: Relevant error, test output or screenshot. Remove names, locations, tokens, contacts and personal media.

@@ -1,0 +1,9 @@
+{
+  "open": {"operation":"call_open","call_id":"call-1","silence_timeout_ms":180000,"video_revision":0},
+  "setMode": {"operation":"call_set_conversation_mode","call_id":"call-1","control_id":"mode-1","conversation_mode":"thinking"},
+  "retry": {"operation":"call_retry","call_id":"call-1","control_id":"retry-1","processed_event_id":"processed-1"},
+  "state": {"schema_version":"paios.central.text-envelope.v1","operation":"call_state","session_id":"continuity","call_id":"call-1","state":"live","conversation_mode":"thinking","processed_event_id":"processed-1","thinking_status":{"state":"failed","text":"本次思考失败，请重试。","actions":["retry","switch_to_chat"]}},
+  "modeReceipt": {"schema_version":"paios.central.text-envelope.v1","operation":"control_receipt","session_id":"continuity","call_id":"call-1","control_id":"mode-1","requested_operation":"call_set_conversation_mode","receipt":{"conversation_mode":"thinking"}},
+  "retryReceipt": {"schema_version":"paios.central.text-envelope.v1","operation":"control_receipt","session_id":"continuity","call_id":"call-1","control_id":"retry-1","processed_event_id":"processed-1","requested_operation":"call_retry","receipt":{"state":"retrying"}},
+  "rejected": {"schema_version":"paios.central.text-envelope.v1","operation":"rejected","session_id":"continuity","request_operation":"call_set_conversation_mode","control_id":"mode-1","event_id":null,"processed_event_id":null,"error_code":"CALL_MODE_CHANGE_FAILED"}
+}

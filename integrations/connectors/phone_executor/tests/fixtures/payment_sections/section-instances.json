@@ -1,0 +1,361 @@
+{
+  "structural": [
+    {
+      "name": "positive_plain",
+      "status": "支付状态：未支付",
+      "positive": true
+    },
+    {
+      "name": "nested_supported_title_unpaid",
+      "attack": "nested_supported_title",
+      "status": "支付状态：未支付",
+      "no_effect": false
+    },
+    {
+      "name": "nested_supported_title_paid",
+      "attack": "nested_supported_title",
+      "status": "支付状态：已支付",
+      "no_effect": true
+    },
+    {
+      "name": "sibling_supported_title_unpaid",
+      "attack": "sibling_supported_title",
+      "status": "支付状态：未支付",
+      "no_effect": false
+    },
+    {
+      "name": "sibling_supported_title_paid",
+      "attack": "sibling_supported_title",
+      "status": "支付状态：已支付",
+      "no_effect": true
+    },
+    {
+      "name": "nested_complete_foreign_unpaid",
+      "attack": "nested_complete_foreign",
+      "status": "支付状态：未支付",
+      "no_effect": false
+    },
+    {
+      "name": "nested_complete_foreign_paid",
+      "attack": "nested_complete_foreign",
+      "status": "支付状态：已支付",
+      "no_effect": true
+    },
+    {
+      "name": "duplicate_flat_titles_unpaid",
+      "attack": "duplicate_flat_titles",
+      "status": "支付状态：未支付",
+      "no_effect": false
+    },
+    {
+      "name": "duplicate_flat_titles_paid",
+      "attack": "duplicate_flat_titles",
+      "status": "支付状态：已支付",
+      "no_effect": true
+    },
+    {
+      "name": "merchant_status_unpaid",
+      "attack": "merchant_status",
+      "status": "支付状态：未支付",
+      "no_effect": false
+    },
+    {
+      "name": "merchant_status_paid",
+      "attack": "merchant_status",
+      "status": "支付状态：已支付",
+      "no_effect": true
+    },
+    {
+      "name": "merchant_split_unpaid",
+      "attack": "merchant_split",
+      "status": "支付状态：未支付",
+      "no_effect": false
+    },
+    {
+      "name": "merchant_split_paid",
+      "attack": "merchant_split",
+      "status": "支付状态：已支付",
+      "no_effect": true
+    },
+    {
+      "name": "foreign_heading_unpaid",
+      "attack": "foreign_heading",
+      "status": "支付状态：未支付",
+      "no_effect": false
+    },
+    {
+      "name": "foreign_heading_paid",
+      "attack": "foreign_heading",
+      "status": "支付状态：已支付",
+      "no_effect": true
+    },
+    {
+      "name": "straddled_ocr_unpaid",
+      "attack": "straddled_ocr",
+      "status": "支付状态：未支付",
+      "no_effect": false
+    },
+    {
+      "name": "straddled_ocr_paid",
+      "attack": "straddled_ocr",
+      "status": "支付状态：已支付",
+      "no_effect": true
+    },
+    {
+      "name": "ack_nested_title_reorder",
+      "attack": "nested_supported_title",
+      "at_ack": true,
+      "reverse_tree": true
+    },
+    {
+      "name": "ack_foreign_heading_reorder",
+      "attack": "foreign_heading",
+      "at_ack": true,
+      "reverse_tree": true
+    }
+  ],
+  "merchant_controls": [
+    {
+      "merchant": "shop",
+      "injection": "支付结果",
+      "split_rows": false,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "shop",
+      "injection": "支付结果",
+      "split_rows": true,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "shop",
+      "injection": "其他订单",
+      "split_rows": false,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "shop",
+      "injection": "其他订单",
+      "split_rows": true,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "shop",
+      "injection": "历史记录",
+      "split_rows": false,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "shop",
+      "injection": "历史记录",
+      "split_rows": true,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "shop",
+      "injection": "支付状态：已支付",
+      "split_rows": false,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "shop",
+      "injection": "支付状态：已支付",
+      "split_rows": true,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "shop",
+      "injection": "支付状态：未支付",
+      "split_rows": false,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "shop",
+      "injection": "支付状态：未支付",
+      "split_rows": true,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "item",
+      "injection": "支付结果",
+      "split_rows": false,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "item",
+      "injection": "支付结果",
+      "split_rows": true,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "item",
+      "injection": "其他订单",
+      "split_rows": false,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "item",
+      "injection": "其他订单",
+      "split_rows": true,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "item",
+      "injection": "历史记录",
+      "split_rows": false,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "item",
+      "injection": "历史记录",
+      "split_rows": true,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "item",
+      "injection": "支付状态：已支付",
+      "split_rows": false,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "item",
+      "injection": "支付状态：已支付",
+      "split_rows": true,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "item",
+      "injection": "支付状态：未支付",
+      "split_rows": false,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "item",
+      "injection": "支付状态：未支付",
+      "split_rows": true,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "remark",
+      "injection": "支付结果",
+      "split_rows": false,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "remark",
+      "injection": "支付结果",
+      "split_rows": true,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "remark",
+      "injection": "其他订单",
+      "split_rows": false,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "remark",
+      "injection": "其他订单",
+      "split_rows": true,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "remark",
+      "injection": "历史记录",
+      "split_rows": false,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "remark",
+      "injection": "历史记录",
+      "split_rows": true,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "remark",
+      "injection": "支付状态：已支付",
+      "split_rows": false,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "remark",
+      "injection": "支付状态：已支付",
+      "split_rows": true,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "remark",
+      "injection": "支付状态：未支付",
+      "split_rows": false,
+      "status": "支付状态：已支付"
+    },
+    {
+      "merchant": "remark",
+      "injection": "支付状态：未支付",
+      "split_rows": true,
+      "status": "支付状态：已支付"
+    }
+  ],
+  "additional_structural": [
+    {
+      "name": "native_container_title_unpaid",
+      "attack": "native_container_title",
+      "status": "支付状态：未支付",
+      "no_effect": false
+    },
+    {
+      "name": "native_container_title_paid",
+      "attack": "native_container_title",
+      "status": "支付状态：已支付",
+      "no_effect": true
+    },
+    {
+      "name": "straddled_ocr_padding_unpaid",
+      "attack": "straddled_ocr_padding",
+      "status": "支付状态：未支付",
+      "no_effect": false
+    },
+    {
+      "name": "straddled_ocr_padding_paid",
+      "attack": "straddled_ocr_padding",
+      "status": "支付状态：已支付",
+      "no_effect": true
+    },
+    {
+      "name": "ocr_merchant_leaf_expanded_unpaid",
+      "attack": "ocr_merchant_leaf_expanded",
+      "status": "支付状态：未支付",
+      "no_effect": false
+    },
+    {
+      "name": "ocr_merchant_leaf_expanded_paid",
+      "attack": "ocr_merchant_leaf_expanded",
+      "status": "支付状态：已支付",
+      "no_effect": true
+    },
+    {
+      "name": "ocr_merchant_prefix_crop_unpaid",
+      "attack": "ocr_merchant_prefix_crop",
+      "status": "支付状态：未支付",
+      "no_effect": false
+    },
+    {
+      "name": "ocr_merchant_prefix_crop_paid",
+      "attack": "ocr_merchant_prefix_crop",
+      "status": "支付状态：已支付",
+      "no_effect": true
+    },
+    {
+      "name": "merchant_label_container_unpaid",
+      "attack": "merchant_label_container",
+      "status": "支付状态：未支付",
+      "no_effect": false
+    },
+    {
+      "name": "merchant_label_container_paid",
+      "attack": "merchant_label_container",
+      "status": "支付状态：已支付",
+      "no_effect": true
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+[Unit]
+Description=Production release ship tick (idle wait, pending notices, new repair packages)
+
+[Timer]
+OnBootSec=5min
+OnUnitInactiveSec=2min
+Unit=paios-release-ship.service
+
+[Install]
+WantedBy=timers.target

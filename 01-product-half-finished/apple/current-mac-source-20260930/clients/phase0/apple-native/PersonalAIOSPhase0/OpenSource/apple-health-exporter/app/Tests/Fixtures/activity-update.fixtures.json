@@ -1,0 +1,119 @@
+{
+  "note": "Phase-1 activity_update examples (synthetic data, not production logs). Binding wire shape for activity-server / activity-apple / activity-glasses.",
+  "fixtures": {
+    "single_running": {
+      "operation": "activity_update", "session_id": "session-fixture-1", "processed_event_id": "processed-fixture-1",
+      "card": {
+        "id": "a:fixture-single", "revision": 3, "state": "running",
+        "summary": "正在打开云手机", "step_summary": "正在恢复千问的数据", "summary_source": "agent_intent",
+        "started_at": "2026-10-19T16:28:00.000Z", "observed_at": "2026-10-19T16:28:18.000Z", "last_progress_at": "2026-10-19T16:28:15.000Z",
+        "elapsed_ms": 18000,
+        "counts": {"total": 1, "running": 1, "succeeded": 0, "failed": 0, "cancelled": 0},
+        "items": [
+          {"id": "i:fixture-phone", "kind": "errand", "state": "running", "summary": "打开云手机", "step_summary": "正在恢复千问的数据",
+           "started_at": "2026-10-19T16:28:01.000Z", "elapsed_ms": 17000}
+        ],
+        "omitted_items": 0
+      }
+    },
+    "single_slow": {
+      "operation": "activity_update", "session_id": "session-fixture-1", "processed_event_id": "processed-fixture-1",
+      "card": {
+        "id": "a:fixture-single", "revision": 4, "state": "running",
+        "summary": "正在打开云手机", "step_summary": "等待云手机返回画面", "summary_source": "agent_intent",
+        "started_at": "2026-10-19T16:28:00.000Z", "observed_at": "2026-10-19T16:29:20.000Z", "last_progress_at": "2026-10-19T16:28:40.000Z",
+        "elapsed_ms": 80000,
+        "counts": {"total": 1, "running": 1, "succeeded": 0, "failed": 0, "cancelled": 0},
+        "items": [
+          {"id": "i:fixture-phone", "kind": "errand", "state": "running", "summary": "打开云手机", "step_summary": "等待云手机返回画面",
+           "started_at": "2026-10-19T16:28:01.000Z", "elapsed_ms": 79000}
+        ],
+        "omitted_items": 0
+      }
+    },
+    "parallel_six": {
+      "operation": "activity_update", "session_id": "session-fixture-2", "processed_event_id": "processed-fixture-2",
+      "card": {
+        "id": "a:fixture-six", "revision": 9, "state": "running",
+        "summary": "6 件事一起办", "step_summary": "云手机等待画面", "summary_source": "subagent_goal",
+        "started_at": "2026-10-19T16:40:00.000Z", "observed_at": "2026-10-19T16:40:32.000Z", "last_progress_at": "2026-10-19T16:40:30.000Z",
+        "elapsed_ms": 32000,
+        "counts": {"total": 6, "running": 4, "succeeded": 2, "failed": 0, "cancelled": 0},
+        "items": [
+          {"id": "i:fixture-six-1", "kind": "subagent", "state": "running", "summary": "回复林同学并发 Excel", "step_summary": "正在计算 Sheet3", "started_at": "2026-10-19T16:40:01.000Z", "elapsed_ms": 31000},
+          {"id": "i:fixture-six-2", "kind": "subagent", "state": "running", "summary": "查香辣蟹外卖价格", "step_summary": "云手机等待画面", "started_at": "2026-10-19T16:40:01.000Z", "elapsed_ms": 31000},
+          {"id": "i:fixture-six-3", "kind": "subagent", "state": "succeeded", "summary": "切换空气净化器", "started_at": "2026-10-19T16:40:01.000Z", "elapsed_ms": 6000, "completed_at": "2026-10-19T16:40:07.000Z"},
+          {"id": "i:fixture-six-4", "kind": "subagent", "state": "running", "summary": "眼镜骑行导航到西湖", "started_at": "2026-10-19T16:40:02.000Z", "elapsed_ms": 30000},
+          {"id": "i:fixture-six-5", "kind": "subagent", "state": "running", "summary": "看 iPhone 后置摄像头", "started_at": "2026-10-19T16:40:02.000Z", "elapsed_ms": 30000},
+          {"id": "i:fixture-six-6", "kind": "subagent", "state": "succeeded", "summary": "整理测试数据文件夹", "started_at": "2026-10-19T16:40:02.000Z", "elapsed_ms": 10000, "completed_at": "2026-10-19T16:40:12.000Z"}
+        ],
+        "omitted_items": 0
+      }
+    },
+    "failed_timeout": {
+      "operation": "activity_update", "session_id": "session-fixture-1", "processed_event_id": "processed-fixture-3",
+      "card": {
+        "id": "a:fixture-failed", "revision": 6, "state": "failed",
+        "summary": "正在打开云手机", "summary_source": "agent_intent",
+        "started_at": "2026-10-19T16:28:00.000Z", "observed_at": "2026-10-19T16:35:00.000Z", "last_progress_at": "2026-10-19T16:35:00.000Z",
+        "completed_at": "2026-10-19T16:35:00.000Z", "elapsed_ms": 420000,
+        "counts": {"total": 1, "running": 0, "succeeded": 0, "failed": 1, "cancelled": 0},
+        "items": [
+          {"id": "i:fixture-phone-2", "kind": "errand", "state": "failed", "summary": "打开云手机", "started_at": "2026-10-19T16:28:01.000Z",
+           "elapsed_ms": 419000, "completed_at": "2026-10-19T16:35:00.000Z", "failure_reason": "超时，结果未知"}
+        ],
+        "omitted_items": 0,
+        "failure_reason": "超时，结果未知"
+      }
+    },
+    "partial_done": {
+      "operation": "activity_update", "session_id": "session-fixture-2", "processed_event_id": "processed-fixture-2",
+      "card": {
+        "id": "a:fixture-six", "revision": 15, "state": "partial",
+        "summary": "6 件事一起办", "summary_source": "subagent_goal",
+        "started_at": "2026-10-19T16:40:00.000Z", "observed_at": "2026-10-19T16:43:10.000Z", "last_progress_at": "2026-10-19T16:43:10.000Z",
+        "completed_at": "2026-10-19T16:43:10.000Z", "elapsed_ms": 190000,
+        "counts": {"total": 6, "running": 0, "succeeded": 5, "failed": 1, "cancelled": 0},
+        "items": [
+          {"id": "i:fixture-six-1", "kind": "subagent", "state": "succeeded", "summary": "回复林同学并发 Excel", "started_at": "2026-10-19T16:40:01.000Z", "elapsed_ms": 150000, "completed_at": "2026-10-19T16:42:31.000Z"},
+          {"id": "i:fixture-six-2", "kind": "subagent", "state": "failed", "summary": "查香辣蟹外卖价格", "started_at": "2026-10-19T16:40:01.000Z", "elapsed_ms": 189000, "completed_at": "2026-10-19T16:43:10.000Z", "failure_reason": "千问还没登录，查不到价格"},
+          {"id": "i:fixture-six-3", "kind": "subagent", "state": "succeeded", "summary": "切换空气净化器", "started_at": "2026-10-19T16:40:01.000Z", "elapsed_ms": 6000, "completed_at": "2026-10-19T16:40:07.000Z"},
+          {"id": "i:fixture-six-4", "kind": "subagent", "state": "succeeded", "summary": "眼镜骑行导航到西湖", "started_at": "2026-10-19T16:40:02.000Z", "elapsed_ms": 40000, "completed_at": "2026-10-19T16:40:42.000Z"},
+          {"id": "i:fixture-six-5", "kind": "subagent", "state": "succeeded", "summary": "看 iPhone 后置摄像头", "started_at": "2026-10-19T16:40:02.000Z", "elapsed_ms": 35000, "completed_at": "2026-10-19T16:40:37.000Z"},
+          {"id": "i:fixture-six-6", "kind": "subagent", "state": "succeeded", "summary": "整理测试数据文件夹", "started_at": "2026-10-19T16:40:02.000Z", "elapsed_ms": 10000, "completed_at": "2026-10-19T16:40:12.000Z"}
+        ],
+        "omitted_items": 0,
+        "failure_reason": "1 件未办成：千问还没登录，查不到价格"
+      }
+    },
+    "succeeded": {
+      "operation": "activity_update", "session_id": "session-fixture-1", "processed_event_id": "processed-fixture-1",
+      "card": {
+        "id": "a:fixture-single", "revision": 7, "state": "succeeded",
+        "summary": "云手机已打开", "summary_source": "tool_status",
+        "started_at": "2026-10-19T16:28:00.000Z", "observed_at": "2026-10-19T16:29:40.000Z", "last_progress_at": "2026-10-19T16:29:40.000Z",
+        "completed_at": "2026-10-19T16:29:40.000Z", "elapsed_ms": 100000,
+        "counts": {"total": 1, "running": 0, "succeeded": 1, "failed": 0, "cancelled": 0},
+        "items": [
+          {"id": "i:fixture-phone", "kind": "errand", "state": "succeeded", "summary": "打开云手机", "started_at": "2026-10-19T16:28:01.000Z", "elapsed_ms": 99000, "completed_at": "2026-10-19T16:29:40.000Z"}
+        ],
+        "omitted_items": 0
+      }
+    },
+    "partial_child": {
+      "operation": "activity_update", "session_id": "session-fixture-3", "processed_event_id": "processed-fixture-4",
+      "card": {
+        "id": "a:fixture-partial-child", "revision": 1, "state": "partial",
+        "summary": "生成报表并发送", "summary_source": "subagent_goal",
+        "started_at": "2026-10-19T16:40:00.000Z", "observed_at": "2026-10-19T16:41:01.000Z", "last_progress_at": "2026-10-19T16:41:01.000Z",
+        "completed_at": "2026-10-19T16:41:01.000Z", "elapsed_ms": 61000,
+        "counts": {"total": 1, "running": 0, "succeeded": 0, "failed": 0, "cancelled": 0, "partial": 1},
+        "items": [
+          {"id": "i:fixture-partial-child", "kind": "subagent", "state": "partial", "summary": "生成报表并发送", "started_at": "2026-10-19T16:40:00.000Z", "elapsed_ms": 61000, "completed_at": "2026-10-19T16:41:01.000Z", "failure_reason": "报表已完成；发送已停止"}
+        ],
+        "omitted_items": 0,
+        "failure_reason": "报表已完成；发送已停止"
+      }
+    }
+  }
+}

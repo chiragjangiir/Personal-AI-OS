@@ -1,0 +1,148 @@
+[
+  {
+    "scenario": "test_unknown_reconcile_new_request_new_card_one_input_paid",
+    "result": {
+      "principal_id": "owner",
+      "job_id": "job-5a5a4a36a5c2",
+      "task": "从当前页面继续：核对同一订单，只读，不下单、付款或修改订单。",
+      "app": "千问",
+      "success": true,
+      "answer": "【付款核对】{\"order_id\": \"fake-order-d103b4d01d43476084bafff6adfa6469\", \"order_namespace\": \"staging.fake_cashier\", \"payee\": \"一点点 南门店\", \"amount_fen\": 1660, \"item_identity\": [[\"catalog:0\", \"奶茶\"]], \"state\": \"unpaid\", \"signs\": [\"支付状态：待支付\"], \"read_at\": \"2026-10-15T21:41:35.529Z\", \"taps\": 1}",
+      "payment_observation": {
+        "order_id": "fake-order-d103b4d01d43476084bafff6adfa6469",
+        "order_namespace": "staging.fake_cashier",
+        "payee": "一点点 南门店",
+        "amount_fen": 1660,
+        "item_identity": [
+          [
+            "catalog:0",
+            "奶茶"
+          ]
+        ],
+        "state": "unpaid",
+        "signs": [
+          "支付状态：待支付"
+        ],
+        "read_at": "2026-10-15T21:41:35.529Z",
+        "taps": 1
+      },
+      "finished_at": "2026-10-15T21:41:35.533Z",
+      "terminal_reason": "completed",
+      "retryable": false,
+      "payment_reconciliation": {
+        "of_job": "job-92c4d12f928e",
+        "intent_id": "pi-056d43b1-c5e5-41ee-aa43-97564d3129ff",
+        "state": "unpaid"
+      }
+    }
+  },
+  {
+    "scenario": "test_reconcile_paid_stops_without_new_intent",
+    "result": {
+      "principal_id": "owner",
+      "job_id": "job-80f702019972",
+      "task": "从当前页面继续：核对同一订单，只读，不下单、付款或修改订单。",
+      "app": "千问",
+      "success": true,
+      "answer": "【付款核对】{\"order_id\": \"fake-order-8aafdb981ed44d5ca4068323d5459c4c\", \"order_namespace\": \"staging.fake_cashier\", \"payee\": \"一点点 南门店\", \"amount_fen\": 1660, \"item_identity\": [[\"catalog:0\", \"奶茶\"]], \"state\": \"paid\", \"signs\": [\"支付状态：已支付\"], \"read_at\": \"2026-10-15T21:41:26.144Z\", \"taps\": 1}",
+      "payment_observation": {
+        "order_id": "fake-order-8aafdb981ed44d5ca4068323d5459c4c",
+        "order_namespace": "staging.fake_cashier",
+        "payee": "一点点 南门店",
+        "amount_fen": 1660,
+        "item_identity": [
+          [
+            "catalog:0",
+            "奶茶"
+          ]
+        ],
+        "state": "paid",
+        "signs": [
+          "支付状态：已支付"
+        ],
+        "read_at": "2026-10-15T21:41:26.144Z",
+        "taps": 1
+      },
+      "finished_at": "2026-10-15T21:41:26.149Z",
+      "terminal_reason": "completed",
+      "retryable": false,
+      "payment_reconciliation": {
+        "of_job": "job-192addfca338",
+        "intent_id": "pi-8895986b-bb0c-4700-adbd-132df8649420",
+        "state": "paid"
+      }
+    }
+  },
+  {
+    "scenario": "test_reconcile_unresolved_stops_without_new_intent",
+    "result": {
+      "principal_id": "owner",
+      "job_id": "job-8f7ddd4925cf",
+      "task": "从当前页面继续：核对同一订单，只读，不下单、付款或修改订单。",
+      "app": "千问",
+      "success": true,
+      "answer": "【付款核对】{\"order_id\": \"fake-order-c38c146a645e403b9d9aa09ed0049406\", \"order_namespace\": \"staging.fake_cashier\", \"payee\": \"一点点 南门店\", \"amount_fen\": 1660, \"item_identity\": [[\"catalog:0\", \"奶茶\"]], \"state\": \"unknown\", \"signs\": [], \"read_at\": \"2026-10-15T21:41:29.531Z\", \"taps\": 1}",
+      "payment_observation": {
+        "order_id": "fake-order-c38c146a645e403b9d9aa09ed0049406",
+        "order_namespace": "staging.fake_cashier",
+        "payee": "一点点 南门店",
+        "amount_fen": 1660,
+        "item_identity": [
+          [
+            "catalog:0",
+            "奶茶"
+          ]
+        ],
+        "state": "unknown",
+        "signs": [],
+        "read_at": "2026-10-15T21:41:29.531Z",
+        "taps": 1
+      },
+      "finished_at": "2026-10-15T21:41:29.533Z",
+      "terminal_reason": "completed",
+      "retryable": false,
+      "payment_reconciliation": {
+        "of_job": "job-d6469f928551",
+        "intent_id": "pi-08704c9b-a229-460b-993b-b2656c1b913e",
+        "state": "unknown"
+      }
+    }
+  },
+  {
+    "scenario": "test_second_unknown_ends_chain",
+    "result": {
+      "principal_id": "owner",
+      "job_id": "job-d03ecae27ea6",
+      "task": "从当前页面继续：核对同一订单，只读，不下单、付款或修改订单。",
+      "app": "千问",
+      "success": true,
+      "answer": "【付款核对】{\"order_id\": \"fake-order-8435e660997c456dbcafbf5b68f37949\", \"order_namespace\": \"staging.fake_cashier\", \"payee\": \"一点点 南门店\", \"amount_fen\": 1660, \"item_identity\": [[\"catalog:0\", \"奶茶\"]], \"state\": \"unpaid\", \"signs\": [\"支付状态：待支付\"], \"read_at\": \"2026-10-15T21:41:32.499Z\", \"taps\": 1}",
+      "payment_observation": {
+        "order_id": "fake-order-8435e660997c456dbcafbf5b68f37949",
+        "order_namespace": "staging.fake_cashier",
+        "payee": "一点点 南门店",
+        "amount_fen": 1660,
+        "item_identity": [
+          [
+            "catalog:0",
+            "奶茶"
+          ]
+        ],
+        "state": "unpaid",
+        "signs": [
+          "支付状态：待支付"
+        ],
+        "read_at": "2026-10-15T21:41:32.499Z",
+        "taps": 1
+      },
+      "finished_at": "2026-10-15T21:41:32.504Z",
+      "terminal_reason": "completed",
+      "retryable": false,
+      "payment_reconciliation": {
+        "of_job": "job-e846aea7998a",
+        "intent_id": "pi-89530bd6-df8b-4188-a223-fd334b17b0ad",
+        "state": "unpaid"
+      }
+    }
+  }
+]

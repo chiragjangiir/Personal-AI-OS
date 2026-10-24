@@ -1,0 +1,24 @@
+{
+  "exam_id": "capability-fixtures",
+  "stage": "staging",
+  "expires_at": "2000-01-01T00:00:00+00:00",
+  "hermes_home": "/opt/data",
+  "hermes_origin": "http://127.0.0.1:18662",
+  "gateway_origin": "http://127.0.0.1:18661",
+  "fixture_root": "/exam/fixtures",
+  "external_effects": "blocked",
+  "fixture_only": true,
+  "network_evidence": "/exam/control/verified-egress-and-fixture-mounts.txt",
+  "observer_evidence": "/exam/control/verified-effect-observers.txt",
+  "seeds": {
+    "voice": {"source_ids": ["exam-confirmed-voice-records"], "evidence": "/exam/control/voice-ingest.json"},
+    "calls": {"source_ids": ["exam-call-record"], "evidence": "/exam/control/call-ingest.json"},
+    "wechat": {"source_ids": ["exam-wechat-record"], "evidence": "/exam/control/wechat-seed.json"},
+    "ambient": {
+      "source_ids": ["exam-ambient-record"],
+      "evidence": "/exam/control/ambient-ingest.json",
+      "audio_file": "/exam/control/two-real-voices.wav",
+      "speakers": ["owner", "林舟"]
+    }
+  }
+}

@@ -1,0 +1,374 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://personal-aios.local/contracts/watch-http.v1.json",
+  "title": "Phase-1 direct Watch HTTPS protocol, frozen v1",
+  "description": "Contract only. Every utterance starts with a user tap. Replies are text/haptic only; no automatic listening or audio playback. All JSON objects reject unknown keys. Authorization is an HTTP bearer credential, never a JSON body field.",
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "nonempty": {
+      "type": "string",
+      "minLength": 1
+    },
+    "pair_version": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]{0,37}$"
+    },
+    "utterance_metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x-watch-turn-id",
+        "x-watch-codec",
+        "x-watch-sample-rate-hz",
+        "x-watch-channels",
+        "x-watch-duration-ms",
+        "content-type"
+      ],
+      "properties": {
+        "x-watch-turn-id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "x-watch-codec": {
+          "const": "aac_lc"
+        },
+        "x-watch-sample-rate-hz": {
+          "const": "16000"
+        },
+        "x-watch-channels": {
+          "const": "1"
+        },
+        "x-watch-duration-ms": {
+          "type": "string",
+          "pattern": "^(?:[1-9][0-9]{0,3}|[12][0-9]{4}|30000)$"
+        },
+        "content-type": {
+          "const": "audio/mp4"
+        }
+      }
+    },
+    "turn_query": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "wait"
+      ],
+      "properties": {
+        "wait": {
+          "const": 25
+        }
+      }
+    },
+    "utterance_response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "turn_id",
+            "heard"
+          ],
+          "properties": {
+            "status": {
+              "const": "heard"
+            },
+            "turn_id": {
+              "$ref": "#/$defs/uuid"
+            },
+            "heard": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "$ref": "#/$defs/failure"
+        }
+      ]
+    },
+    "turn_response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "turn_id"
+          ],
+          "properties": {
+            "status": {
+              "const": "working"
+            },
+            "turn_id": {
+              "$ref": "#/$defs/uuid"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "turn_id",
+            "text"
+          ],
+          "properties": {
+            "status": {
+              "const": "replied"
+            },
+            "turn_id": {
+              "$ref": "#/$defs/uuid"
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "$ref": "#/$defs/failure"
+        }
+      ]
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reason"
+      ],
+      "properties": {
+        "status": {
+          "const": "failed"
+        },
+        "turn_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "reason": {
+          "enum": [
+            "invalid_request",
+            "credential_missing",
+            "credential_invalid",
+            "credential_expired",
+            "credential_revoked",
+            "watch_unregistered",
+            "watch_scope_denied",
+            "audio_too_large",
+            "audio_too_long",
+            "audio_invalid",
+            "codec_unsupported",
+            "not_heard",
+            "turn_conflict",
+            "turn_not_found",
+            "busy",
+            "service_unavailable",
+            "processing_failed"
+          ]
+        }
+      }
+    },
+    "credential_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "watch_device_id",
+        "installation_id",
+        "expected_pair_version",
+        "request_id"
+      ],
+      "properties": {
+        "action": {
+          "enum": [
+            "issue",
+            "refresh",
+            "revoke"
+          ]
+        },
+        "watch_device_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "installation_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "expected_pair_version": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,37}$"
+        },
+        "request_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
+    "credential_response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "watch_device_id",
+            "installation_id",
+            "pair_version",
+            "token",
+            "expires_at"
+          ],
+          "properties": {
+            "status": {
+              "const": "credential"
+            },
+            "watch_device_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "installation_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "pair_version": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,37}$"
+            },
+            "token": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expires_at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "watch_device_id",
+            "installation_id",
+            "pair_version"
+          ],
+          "properties": {
+            "status": {
+              "const": "revoked"
+            },
+            "watch_device_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "installation_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "pair_version": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,37}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "reason"
+          ],
+          "properties": {
+            "status": {
+              "const": "failed"
+            },
+            "reason": {
+              "enum": [
+                "invalid_request",
+                "credential_missing",
+                "credential_invalid",
+                "credential_expired",
+                "credential_revoked",
+                "watch_unregistered",
+                "watch_scope_denied",
+                "pair_version_conflict",
+                "request_conflict",
+                "service_unavailable"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "transport": {
+    "utterance": {
+      "method": "POST",
+      "path": "/v1/watch/utterances",
+      "authorization": "Bearer <watch credential>",
+      "metadata_schema": "#/$defs/utterance_metadata",
+      "body": "Unmodified MPEG-4 audio container with AAC-LC, 16000 Hz, one channel; binary, not JSON or base64.",
+      "max_body_bytes": 1000000,
+      "max_duration_ms": 30000,
+      "response_schema": "#/$defs/utterance_response"
+    },
+    "turn": {
+      "method": "GET",
+      "path": "/v1/watch/turns/{turn_id}?wait=25",
+      "authorization": "Bearer <watch credential>",
+      "query_schema": "#/$defs/turn_query",
+      "response_schema": "#/$defs/turn_response"
+    },
+    "credential": {
+      "method": "POST",
+      "path": "/v1/realtime/watch-binding/credential",
+      "authorization": "Bearer <owning paired iPhone credential>",
+      "request_schema": "#/$defs/credential_request",
+      "response_schema": "#/$defs/credential_response"
+    }
+  },
+  "semantics": {
+    "identity": "Existing formal Watch binding is authoritative. Credential binds principal, owning iPhone, watch_device_id, installation_id and pair_version. Caller cannot select principal/session. Revalidate current pair status/version and parent authority on every request; revoke/replace invalidates prior credentials.",
+    "credential_lifetime": "Proposed 7-day rolling maximum, capped by canonical Watch binding expiry. Lifetime remains a product/authority decision; no implementation or runtime guarantee.",
+    "credential_refresh": "Only the owning paired iPhone can issue, refresh or revoke; all three actions validate current paired primary authority, canonical binding ownership, installation and expected_pair_version under the same authority transaction/fence. Refresh rotates the token. The ledger stores only the non-secret outcome, never the token. Replaying a committed issue/refresh with the same request_id and request hash revalidates the active binding, pair_version and current parent authority, then rotates again in the same transaction and returns a new token with the original non-secret fields, including expires_at. Only the latest committed token is valid. Revoke and failed-outcome replay return the stored outcome. Conflicting request_id returns request_conflict. The iPhone sends one credential request at a time and retains only its latest attempt's response. Binding revoke/replace invalidates all prior credentials. Credential-only revoke does not mutate the canonical identity binding.",
+    "idempotency": "Durable key is (principal, registered watch_device_id, pair_version, turn_id). Exact audio bytes and normalized metadata replay one outcome across concurrent requests and restart. Changed bytes or metadata return HTTP 409 turn_conflict. No duplicate ASR confirmation, processed event or Agent admission.",
+    "admission": "heard means raw original is durably archived and exactly selected transcript has passed the shared formal voice_send confirmation and admission path. Do not return heard for a spool-only ACK or an unconfirmed candidate.",
+    "reply": "GET resolves only the authenticated Watch key and its persisted processed event/session. Reply reuses canonical result output and owning iPhone conversation. It does not create another run. Do not return another Watch or user reply. Return replied only for canonical completed/sealed output with admission visible, never for a partial streaming chunk. Subscribe before re-reading the scoped result to close the completion race; release subscriptions on result, timeout or disconnect. Publication and phone mirroring keep existing authoritative output identities.",
+    "wait": "Wait at most 25 seconds, then HTTP 200 working. Client cancellation ends only its wait. Processing continues. Unknown keys including query keys are rejected.",
+    "http_status": "heard/working/replied:200; malformed input:400; absent/invalid/expired credential:401; revoked/unregistered/scope denial:403; missing turn:404; turn conflict:409; size or duration:413; codec:415; invalid audio/not heard:422; busy:429; unavailable:503; processing failed:502. All failures use failed+reason; turn_id is omitted only if unavailable or unsafe to echo.",
+    "binary_validation": "HTTP boundary enforces content length and actual streamed byte count <=1,000,000, nonempty audio, AAC-LC/16kHz/mono decoded properties, actual duration <=30s and consistency with duration header. JSON Schema cannot validate binary content or credential ownership.",
+    "verification": "Gateway image installs ffmpeg; source has MP4 demux to PCM but no direct Watch endpoint. Deployment acceptance must prove an AAC-LC audio/mp4 fixture decodes in the staged gateway image and traverses archive, ASR, confirmation, admission and scoped reply. Contract tests prove JSON shape only.",
+    "archive": "Every authenticated, bounded accepted upload enters existing RawArchive/OriginalAdmission before decoding or ASR. Keep original AAC container bytes and source/turn metadata in L5, including not_heard and later processing failures. PCM is a derived ASR input, never a replacement for the original. Over-limit bodies are rejected at ingress."
+  },
+  "examples": {
+    "utterance_metadata": {
+      "x-watch-turn-id": "d88bfcfe-2150-4bd1-8249-91db18c8cceb",
+      "x-watch-codec": "aac_lc",
+      "x-watch-sample-rate-hz": "16000",
+      "x-watch-channels": "1",
+      "x-watch-duration-ms": "10000",
+      "content-type": "audio/mp4"
+    },
+    "heard": {
+      "status": "heard",
+      "turn_id": "d88bfcfe-2150-4bd1-8249-91db18c8cceb",
+      "heard": "你好"
+    },
+    "working": {
+      "status": "working",
+      "turn_id": "d88bfcfe-2150-4bd1-8249-91db18c8cceb"
+    },
+    "replied": {
+      "status": "replied",
+      "turn_id": "d88bfcfe-2150-4bd1-8249-91db18c8cceb",
+      "text": "在呢"
+    },
+    "failed": {
+      "status": "failed",
+      "reason": "not_heard",
+      "turn_id": "d88bfcfe-2150-4bd1-8249-91db18c8cceb"
+    }
+  }
+}

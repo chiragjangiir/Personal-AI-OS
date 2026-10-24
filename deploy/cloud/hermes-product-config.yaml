@@ -1,0 +1,113 @@
+model:
+  default: deepseek-flash
+  provider: deepseek-paios
+  base_url: https://api.deepseek.com
+custom_providers:
+# deepseek-flash is the provider's alias for DeepSeek-V4.1-Flash.
+- name: deepseek-paios
+  base_url: https://api.deepseek.com
+  key_env: PAIOS_DEEPSEEK_API_KEY
+  api_mode: chat_completions
+  context_length: 262144
+  extra_body:
+    max_tokens: 8192
+    thinking:
+      type: enabled
+# This vision provider requires its native thinking configuration.
+- name: siliconflow-paios
+  base_url: https://api.siliconflow.cn/v1
+  key_env: PAIOS_SILICONFLOW_API_KEY
+  api_mode: chat_completions
+  extra_body:
+    max_tokens: 8192
+agent:
+  max_tool_calls: 120
+  tool_call_milestone_interval: 20
+  api_max_retries: 1
+  auto_recovery_cycles: 0
+  max_tokens: 8192
+delegation:
+  max_concurrent_children: 3
+  max_spawn_depth: 2
+  oneshot_max_children: 0
+  child_timeout_seconds: 0
+tool_loop_guardrails:
+  hard_stop_enabled: true
+memory:
+  provider: personal_aios
+cron:
+  wrap_response: false
+  allowed_scripts: [personal-aios-reminder.py, personal-aios-task.py]
+plugins:
+  enabled: [personal_aios]
+  entries:
+    personal_aios:
+      allow_tool_override: true
+platform_toolsets:
+  api_server: &conversation_toolsets
+  - memory
+  - session_search
+  - cronjob
+  - todo
+  - web
+  - vision
+  - phone
+  - messaging
+  - mijia
+  - delegation
+  - skills
+  - kanban
+  api_server_background: *conversation_toolsets
+# Kanban is the dev backlog: 依米 files what she cannot fix yet; humans read it with `hermes kanban`.
+# No dispatcher until the self-evolve workers exist (run_api.py starts none; this pins it for a full gateway).
+tools:
+  tool_search:
+    enabled: 'off'
+kanban:
+  dispatch_in_gateway: false
+auxiliary:
+  vision:
+    provider: siliconflow-paios
+    model: zai-org/GLM-5.3-Flash
+  title_generation:
+    enabled: false
+    model_upgrade_enabled: false
+  # Hermes' default retry budget handles transient provider HTTP 500 responses.
+  transient_retries: 2
+compression:
+  enabled: true
+  threshold: 0.9
+  threshold_tokens: null
+gateway:
+  api_server:
+    max_concurrent_runs: 2
+    history_tool_output_max_chars: 0
+display:
+  # The native turn-end file-mutation footer is CLI text; every reply here reaches the owner's chat.
+  file_mutation_verifier: false
+  api_server:
+    interim_assistant_messages: false
+fallback_providers: []
+platforms:
+  api_server:
+    enabled: true
+  personal_aios:
+    enabled: true
+# Deployment paths, internal URLs and MCP commands are bound by hermes-init.py.
+skills:
+  inline_shell: false
+  create_dir: ''
+  guard_agent_created: true
+security:
+  allow_private_urls: false
+network:
+  force_ipv4: true
+approvals:
+  mode: manual
+  cron_mode: deny
+  single_query_mode: deny
+  unattended_mode: deny
+command_allowlist: []
+sync:
+  enabled: false
+timezone: Asia/Shanghai

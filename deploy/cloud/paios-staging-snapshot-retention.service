@@ -1,0 +1,9 @@
+[Unit]
+Description=Keep the latest staging snapshot envelopes
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /srv/paios/current/deploy/cloud/staging_snapshot.py retain --settings /etc/paios/staging-snapshot-staging.json
+UMask=0077
+Nice=10
+IOSchedulingClass=idle

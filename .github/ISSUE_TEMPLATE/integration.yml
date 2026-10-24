@@ -1,0 +1,43 @@
+name: Skill or connector proposal / 技能或连接器提案
+description: Extend an existing capability or propose one small integration / 提议一个小扩展
+title: "[Integration] "
+labels: [integration]
+body:
+  - type: markdown
+    attributes:
+      value: "Personal-AI-OS lets people self-host their own personal assistant, Yimi (依米). Read docs/skills-and-connectors.md first. Use synthetic examples; do not include login data. / 先读技能与连接器指南，不要提交登录信息。"
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Type / 类型
+      options: [Skill using existing tools, Existing connector extension, New app or service connector]
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: One useful task / 一个有用的任务
+      description: Expected input, observable result and why existing skills/tools do not suffice.
+    validations:
+      required: true
+  - type: textarea
+    id: interface
+    attributes:
+      label: Interface, reuse and license / 接口、复用与许可
+      description: Official API or MCP, existing module, dependency license and authentication method. No credentials.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Small example and verification / 小例子与验证
+      description: A synthetic read path, one necessary failure path and how to check the outcome without a real account in CI.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety contract / 安全合同
+      options:
+        - label: Payment authorization stays request-bound, with default phone confirmation and the existing opt-in voice/automatic limits; send consent and identity gates remain authoritative; no secrets in code. / 支付授权绑定本次请求，默认手机确认，可选语音与自动付款保留原有限制；发送确认与身份门禁保持权威，代码不含秘密。
+          required: true

@@ -1,0 +1,4 @@
+{
+  "canonicalOrigin": "https://gateway.example.invalid:9443",
+  "legacyOrigin": "https://legacy.example.invalid"
+}

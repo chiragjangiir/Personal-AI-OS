@@ -1,0 +1,37 @@
+{
+  "operation": "bootstrap",
+  "bootstrap_mode": "initial",
+  "request_id": "bootstrap_request_018f000000000001",
+  "idempotency_context": {
+    "idempotency_scope": {
+      "owner_module": "T11B",
+      "operation_kind": "realtime_bootstrap",
+      "target_object_type": "RealtimeSession",
+      "user_id": "018f0000-0000-7000-8000-000000000001"
+    },
+    "idempotency_key": "bootstrap_request_018f000000000001",
+    "idempotency_profile_id": "https://personal-ai-os.local/contracts/realtime/idempotency/bootstrap",
+    "idempotency_profile_version": "1.0.0",
+    "idempotency_profile_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "idempotency_request_sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "device_id": "018f0000-0000-7000-8000-000000000002",
+  "start": {
+    "kind": "explicit_user_start",
+    "device_id": "018f0000-0000-7000-8000-000000000002",
+    "modalities": ["audio", "video", "data"],
+    "started_at": "2026-08-22T12:00:00Z"
+  },
+  "requested_media": {
+    "audio": true,
+    "video": true,
+    "data": true
+  },
+  "governance": {
+    "purpose_scopes": ["realtime_assistant"],
+    "consent_record_refs": ["018f0000-0000-7000-8000-000000000006"],
+    "policy_decision_refs": ["018f0000-0000-7000-8000-000000000007"],
+    "purpose_token_refs": ["018f0000-0000-7000-8000-000000000008"],
+    "capability_grant_refs": ["018f0000-0000-7000-8000-000000000009"]
+  }
+}

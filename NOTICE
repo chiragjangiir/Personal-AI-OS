@@ -1,0 +1,74 @@
+Personal-AI-OS 0.0.1
+Copyright 2026 Personal AI OS contributors
+
+Third-party notices
+
+This distribution contains project-owned source and selected third-party material.
+Third-party material remains governed by its original license. The project root
+Apache License does not replace those licenses.
+
+Hermes Agent: portions of integrations/hermes/personal_aios/native-context.patch
+are based on NousResearch/hermes-agent, revision
+f97608f178d1ffeca59860195ab7da295f7c8e5f. Copyright (c) 2025 Nous Research.
+Licensed under the MIT License. See THIRD_PARTY_LICENSES/Hermes-MIT.txt.
+
+Mobilerun: configuration and integration examples derive where indicated from
+Mobilerun 0.6.22. Copyright (c) 2025 Niels Schmidt. MIT License.
+See THIRD_PARTY_LICENSES/Mobilerun-MIT.txt.
+
+OpenGCUA: the phone execution prompt incorporates adapted rules from revision
+b753f4c645b499e362d70303c23c26bd4ce24937. Apache License, Version 2.0.
+The incorporated prompt was modified for Personal AI OS.
+
+The desktop file matching resource includes minimatch 10.2.6,
+brace-expansion 5.0.8 and balanced-match 4.0.4, under the MIT License.
+The desktop resource license files named below are in:
+01-product-half-finished/apple/current-mac-source-20260930/clients/phase0/apple-native/YimiDesktop/DesktopKit/Sources/DesktopKit/Resources/
+See LICENSE.minimatch, LICENSE.brace-expansion and LICENSE.balanced-match.
+The desktop diff resource uses jsdiff under the BSD 3-Clause License.
+See LICENSE.diff.
+The desktop edit resource is adapted from the Model Context Protocol filesystem
+server 2026.8.31. Copyright (c) 2024-2025 Model Context Protocol a Series of
+LF Projects, LLC. It was modified to use Personal AI OS native filesystem I/O.
+Its preserved MIT and Apache-2.0 terms are in LICENSE.filesystem.
+
+The retained WeChat bridge reference and AX.swift adaptation are under the MIT License.
+See integrations/hermes/personal_aios/errands/wechat/references/wechat-bridge-mac-LICENSE.
+
+The current Apple client derives in part from apple-health-exporter.
+Copyright (c) 2026 Timo Knapp. MIT License. See THIRD_PARTY_LICENSES/apple-health-exporter-MIT.txt.
+
+qwen-audio-agent: Copyright 2026 qwen-audio-agent contributors.
+Apache License, Version 2.0. Its original NOTICE and applicable third-party
+license materials are preserved with that component.
+
+s6-overlay: Copyright (c) 2021-2026 Laurent Bercot and John Regan.
+Licensed under the ISC License. See deploy/cloud/licenses/s6-overlay.COPYING.
+The Hermes image includes s6-overlay and a copy of this license.
+
+Mi Home MCP service
+integrations/hermes/personal_aios/mijia.py incorporates adapted portions of
+mijiaAPI 5.0.0 and is licensed under GPL-3.0-or-later. It runs as a separate
+Python MCP service. The source of this service is included in this distribution.
+See THIRD_PARTY_LICENSES/Mijia-GPL-3.0.txt. The project Apache license does not
+replace this component's GPL terms. The mijiaAPI wheel cache is not included.
+The Hermes image build installs mijiaAPI 5.0.0 for this optional, separate-process
+Mi Home service. Anyone redistributing that built image must also fulfill the
+applicable GPL license and corresponding-source requirements.
+tests/hermes/test_mijia.py loads this separately licensed connector in its
+isolated regression tests. See the component's GPL terms when using that path.
+
+Mac runtime packaging
+The Mac application build acquires python-build-standalone, the OpenGCUA SDK,
+CuaDriver and frpc separately. These executable downloads are not included in
+this source distribution. The packager preserves their supplied licenses in
+the application bundle. See docs/clients.md for pinned acquisition and packaging
+steps. Retained Python dependency license texts are in:
+01-product-half-finished/apple/current-mac-source-20260930/clients/phase0/apple-native/YimiDesktop/Resources/OpenGCUA-Licenses/Python/
+
+Default appearance assets
+The default portrait, its cartoon reference and the glasses crop depict an
+AI-generated fictional person. The iPhone and Mac share the
+Avatar/yimi-portrait.jpg and Avatar/yimi-cartoon-reference.jpg source resources;
+the glasses use drawable-nodpi/yimi_face.jpg. These project assets are included
+under Apache-2.0.

@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-ai-os.local/contracts/realtime/realtime-place-upload-request.v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "device_id",
+    "events"
+  ],
+  "properties": {
+    "schema": {
+      "const": "paios.place-upload.v1"
+    },
+    "device_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "region_version": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "events": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "sensor_at",
+          "location"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "kind": {
+            "enum": [
+              "visit_arrival",
+              "visit_departure",
+              "region_enter",
+              "region_exit"
+            ]
+          },
+          "sensor_at": {
+            "type": "string",
+            "format": "paios-utc"
+          },
+          "location": {
+            "$ref": "https://personal-ai-os.local/contracts/formal-message.v1.json#/$defs/location"
+          },
+          "arrival_at": {
+            "type": "string",
+            "format": "paios-utc"
+          },
+          "departure_at": {
+            "type": "string",
+            "format": "paios-utc"
+          },
+          "region_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "visit_arrival",
+                    "visit_departure"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "arrival_at"
+              ],
+              "not": {
+                "required": [
+                  "region_id"
+                ]
+              }
+            },
+            "else": {
+              "required": [
+                "region_id"
+              ],
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "arrival_at"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "departure_at"
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "visit_departure"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "departure_at"
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "departure_at"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

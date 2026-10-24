@@ -1,0 +1,7 @@
+FROM python:3.13-alpine3.22
+RUN apk add --no-cache docker-cli docker-cli-compose
+WORKDIR /opt/watchdog
+COPY deploy/cloud/release_watchdog.py deploy/cloud/watchdog_platform.py deploy/cloud/release_notice.py ./
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 GOMEMLIMIT=4MiB GOGC=10 \
+    GOMAXPROCS=1 COMPOSE_PARALLEL_LIMIT=1
+ENTRYPOINT ["python3", "release_watchdog.py"]

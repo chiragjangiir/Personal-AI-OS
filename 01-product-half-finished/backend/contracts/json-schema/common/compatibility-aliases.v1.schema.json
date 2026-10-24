@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-ai-os.local/contracts/common/compatibility-aliases.v1.schema.json",
+  "title": "CommonCompatibilityAliases",
+  "$comment": "schema_version=1.0.0",
+  "not": {},
+  "$defs": {
+    "AliasReadProvenance": {
+      "type": "object",
+      "required": [
+        "alias_name",
+        "canonical_name",
+        "source_schema_id",
+        "source_schema_version",
+        "source_sha256",
+        "read_at"
+      ],
+      "properties": {
+        "alias_name": { "type": "string" },
+        "canonical_name": { "type": "string" },
+        "source_schema_id": {
+          "$ref": "https://personal-ai-os.local/contracts/common/common-envelope.v1.schema.json#/$defs/CommonEnvelope/properties/schema_id"
+        },
+        "source_schema_version": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/StrictSemVer"
+        },
+        "source_sha256": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+        },
+        "read_at": {
+          "$ref": "https://personal-ai-os.local/contracts/common/temporal-ordering.v1.schema.json#/$defs/SystemTime"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "alias_name": { "const": "ConsentGrant" },
+            "canonical_name": { "const": "ConsentRecord" }
+          }
+        },
+        {
+          "properties": {
+            "alias_name": { "const": "UrgentDeliveryCandidate" },
+            "canonical_name": { "const": "UrgentDeliveryEligibilityCandidate" }
+          }
+        },
+        {
+          "properties": {
+            "alias_name": { "const": "ExpressionHandoff" },
+            "canonical_name": { "const": "ExpressionPlan" }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "AliasRemovalGateReference": {
+      "type": "object",
+      "required": ["release_gate_ref", "master_acceptance_sha256"],
+      "properties": {
+        "release_gate_ref": {
+          "type": "object",
+          "required": [
+            "ref_type",
+            "ref_id",
+            "object_version",
+            "canonical_payload_sha256"
+          ],
+          "properties": {
+            "ref_type": { "const": "ReleaseGate" },
+            "ref_id": {
+              "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ReleaseGateId"
+            },
+            "object_version": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            },
+            "canonical_payload_sha256": {
+              "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+            }
+          },
+          "additionalProperties": false
+        },
+        "master_acceptance_sha256": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json",
+  "title": "CanonicalVersioningAndHash",
+  "$comment": "schema_version=1.0.0",
+  "not": {},
+  "$defs": {
+    "StrictSemVer": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-((?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\\+([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?$"
+    },
+    "Sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "ArtifactType": {
+      "type": "string",
+      "enum": [
+        "model_weights",
+        "model_adapter",
+        "quantization",
+        "system_prompt",
+        "prompt_template",
+        "tool_description",
+        "policy_bundle",
+        "schema",
+        "routing_policy",
+        "transformation_rule",
+        "evaluation_rubric"
+      ]
+    },
+    "ArtifactBinding": {
+      "type": "object",
+      "required": [
+        "artifact_type",
+        "artifact_version_id",
+        "artifact_version",
+        "artifact_sha256"
+      ],
+      "properties": {
+        "artifact_type": { "$ref": "#/$defs/ArtifactType" },
+        "artifact_version_id": {
+          "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ArtifactVersionId"
+        },
+        "artifact_version": { "$ref": "#/$defs/StrictSemVer" },
+        "artifact_sha256": { "$ref": "#/$defs/Sha256" }
+      },
+      "additionalProperties": false
+    },
+    "CanonicalObjectVersionRef": {
+      "type": "object",
+      "required": [
+        "ref_type",
+        "ref_id",
+        "object_version",
+        "canonical_payload_sha256"
+      ],
+      "properties": {
+        "ref_type": {
+          "type": "string"
+        },
+        "ref_id": {
+          "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/UuidV7"
+        },
+        "object_version": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        },
+        "canonical_payload_sha256": { "$ref": "#/$defs/Sha256" }
+      },
+      "oneOf": [
+        { "properties": { "ref_type": { "const": "ActionAudit" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ActionAuditId" } } },
+        { "properties": { "ref_type": { "const": "ActionProposal" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "ApprovalDecision" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "ApprovalRequest" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "ArtifactVersion" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ArtifactVersionId" } } },
+        { "properties": { "ref_type": { "const": "AuditExport" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/AuditExportId" } } },
+        { "properties": { "ref_type": { "const": "AuditRecord" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/AuditRecordId" } } },
+        { "properties": { "ref_type": { "const": "CapabilityGrant" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/CapabilityGrantId" } } },
+        { "properties": { "ref_type": { "const": "ConsentRecord" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ConsentRecordId" } } },
+        { "properties": { "ref_type": { "const": "CompensationPlan" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "ContextAssertion" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "CriticalViolation" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/CriticalViolationId" } } },
+        { "properties": { "ref_type": { "const": "DecisionCase" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "DeletionJob" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/DeletionJobId" } } },
+        { "properties": { "ref_type": { "const": "DeletionProof" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/DeletionProofId" } } },
+        { "properties": { "ref_type": { "const": "DeliveryPlan" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/DeliveryPlanId" } } },
+        { "properties": { "ref_type": { "const": "DeliveryReceipt" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/DeliveryReceiptId" } } },
+        { "properties": { "ref_type": { "const": "DerivedPersonalRiskAssessment" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "DeviceCredential" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/DeviceCredentialId" } } },
+        { "properties": { "ref_type": { "const": "DeviceLease" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/DeviceLeaseId" } } },
+        { "properties": { "ref_type": { "const": "DomainDeletionAttestation" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/DomainDeletionAttestationId" } } },
+        { "properties": { "ref_type": { "const": "EmergencyDeliveryObligation" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/EmergencyDeliveryObligationId" } } },
+        { "properties": { "ref_type": { "const": "EpisodicMemory" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "EvidenceSpan" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/EvidenceSpanId" } } },
+        { "properties": { "ref_type": { "const": "ExposureAssessment" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "ExecutionPlan" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "ExpressionPlan" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "ExtractionCandidate" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "Feedback" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "FinalTranscriptEvidence" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/FinalTranscriptEvidenceId" } } },
+        { "properties": { "ref_type": { "const": "GoalHierarchy" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "HazardVersion" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "IngestionAudit" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "MemoryCandidate" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "ModelDefinition" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ModelDefinitionId" } } },
+        { "properties": { "ref_type": { "const": "NormalizedEvent" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "Observation" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "OfficialPublicWarningReference" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "OpenLoop" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "PersonalModelClaimCandidate" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "PersonalModelFacet" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "PersonalModelProjection" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "PersonaConstitution" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "PolicyDecision" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/PolicyDecisionId" } } },
+        { "properties": { "ref_type": { "const": "PreferenceMemory" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "PreferenceProfile" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "ProactiveCandidate" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "ProactiveDecision" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "ProviderRoute" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ProviderRouteId" } } },
+        { "properties": { "ref_type": { "const": "PurposeToken" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/PurposeTokenId" } } },
+        { "properties": { "ref_type": { "const": "Recommendation" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "Regression" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/RegressionId" } } },
+        { "properties": { "ref_type": { "const": "RelationshipEvent" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "RelationshipPolicyProjection" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "RelationshipState" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "ReleaseGate" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ReleaseGateId" } } },
+        { "properties": { "ref_type": { "const": "RealtimeSession" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "ReplayRun" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ReplayRunId" } } },
+        { "properties": { "ref_type": { "const": "RiskAlertCandidate" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "RiskEvidencePackage" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/RiskEvidencePackageId" } } },
+        { "properties": { "ref_type": { "const": "SemanticFact" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "SituationHypothesis" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "SoftwareKillSwitch" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/SoftwareKillSwitchId" } } },
+        { "properties": { "ref_type": { "const": "SourceArtifact" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/SourceArtifactId" } } },
+        { "properties": { "ref_type": { "const": "SurfaceAvailability" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "TextEvidence" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/TextEvidenceId" } } },
+        { "properties": { "ref_type": { "const": "ToolDefinition" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "ToolInvocation" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ToolInvocationId" } } },
+        { "properties": { "ref_type": { "const": "ToolResultArtifact" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ToolResultArtifactId" } } },
+        { "properties": { "ref_type": { "const": "TranscriptSegment" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } },
+        { "properties": { "ref_type": { "const": "UrgentDeliveryEligibilityCandidate" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/UrgentDeliveryEligibilityCandidateId" } } },
+        { "properties": { "ref_type": { "const": "WorldStateProjection" }, "ref_id": { "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId" } } }
+      ],
+      "additionalProperties": false
+    }
+  }
+}

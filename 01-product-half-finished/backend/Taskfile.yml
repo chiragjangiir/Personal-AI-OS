@@ -1,0 +1,22 @@
+version: '3'
+
+silent: true
+
+tasks:
+  default:
+    desc: List backend information tasks
+    cmds:
+      - task --list
+
+  foundation:info:
+    desc: Describe the backend and its deployment guide
+    cmds:
+      - echo "Personal AI OS backend. See docs/first-run.md at the repository root for source builds and deployment."
+
+  foundation:version:
+    desc: Read the backend package version
+    cmds:
+      - cmd: type VERSION
+        platforms: [windows]
+      - cmd: cat VERSION
+        platforms: [linux, darwin]

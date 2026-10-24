@@ -1,0 +1,156 @@
+{
+  "request": {
+    "operation": "handoff",
+    "request_id": "handoff_request_018f000000000021",
+    "idempotency_context": {
+      "idempotency_scope": {
+        "owner_module": "T11B",
+        "operation_kind": "realtime_session_handoff",
+        "target_object_type": "DeviceLease",
+        "target_object_id": "018f0000-0000-7000-8000-000000000005",
+        "user_id": "018f0000-0000-7000-8000-000000000001"
+      },
+      "idempotency_key": "handoff_request_018f000000000021",
+      "idempotency_profile_id": "https://personal-ai-os.local/contracts/realtime/idempotency/handoff",
+      "idempotency_profile_version": "1.0.0",
+      "idempotency_profile_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "idempotency_request_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "realtime_session_ref": {
+      "ref_type": "RealtimeSession",
+      "ref_id": "018f0000-0000-7000-8000-000000000004",
+      "object_version": "1",
+      "canonical_payload_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "current_device_lease_ref": {
+      "ref_type": "DeviceLease",
+      "ref_id": "018f0000-0000-7000-8000-000000000005",
+      "object_version": "1",
+      "canonical_payload_sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "continuity_id": "018f0000-0000-7000-8000-000000000003",
+    "connection_epoch": "1",
+    "expected_lease_version": "1",
+    "from_device_id": "018f0000-0000-7000-8000-000000000002",
+    "to_device_id": "018f0000-0000-7000-8000-000000000012",
+    "governance": {
+      "purpose_scopes": ["realtime_assistant"],
+      "consent_record_refs": ["018f0000-0000-7000-8000-000000000006"],
+      "policy_decision_refs": ["018f0000-0000-7000-8000-000000000007"],
+      "purpose_token_refs": ["018f0000-0000-7000-8000-000000000008"],
+      "capability_grant_refs": ["018f0000-0000-7000-8000-000000000009"]
+    }
+  },
+  "terminal_result": {
+    "operation": "handoff",
+    "status": "success",
+    "request_id": "handoff_request_018f000000000021",
+    "realtime_session_ref": {
+      "ref_type": "RealtimeSession",
+      "ref_id": "018f0000-0000-7000-8000-000000000004",
+      "object_version": "1",
+      "canonical_payload_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "device_lease_ref": {
+      "ref_type": "DeviceLease",
+      "ref_id": "018f0000-0000-7000-8000-000000000013",
+      "object_version": "2",
+      "canonical_payload_sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+    },
+    "previous_device_lease_ref": {
+      "ref_type": "DeviceLease",
+      "ref_id": "018f0000-0000-7000-8000-000000000005",
+      "object_version": "1",
+      "canonical_payload_sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "continuity_id": "018f0000-0000-7000-8000-000000000003",
+    "connection_epoch": "1",
+    "from_device_id": "018f0000-0000-7000-8000-000000000002",
+    "to_device_id": "018f0000-0000-7000-8000-000000000012",
+    "lease_version": "2",
+    "fencing_token": "2",
+    "old_device_suppression_fence": {
+      "from_device_id": "018f0000-0000-7000-8000-000000000002",
+      "previous_device_lease_ref": {
+        "ref_type": "DeviceLease",
+        "ref_id": "018f0000-0000-7000-8000-000000000005",
+        "object_version": "1",
+        "canonical_payload_sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+      },
+      "new_device_lease_ref": {
+        "ref_type": "DeviceLease",
+        "ref_id": "018f0000-0000-7000-8000-000000000013",
+        "object_version": "2",
+        "canonical_payload_sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+      },
+      "connection_epoch": "1",
+      "fencing_token": "2",
+      "state": "old_device_suppressed"
+    },
+    "operation_outcome": {
+      "outcome_class": "committed_success",
+      "recorded_result_ref": {
+        "idempotency_context": {
+          "idempotency_scope": {
+            "owner_module": "T11B",
+            "operation_kind": "realtime_session_handoff",
+            "target_object_type": "DeviceLease",
+            "target_object_id": "018f0000-0000-7000-8000-000000000005",
+            "user_id": "018f0000-0000-7000-8000-000000000001"
+          },
+          "idempotency_key": "handoff_request_018f000000000021",
+          "idempotency_profile_id": "https://personal-ai-os.local/contracts/realtime/idempotency/handoff",
+          "idempotency_profile_version": "1.0.0",
+          "idempotency_profile_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "idempotency_request_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "fencing_epoch": "2",
+        "outcome_class": "committed_success",
+        "result_schema_id": "https://personal-ai-os.local/contracts/realtime/realtime-terminal-result.v1.schema.json",
+        "result_schema_version": "1.0.0",
+        "result_schema_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "result_payload_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "resolution_mode": "direct"
+    },
+    "execution_facts": {
+      "closure_status": "verified_closed",
+      "device_lease_release": "released",
+      "participant_cleanup": "verified_absent",
+      "track_cleanup": "verified_absent",
+      "room_cleanup": "verified_absent",
+      "evidence_refs": [
+        {
+          "evidence_ref": {
+            "ref_type": "ToolResultArtifact",
+            "ref_id": "018f0000-0000-7000-8000-000000000014",
+            "object_version": "1",
+            "canonical_payload_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          },
+          "evidence_origin": "internal",
+          "content_mode": "metadata_only",
+          "schema_id": "https://personal-ai-os.local/contracts/common/evidence-reference.v1.schema.json",
+          "schema_version": "1.0.0",
+          "metadata_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "internal_input_refs": [
+            {
+              "ref_type": "DeviceLease",
+              "ref_id": "018f0000-0000-7000-8000-000000000005"
+            },
+            {
+              "ref_type": "DeviceLease",
+              "ref_id": "018f0000-0000-7000-8000-000000000013"
+            }
+          ]
+        }
+      ]
+    },
+    "governance": {
+      "purpose_scopes": ["realtime_assistant"],
+      "consent_record_refs": ["018f0000-0000-7000-8000-000000000006"],
+      "policy_decision_refs": ["018f0000-0000-7000-8000-000000000007"],
+      "purpose_token_refs": ["018f0000-0000-7000-8000-000000000008"],
+      "capability_grant_refs": ["018f0000-0000-7000-8000-000000000009"]
+    }
+  }
+}

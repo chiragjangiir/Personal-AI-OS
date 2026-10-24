@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Geometry from Brand/vectors/yim-lockup-horizontal-on-dark.svg, v1.2. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="316dp" android:height="96dp" android:viewportWidth="158.135" android:viewportHeight="47.6">
+    <path android:fillColor="#6F93FF" android:pathData="M44.411 11.9 A23.8 23.8 0 1 1 35.7 3.189 L33.4 7.172 A19.2 19.2 0 1 0 40.428 14.2 Z" />
+    <path android:fillColor="#6F93FF" android:pathData="M11.465 11.915 L23.8 27.097 L36.135 11.915 L32.565 9.015 L23.8 19.803 L15.035 9.015 Z" />
+    <path android:fillColor="#6F93FF" android:pathData="M21.5 21.15 L21.5 37.65 L26.1 37.65 L26.1 21.15 Z" />
+    <path android:fillColor="#5CE1FF" android:pathData="M21.0 23.45 A2.8 2.8 0 1 0 26.6 23.45 A2.8 2.8 0 1 0 21.0 23.45 Z" />
+    <path android:fillColor="#5CE1FF" android:pathData="M35.303 8.597 A3.7 3.7 0 1 0 42.703 8.597 A3.7 3.7 0 1 0 35.303 8.597 Z" />
+    <path android:fillColor="#ECEFF6" android:pathData="M62.6 6.965 L78.835 26.947 L95.071 6.965 L91.501 4.065 L78.835 19.653 L66.17 4.065 Z" />
+    <path android:fillColor="#ECEFF6" android:pathData="M76.535 21 L76.535 42.6 L81.135 42.6 L81.135 21 Z" />
+    <path android:fillColor="#ECEFF6" android:pathData="M101.535 18 L101.535 42.6 L106.135 42.6 L106.135 18 Z" />
+    <path android:fillColor="#ECEFF6" android:pathData="M118.135 42.6 L118.135 22.6 L128.883 22.6 L133.535 27.253 L133.535 42.6 L138.135 42.6 L138.135 25.347 L130.788 18 L113.535 18 L113.535 42.6 Z" />
+    <path android:fillColor="#ECEFF6" android:pathData="M135.835 29.553 L142.788 22.6 L148.883 22.6 L153.535 27.253 L153.535 42.6 L158.135 42.6 L158.135 25.347 L150.788 18 L140.883 18 L132.583 26.3 Z" />
+    <path android:fillColor="#5CE1FF" android:pathData="M100.13499999999999 8.597 A3.7 3.7 0 1 0 107.535 8.597 A3.7 3.7 0 1 0 100.13499999999999 8.597 Z" />
+</vector>

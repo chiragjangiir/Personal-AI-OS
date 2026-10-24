@@ -1,0 +1,165 @@
+{
+  "operation": "bootstrap",
+  "bootstrap_mode": "initial",
+  "status": "bootstrap_accepted",
+  "request_id": "bootstrap_request_018f000000000001",
+  "realtime_session_ref": {
+    "ref_type": "RealtimeSession",
+    "ref_id": "018f0000-0000-7000-8000-000000000004",
+    "object_version": "1",
+    "canonical_payload_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "device_lease_ref": {
+    "ref_type": "DeviceLease",
+    "ref_id": "018f0000-0000-7000-8000-000000000005",
+    "object_version": "1",
+    "canonical_payload_sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "continuity_id": "018f0000-0000-7000-8000-000000000003",
+  "transport_aliases": [
+    {
+      "alias_type": "room",
+      "issuer": "livekit_cloud",
+      "value": "room-opaque-fixture-1"
+    },
+    {
+      "alias_type": "participant",
+      "issuer": "livekit_cloud",
+      "value": "participant-opaque-fixture-1"
+    }
+  ],
+  "connection_epoch": "1",
+  "livekit": {
+    "server_url": "wss://media.example.invalid",
+    "participant_token": "<fixture-participant-token>",
+    "credential_expires_at": "2026-08-22T12:15:00Z"
+  },
+  "media_grants": {
+    "audio": {
+      "enabled": true,
+      "device_id": "018f0000-0000-7000-8000-000000000002",
+      "device_lease_ref": {
+        "ref_type": "DeviceLease",
+        "ref_id": "018f0000-0000-7000-8000-000000000005",
+        "object_version": "1",
+        "canonical_payload_sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+      },
+      "start_binding": {
+        "kind": "explicit_user_start",
+        "device_id": "018f0000-0000-7000-8000-000000000002",
+        "modalities": [
+          "audio",
+          "video",
+          "data"
+        ]
+      },
+      "expires_at": "2026-08-22T12:30:00Z"
+    },
+    "video": {
+      "enabled": true,
+      "device_id": "018f0000-0000-7000-8000-000000000002",
+      "device_lease_ref": {
+        "ref_type": "DeviceLease",
+        "ref_id": "018f0000-0000-7000-8000-000000000005",
+        "object_version": "1",
+        "canonical_payload_sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+      },
+      "start_binding": {
+        "kind": "explicit_user_start",
+        "device_id": "018f0000-0000-7000-8000-000000000002",
+        "modalities": [
+          "audio",
+          "video",
+          "data"
+        ]
+      },
+      "expires_at": "2026-08-22T12:30:00Z"
+    },
+    "data": {
+      "enabled": true,
+      "device_id": "018f0000-0000-7000-8000-000000000002",
+      "device_lease_ref": {
+        "ref_type": "DeviceLease",
+        "ref_id": "018f0000-0000-7000-8000-000000000005",
+        "object_version": "1",
+        "canonical_payload_sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+      },
+      "start_binding": {
+        "kind": "explicit_user_start",
+        "device_id": "018f0000-0000-7000-8000-000000000002",
+        "modalities": [
+          "audio",
+          "video",
+          "data"
+        ]
+      },
+      "expires_at": "2026-08-22T12:30:00Z"
+    }
+  },
+  "e2ee_key_envelope": {
+    "key_envelope_ref": {
+      "alias_type": "key_envelope",
+      "issuer": "local_gateway",
+      "value": "key-envelope-opaque-fixture-1"
+    },
+    "key_index": 0,
+    "key_generation": "1",
+    "expires_at": "2026-08-22T12:10:00Z",
+    "scope": {
+      "device_id": "018f0000-0000-7000-8000-000000000002",
+      "channels": [
+        "audio",
+        "video",
+        "data"
+      ],
+      "distribution_mode": "application_controlled_envelope"
+    },
+    "realtime_session_ref": {
+      "ref_type": "RealtimeSession",
+      "ref_id": "018f0000-0000-7000-8000-000000000004",
+      "object_version": "1",
+      "canonical_payload_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "continuity_id": "018f0000-0000-7000-8000-000000000003",
+    "governance": {
+      "purpose_scopes": [
+        "realtime_assistant"
+      ],
+      "consent_record_refs": [
+        "018f0000-0000-7000-8000-000000000006"
+      ],
+      "policy_decision_refs": [
+        "018f0000-0000-7000-8000-000000000007"
+      ],
+      "purpose_token_refs": [
+        "018f0000-0000-7000-8000-000000000008"
+      ],
+      "capability_grant_refs": [
+        "018f0000-0000-7000-8000-000000000009"
+      ]
+    }
+  },
+  "governance": {
+    "purpose_scopes": [
+      "realtime_assistant"
+    ],
+    "consent_record_refs": [
+      "018f0000-0000-7000-8000-000000000006"
+    ],
+    "policy_decision_refs": [
+      "018f0000-0000-7000-8000-000000000007"
+    ],
+    "purpose_token_refs": [
+      "018f0000-0000-7000-8000-000000000008"
+    ],
+    "capability_grant_refs": [
+      "018f0000-0000-7000-8000-000000000009"
+    ]
+  },
+  "recipient_device_credential_ref": {
+    "ref_type": "DeviceCredential",
+    "ref_id": "018f0000-0000-7000-8000-000000000010",
+    "object_version": "1",
+    "canonical_payload_sha256": "abababababababababababababababababababababababababababababababab"
+  }
+}

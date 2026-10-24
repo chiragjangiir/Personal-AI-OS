@@ -1,0 +1,17 @@
+# Optional authenticated edge forwarding for configured legacy client origins.
+# Disable this service when no configured client requires those origins.
+serverAddr = "frp.example.com"
+serverPort = 443
+transport.protocol = "wss"
+transport.tls.enable = true
+auth.method = "token"
+auth.tokenSource.type = "file"
+auth.tokenSource.file.path = "/run/secrets/frp-token"
+
+[[proxies]]
+name = "paios-roaming-gateway"
+type = "tcp"
+# Shares front's namespace with gateway; no separate gateway DNS endpoint.
+localIP = "127.0.0.1"
+localPort = 8788
+remotePort = 7000

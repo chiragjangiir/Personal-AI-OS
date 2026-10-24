@@ -1,0 +1,604 @@
+# Include this file from the Nginx http context. It defines one dedicated,
+# non-default candidate vhost and does not modify any protected/default vhost.
+
+# The longest exact HTTP/2 admission key (54 chars) does not fit the 64-byte default
+# bucket. The first map in the http context fixes the size, so no earlier include may
+# define a map (true in the dedicated cloud front).
+map_hash_bucket_size 128;
+
+# Header framing selects the tighter body pool. GET without CL/TE may still
+# carry HTTP/2 DATA, so the unconditional request pool also covers these keys.
+map "$request_method:$http_content_length:$http_transfer_encoding" $paios_body_global {
+    "GET::" "";
+    "GET:0:" "";
+    default body;
+}
+map $paios_body_global $paios_body_source {
+    "" "";
+    default $binary_remote_addr;
+}
+limit_conn_zone $paios_body_global zone=paios_body_global:32k;
+limit_conn_zone $paios_body_source zone=paios_body_source:32k;
+limit_conn_zone front zone=paios_requests_global:32k;
+limit_conn_zone $binary_remote_addr zone=paios_requests_source:32k;
+
+map $remote_addr $paios_roaming_source_family {
+    ~:      ipv6;
+    default ipv4;
+}
+
+map $http_connection $paios_roaming_ws_connection {
+    ~*^[\x20\t]*upgrade[\x20\t]*$ 1;
+    default                            0;
+}
+
+map $http_upgrade $paios_roaming_ws_upgrade {
+    ~*^[\x20\t]*websocket[\x20\t]*$ 1;
+    default                              0;
+}
+
+# Nginx string-map keys are case-insensitive, so the admitted SNI must use a
+# case-sensitive ASCII regular expression. Empty, differently cased, suffixed,
+# or otherwise non-exact SNI maps to zero.
+map $ssl_server_name $paios_roaming_sni_exact {
+    ~^@PUBLIC_HOST_REGEX@$ 1;
+    default                       0;
+}
+
+map "$server_protocol:$request_method:$request_uri" $paios_roaming_protocol_admitted {
+    default 0;
+    ~^HTTP/1[.]1: 1;
+    "HTTP/2.0:POST:/v1/appearance/images" 1;
+    ~^HTTP/2[.]0:GET:/v1/appearance/images/image-[a-f0-9-]+[.]jpg$ 1;
+    "HTTP/2.0:POST:/v1/place/upload" 1;
+    "HTTP/2.0:POST:/v1/place/credential" 1;
+    "HTTP/2.0:POST:/v1/terminals/capabilities" 1;
+    "HTTP/2.0:POST:/v1/realtime/bootstrap" 1;
+    "HTTP/2.0:POST:/v1/realtime/e2ee/key/resolve" 1;
+    "HTTP/2.0:POST:/v1/realtime/credentials/refresh" 1;
+    "HTTP/2.0:POST:/v1/realtime/media/stop" 1;
+    "HTTP/2.0:POST:/v1/realtime/end-continuity" 1;
+    "HTTP/2.0:POST:/v1/realtime/bootstrap/reconcile" 1;
+    "HTTP/2.0:POST:/v1/realtime/watch-binding" 1;
+    "HTTP/2.0:POST:/v1/realtime/watch-binding/read" 1;
+    "HTTP/2.0:POST:/v1/realtime/watch-binding/credential" 1;
+    "HTTP/2.0:POST:/v1/watch/utterances" 1;
+    ~^HTTP/2[.]0:GET:/v1/watch/turns/[^/?]+[?]wait=25$ 1;
+    "HTTP/2.0:POST:/v1/devices/glasses/enrollment" 1;
+    "HTTP/2.0:POST:/v1/devices/glasses/enrollment/exchange" 1;
+    "HTTP/2.0:POST:/v1/devices/mac/pairing/request" 1;
+    "HTTP/2.0:POST:/v1/devices/mac/pairing/preview" 1;
+    "HTTP/2.0:POST:/v1/devices/mac/pairing/approve" 1;
+    "HTTP/2.0:POST:/v1/devices/mac/pairing/exchange" 1;
+    "HTTP/2.0:POST:/v1/mac/ssh/provision" 1;
+    "HTTP/2.0:POST:/v1/mac/ssh/pause" 1;
+    "HTTP/2.0:POST:/v1/mac/ssh/revoke" 1;
+    "HTTP/2.0:POST:/v1/devices/mac/enrollment" 1;
+    "HTTP/2.0:POST:/v1/devices/mac/enrollment/exchange" 1;
+    "HTTP/2.0:POST:/v1/vidu/retrieval/memory" 1;
+    "HTTP/2.0:POST:/v1/vidu/retrieval/knowledge" 1;
+}
+
+map "$server_protocol:$paios_roaming_protocol_admitted" $paios_roaming_h2_rejected {
+    "HTTP/2.0:0" 1;
+    default        0;
+}
+
+# The later renderer writes the embedded PAIOS_HEADER_GUARD_NJS companion to
+# this exact separately granted path. rawHeadersIn is required so duplicate
+# names and arbitrary unknown X-PAIOS-* names are rejected before proxying.
+# PAIOS_NJS_MINIMUM_VERSION 0.9.9. Deployment remains HOLD until server
+# preflight binds the loaded ngx_http_js_module package/file identity and proves
+# version >=0.9.9; js_access is not admitted with an older or unknown module.
+js_import paios_roaming_guard from /etc/paios-roaming/paios_roaming_guard.js;
+
+log_format paios_roaming_redacted escape=json
+    '{"time":"$time_iso8601","route":"$paios_roaming_route_class",'
+    '"status":$status,"ingress_port":$server_port,"request_bytes":$request_length,'
+    '"response_bytes":$body_bytes_sent,"source_family":"$paios_roaming_source_family"}';
+
+server {
+    @LISTEN@
+    server_name @PUBLIC_HOST@;
+
+    # Server rewrite runs before location selection/access/content. This gate
+    # therefore closes wrong or absent SNI before any PAIOS location, njs Host
+    # decision, Gateway upstream selection, or business effect.
+    @SNI_GUARD@
+    if ($paios_roaming_h2_rejected = 1) { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+    if ($paios_roaming_protocol_admitted != 1) { return 444; }
+
+    @TLS@
+    server_tokens off;
+    gzip off;
+
+    access_log /dev/stdout paios_roaming_redacted buffer=32k flush=5s;
+    # Native Nginx error text is not a redacted format and may include client
+    # or upstream data. It is therefore discarded instead of retained.
+    error_log /dev/null crit;
+
+    set $paios_roaming_route_class catch_all;
+    default_type "application/json; charset=utf-8";
+    add_header X-Content-Type-Options "nosniff" always;
+
+    # Override any parent http on/clean mode: all nine candidate business
+    # locations must keep small JSON/reconcile bodies memory-buffered rather
+    # than force a product request-body file. The JPEG location remains
+    # proxy_request_buffering off and keeps its Gateway complete-body fence.
+    client_body_in_file_only off;
+    client_body_buffer_size 8192;
+    http2_body_preread_size 8192;
+
+    # Native preaccess admission runs before js_access and proxy body reads.
+    # Shared across direct/legacy vhosts; HTTP/2 counts each active request.
+    # 8 * (1,000,000 * 1.25) <= 10,000,000 body-buffer bytes, within 32 MiB.
+    # A shared NAT may use all eight slots for four devices reconnecting twice.
+    # Slots last until request cleanup, including the upstream response.
+    limit_conn paios_body_global 8;
+    limit_conn paios_body_source 8;
+    # Bound unknown-length HTTP/2 GET bodies too. Keep room for long polls and
+    # signaling: one NAT can hold 32 active requests, within 64 across the front.
+    limit_conn paios_requests_global 64;
+    limit_conn paios_requests_source 32;
+    limit_conn_status 429;
+    error_page 429 = @paios_body_busy;
+
+    # Closed business-proxy header projection. Suppressing all inbound headers
+    # first removes every client-supplied forwarding/trusted namespace; only
+    # the closed application allowlist and these seven edge fields are added.
+    proxy_http_version 1.1;
+    proxy_pass_request_headers off;
+    proxy_set_header Host @PUBLIC_AUTHORITY@;
+    proxy_set_header Accept $http_accept;
+    proxy_set_header Content-Type $http_content_type;
+    proxy_set_header Content-Length $http_content_length;
+    proxy_set_header Idempotency-Key $http_idempotency_key;
+    proxy_set_header Authorization $http_authorization;
+    proxy_set_header X-Watch-Turn-ID $http_x_watch_turn_id;
+    proxy_set_header X-Watch-Codec $http_x_watch_codec;
+    proxy_set_header X-Watch-Sample-Rate-Hz $http_x_watch_sample_rate_hz;
+    proxy_set_header X-Watch-Channels $http_x_watch_channels;
+    proxy_set_header X-Watch-Duration-Ms $http_x_watch_duration_ms;
+    proxy_set_header X-PAIOS-RayNeo-Protocol $http_x_paios_rayneo_protocol;
+    proxy_set_header X-PAIOS-Endpoint-Profile $http_x_paios_endpoint_profile;
+    proxy_set_header X-PAIOS-Endpoint-Generation $http_x_paios_endpoint_generation;
+    proxy_set_header X-PAIOS-RayNeo-Key-ID $http_x_paios_rayneo_key_id;
+    proxy_set_header X-PAIOS-Timestamp $http_x_paios_timestamp;
+    proxy_set_header X-PAIOS-Nonce $http_x_paios_nonce;
+    proxy_set_header X-PAIOS-Body-SHA256 $http_x_paios_body_sha256;
+    proxy_set_header X-PAIOS-Signature $http_x_paios_signature;
+    proxy_set_header X-PAIOS-RayNeo-Device-ID $http_x_paios_rayneo_device_id;
+    proxy_set_header X-PAIOS-RayNeo-Client-Instance-ID $http_x_paios_rayneo_client_instance_id;
+    proxy_set_header X-PAIOS-Camera-ID $http_x_paios_camera_id;
+    proxy_set_header X-PAIOS-Captured-At-UTC $http_x_paios_captured_at_utc;
+    proxy_set_header X-PAIOS-Sensor-Timestamp-NS $http_x_paios_sensor_timestamp_ns;
+    proxy_set_header X-PAIOS-Frame-Width $http_x_paios_frame_width;
+    proxy_set_header X-PAIOS-Frame-Height $http_x_paios_frame_height;
+    proxy_set_header X-PAIOS-Frame-Bytes $http_x_paios_frame_bytes;
+    proxy_set_header X-PAIOS-Frame-SHA256 $http_x_paios_frame_sha256;
+    proxy_set_header Forwarded "";
+    proxy_set_header X-Real-IP "";
+    proxy_set_header X-Forwarded-Host @PUBLIC_AUTHORITY@;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    @ATTESTATION@
+    proxy_set_header X-PAIOS-Trusted-Edge tencent-nginx-loopback-v1;
+    proxy_set_header X-PAIOS-Trusted-Source-Family $paios_roaming_source_family;
+    proxy_set_header X-PAIOS-Client-Cert "";
+    proxy_set_header X-PAIOS-iPhone-Credential "";
+    proxy_set_header Upgrade "";
+    proxy_set_header Connection "";
+    proxy_connect_timeout 3s;
+    proxy_send_timeout 10s;
+    proxy_read_timeout 50s;
+    proxy_next_upstream off;
+    proxy_buffering on;
+    proxy_max_temp_file_size 0;
+    proxy_intercept_errors off;
+    proxy_hide_header Set-Cookie;
+
+    # Core-generated framing/size errors remain compact JSON in this selected
+    # vhost. Already-committed upstream responses are never rewritten.
+    error_page 400 = @paios_invalid_request;
+    error_page 413 = @paios_body_too_large;
+    error_page 502 = @paios_upstream_precommit_502;
+    error_page 504 = @paios_gateway_timeout;
+
+    location @paios_body_busy {
+        internal;
+        add_header Cache-Control "no-store" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        return 429 '{"error":"ROAMING_BODY_BUSY"}';
+    }
+
+    location @paios_invalid_request {
+        internal;
+        return 400 '{"error":"INVALID_REQUEST"}';
+    }
+
+    location @paios_body_too_large {
+        internal;
+        return 413 '{"error":"BODY_TOO_LARGE"}';
+    }
+
+    location @paios_gateway_timeout {
+        internal;
+        return 504 '{"error":"ROAMING_GATEWAY_TIMEOUT"}';
+    }
+
+    location @paios_upstream_precommit_502 {
+        internal;
+        # No established upstream connection means the loopback Gateway business
+        # proxy is unavailable. An established connection followed by a bad
+        # protocol/header is the bounded precommit 502 case.
+        if ($upstream_connect_time = "") {
+            return 503 '{"error":"ROAMING_GATEWAY_UNAVAILABLE"}';
+        }
+        if ($upstream_connect_time = "-") {
+            return 503 '{"error":"ROAMING_GATEWAY_UNAVAILABLE"}';
+        }
+        return 502 '{"error":"ROAMING_GATEWAY_BAD_RESPONSE"}';
+    }
+
+    # LiveKit signaling transport only; media remains direct 7881/TCP and 7882/UDP.
+    location ~ ^/rtc(?:/|$) {
+        set $paios_roaming_route_class rtc_signal;
+        if ($request_method != GET) { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($uri !~ "^/rtc(?:/|$)") { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($args = "") { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($paios_roaming_ws_upgrade != 1) { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($paios_roaming_ws_connection != 1) { return 400 '{"error":"INVALID_REQUEST"}'; }
+        proxy_pass http://@LIVEKIT_UPSTREAM@;
+        proxy_http_version 1.1;
+        proxy_pass_request_headers on;
+        proxy_set_header Host @PUBLIC_AUTHORITY@;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Host @PUBLIC_AUTHORITY@;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 10s;
+        proxy_read_timeout 3600s;
+        proxy_buffering off;
+        proxy_request_buffering off;
+        proxy_next_upstream off;
+        access_log off;
+    }
+    # Owner-Mac relay (frps, loopback in this namespace). frp's websocket transport uses this fixed path.
+    location = /~!frp {
+        set $paios_roaming_route_class owner_mac_relay;
+        if ($request_method != GET) { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($request_uri != "/~!frp") { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($paios_roaming_ws_upgrade != 1) { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($paios_roaming_ws_connection != 1) { return 400 '{"error":"INVALID_REQUEST"}'; }
+        proxy_pass http://127.0.0.1:7000;
+        proxy_http_version 1.1;
+        # The server block passes no client headers; frps needs the websocket handshake headers (as /rtc does).
+        proxy_pass_request_headers on;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 3600s;
+        proxy_read_timeout 3600s;
+        proxy_buffering off;
+        proxy_request_buffering off;
+        proxy_next_upstream off;
+        access_log off;
+    }
+    location ~ ^/v1/devices/(glasses|mac)/enrollment(?:/exchange)?$ {
+        set $paios_roaming_route_class terminal_enrollment;
+        if ($request_method != POST) { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($request_uri !~ "^/v1/devices/(glasses|mac)/enrollment(?:/exchange)?$") { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($http_content_length !~ "^(0|[1-9][0-9]*)$") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_transfer_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_content_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_upgrade != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        client_max_body_size 131072;
+        client_body_buffer_size 131072;
+        proxy_request_buffering on;
+        proxy_pass http://@GATEWAY_UPSTREAM@;
+    }
+    location ~ ^/v1/(devices/mac/pairing/(request|preview|approve|exchange)|mac/ssh/(provision|pause|revoke))$ {
+        set $paios_roaming_route_class terminal_enrollment;
+        if ($request_method != POST) { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($request_uri !~ "^/v1/(devices/mac/pairing/(request|preview|approve|exchange)|mac/ssh/(provision|pause|revoke))$") { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($http_content_length !~ "^(0|[1-9][0-9]*)$") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_transfer_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_content_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_upgrade != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        client_max_body_size 131072;
+        client_body_buffer_size 131072;
+        proxy_request_buffering on;
+        proxy_pass http://@GATEWAY_UPSTREAM@;
+    }
+
+    location = /v1/appearance/images {
+        set $paios_roaming_route_class appearance_image;
+        if ($request_method != POST) { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($request_uri != "/v1/appearance/images") { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($http_content_length !~ "^(0|[1-9][0-9]*)$") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_transfer_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_content_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_upgrade != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        client_max_body_size 5242880;
+        proxy_request_buffering off;
+        proxy_pass http://@GATEWAY_UPSTREAM@;
+    }
+    location ~ "^/v1/appearance/images/image-[a-f0-9-]{36}\.jpg$" {
+        set $paios_roaming_route_class appearance_image;
+        if ($request_method != GET) { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($request_uri !~ "^/v1/appearance/images/image-[a-f0-9-]{36}\.jpg$") { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        proxy_pass http://@GATEWAY_UPSTREAM@;
+    }
+
+    location = /v1/place/upload {
+        set $paios_roaming_route_class place_upload;
+        if ($request_method != POST) { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($request_uri != "/v1/place/upload") { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($http_content_length !~ "^(0|[1-9][0-9]*)$") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_transfer_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_content_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_upgrade != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        client_max_body_size 131072;
+        client_body_buffer_size 131072;
+        proxy_request_buffering on;
+        proxy_pass http://@GATEWAY_UPSTREAM@;
+    }
+
+    location = /v1/terminals/capabilities {
+        set $paios_roaming_route_class terminal_capabilities;
+        if ($request_method != POST) { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($request_uri != "/v1/terminals/capabilities") { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($http_content_length !~ "^(0|[1-9][0-9]*)$") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_transfer_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_content_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_upgrade != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        client_max_body_size 131072;
+        client_body_buffer_size 131072;
+        proxy_request_buffering on;
+        proxy_pass http://@GATEWAY_UPSTREAM@;
+    }
+
+    location = /v1/place/credential {
+        set $paios_roaming_route_class place_credential;
+        if ($request_method != POST) { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($request_uri != "/v1/place/credential") { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($http_content_length !~ "^(0|[1-9][0-9]*)$") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_transfer_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_content_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_upgrade != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        client_max_body_size 131072;
+        client_body_buffer_size 131072;
+        proxy_request_buffering on;
+        proxy_pass http://@GATEWAY_UPSTREAM@;
+    }
+
+    location = /v1/realtime/bootstrap {
+        set $paios_roaming_route_class realtime_bootstrap;
+        if ($request_method != POST) { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($request_uri != "/v1/realtime/bootstrap") { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($http_content_length !~ "^(0|[1-9][0-9]*)$") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_transfer_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_content_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_upgrade != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        client_max_body_size 131072;
+        client_body_buffer_size 131072;
+        proxy_request_buffering on;
+        proxy_pass http://@GATEWAY_UPSTREAM@;
+    }
+
+    # PAIOS_REALTIME_CONTROL_ROUTE realtime_bootstrap_reconcile max=131072 buffering=on
+    location = /v1/realtime/bootstrap/reconcile {
+        set $paios_roaming_route_class realtime_bootstrap_reconcile;
+        if ($request_method != POST) { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($request_uri != "/v1/realtime/bootstrap/reconcile") { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($http_content_length !~ "^(0|[1-9][0-9]*)$") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_transfer_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_content_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_upgrade != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        client_max_body_size 131072;
+        client_body_buffer_size 131072;
+        proxy_request_buffering on;
+        proxy_pass http://@GATEWAY_UPSTREAM@;
+    }
+
+    # PAIOS_REALTIME_CONTROL_ROUTE realtime_watch_binding max=131072 buffering=on
+    location = /v1/realtime/watch-binding {
+        set $paios_roaming_route_class realtime_watch_binding;
+        if ($request_method != POST) { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($request_uri != "/v1/realtime/watch-binding") { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($http_content_length !~ "^(0|[1-9][0-9]*)$") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_transfer_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_content_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_upgrade != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        client_max_body_size 131072;
+        client_body_buffer_size 131072;
+        proxy_request_buffering on;
+        proxy_pass http://@GATEWAY_UPSTREAM@;
+    }
+
+    # PAIOS_REALTIME_CONTROL_ROUTE realtime_watch_binding_read max=131072 buffering=on
+    location = /v1/realtime/watch-binding/read {
+        set $paios_roaming_route_class realtime_watch_binding_read;
+        if ($request_method != POST) { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($request_uri != "/v1/realtime/watch-binding/read") { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($http_content_length !~ "^(0|[1-9][0-9]*)$") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_transfer_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_content_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_upgrade != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        client_max_body_size 131072;
+        client_body_buffer_size 131072;
+        proxy_request_buffering on;
+        proxy_pass http://@GATEWAY_UPSTREAM@;
+    }
+
+    location = /v1/realtime/watch-binding/credential {
+        set $paios_roaming_route_class watch_credential;
+        if ($request_method != POST) { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($request_uri != "/v1/realtime/watch-binding/credential") { return 400 '{"status":"failed","reason":"invalid_request"}'; }
+        if ($http_content_length !~ "^(0|[1-9][0-9]*)$") { return 400 '{"status":"failed","reason":"invalid_request"}'; }
+        if ($http_transfer_encoding != "") { return 400 '{"status":"failed","reason":"invalid_request"}'; }
+        if ($http_content_encoding != "") { return 400 '{"status":"failed","reason":"invalid_request"}'; }
+        if ($http_upgrade != "") { return 400 '{"status":"failed","reason":"invalid_request"}'; }
+        client_max_body_size 131072;
+        client_body_buffer_size 131072;
+        proxy_request_buffering on;
+        proxy_pass http://@GATEWAY_UPSTREAM@;
+    }
+
+    location = /v1/watch/utterances {
+        set $paios_roaming_route_class watch_utterance;
+        if ($http_content_length !~ "^(0|[1-9][0-9]*)$") { return 400 '{"status":"failed","reason":"invalid_request"}'; }
+        if ($http_transfer_encoding != "") { return 400 '{"status":"failed","reason":"invalid_request"}'; }
+        if ($request_method != POST) { return 404; }
+        if ($http_content_encoding != "") { return 400 '{"status":"failed","reason":"invalid_request"}'; }
+        client_max_body_size 1000000;
+        client_body_buffer_size 1000000;
+        error_page 413 = @watch_too_large;
+        error_page 429 = @paios_body_busy;
+        proxy_request_buffering on;
+        proxy_pass http://@GATEWAY_UPSTREAM@;
+    }
+    location @watch_too_large { return 413 '{"status":"failed","reason":"audio_too_large"}'; }
+    location ~ ^/v1/watch/turns/[^/]+$ {
+        set $paios_roaming_route_class watch_turn;
+        if ($request_method != GET) { return 404; }
+        proxy_pass http://@GATEWAY_UPSTREAM@;
+    }
+
+    # PAIOS_REALTIME_CONTROL_ROUTE realtime_e2ee_key_resolve max=131072 buffering=on
+    location = /v1/realtime/e2ee/key/resolve {
+        set $paios_roaming_route_class realtime_e2ee_key_resolve;
+        if ($request_method != POST) { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($request_uri != "/v1/realtime/e2ee/key/resolve") { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($http_content_length !~ "^(0|[1-9][0-9]*)$") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_transfer_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_content_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_upgrade != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        client_max_body_size 131072;
+        client_body_buffer_size 131072;
+        proxy_request_buffering on;
+        proxy_pass http://@GATEWAY_UPSTREAM@;
+    }
+
+    # PAIOS_REALTIME_CONTROL_ROUTE realtime_credential_refresh max=131072 buffering=on
+    location = /v1/realtime/credentials/refresh {
+        set $paios_roaming_route_class realtime_credential_refresh;
+        if ($request_method != POST) { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($request_uri != "/v1/realtime/credentials/refresh") { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($http_content_length !~ "^(0|[1-9][0-9]*)$") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_transfer_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_content_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_upgrade != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        client_max_body_size 131072;
+        client_body_buffer_size 131072;
+        proxy_request_buffering on;
+        proxy_pass http://@GATEWAY_UPSTREAM@;
+    }
+
+    # PAIOS_REALTIME_CONTROL_ROUTE realtime_media_stop max=131072 buffering=on
+    location = /v1/realtime/media/stop {
+        set $paios_roaming_route_class realtime_media_stop;
+        if ($request_method != POST) { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($request_uri != "/v1/realtime/media/stop") { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($http_content_length !~ "^(0|[1-9][0-9]*)$") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_transfer_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_content_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_upgrade != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        client_max_body_size 131072;
+        client_body_buffer_size 131072;
+        proxy_request_buffering on;
+        proxy_pass http://@GATEWAY_UPSTREAM@;
+    }
+
+    # PAIOS_REALTIME_CONTROL_ROUTE realtime_end_continuity max=131072 buffering=on
+    location = /v1/realtime/end-continuity {
+        set $paios_roaming_route_class realtime_end_continuity;
+        if ($request_method != POST) { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($request_uri != "/v1/realtime/end-continuity") { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($http_content_length !~ "^(0|[1-9][0-9]*)$") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_transfer_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_content_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_upgrade != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        client_max_body_size 131072;
+        client_body_buffer_size 131072;
+        proxy_request_buffering on;
+        proxy_pass http://@GATEWAY_UPSTREAM@;
+    }
+
+    location = /twirp/livekit.RoomService/ListParticipants {
+        set $paios_roaming_route_class livekit_list_participants;
+        if ($request_method != POST) { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($request_uri != "/twirp/livekit.RoomService/ListParticipants") { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($http_content_length !~ "^(0|[1-9][0-9]*)$") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_transfer_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_content_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_upgrade != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        client_max_body_size 131072;
+        client_body_buffer_size 131072;
+        proxy_request_buffering on;
+        proxy_pass_request_headers off;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Authorization $http_authorization;
+    proxy_set_header X-Watch-Turn-ID $http_x_watch_turn_id;
+    proxy_set_header X-Watch-Codec $http_x_watch_codec;
+    proxy_set_header X-Watch-Sample-Rate-Hz $http_x_watch_sample_rate_hz;
+    proxy_set_header X-Watch-Channels $http_x_watch_channels;
+    proxy_set_header X-Watch-Duration-Ms $http_x_watch_duration_ms;
+        proxy_set_header Content-Type $http_content_type;
+        proxy_set_header Content-Length $http_content_length;
+        proxy_set_header Host $host;
+        proxy_pass http://@LIVEKIT_UPSTREAM@;
+    }
+
+    # Server-side stop stage: the gateway removes its own stale participant after a restart (same auth as list).
+    location = /twirp/livekit.RoomService/RemoveParticipant {
+        set $paios_roaming_route_class livekit_remove_participant;
+        if ($request_method != POST) { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($request_uri != "/twirp/livekit.RoomService/RemoveParticipant") { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($http_content_length !~ "^(0|[1-9][0-9]*)$") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_transfer_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_content_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_upgrade != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        client_max_body_size 131072;
+        client_body_buffer_size 131072;
+        proxy_request_buffering on;
+        proxy_pass_request_headers off;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Authorization $http_authorization;
+    proxy_set_header X-Watch-Turn-ID $http_x_watch_turn_id;
+    proxy_set_header X-Watch-Codec $http_x_watch_codec;
+    proxy_set_header X-Watch-Sample-Rate-Hz $http_x_watch_sample_rate_hz;
+    proxy_set_header X-Watch-Channels $http_x_watch_channels;
+    proxy_set_header X-Watch-Duration-Ms $http_x_watch_duration_ms;
+        proxy_set_header Content-Type $http_content_type;
+        proxy_set_header Content-Length $http_content_length;
+        proxy_set_header Host $host;
+        proxy_pass http://@LIVEKIT_UPSTREAM@;
+    }
+
+    # Vidu realtime retrieval calls (per-live Bearer; Hermes-owned answers): same closed header projection.
+    location ~ ^/v1/vidu/retrieval/(memory|knowledge)$ {
+        set $paios_roaming_route_class vidu_retrieval;
+        if ($request_method != POST) { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($request_uri !~ "^/v1/vidu/retrieval/(memory|knowledge)$") { return 404 '{"error":"ROUTE_NOT_FOUND"}'; }
+        if ($http_content_length !~ "^(0|[1-9][0-9]*)$") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_transfer_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_content_encoding != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        if ($http_upgrade != "") { return 400 '{"error":"INVALID_REQUEST"}'; }
+        client_max_body_size 8192;
+        client_body_buffer_size 8192;
+        proxy_request_buffering on;
+        proxy_pass http://@GATEWAY_UPSTREAM@;
+    }
+
+    # No prefix location proxies. Every unlisted method/raw target, including
+    # reserved and future surfaces, terminates here before proxying.
+    location / {
+        set $paios_roaming_route_class catch_all;
+        js_content paios_roaming_guard.notFound;
+    }
+}

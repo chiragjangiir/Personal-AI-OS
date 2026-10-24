@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-ai-os.local/contracts/realtime/realtime-bootstrap-read-response.v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "operation",
+    "kind",
+    "status"
+  ],
+  "properties": {
+    "operation": {
+      "const": "bootstrap"
+    },
+    "kind": {
+      "const": "paios.public-operation.read.v1"
+    },
+    "status": {
+      "enum": [
+        "missing",
+        "in_flight",
+        "committed",
+        "failed",
+        "indeterminate"
+      ]
+    },
+    "outcome": {
+      "enum": [
+        "unknown",
+        "not_executed"
+      ]
+    },
+    "error_code": {
+      "type": "string",
+      "pattern": "^APPLE_ENROLLMENT_[A-Z_]+$"
+    },
+    "realtime_session_ref": {
+      "$ref": "https://personal-ai-os.local/contracts/realtime/realtime-bootstrap-response.v1.schema.json#/properties/realtime_session_ref"
+    },
+    "device_lease_ref": {
+      "$ref": "https://personal-ai-os.local/contracts/realtime/realtime-bootstrap-response.v1.schema.json#/properties/device_lease_ref"
+    },
+    "continuity_id": {
+      "$ref": "https://personal-ai-os.local/contracts/realtime/realtime-bootstrap-response.v1.schema.json#/properties/continuity_id"
+    },
+    "connection_epoch": {
+      "$ref": "https://personal-ai-os.local/contracts/realtime/realtime-bootstrap-response.v1.schema.json#/properties/connection_epoch"
+    },
+    "transport_aliases": {
+      "$ref": "https://personal-ai-os.local/contracts/realtime/realtime-bootstrap-response.v1.schema.json#/properties/transport_aliases"
+    },
+    "e2ee_key_envelope": {
+      "$ref": "https://personal-ai-os.local/contracts/realtime/realtime-bootstrap-response.v1.schema.json#/properties/e2ee_key_envelope"
+    },
+    "recipient_device_credential_ref": {
+      "$ref": "https://personal-ai-os.local/contracts/realtime/realtime-bootstrap-response.v1.schema.json#/$defs/RecipientDeviceCredentialRef"
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "status": {
+          "enum": [
+            "missing",
+            "in_flight",
+            "failed",
+            "indeterminate"
+          ]
+        }
+      },
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "realtime_session_ref"
+            ]
+          },
+          {
+            "required": [
+              "device_lease_ref"
+            ]
+          },
+          {
+            "required": [
+              "continuity_id"
+            ]
+          },
+          {
+            "required": [
+              "connection_epoch"
+            ]
+          },
+          {
+            "required": [
+              "recipient_device_credential_ref"
+            ]
+          },
+          {
+            "required": [
+              "transport_aliases"
+            ]
+          },
+          {
+            "required": [
+              "e2ee_key_envelope"
+            ]
+          },
+          {
+            "required": [
+              "error_code"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "properties": {
+        "status": {
+          "const": "committed"
+        }
+      },
+      "required": [
+        "error_code"
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "realtime_session_ref"
+            ]
+          },
+          {
+            "required": [
+              "device_lease_ref"
+            ]
+          },
+          {
+            "required": [
+              "continuity_id"
+            ]
+          },
+          {
+            "required": [
+              "connection_epoch"
+            ]
+          },
+          {
+            "required": [
+              "recipient_device_credential_ref"
+            ]
+          },
+          {
+            "required": [
+              "transport_aliases"
+            ]
+          },
+          {
+            "required": [
+              "e2ee_key_envelope"
+            ]
+          },
+          {
+            "required": [
+              "outcome"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "properties": {
+        "status": {
+          "const": "committed"
+        }
+      },
+      "required": [
+        "realtime_session_ref",
+        "device_lease_ref",
+        "continuity_id",
+        "connection_epoch",
+        "recipient_device_credential_ref",
+        "transport_aliases",
+        "e2ee_key_envelope"
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "error_code"
+            ]
+          },
+          {
+            "required": [
+              "outcome"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

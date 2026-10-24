@@ -1,0 +1,52 @@
+{
+  "cli": {
+    "running": {
+      "run_id": "controlled-run",
+      "session_id": "session",
+      "conversation_session_id": "session",
+      "status": "running",
+      "memory_write": false,
+      "approval_results": [],
+      "schema": "hermes.run.v2",
+      "shape_sha256": "f5ecab354c673aa7354730b9d1fa03ccedcc3d47fdb1ccd3b8383b89d4c749e8",
+      "profile_home": "/tmp/paios-fixture/native-profile"
+    },
+    "completed": {
+      "run_id": "controlled-run",
+      "session_id": "session",
+      "conversation_session_id": "session",
+      "status": "completed",
+      "memory_write": false,
+      "output": "controlled final reply",
+      "approval_results": [],
+      "schema": "hermes.run.v2",
+      "shape_sha256": "f5ecab354c673aa7354730b9d1fa03ccedcc3d47fdb1ccd3b8383b89d4c749e8",
+      "profile_home": "/tmp/paios-fixture/native-profile"
+    }
+  },
+  "tts": {
+    "running": {
+      "run_id": "fixture-run",
+      "session_id": "fixture-session",
+      "conversation_session_id": "fixture-session",
+      "status": "running",
+      "memory_write": false,
+      "approval_results": [],
+      "schema": "hermes.run.v2",
+      "shape_sha256": "f5ecab354c673aa7354730b9d1fa03ccedcc3d47fdb1ccd3b8383b89d4c749e8",
+      "profile_home": "/tmp/paios-fixture/native-profile"
+    },
+    "completed": {
+      "run_id": "fixture-run",
+      "session_id": "fixture-session",
+      "conversation_session_id": "fixture-session",
+      "status": "completed",
+      "memory_write": false,
+      "output": "这是固定测试原文，不是模型回答。",
+      "approval_results": [],
+      "schema": "hermes.run.v2",
+      "shape_sha256": "f5ecab354c673aa7354730b9d1fa03ccedcc3d47fdb1ccd3b8383b89d4c749e8",
+      "profile_home": "/tmp/paios-fixture/native-profile"
+    }
+  }
+}

@@ -1,0 +1,574 @@
+{
+  "version": 1,
+  "schema": "paios.desktop-tools.v1",
+  "tools": [
+    {
+      "name": "list_allowed_directories",
+      "title": "授权文件夹",
+      "description": "列出主人授权的文件夹、中文标签和写入权限。",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {},
+        "required": []
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "x-paios": {
+        "class": "read",
+        "timeout_ms": 10000
+      }
+    },
+    {
+      "name": "list_directory",
+      "title": "列出文件夹",
+      "description": "列出授权文件夹中的文件和子文件夹。",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "x-paios": {
+        "class": "read",
+        "timeout_ms": 30000
+      }
+    },
+    {
+      "name": "list_directory_with_sizes",
+      "title": "列出文件夹及大小",
+      "description": "列出授权文件夹中的文件、子文件夹和大小。",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "sortBy": {
+            "default": "name",
+            "description": "Sort entries by name or size",
+            "type": "string",
+            "enum": [
+              "name",
+              "size"
+            ]
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "x-paios": {
+        "class": "read",
+        "timeout_ms": 30000
+      }
+    },
+    {
+      "name": "search_files",
+      "title": "按名称搜索",
+      "description": "在授权文件夹中按名称通配搜索，最多返回500项。",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "excludePatterns": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "path",
+          "pattern"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "x-paios": {
+        "class": "read",
+        "timeout_ms": 30000
+      }
+    },
+    {
+      "name": "get_file_info",
+      "title": "文件信息",
+      "description": "读取授权文件或文件夹的大小、类型和时间。",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "x-paios": {
+        "class": "read",
+        "timeout_ms": 10000
+      }
+    },
+    {
+      "name": "read_text_file",
+      "title": "读取文本",
+      "description": "读取授权文本文件；结果最多256 KiB，较大文件请指定head或tail。",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "tail": {
+            "description": "If provided, returns only the last N lines of the file",
+            "type": "number"
+          },
+          "head": {
+            "description": "If provided, returns only the first N lines of the file",
+            "type": "number"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "x-paios": {
+        "class": "read",
+        "timeout_ms": 30000
+      }
+    },
+    {
+      "name": "find_files",
+      "title": "查找文件",
+      "description": "按关键词、类型和修改时间查找授权文件夹中的文件，最多500项。",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "folder": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "query": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "kinds": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "pdf",
+                "image",
+                "document",
+                "spreadsheet",
+                "presentation",
+                "text",
+                "archive"
+              ]
+            },
+            "uniqueItems": true
+          },
+          "modified_after": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "modified_before": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500
+          }
+        },
+        "required": [
+          "folder"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "x-paios": {
+        "class": "read",
+        "timeout_ms": 30000
+      }
+    },
+    {
+      "name": "extract_text",
+      "title": "提取文字",
+      "description": "在电脑本机提取PDF、图片和文档的文字，最多50000字。",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "pages": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "uniqueItems": true
+          },
+          "max_chars": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50000
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "x-paios": {
+        "class": "read",
+        "timeout_ms": 90000
+      }
+    },
+    {
+      "name": "create_directory",
+      "title": "新建文件夹",
+      "description": "在可写的授权文件夹中新建文件夹。",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "x-paios": {
+        "class": "write",
+        "timeout_ms": 30000
+      }
+    },
+    {
+      "name": "write_file",
+      "title": "写入文本",
+      "description": "写入授权文本文件，覆盖前保留撤销副本。",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "content"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "x-paios": {
+        "class": "write",
+        "timeout_ms": 30000
+      }
+    },
+    {
+      "name": "edit_file",
+      "title": "编辑文本",
+      "description": "编辑授权文本文件，修改前保留撤销副本。",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "edits": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "oldText": {
+                  "type": "string",
+                  "description": "Text to search for - must match exactly"
+                },
+                "newText": {
+                  "type": "string",
+                  "description": "Text to replace with"
+                }
+              },
+              "required": [
+                "oldText",
+                "newText"
+              ]
+            }
+          },
+          "dryRun": {
+            "default": false,
+            "description": "Preview changes using git-style diff format",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "edits"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "x-paios": {
+        "class": "write",
+        "timeout_ms": 30000
+      }
+    },
+    {
+      "name": "move_file",
+      "title": "移动或改名",
+      "description": "移动授权文件或改名；目标不得已存在。",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "destination": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "destination"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "x-paios": {
+        "class": "write",
+        "timeout_ms": 30000
+      }
+    },
+    {
+      "name": "trash",
+      "title": "移到废纸篓",
+      "description": "将最多50项授权文件移到废纸篓，可恢复；首次需要手机确认。",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "paths": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            }
+          }
+        },
+        "required": [
+          "paths"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "x-paios": {
+        "class": "trash",
+        "timeout_ms": 30000
+      }
+    },
+    {
+      "name": "upload_to_workshop",
+      "title": "上传到工坊",
+      "description": "将授权文件上传到离线工坊的/owner/in/，仅在任务需要原文件时使用。",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "x-paios": {
+        "class": "transfer",
+        "timeout_ms": 180000
+      }
+    },
+    {
+      "name": "save_from_workshop",
+      "title": "从工坊保存",
+      "description": "把离线工坊$OUT（/owner/out/<32位十六进制任务标识>/）中的文件保存到电脑，默认放在文稿/依米，覆盖前保留副本。",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "workshop_path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512,
+            "pattern": "^/owner/out/[0-9a-f]{32}/"
+          },
+          "folder": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "pattern": "^[^/\\u0000]+$"
+          }
+        },
+        "required": [
+          "workshop_path"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "x-paios": {
+        "class": "transfer",
+        "timeout_ms": 180000
+      }
+    },
+    {
+      "name": "window_capture",
+      "title": "查看共享窗口",
+      "description": "按问题查看主人当前共享的电脑窗口。只返回视觉分析和窗口信息，不保存截图。",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "question": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "window_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          }
+        },
+        "required": [
+          "question"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "x-paios": {
+        "class": "read",
+        "timeout_ms": 90000
+      }
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+/deploy/cloud/.env
+# Includes deploy/cloud/.local/secrets and deploy/cloud/.local/tls.
+.local/
+*.pem
+*.key
+*.jwk
+*.p12
+*.keystore
+node_modules/
+__pycache__/
+.build/
+.gradle/
+.scratch/
+.DS_Store

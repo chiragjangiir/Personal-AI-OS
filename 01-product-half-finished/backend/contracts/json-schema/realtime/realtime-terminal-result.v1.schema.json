@@ -1,0 +1,335 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-ai-os.local/contracts/realtime/realtime-terminal-result.v1.schema.json",
+  "title": "RealtimeTerminalResult",
+  "$comment": "Operation terminal result. DeliveryReceipt remains a separate T10 delivery/presentation report.",
+  "type": "object",
+  "required": [
+    "operation",
+    "status",
+    "request_id",
+    "continuity_id",
+    "operation_outcome",
+    "execution_facts",
+    "governance"
+  ],
+  "properties": {
+    "operation": {
+      "type": "string",
+      "enum": ["bootstrap", "connected_credential_refresh", "media_stop", "end_continuity", "realtime_e2ee_key_resolve", "handoff"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["success", "error", "cancelled", "expired", "revoked", "indeterminate"]
+    },
+    "request_id": {
+      "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/IdempotencyKey"
+    },
+    "realtime_session_ref": {
+      "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/CanonicalObjectVersionRef"
+    },
+    "device_lease_ref": {
+      "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/CanonicalObjectVersionRef"
+    },
+    "previous_device_lease_ref": {
+      "allOf": [
+        {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/CanonicalObjectVersionRef"
+        },
+        {
+          "properties": {
+            "ref_type": { "const": "DeviceLease" }
+          }
+        }
+      ]
+    },
+    "continuity_id": {
+      "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ContinuityId"
+    },
+    "connection_epoch": { "$ref": "#/$defs/ConnectionEpoch" },
+    "from_device_id": {
+      "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/DeviceId"
+    },
+    "to_device_id": {
+      "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/DeviceId"
+    },
+    "lease_version": { "$ref": "#/$defs/PositiveDecimal" },
+    "fencing_token": { "$ref": "#/$defs/PositiveDecimal" },
+    "old_device_suppression_fence": {
+      "$ref": "#/$defs/OldDeviceSuppressionFence"
+    },
+    "operation_outcome": {
+      "$ref": "https://personal-ai-os.local/contracts/common/outcome-error.v1.schema.json#/$defs/OperationOutcome"
+    },
+    "execution_facts": { "$ref": "#/$defs/ExecutionFacts" },
+    "governance": { "$ref": "#/$defs/GovernanceRefs" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "indeterminate" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "operation_outcome": {
+            "properties": { "outcome_class": { "const": "indeterminate" } }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "success" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "execution_facts": {
+            "not": {
+              "properties": {
+                "closure_status": { "enum": ["failed", "indeterminate"] }
+              },
+              "required": ["closure_status"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "operation": { "const": "handoff" } },
+        "required": ["operation"]
+      },
+      "then": {
+        "required": [
+          "realtime_session_ref",
+          "continuity_id",
+          "connection_epoch",
+          "from_device_id",
+          "to_device_id",
+          "previous_device_lease_ref"
+        ],
+        "properties": {
+          "realtime_session_ref": {
+            "allOf": [
+              {
+                "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/CanonicalObjectVersionRef"
+              },
+              {
+                "properties": {
+                  "ref_type": { "const": "RealtimeSession" }
+                }
+              }
+            ]
+          },
+          "device_lease_ref": {
+            "allOf": [
+              {
+                "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/CanonicalObjectVersionRef"
+              },
+              {
+                "properties": {
+                  "ref_type": { "const": "DeviceLease" }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "else": {
+        "not": {
+          "anyOf": [
+            { "required": ["previous_device_lease_ref"] },
+            { "required": ["from_device_id"] },
+            { "required": ["to_device_id"] },
+            { "required": ["lease_version"] },
+            { "required": ["fencing_token"] },
+            { "required": ["old_device_suppression_fence"] }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "allOf": [
+          {
+            "properties": { "operation": { "const": "handoff" } },
+            "required": ["operation"]
+          },
+          {
+            "properties": { "status": { "const": "success" } },
+            "required": ["status"]
+          }
+        ]
+      },
+      "then": {
+        "required": [
+          "device_lease_ref",
+          "lease_version",
+          "fencing_token",
+          "old_device_suppression_fence"
+        ],
+        "properties": {
+          "operation_outcome": {
+            "required": ["outcome_class"],
+            "properties": {
+              "outcome_class": { "const": "committed_success" }
+            }
+          },
+          "execution_facts": {
+            "required": ["closure_status", "evidence_refs", "device_lease_release"],
+            "properties": {
+              "closure_status": { "const": "verified_closed" },
+              "device_lease_release": { "const": "released" },
+              "evidence_refs": {
+                "type": "array",
+                "minItems": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "PositiveDecimal": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]{0,37}$"
+    },
+    "ConnectionEpoch": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]{0,37}$"
+    },
+    "OldDeviceSuppressionFence": {
+      "type": "object",
+      "required": [
+        "from_device_id",
+        "previous_device_lease_ref",
+        "new_device_lease_ref",
+        "connection_epoch",
+        "fencing_token",
+        "state"
+      ],
+      "properties": {
+        "from_device_id": {
+          "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/DeviceId"
+        },
+        "previous_device_lease_ref": {
+          "allOf": [
+            {
+              "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/CanonicalObjectVersionRef"
+            },
+            {
+              "properties": {
+                "ref_type": { "const": "DeviceLease" }
+              }
+            }
+          ]
+        },
+        "new_device_lease_ref": {
+          "allOf": [
+            {
+              "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/CanonicalObjectVersionRef"
+            },
+            {
+              "properties": {
+                "ref_type": { "const": "DeviceLease" }
+              }
+            }
+          ]
+        },
+        "connection_epoch": { "$ref": "#/$defs/ConnectionEpoch" },
+        "fencing_token": { "$ref": "#/$defs/PositiveDecimal" },
+        "state": { "const": "old_device_suppressed" }
+      },
+      "additionalProperties": false
+    },
+    "ExecutionFacts": {
+      "type": "object",
+      "required": ["closure_status"],
+      "properties": {
+        "closure_status": {
+          "type": "string",
+          "enum": ["not_applicable", "verified_closed", "failed", "indeterminate"]
+        },
+        "device_lease_release": {
+          "type": "string",
+          "enum": ["not_requested", "released", "already_released", "failed", "indeterminate"]
+        },
+        "participant_cleanup": {
+          "type": "string",
+          "enum": ["not_requested", "verified_absent", "failed", "indeterminate"]
+        },
+        "track_cleanup": {
+          "type": "string",
+          "enum": ["not_requested", "verified_absent", "failed", "indeterminate"]
+        },
+        "room_cleanup": {
+          "type": "string",
+          "enum": ["not_requested", "verified_absent", "failed", "indeterminate"]
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "https://personal-ai-os.local/contracts/common/evidence-reference.v1.schema.json#/$defs/EvidenceReference"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "GovernanceRefs": {
+      "type": "object",
+      "required": ["purpose_scopes", "policy_decision_refs", "capability_grant_refs"],
+      "properties": {
+        "purpose_scopes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "https://personal-ai-os.local/contracts/common/governance-context.v1.schema.json#/$defs/PurposeScope"
+          }
+        },
+        "consent_record_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ConsentRecordId"
+          }
+        },
+        "policy_decision_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/PolicyDecisionId"
+          }
+        },
+        "purpose_token_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/PurposeTokenId"
+          }
+        },
+        "capability_grant_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/CapabilityGrantId"
+          }
+        },
+        "audit_ref": {
+          "$ref": "https://personal-ai-os.local/contracts/common/governance-context.v1.schema.json#/$defs/AuditReference"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

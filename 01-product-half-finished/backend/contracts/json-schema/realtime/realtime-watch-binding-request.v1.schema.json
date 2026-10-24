@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-ai-os.local/contracts/realtime/realtime-watch-binding-request.v1.schema.json",
+  "type": "object",
+  "properties": {
+    "operation": {
+      "const": "watch_binding"
+    },
+    "action": {
+      "enum": [
+        "register",
+        "replace",
+        "revoke"
+      ]
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^\\S+$"
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^\\S+$"
+    },
+    "realtime_session_ref": {
+      "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/CanonicalObjectVersionRef"
+    },
+    "iphone_device_lease_ref": {
+      "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/CanonicalObjectVersionRef"
+    },
+    "expected_pair_version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,37})$"
+    },
+    "installation_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "ttl_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 86400
+    }
+  },
+  "required": [
+    "operation",
+    "action",
+    "request_id",
+    "idempotency_key",
+    "realtime_session_ref",
+    "iphone_device_lease_ref",
+    "expected_pair_version"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "action": {
+            "const": "revoke"
+          }
+        }
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "installation_id"
+              ]
+            },
+            {
+              "required": [
+                "ttl_seconds"
+              ]
+            }
+          ]
+        }
+      },
+      "else": {
+        "required": [
+          "installation_id",
+          "ttl_seconds"
+        ]
+      }
+    }
+  ]
+}

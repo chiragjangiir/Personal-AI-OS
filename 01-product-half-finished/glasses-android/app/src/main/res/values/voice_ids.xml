@@ -1,0 +1,6 @@
+<resources>
+    <item name="voice_status" type="id" />
+    <item name="voice_end_call" type="id" />
+    <item name="voice_mute" type="id" />
+    <item name="voice_local_wake" type="id" />
+</resources>

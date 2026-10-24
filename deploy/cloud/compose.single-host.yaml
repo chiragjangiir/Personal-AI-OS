@@ -1,0 +1,78 @@
+# First-run overrides of the existing services. Private production uses compose.yaml alone.
+services:
+  gateway:
+    profiles: [single-host]
+    environment:
+      PAIOS_OWNER_MAC_ROOT: ${PAIOS_SINGLE_HOST_MAC_ROOT:-}
+      PERSONAL_AIOS_VOICE_ENROLLMENT_CONVERSATION: "0"
+    volumes: !override
+      - ${PAIOS_SECRETS_DIR:?}:/run/secrets:ro
+      - owner-data:/var/lib/paios
+      - desktop-in:/var/lib/paios/desktop-in
+      - desktop-out:/var/lib/paios/desktop-out:ro
+      - errands:/var/lib/paios/state/errands
+      - hermes-home:/opt/data:ro
+      - models:/opt/models:ro
+      - ./.build/production.json:/etc/paios/cloud.json:ro
+    healthcheck:
+      test: [CMD, python3, -c, "import os,urllib.request; [urllib.request.urlopen('http://127.0.0.1:'+os.environ[p]+path, timeout=3).read() for p,path in [('PAIOS_GATEWAY_PORT','/healthz'),('PAIOS_INTEGRATION_PORT','/health')]]"]
+      interval: 10s
+      timeout: 8s
+      start_period: 60s
+      retries: 12
+  hermes:
+    profiles: [single-host]
+    environment:
+      PAIOS_DEPLOYMENT: single-host
+      PAIOS_PHONE_PROVIDER: ${PAIOS_PHONE_PROVIDER:-off}
+      PAIOS_ENABLE_MIHOME: ${PAIOS_ENABLE_MIHOME:-0}
+      PAIOS_ENABLE_OWNER_MAC: ${PAIOS_ENABLE_OWNER_MAC:-0}
+      PAIOS_ENABLE_WECHAT: ${PAIOS_ENABLE_WECHAT:-0}
+      PAIOS_RELEASE_SPOOL: ""
+    volumes: !override
+      - ${PAIOS_SECRETS_DIR:?}:/run/secrets:ro
+      - hermes-home:/opt/data
+      - workshop-access:/run/workshop-access
+      - errands:/var/lib/paios/state/errands
+      - ./.build/production.json:/etc/paios/cloud.json:ro
+      - ./.build/models.json:/etc/paios/models.json:ro
+  front:
+    profiles: [single-host]
+    healthcheck:
+      test: [CMD, bash, -ec, "exec 3<>/dev/tcp/127.0.0.1/443"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+  postgres:
+    profiles: [single-host]
+  livekit:
+    profiles: [single-host]
+    healthcheck:
+      test: [CMD, wget, -Y, "off", -q, -O, /dev/null, "http://127.0.0.1:${PAIOS_LIVEKIT_SIGNAL_PORT:-7880}/"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+  workshop:
+    profiles: [single-host]
+  workshop-link:
+    profiles: [single-host]
+    healthcheck:
+      test: [CMD, python3, -c, "import socket; socket.create_connection(('127.0.0.1',2222),timeout=2).close()"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+  cold-webdav:
+    profiles: [cold-storage]
+  owner-mac-relay:
+    profiles: [owner-mac]
+  owner-mac-visitor:
+    profiles: [owner-mac]
+  release-watchdog:
+    profiles: [self-repair]
+volumes:
+  desktop-out:
+    driver_opts: !reset {}
+  workshop-data:
+    driver_opts: !reset {}
+  workshop-snapshots:
+    driver_opts: !reset {}

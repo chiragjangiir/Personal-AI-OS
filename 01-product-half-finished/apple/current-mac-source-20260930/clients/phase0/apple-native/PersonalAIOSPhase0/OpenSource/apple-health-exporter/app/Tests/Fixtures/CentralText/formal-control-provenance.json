@@ -1,0 +1,8 @@
+{
+  "scope": "actual synthetic POSIX owners with original injected native stub; no model/device",
+  "producer_sha256": "ba7b654670b69d4bbeafe2c18b840c859080cc186ec006bfdf67c213ee055c7f",
+  "schema_sha256": "f4963e82c760a0816f1f1f0eec894d684239a52e406cdeaf086b8026c5c628c2",
+  "fixture_sha256": "9e4aa2a22718a44eaec80769a46196781ae5201e841cc11df4fbdbf9df05dc73",
+  "run_log_sha256": "4722d0da9893681bf25a97b74eaac829d50100edafdfd1f877e841da2bdadc93",
+  "prior_seal_sha256": "e5695cc3c9d9d39b7e6272500cd9cbdfc84fb4ae7d062f08cc2139a194ab8b7c"
+}

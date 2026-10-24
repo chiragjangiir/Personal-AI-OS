@@ -1,0 +1,4 @@
+/build/
+
+# Pinned official SDK, prepared by scripts/prepare-artc.sh
+.vendor/

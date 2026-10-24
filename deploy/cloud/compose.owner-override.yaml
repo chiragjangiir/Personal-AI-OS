@@ -1,0 +1,16 @@
+# Add this fragment after provisioning the optional owner-override secret.
+services:
+  gateway:
+    volumes:
+      - type: bind
+        source: ${PAIOS_SECRETS_DIR:?}/owner-override.json
+        target: /run/secrets/owner-override.json
+        read_only: true
+        bind: {create_host_path: false}
+  gateway-staging:
+    volumes:
+      - type: bind
+        source: ${PAIOS_STAGING_SECRETS_DIR:?}/owner-override.json
+        target: /run/secrets/owner-override.json
+        read_only: true
+        bind: {create_host_path: false}

@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>ai.paios.personal.phase0.refresh</string>
+	</array>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>zh_CN</string>
+	<key>CFBundleDisplayName</key>
+	<string>依米</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>zh_CN</string>
+	</array>
+	<key>CFBundleName</key>
+	<string>依米</string>
+	<key>CFBundlePackageType</key>
+	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>ai.paios.personal.phase0</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>paios</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>shortcuts</string>
+	</array>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSContactsUsageDescription</key>
+	<string>依米只读取你授权联系人的姓名、电话号码、号码标签及联系人卡片中指向相关人的关系。数据通过加密连接发送到你配对的 Mac，供你查找联系人和联系他人。不会修改通讯录，也不会读取邮箱、地址或备注。</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>用 Face ID 解锁依米、确认付款设置，以及确认刚才这句话是你说的</string>
+	<key>PaymentResponseTimeoutSeconds</key>
+	<real>30</real>
+	<key>NSCameraUsageDescription</key>
+	<string>仅在你明确开启相机后，为个人 AI 助手采集前台视频。</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>依米只读取你授权的睡眠与阶段、全天心率、静息心率、心率变异性、呼吸、血氧、步数、活动能量、训练、跌倒、步行稳定性及腕温和体温。记录通过加密连接发送到你配对的 Mac，用于日常健康上下文，不用于医疗诊断。依米不会写入健康 App。</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>用于连接局域网中的 PAIOS 个人 AI 服务器。</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>开启位置后，依米用当前位置回答问题；骑行或导航时获取精确位置并在后台更新。随身模式或眼镜导航待命时，以低精度为主，移动后更新并定时补充定位，让你不用拿出手机就能在眼镜上开始导航。</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>配对眼镜后，依米在后台以低精度位置更新保持导航待命；你在眼镜上说导航时，再获取精确位置开始。开启“让依米了解我常去的地方”后，也会记录到访及地点进出，历史保留 90 天，你可以随时让依米忘记。</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>仅在你按住说话、通话、录入声音或开启随身模式时，为依米采集语音。</string>
+	<key>NSMotionUsageDescription</key>
+	<string>依米在骑行时使用运动传感器估算口袋踏频和累计爬升。</string>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>fetch</string>
+		<string>location</string>
+	</array>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>YimLaunchBackground</string>
+		<key>UIImageName</key>
+		<string>YimLaunch</string>
+	</dict>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+		<string>healthkit</string>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+</dict>
+</plist>

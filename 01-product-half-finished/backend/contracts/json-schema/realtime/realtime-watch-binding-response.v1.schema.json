@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-ai-os.local/contracts/realtime/realtime-watch-binding-response.v1.schema.json",
+  "type": "object",
+  "required": [
+    "operation",
+    "binding"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "operation": {
+      "const": "watch_binding"
+    },
+    "binding": {
+      "type": "object",
+      "required": [
+        "bindingId",
+        "canonicalPayloadSha256",
+        "expiresAt",
+        "idempotencyKey",
+        "iphone",
+        "issuedAt",
+        "kind",
+        "objectVersion",
+        "realtimeSessionRef",
+        "requestFingerprintSha256",
+        "requestId",
+        "watch",
+        "pairVersion",
+        "installationId",
+        "userId",
+        "principalRef",
+        "status"
+      ],
+      "properties": {
+        "bindingId": {},
+        "canonicalPayloadSha256": {},
+        "expiresAt": {},
+        "idempotencyKey": {},
+        "iphone": {},
+        "issuedAt": {},
+        "kind": {
+          "const": "t02.apple.watch-binding.v1"
+        },
+        "objectVersion": {},
+        "realtimeSessionRef": {},
+        "requestFingerprintSha256": {},
+        "requestId": {},
+        "watch": {},
+        "pairVersion": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,37}$"
+        },
+        "installationId": {},
+        "userId": {},
+        "principalRef": {},
+        "status": {
+          "enum": [
+            "active",
+            "revoked"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

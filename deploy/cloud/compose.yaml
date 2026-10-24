@@ -1,0 +1,533 @@
+name: ${PAIOS_PROJECT:-paios}
+x-common: &common
+  restart: unless-stopped
+  init: true
+  logging:
+    driver: json-file
+    options: {max-size: "10m", max-file: "3"}
+x-env: &env
+  PAIOS_INTEGRATION_PORT: ${PAIOS_INTEGRATION_PORT:-18661}
+  PAIOS_HERMES_PORT: ${PAIOS_HERMES_PORT:-18662}
+  PAIOS_GATEWAY_PORT: ${PAIOS_GATEWAY_PORT:-8787}
+  PAIOS_POSTGRES_PORT: ${PAIOS_POSTGRES_PORT:-5432}
+  PAIOS_LIVEKIT_SIGNAL_PORT: ${PAIOS_LIVEKIT_SIGNAL_PORT:-7880}
+  PAIOS_DASHSCOPE_ENDPOINT: ${PAIOS_DASHSCOPE_ENDPOINT:-}
+  PAIOS_CONFIG_ROOT: /etc/paios
+  PAIOS_DATA_ROOT: /var/lib/paios
+  PAIOS_SECRET_ROOT: /run/secrets
+  PAIOS_MODEL_ROOT: /opt/models
+  PAIOS_OWNER_MAC_ROOT: /run/owner-mac
+  PAIOS_OWNER_MAC_RELAY_FILE: /run/secrets/owner-mac-relay.json
+  PAIOS_PUBLIC_API_URL: ${PAIOS_PUBLIC_API_URL:-https://${PAIOS_PUBLIC_HOST:?}:${PAIOS_TLS_PORT:-9443}}
+  PAIOS_LEGACY_PUBLIC_API_URLS: ${PAIOS_LEGACY_PUBLIC_API_URLS:-}
+  PAIOS_LIVEKIT_URL: ${PAIOS_LIVEKIT_URL:-wss://${PAIOS_PUBLIC_HOST:?}:${PAIOS_TLS_PORT:-9443}}
+  PAIOS_LIVEKIT_API_URL: ${PAIOS_LIVEKIT_API_URL:-http://127.0.0.1:${PAIOS_LIVEKIT_SIGNAL_PORT:-7880}}
+  # Every shipped feature is enabled. "0" in the env file turns familiarity enrollment through calls off.
+  PERSONAL_AIOS_VOICE_ENROLLMENT_CONVERSATION: ${PERSONAL_AIOS_VOICE_ENROLLMENT_CONVERSATION:-1}
+  PAIOS_AVATAR_URL: ${PAIOS_AVATAR_URL:-}
+  PAIOS_APPEARANCE_PRICING: ${PAIOS_APPEARANCE_PRICING:-}
+  PAIOS_APPEARANCE_IMAGE_DIR: ${PAIOS_APPEARANCE_IMAGE_DIR:-}
+  # glibc: two arenas, so freed video/audio frame buffers are reused instead of piling up in per-thread arenas
+  # (Retained frame buffers left RSS ~1.44 GiB after a loaded call and the next call hit the 1728 MiB cap). No fixed
+  # MALLOC_MMAP_THRESHOLD_: it disables the dynamic threshold, so every frame buffer became an mmap/munmap pair
+  # (33k-130k page faults/s and ~30 % system CPU can starve call audio).
+  MALLOC_ARENA_MAX: "2"
+x-hermes-env: &hermes-env
+  PAIOS_INTEGRATION_PORT: ${PAIOS_INTEGRATION_PORT:-18661}
+  PAIOS_HERMES_PORT: ${PAIOS_HERMES_PORT:-18662}
+  PAIOS_PHONE_PROVIDER: ${PAIOS_PHONE_PROVIDER:-agentbay}
+  HERMES_HOME: /opt/data
+  HERMES_UID: "10000"
+  HERMES_GID: "10000"
+  HERMES_DASHBOARD: "0"
+  PAIOS_WORKSHOP_HOST: workshop-link
+  HERMES_WRITE_SAFE_ROOT: /workshop
+  PAIOS_PRODUCT_CONFIG: /etc/paios/cloud.json
+  PAIOS_SECRET_ROOT: /run/secrets
+# cgroup v2: omit mem_swappiness (v1 only). memswap_limit is RAM + swap.
+# Only Hermes/workshop/PostgreSQL and the OpenList overlay may page.
+services:
+  cold-webdav:
+    extends: {file: compose.archive.yaml, service: cold-webdav}
+  release-watchdog: &release-watchdog
+    <<: *common
+    profiles: [production]
+    image: ${PAIOS_WATCHDOG_IMAGE:-paios-watchdog:local}
+    init: false
+    network_mode: service:front
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [DAC_READ_SEARCH]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 32m
+    memswap_limit: 32m
+    cpus: 0.25
+    pids_limit: 32
+    tmpfs: [/tmp:size=1m]
+    environment:
+      PAIOS_WATCHDOG_PROFILE: production
+      PAIOS_GATEWAY_PORT: ${PAIOS_GATEWAY_PORT:-8787}
+      PAIOS_INTEGRATION_PORT: ${PAIOS_INTEGRATION_PORT:-18661}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${PAIOS_RELEASE_ROOT:-/srv/paios/release-10-18}:${PAIOS_RELEASE_ROOT:-/srv/paios/release-10-18}
+      - ${PAIOS_WATCHDOG_STATE_DIR:-/var/lib/paios/${PAIOS_PROJECT:-paios}/release-watchdog}:/watchdog
+      - ${PAIOS_SECRETS_DIR:?}/hermes-internal.key:/run/secrets/hermes-internal.key:ro
+  release-watchdog-staging:
+    <<: *release-watchdog
+    profiles: [staging]
+    network_mode: service:front-staging
+    environment:
+      PAIOS_WATCHDOG_PROFILE: staging
+      PAIOS_GATEWAY_PORT: ${PAIOS_GATEWAY_PORT:-8787}
+      PAIOS_INTEGRATION_PORT: ${PAIOS_INTEGRATION_PORT:-18661}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${PAIOS_RELEASE_ROOT:-/srv/paios/release-10-18}:${PAIOS_RELEASE_ROOT:-/srv/paios/release-10-18}
+      - ${PAIOS_WATCHDOG_STAGING_STATE_DIR:-/var/lib/paios/${PAIOS_PROJECT:-paios}/release-watchdog-staging}:/watchdog
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/hermes-internal.key:/run/secrets/hermes-internal.key:ro
+  # Optional forwarding for configured legacy client origins.
+  frpc:
+    <<: *common
+    profiles: [edge-forward]
+    image: fatedier/frpc:v0.70.1
+    user: "10000:10000"
+    # Gateway has no bridge endpoint: both peers use front's loopback.
+    network_mode: service:front
+    command: [-c, /etc/frp/frpc.toml]
+    mem_limit: 64m
+    memswap_limit: 64m
+    cpus: 0.25
+    oom_score_adj: -500
+    volumes:
+      - ./frpc.toml:/etc/frp/frpc.toml:ro
+      - ${PAIOS_SECRETS_DIR:?}/frp-token:/run/secrets/frp-token:ro
+    depends_on:
+      gateway: {condition: service_started}
+  # Owner-Mac relay: Macs dial wss://<public host>/~!frp through the front; the visitor dials it on this loopback.
+  owner-mac-relay: &owner-mac-relay
+    <<: *common
+    profiles: [production]
+    image: fatedier/frps:v0.70.1
+    user: "10000:10000"
+    network_mode: service:front
+    command: [-c, /etc/frp/frps.toml]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 64m
+    memswap_limit: 64m
+    cpus: 0.25
+    volumes:
+      - ${PAIOS_SECRETS_DIR:?}/owner-mac-frps.toml:/etc/frp/frps.toml:ro
+  owner-mac-visitor: &owner-mac-visitor
+    <<: *common
+    profiles: [production]
+    image: fatedier/frpc:v0.70.1
+    user: "10000:10000"
+    network_mode: service:front
+    command: [-c, /run/owner-mac/frpc.toml]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 64m
+    memswap_limit: 64m
+    cpus: 0.25
+    volumes:
+      - ${PAIOS_SECRETS_DIR:?}/owner-mac:/run/owner-mac:ro
+  gateway:
+    cgroup: private # self observations see only this service
+    <<: *common
+    profiles: [production]
+    stop_grace_period: 120s # 105s shared drain/release budget plus 15s supervisor margin
+    image: ${PAIOS_GATEWAY_IMAGE:?}
+    network_mode: service:front
+    environment:
+      <<: *env
+      # glibc gives each native thread (ONNX, WebRTC, tokio) its own ~64 MiB arena that is never returned:
+      # accumulated arenas can drive the gateway to its limit. Two arenas bound it.
+      MALLOC_ARENA_MAX: "2"
+    # 2304m: two calls, camera and archive can exceed 1728m. 3 CPUs: at 2.0 a video call alone
+    # was CFS-throttled several times a second on an otherwise idle 4-vCPU host, stalling every thread, the call's
+    # paced audio included, for tens of ms.
+    mem_limit: 2304m
+    memswap_limit: 2304m
+    cpus: 3.0
+    oom_score_adj: -500 # real-time path: a host-wide OOM takes background services first
+    volumes:
+      - ${PAIOS_SECRETS_DIR:?}/owner-mac-relay.json:/run/secrets/owner-mac-relay.json:ro
+      - ${PAIOS_SECRETS_DIR:?}/owner-mac:/run/owner-mac
+      - type: bind
+        source: ${PAIOS_SECRETS_DIR:?}/cold-webdav.password
+        target: /run/secrets/cold-webdav.password
+        read_only: true
+        bind: {create_host_path: false}
+      - owner-data:/var/lib/paios
+      - desktop-in:/var/lib/paios/desktop-in
+      - desktop-out:/var/lib/paios/desktop-out:ro
+      - errands:/var/lib/paios/state/errands
+      - hermes-home:/opt/data:ro
+      - models:/opt/models:ro
+      - ./.build/production.json:/etc/paios/cloud.json:ro
+      - ${PAIOS_SECRETS_DIR:?}/postgres.password:/run/secrets/postgres.password:ro
+      - ${PAIOS_SECRETS_DIR:?}/livekit-api-key:/run/secrets/livekit-api-key:ro
+      - ${PAIOS_SECRETS_DIR:?}/livekit-api-secret:/run/secrets/livekit-api-secret:ro
+      - ${PAIOS_SECRETS_DIR:?}/proxy-attestation:/run/secrets/proxy-attestation:ro
+      - ${PAIOS_SECRETS_DIR:?}/e2ee-root-key:/run/secrets/e2ee-root-key:ro
+      - ${PAIOS_SECRETS_DIR:?}/hermes-api.key:/run/secrets/hermes-api.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/hermes-internal.key:/run/secrets/hermes-internal.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/payment-executor.key:/run/secrets/payment-executor.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/dashscope.key:/run/secrets/dashscope.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/vidu.key:/run/secrets/vidu.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/voiceprint.key:/run/secrets/voiceprint.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/bark-device:/run/secrets/bark-device:ro
+      - ${PAIOS_SECRETS_DIR:?}/bark-key:/run/secrets/bark-key:ro
+      - ${PAIOS_SECRETS_DIR:?}/amap.key:/run/secrets/amap.key:ro
+    depends_on:
+      hermes: {condition: service_healthy}
+      postgres: {condition: service_healthy}
+  hermes:
+    cgroup: private # self observations see only this service
+    <<: *common
+    profiles: [production]
+    init: false # upstream s6 must own PID1
+    image: ${PAIOS_HERMES_IMAGE:?}
+    network_mode: service:front
+    environment:
+      <<: *hermes-env
+      PAIOS_AGENTBAY_IMAGE: ${PAIOS_AGENTBAY_IMAGE:-}
+      PAIOS_AGENTBAY_CONTEXT_PREFIX: ${PAIOS_AGENTBAY_CONTEXT_PREFIX:-paios-app-}
+      # 依米's 「改回去」 requests and production's repair receipts (release.py ship); production only.
+      PAIOS_RELEASE_SPOOL: /srv/release-spool
+    # 1024m: a 768m limit exhausted its 256 MiB swap; allow room for
+    # up to three in-process delegations. Background service: it may swap, and a host-wide OOM may pick it first.
+    mem_limit: 1024m
+    memswap_limit: 1280m # RAM + 256 MiB swap; background agent state
+    cpus: 1.0
+    volumes:
+      - ${PAIOS_SECRETS_DIR:?}/owner-mac:/run/owner-mac:ro
+      - hermes-home:/opt/data
+      - ${PAIOS_RELEASE_SPOOL_DIR:-/srv/paios/release-spool}:/srv/release-spool
+      - workshop-access:/run/workshop-access
+      - errands:/var/lib/paios/state/errands
+      - ./.build/production.json:/etc/paios/cloud.json:ro
+      - ${PAIOS_SECRETS_DIR:?}/amap.key:/run/secrets/amap.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/hermes-api.key:/run/secrets/hermes-api.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/hermes-internal.key:/run/secrets/hermes-internal.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/payment-executor.key:/run/secrets/payment-executor.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/deepseek.key:/run/secrets/deepseek.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/siliconflow.key:/run/secrets/siliconflow.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/tavily.key:/run/secrets/tavily.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/agentbay.key:/run/secrets/agentbay.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/agentbay.adbkey:/run/secrets/agentbay.adbkey:ro
+      - ${PAIOS_SECRETS_DIR:?}/agentbay.adbkey.pub:/run/secrets/agentbay.adbkey.pub:ro
+    healthcheck:
+      test: [CMD, /opt/hermes/.venv/bin/python, -c, "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:'+os.environ['PAIOS_HERMES_PORT']+'/health', timeout=3).read()"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 6
+  workshop: &workshop
+    <<: *common
+    profiles: [production]
+    image: ${PAIOS_WORKSHOP_IMAGE:?}
+    networks: [workshop]
+    environment: {PAIOS_WORKSHOP_DENY_HOSTS: "${PAIOS_WORKSHOP_DENY_HOSTS:?render production.public.env first}"}
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN, SYS_ADMIN, SETPCAP, SETUID, SETGID, SYS_CHROOT, CHOWN, FOWNER, DAC_OVERRIDE, AUDIT_WRITE, KILL]
+    security_opt: [no-new-privileges:true, apparmor:unconfined]
+    sysctls: {net.ipv6.conf.all.disable_ipv6: "1", net.ipv6.conf.default.disable_ipv6: "1"}
+    mem_limit: 256m
+    memswap_limit: 384m # RAM + 128 MiB swap; bounded build bursts
+    cpus: 0.5
+    oom_score_adj: 500 # sandboxed builds go first under host-wide pressure
+    pids_limit: 128
+    tmpfs: [/run, /tmp]
+    healthcheck:
+      test: [CMD, python3, -c, "import socket; socket.create_connection(('127.0.0.1',2222),timeout=2).close()"]
+      interval: 10s
+      timeout: 3s
+      start_period: 10s
+      retries: 6
+    volumes:
+      - workshop-data:/workshop
+      - workshop-snapshots:/srv/workshop-snapshots
+      - desktop-in:/srv/owner/in:ro
+      - desktop-out:/srv/owner/out
+      - ./.build/production.json:/srv/owner/config.json:ro
+      - workshop-ssh:/var/lib/workshop-ssh
+      - workshop-access:/run/workshop-access:ro
+      - ${PAIOS_SECRETS_DIR:?}/workshop-public-ipv4:/run/workshop-public-ipv4:ro
+  workshop-link: &workshop-link
+    <<: *common
+    profiles: [production]
+    image: ${PAIOS_WORKSHOP_IMAGE:?}
+    networks: [default, workshop]
+    depends_on:
+      workshop: {condition: service_started}
+    entrypoint: [socat]
+    command: ["TCP4-LISTEN:2222,fork,reuseaddr", "TCP4:workshop:2222"]
+    user: "65534:65534"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    sysctls: {net.ipv4.ip_forward: "0"}
+    mem_limit: 16m
+    memswap_limit: 16m
+    cpus: 0.1
+    pids_limit: 32
+  postgres:
+    <<: *common
+    profiles: [production]
+    image: ${PAIOS_POSTGRES_IMAGE:?}
+    # Independent bridge namespace avoids gateway -> postgres dependency cycle.
+    environment:
+      POSTGRES_USER: paios_mac_app
+      POSTGRES_DB: paios_mac_product
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres.password
+    mem_limit: 192m
+    memswap_limit: 256m # RAM + 64 MiB swap; cold database pages
+    cpus: 0.5
+    command: [postgres, -p, "${PAIOS_POSTGRES_PORT:-5432}", -c, shared_buffers=32MB, -c, work_mem=2MB, -c, max_connections=30]
+    volumes:
+      - postgres:/var/lib/postgresql
+      - ${PAIOS_SECRETS_DIR:?}/postgres.password:/run/secrets/postgres.password:ro
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -p ${PAIOS_POSTGRES_PORT:-5432} -U paios_mac_app -d paios_mac_product"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+  livekit:
+    <<: *common
+    profiles: [production]
+    image: ${PAIOS_LIVEKIT_IMAGE:?}
+    network_mode: service:front
+    command: [--config, /run/secrets/livekit.yaml]
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpus: 0.5
+    oom_score_adj: -500
+    volumes:
+      - ${PAIOS_SECRETS_DIR:?}/livekit.yaml:/run/secrets/livekit.yaml:ro
+      - ${PAIOS_TLS_DIR:?}:/etc/paios-tls:ro
+  front:
+    <<: *common
+    # The default network carries the published TLS/WebRTC/TURN ports, so it must keep the default route. With
+    # equal priorities the cold bridge can take it and route device replies incorrectly, causing ICE failures.
+    networks:
+      default: {gw_priority: 1}
+      cold: {}
+    profiles: [production]
+    image: ${PAIOS_FRONT_IMAGE:?}
+    mem_limit: 32m
+    memswap_limit: 32m
+    cpus: 0.25
+    oom_score_adj: -500
+    ports:
+      - "${PAIOS_TLS_PORT:-9443}:443"
+      - "${PAIOS_RTC_TCP_PORT:-7881}:${PAIOS_RTC_TCP_PORT:-7881}/tcp"
+      - "${PAIOS_RTC_UDP_PORT:-7882}:${PAIOS_RTC_UDP_PORT:-7882}/udp"
+      - "${PAIOS_TURN_UDP_PORT:-3478}:${PAIOS_TURN_UDP_PORT:-3478}/udp"
+      - "${PAIOS_TURN_TLS_PORT:-5349}:${PAIOS_TURN_TLS_PORT:-5349}/tcp"
+      - "${PAIOS_TURN_RELAY_START:-25600}-${PAIOS_TURN_RELAY_END:-25699}:${PAIOS_TURN_RELAY_START:-25600}-${PAIOS_TURN_RELAY_END:-25699}/udp"
+    volumes:
+      - ${PAIOS_SECRETS_DIR:?}/nginx-attestation.conf:/run/secrets/nginx-attestation.conf:ro
+      - ./.build/front.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./.build/paios_roaming_guard.js:/etc/paios-roaming/paios_roaming_guard.js:ro
+      - ${PAIOS_TLS_DIR:?}:/etc/paios-tls:ro
+  owner-mac-relay-staging:
+    <<: *owner-mac-relay
+    profiles: [staging]
+    network_mode: service:front-staging
+    volumes:
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/owner-mac-frps.toml:/etc/frp/frps.toml:ro
+  owner-mac-visitor-staging:
+    <<: *owner-mac-visitor
+    profiles: [staging]
+    network_mode: service:front-staging
+    volumes:
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/owner-mac:/run/owner-mac:ro
+  gateway-staging:
+    cgroup: private # self observations see only this service
+    <<: *common
+    profiles: [staging]
+    image: ${PAIOS_GATEWAY_IMAGE:?}
+    network_mode: service:front-staging
+    environment:
+      <<: *env
+      PAIOS_STAGE: staging
+      PAIOS_PUBLIC_API_URL: ${PAIOS_STAGING_PUBLIC_API_URL:?render production.public.env first}
+      PAIOS_LEGACY_PUBLIC_API_URLS: ""
+      PAIOS_LIVEKIT_URL: ${PAIOS_STAGING_LIVEKIT_URL:?render production.public.env first}
+      PAIOS_LIVEKIT_API_URL: http://127.0.0.1:${PAIOS_LIVEKIT_SIGNAL_PORT:-7880}
+    # 1792m: the 3-call qualification load peaked at 1568 MiB and production at 1681 MiB.
+    mem_limit: 1792m
+    memswap_limit: 1792m
+    cpus: 0.7
+    oom_score_adj: -500
+    command: [node, 01-product-half-finished/backend/phase0/gateway/src/rayneo-persistent-production-entrypoint.ts, --execution-owner, hermes_text, --config, /etc/paios/cloud.json]
+    volumes:
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/owner-mac-relay.json:/run/secrets/owner-mac-relay.json:ro
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/owner-mac:/run/owner-mac
+      - owner-data-staging:/var/lib/paios
+      - errands-staging:/var/lib/paios/state/errands
+      - desktop-in-staging:/var/lib/paios/desktop-in
+      - desktop-out-staging:/var/lib/paios/desktop-out:ro
+      - hermes-home-staging:/opt/data:ro
+      - models:/opt/models:ro
+      - ./.build/staging.json:/etc/paios/cloud.json:ro
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/postgres.password:/run/secrets/postgres.password:ro
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/livekit-api-key:/run/secrets/livekit-api-key:ro
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/livekit-api-secret:/run/secrets/livekit-api-secret:ro
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/proxy-attestation:/run/secrets/proxy-attestation:ro
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/e2ee-root-key:/run/secrets/e2ee-root-key:ro
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/hermes-api.key:/run/secrets/hermes-api.key:ro
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/hermes-internal.key:/run/secrets/hermes-internal.key:ro
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/payment-executor.key:/run/secrets/payment-executor.key:ro
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/dashscope.key:/run/secrets/dashscope.key:ro
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/voiceprint.key:/run/secrets/voiceprint.key:ro
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/amap.key:/run/secrets/amap.key:ro
+    depends_on:
+      hermes-staging: {condition: service_healthy}
+      postgres-staging: {condition: service_healthy}
+  hermes-staging:
+    cgroup: private # self observations see only this service
+    <<: *common
+    profiles: [staging]
+    init: false
+    image: ${PAIOS_HERMES_IMAGE:?}
+    network_mode: service:front-staging
+    environment:
+      <<: *hermes-env
+      PAIOS_STAGE: staging
+      PAIOS_WORKSHOP_HOST: workshop-link-staging
+    mem_limit: 1024m
+    memswap_limit: 1280m # RAM + 256 MiB swap; background agent state
+    cpus: 0.7
+    volumes:
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/owner-mac:/run/owner-mac:ro
+      - hermes-home-staging:/opt/data
+      - workshop-access-staging:/run/workshop-access
+      - errands-staging:/var/lib/paios/state/errands
+      - ./.build/staging.json:/etc/paios/cloud.json:ro
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/amap.key:/run/secrets/amap.key:ro
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/hermes-api.key:/run/secrets/hermes-api.key:ro
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/hermes-internal.key:/run/secrets/hermes-internal.key:ro
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/payment-executor.key:/run/secrets/payment-executor.key:ro
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/deepseek.key:/run/secrets/deepseek.key:ro
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/siliconflow.key:/run/secrets/siliconflow.key:ro
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/tavily.key:/run/secrets/tavily.key:ro
+    healthcheck:
+      test: [CMD, /opt/hermes/.venv/bin/python, -c, "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:'+os.environ['PAIOS_HERMES_PORT']+'/health', timeout=3).read()"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 6
+  workshop-staging:
+    <<: *workshop
+    profiles: [staging]
+    environment: {PAIOS_WORKSHOP_DENY_HOSTS: "${PAIOS_WORKSHOP_DENY_HOSTS:?render production.public.env first}"}
+    networks: [workshop-staging]
+    volumes:
+      - workshop-data-staging:/workshop
+      - workshop-snapshots-staging:/srv/workshop-snapshots
+      - desktop-in-staging:/srv/owner/in:ro
+      - desktop-out-staging:/srv/owner/out
+      - ./.build/staging.json:/srv/owner/config.json:ro
+      - workshop-ssh-staging:/var/lib/workshop-ssh
+      - workshop-access-staging:/run/workshop-access:ro
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/workshop-public-ipv4:/run/workshop-public-ipv4:ro
+  workshop-link-staging:
+    <<: *workshop-link
+    profiles: [staging]
+    networks: [default, workshop-staging]
+    depends_on:
+      workshop-staging: {condition: service_started}
+    command: ["TCP4-LISTEN:2222,fork,reuseaddr", "TCP4:workshop-staging:2222"]
+  postgres-staging:
+    <<: *common
+    profiles: [staging]
+    image: ${PAIOS_POSTGRES_IMAGE:?}
+    environment:
+      POSTGRES_USER: paios_mac_app
+      POSTGRES_DB: paios_mac_product
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres.password
+    mem_limit: 192m
+    memswap_limit: 256m # RAM + 64 MiB swap; cold database pages
+    cpus: 0.3
+    command: [postgres, -p, "${PAIOS_POSTGRES_PORT:-5432}", -c, shared_buffers=32MB, -c, work_mem=2MB, -c, max_connections=10]
+    volumes:
+      - postgres-staging:/var/lib/postgresql
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/postgres.password:/run/secrets/postgres.password:ro
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -p ${PAIOS_POSTGRES_PORT:-5432} -U paios_mac_app -d paios_mac_product"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+  livekit-staging:
+    <<: *common
+    profiles: [staging]
+    image: ${PAIOS_LIVEKIT_IMAGE:?}
+    network_mode: service:front-staging
+    command: [--config, /run/secrets/livekit.yaml]
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpus: 0.2
+    oom_score_adj: -500
+    volumes:
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/livekit.yaml:/run/secrets/livekit.yaml:ro
+      - ${PAIOS_TLS_DIR:?}:/etc/paios-tls:ro
+  front-staging:
+    <<: *common
+    networks: [default]
+    profiles: [staging]
+    image: ${PAIOS_FRONT_IMAGE:?}
+    mem_limit: 32m
+    memswap_limit: 32m
+    cpus: 0.1
+    oom_score_adj: -500
+    ports:
+      - "${PAIOS_STAGING_TLS_PORT:-19443}:443"
+      - "${PAIOS_STAGING_RTC_TCP_PORT:-17881}:${PAIOS_STAGING_RTC_TCP_PORT:-17881}/tcp"
+      - "${PAIOS_STAGING_RTC_UDP_PORT:-17882}:${PAIOS_STAGING_RTC_UDP_PORT:-17882}/udp"
+      - "${PAIOS_STAGING_TURN_UDP_PORT:-13478}:${PAIOS_STAGING_TURN_UDP_PORT:-13478}/udp"
+      - "${PAIOS_STAGING_TURN_TLS_PORT:-15349}:${PAIOS_STAGING_TURN_TLS_PORT:-15349}/tcp"
+      - "${PAIOS_STAGING_TURN_RELAY_START:-25700}-${PAIOS_STAGING_TURN_RELAY_END:-25799}:${PAIOS_STAGING_TURN_RELAY_START:-25700}-${PAIOS_STAGING_TURN_RELAY_END:-25799}/udp"
+    volumes:
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/nginx-attestation.conf:/run/secrets/nginx-attestation.conf:ro
+      - ./.build/front-staging.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./.build/paios_roaming_guard-staging.js:/etc/paios-roaming/paios_roaming_guard.js:ro
+      - ${PAIOS_TLS_DIR:?}:/etc/paios-tls:ro
+networks:
+  cold: {}
+  workshop:
+  workshop-staging:
+volumes:
+  desktop-in:
+  desktop-in-staging:
+  desktop-out:
+    driver_opts: {type: none, o: bind, device: "/var/lib/paios/${PAIOS_PROJECT:-paios}/workshop-production/owner-out"}
+  desktop-out-staging:
+    driver_opts: {type: none, o: bind, device: "/var/lib/paios/${PAIOS_PROJECT:-paios}/workshop-staging/owner-out"}
+  workshop-data:
+    driver_opts: {type: none, o: bind, device: "/var/lib/paios/${PAIOS_PROJECT:-paios}/workshop-production/data"}
+  workshop-snapshots:
+    driver_opts: {type: none, o: bind, device: "/var/lib/paios/${PAIOS_PROJECT:-paios}/workshop-snapshots-production"}
+  workshop-snapshots-staging:
+    driver_opts: {type: none, o: bind, device: "/var/lib/paios/${PAIOS_PROJECT:-paios}/workshop-snapshots-staging"}
+  workshop-ssh:
+  workshop-access:
+  workshop-data-staging:
+    driver_opts: {type: none, o: bind, device: "/var/lib/paios/${PAIOS_PROJECT:-paios}/workshop-staging/data"}
+  workshop-ssh-staging:
+  workshop-access-staging:
+  owner-data:
+  errands:
+  hermes-home:
+  postgres:
+  models:
+  owner-data-staging:
+  errands-staging:
+  hermes-home-staging:
+  postgres-staging:

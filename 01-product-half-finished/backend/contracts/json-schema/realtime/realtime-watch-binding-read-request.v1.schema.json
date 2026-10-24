@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-ai-os.local/contracts/realtime/realtime-watch-binding-read-request.v1.schema.json",
+  "type": "object",
+  "required": ["operation", "realtime_session_ref", "iphone_device_lease_ref"],
+  "additionalProperties": false,
+  "properties": {
+    "operation": {"const": "watch_binding"},
+    "realtime_session_ref": {"$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/CanonicalObjectVersionRef"},
+    "iphone_device_lease_ref": {"$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/CanonicalObjectVersionRef"}
+  }
+}

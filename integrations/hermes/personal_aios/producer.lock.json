@@ -1,0 +1,23 @@
+{
+  "schema": "paios.hermes-producer-lock.v1",
+  "contract": "hermes.run.v2",
+  "upstream": {
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "commit": "f97608f178d1ffeca59860195ab7da295f7c8e5f"
+  },
+  "patch": {
+    "path": "native-context.patch",
+    "sha256": "7dbc7736419a12db8405f4fb1533bd811566de8d22b363ea58b6972819df6437"
+  },
+  "result_tree": "3b8d3cc648574cfa6a31c429893a295870065df3",
+  "shape_sha256": "f5ecab354c673aa7354730b9d1fa03ccedcc3d47fdb1ccd3b8383b89d4c749e8",
+  "producer": {
+    "publisher": "gateway/platforms/api_server_runs.py",
+    "shape_schema": "gateway/platforms/native-run.shape.schema.json"
+  },
+  "consumer": {
+    "pin": "01-product-half-finished/backend/services/personal-aios-integration/src/hermes-client.ts",
+    "shape_schema": "01-product-half-finished/backend/services/personal-aios-integration/src/native-run.shape.schema.json"
+  },
+  "exported_from_commit": "5b1416f88ff8591ff95e5512dd6e7eea7fdaa6b0"
+}

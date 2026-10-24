@@ -1,0 +1,209 @@
+# Synthetic provider key shape; all model names, endpoints and state are fixtures.
+model:
+  default: owner-model
+  provider: owner-provider
+  base_url: https://model.example.invalid/v1
+agent:
+  max_tool_calls: 120
+  tool_call_milestone_interval: 20
+  api_max_retries: 7
+  auto_recovery_cycles: 9
+  max_tokens: 16384
+  reasoning_effort: high
+delegation:
+  max_concurrent_children: 3
+  max_spawn_depth: 2
+  oneshot_max_children: 0
+  child_timeout_seconds: 0
+  model: owner-child-model
+  provider: owner-child-provider
+  base_url: https://child.example.invalid/v1
+memory:
+  provider: personal_aios
+cron:
+  wrap_response: false
+  allowed_scripts:
+  - personal-aios-reminder.py
+  - personal-aios-task.py
+  model: owner-cron-model
+  model_provider: owner-cron-provider
+plugins:
+  enabled:
+  - personal_aios
+  entries:
+    personal_aios:
+      allow_tool_override: true
+platform_toolsets:
+  api_server: &id001
+  - memory
+  - session_search
+  - cronjob
+  - todo
+  - web
+  - vision
+  - phone
+  - messaging
+  - mijia
+  - delegation
+  - skills
+  - kanban
+  api_server_background: *id001
+tools:
+  tool_search:
+    enabled: 'off'
+kanban:
+  dispatch_in_gateway: false
+auxiliary:
+  vision:
+    provider: owner-vision
+    model: owner-vision-model
+    base_url: https://vision.example.invalid/v1
+    extra_body:
+      max_tokens: 1024
+  title_generation:
+    enabled: true
+    model_upgrade_enabled: true
+    model: owner-title-model
+    provider: owner-title-provider
+  transient_retries: 2
+compression:
+  enabled: true
+  threshold: 0.9
+  threshold_tokens: null
+gateway:
+  api_server:
+    max_concurrent_runs: 2
+    history_tool_output_max_chars: 0
+display:
+  api_server:
+    interim_assistant_messages: true
+fallback_providers:
+- provider: owner-fallback
+  model: owner-fallback-model
+platforms:
+  api_server:
+    enabled: true
+  personal_aios:
+    enabled: true
+skills:
+  inline_shell: false
+  create_dir: ''
+  guard_agent_created: true
+  external_dirs:
+  - /opt/paios/integrations/hermes/personal_aios/errands
+  - /opt/paios/integrations/hermes/personal_aios/shared-skills
+security:
+  allow_private_urls: false
+  acked_advisories:
+  - synthetic-advisory
+network:
+  force_ipv4: true
+approvals:
+  mode: manual
+  cron_mode: deny
+  single_query_mode: deny
+  unattended_mode: deny
+  deny:
+  - git push --force*
+  timeout: 420
+  mcp_reload_confirm: false
+  destructive_slash_confirm: false
+command_allowlist:
+- git status*
+sync:
+  enabled: false
+timezone: Asia/Shanghai
+providers:
+  owner-provider:
+    base_url: https://model.example.invalid/v1
+    api_mode: chat_completions
+    extra_body:
+      thinking:
+        type: enabled
+      max_tokens: 4096
+_config_version: 46
+monitoring:
+  install_id: synthetic-install-id
+known_plugin_toolsets:
+  api_server:
+  - personal_aios
+known_builtin_toolsets:
+  api_server:
+  - web
+tool_gateway_declined_tools:
+- synthetic-offer
+terminal:
+  backend: ssh
+  ssh_host: workshop
+  ssh_user: root
+  ssh_port: 2222
+  ssh_key: /opt/data/workshop-ssh/owner_ed25519
+  cwd: /workshop
+  ssh_isolated: true
+personal_aios:
+  internal_base_url: http://127.0.0.1:18661
+  internal_key_file: /run/secrets/hermes-internal.key
+  grantable_toolsets:
+  - desktop
+  - terminal
+  - file
+mcp_servers:
+  mijia:
+    command: /opt/hermes/.venv/bin/python
+    args:
+    - /opt/paios/integrations/hermes/personal_aios/mijia.py
+    env:
+      HERMES_HOME: /opt/data
+    timeout: 120
+    tools:
+      resources: false
+      prompts: false
+  phone:
+    command: /opt/paios-phone/bin/python
+    args:
+    - /opt/paios/integrations/connectors/phone_executor/server.py
+    cwd: /opt/paios/integrations/connectors/phone_executor
+    env:
+      PAIOS_PHONE_PROVIDER: agentbay
+      PAIOS_AGENTBAY_IMAGE: imgc-fixture
+      PAIOS_AGENTBAY_KEY_FILE: /run/secrets/agentbay.key
+      PAIOS_AGENTBAY_ADBKEY: /run/secrets/agentbay.adbkey
+      PAIOS_DEEPSEEK_KEY_FILE: /run/secrets/deepseek.key
+      PAIOS_SILICONFLOW_KEY_FILE: /run/secrets/siliconflow.key
+      PAIOS_MOBILERUN_CONFIG: /opt/paios/integrations/connectors/phone_executor/mobilerun-config.example.yaml
+      PAIOS_AGENTBAY_STATE: /opt/data/agentbay-session.json
+      PAIOS_ERRAND_SPOOL: /var/lib/paios/state/errands
+      PAIOS_PAYMENT_URL: http://127.0.0.1:18661
+      PAIOS_PAYMENT_KEY_FILE: /run/secrets/payment-executor.key
+    timeout: 660
+    tools:
+      resources: false
+      prompts: false
+  amap:
+    url: https://mcp.amap.com/mcp?key=${PAIOS_AMAP_KEY}
+    tools:
+      resources: false
+      prompts: false
+  desktop:
+    url: http://127.0.0.1:18661/internal/desktop/mcp
+    headers:
+      Authorization: Bearer ${PAIOS_HERMES_INTERNAL_KEY}
+    timeout: 330
+    connect_timeout: 10
+    trust: full
+    tools:
+      resources: false
+      prompts: false
+  self:
+    url: http://127.0.0.1:18661/internal/self/mcp
+    headers:
+      Authorization: Bearer ${PAIOS_HERMES_INTERNAL_KEY}
+    timeout: 15
+    connect_timeout: 10
+    trust: full
+    tools:
+      resources: false
+      prompts: false
+onboarding:
+  seen:
+    fixture-hint: true

@@ -1,0 +1,10 @@
+[Unit]
+Description=Staging-only staging snapshot retention
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=60
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,687 @@
+{
+  "provenance": {
+    "server": "@modelcontextprotocol/server-filesystem",
+    "version": "2026.8.31",
+    "captured": "2026-10-15",
+    "normalization": "$ROOT is each disposable fixture root. Only get_file_info timestamps are replaced with <created>, <modified>, <accessed>; verify the original timestamp values against descriptor metadata separately.",
+    "ordering": "list_directory/search_files preserve the official server readdir traversal order; list_directory_with_sizes uses the official localeCompare or descending numeric size sort. No pagination parameters exist."
+  },
+  "scenarios": [
+    {
+      "id": "listing",
+      "files": {
+        "z.txt": "z",
+        "A.txt": "A",
+        "a space.txt": "space",
+        ".hidden": "dot",
+        "中文.txt": "汉字"
+      },
+      "dirs": [
+        "nested dir",
+        "empty"
+      ],
+      "cases": [
+        {
+          "name": "list_directory",
+          "args": {
+            "path": "$ROOT/listing"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "[FILE] .hidden\n[FILE] A.txt\n[FILE] a space.txt\n[DIR] empty\n[DIR] nested dir\n[FILE] z.txt\n[FILE] 中文.txt"
+              }
+            ],
+            "structuredContent": {
+              "content": "[FILE] .hidden\n[FILE] A.txt\n[FILE] a space.txt\n[DIR] empty\n[DIR] nested dir\n[FILE] z.txt\n[FILE] 中文.txt"
+            }
+          }
+        },
+        {
+          "name": "list_directory",
+          "args": {
+            "path": "$ROOT/listing/empty"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": ""
+              }
+            ],
+            "structuredContent": {
+              "content": ""
+            }
+          }
+        },
+        {
+          "name": "list_directory_with_sizes",
+          "args": {
+            "path": "$ROOT/listing"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "[FILE] .hidden                               3 B\n[FILE] a space.txt                           5 B\n[FILE] A.txt                                 1 B\n[DIR] empty                          \n[DIR] nested dir                     \n[FILE] z.txt                                 1 B\n[FILE] 中文.txt                                6 B\n\nTotal: 5 files, 2 directories\nCombined size: 16 B"
+              }
+            ],
+            "structuredContent": {
+              "content": "[FILE] .hidden                               3 B\n[FILE] a space.txt                           5 B\n[FILE] A.txt                                 1 B\n[DIR] empty                          \n[DIR] nested dir                     \n[FILE] z.txt                                 1 B\n[FILE] 中文.txt                                6 B\n\nTotal: 5 files, 2 directories\nCombined size: 16 B"
+            }
+          }
+        },
+        {
+          "name": "list_directory_with_sizes",
+          "args": {
+            "path": "$ROOT/listing/empty"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "\nTotal: 0 files, 0 directories\nCombined size: 0 B"
+              }
+            ],
+            "structuredContent": {
+              "content": "\nTotal: 0 files, 0 directories\nCombined size: 0 B"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sizes",
+      "files": {
+        "zero.txt": "",
+        "Z.txt": {
+          "character": "z",
+          "count": 1023
+        },
+        "a space.txt": {
+          "character": "s",
+          "count": 1024
+        },
+        "a.txt": {
+          "character": "a",
+          "count": 1536
+        },
+        "long filename exceeds thirty characters.txt": "abc",
+        "中文.txt": "汉字"
+      },
+      "dirs": [],
+      "cases": [
+        {
+          "name": "list_directory_with_sizes",
+          "args": {
+            "path": "$ROOT/sizes"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "[FILE] a space.txt                       1.00 KB\n[FILE] a.txt                             1.50 KB\n[FILE] long filename exceeds thirty characters.txt        3 B\n[FILE] Z.txt                              1023 B\n[FILE] zero.txt                              0 B\n[FILE] 中文.txt                                6 B\n\nTotal: 6 files, 0 directories\nCombined size: 3.51 KB"
+              }
+            ],
+            "structuredContent": {
+              "content": "[FILE] a space.txt                       1.00 KB\n[FILE] a.txt                             1.50 KB\n[FILE] long filename exceeds thirty characters.txt        3 B\n[FILE] Z.txt                              1023 B\n[FILE] zero.txt                              0 B\n[FILE] 中文.txt                                6 B\n\nTotal: 6 files, 0 directories\nCombined size: 3.51 KB"
+            }
+          }
+        },
+        {
+          "name": "list_directory_with_sizes",
+          "args": {
+            "path": "$ROOT/sizes",
+            "sortBy": "name"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "[FILE] a space.txt                       1.00 KB\n[FILE] a.txt                             1.50 KB\n[FILE] long filename exceeds thirty characters.txt        3 B\n[FILE] Z.txt                              1023 B\n[FILE] zero.txt                              0 B\n[FILE] 中文.txt                                6 B\n\nTotal: 6 files, 0 directories\nCombined size: 3.51 KB"
+              }
+            ],
+            "structuredContent": {
+              "content": "[FILE] a space.txt                       1.00 KB\n[FILE] a.txt                             1.50 KB\n[FILE] long filename exceeds thirty characters.txt        3 B\n[FILE] Z.txt                              1023 B\n[FILE] zero.txt                              0 B\n[FILE] 中文.txt                                6 B\n\nTotal: 6 files, 0 directories\nCombined size: 3.51 KB"
+            }
+          }
+        },
+        {
+          "name": "list_directory_with_sizes",
+          "args": {
+            "path": "$ROOT/sizes",
+            "sortBy": "size"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "[FILE] a.txt                             1.50 KB\n[FILE] a space.txt                       1.00 KB\n[FILE] Z.txt                              1023 B\n[FILE] 中文.txt                                6 B\n[FILE] long filename exceeds thirty characters.txt        3 B\n[FILE] zero.txt                              0 B\n\nTotal: 6 files, 0 directories\nCombined size: 3.51 KB"
+              }
+            ],
+            "structuredContent": {
+              "content": "[FILE] a.txt                             1.50 KB\n[FILE] a space.txt                       1.00 KB\n[FILE] Z.txt                              1023 B\n[FILE] 中文.txt                                6 B\n[FILE] long filename exceeds thirty characters.txt        3 B\n[FILE] zero.txt                              0 B\n\nTotal: 6 files, 0 directories\nCombined size: 3.51 KB"
+            }
+          }
+        },
+        {
+          "name": "get_file_info",
+          "args": {
+            "path": "$ROOT/sizes/中文.txt"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "size: 6\ncreated: <created>\nmodified: <modified>\naccessed: <accessed>\nisDirectory: false\nisFile: true\npermissions: 640"
+              }
+            ],
+            "structuredContent": {
+              "content": "size: 6\ncreated: <created>\nmodified: <modified>\naccessed: <accessed>\nisDirectory: false\nisFile: true\npermissions: 640"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "search",
+      "files": {
+        "a.txt": "a",
+        "upper.TXT": "A",
+        "b.md": "b",
+        ".hidden.txt": "h",
+        "nested/inner.txt": "i",
+        "nested/deeper/x.txt": "x",
+        "nested/deeper/other.md": "m",
+        "spaced dir/a space.txt": "s",
+        "中文/汉字.txt": "汉"
+      },
+      "dirs": [],
+      "cases": [
+        {
+          "name": "search_files",
+          "args": {
+            "path": "$ROOT/search",
+            "pattern": "*.txt"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "$ROOT/search/.hidden.txt\n$ROOT/search/a.txt"
+              }
+            ],
+            "structuredContent": {
+              "content": "$ROOT/search/.hidden.txt\n$ROOT/search/a.txt"
+            }
+          }
+        },
+        {
+          "name": "search_files",
+          "args": {
+            "path": "$ROOT/search",
+            "pattern": "**/*.txt"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "$ROOT/search/.hidden.txt\n$ROOT/search/a.txt\n$ROOT/search/nested/deeper/x.txt\n$ROOT/search/nested/inner.txt\n$ROOT/search/spaced dir/a space.txt\n$ROOT/search/中文/汉字.txt"
+              }
+            ],
+            "structuredContent": {
+              "content": "$ROOT/search/.hidden.txt\n$ROOT/search/a.txt\n$ROOT/search/nested/deeper/x.txt\n$ROOT/search/nested/inner.txt\n$ROOT/search/spaced dir/a space.txt\n$ROOT/search/中文/汉字.txt"
+            }
+          }
+        },
+        {
+          "name": "search_files",
+          "args": {
+            "path": "$ROOT/search",
+            "pattern": "**/*.{txt,md}"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "$ROOT/search/.hidden.txt\n$ROOT/search/a.txt\n$ROOT/search/b.md\n$ROOT/search/nested/deeper/other.md\n$ROOT/search/nested/deeper/x.txt\n$ROOT/search/nested/inner.txt\n$ROOT/search/spaced dir/a space.txt\n$ROOT/search/中文/汉字.txt"
+              }
+            ],
+            "structuredContent": {
+              "content": "$ROOT/search/.hidden.txt\n$ROOT/search/a.txt\n$ROOT/search/b.md\n$ROOT/search/nested/deeper/other.md\n$ROOT/search/nested/deeper/x.txt\n$ROOT/search/nested/inner.txt\n$ROOT/search/spaced dir/a space.txt\n$ROOT/search/中文/汉字.txt"
+            }
+          }
+        },
+        {
+          "name": "search_files",
+          "args": {
+            "path": "$ROOT/search",
+            "pattern": "**/[ab].*"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "$ROOT/search/a.txt\n$ROOT/search/b.md"
+              }
+            ],
+            "structuredContent": {
+              "content": "$ROOT/search/a.txt\n$ROOT/search/b.md"
+            }
+          }
+        },
+        {
+          "name": "search_files",
+          "args": {
+            "path": "$ROOT/search",
+            "pattern": "**/+(a|inner).txt"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "$ROOT/search/a.txt\n$ROOT/search/nested/inner.txt"
+              }
+            ],
+            "structuredContent": {
+              "content": "$ROOT/search/a.txt\n$ROOT/search/nested/inner.txt"
+            }
+          }
+        },
+        {
+          "name": "search_files",
+          "args": {
+            "path": "$ROOT/search",
+            "pattern": "**/?.txt"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "$ROOT/search/a.txt\n$ROOT/search/nested/deeper/x.txt"
+              }
+            ],
+            "structuredContent": {
+              "content": "$ROOT/search/a.txt\n$ROOT/search/nested/deeper/x.txt"
+            }
+          }
+        },
+        {
+          "name": "search_files",
+          "args": {
+            "path": "$ROOT/search",
+            "pattern": "*"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "$ROOT/search/.hidden.txt\n$ROOT/search/a.txt\n$ROOT/search/b.md\n$ROOT/search/nested\n$ROOT/search/spaced dir\n$ROOT/search/upper.TXT\n$ROOT/search/中文"
+              }
+            ],
+            "structuredContent": {
+              "content": "$ROOT/search/.hidden.txt\n$ROOT/search/a.txt\n$ROOT/search/b.md\n$ROOT/search/nested\n$ROOT/search/spaced dir\n$ROOT/search/upper.TXT\n$ROOT/search/中文"
+            }
+          }
+        },
+        {
+          "name": "search_files",
+          "args": {
+            "path": "$ROOT/search",
+            "pattern": "**"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "$ROOT/search/.hidden.txt\n$ROOT/search/a.txt\n$ROOT/search/b.md\n$ROOT/search/nested\n$ROOT/search/nested/deeper\n$ROOT/search/nested/deeper/other.md\n$ROOT/search/nested/deeper/x.txt\n$ROOT/search/nested/inner.txt\n$ROOT/search/spaced dir\n$ROOT/search/spaced dir/a space.txt\n$ROOT/search/upper.TXT\n$ROOT/search/中文\n$ROOT/search/中文/汉字.txt"
+              }
+            ],
+            "structuredContent": {
+              "content": "$ROOT/search/.hidden.txt\n$ROOT/search/a.txt\n$ROOT/search/b.md\n$ROOT/search/nested\n$ROOT/search/nested/deeper\n$ROOT/search/nested/deeper/other.md\n$ROOT/search/nested/deeper/x.txt\n$ROOT/search/nested/inner.txt\n$ROOT/search/spaced dir\n$ROOT/search/spaced dir/a space.txt\n$ROOT/search/upper.TXT\n$ROOT/search/中文\n$ROOT/search/中文/汉字.txt"
+            }
+          }
+        },
+        {
+          "name": "search_files",
+          "args": {
+            "path": "$ROOT/search",
+            "pattern": "nomatch"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "No matches found"
+              }
+            ],
+            "structuredContent": {
+              "content": "No matches found"
+            }
+          }
+        },
+        {
+          "name": "search_files",
+          "args": {
+            "path": "$ROOT/search",
+            "pattern": "!**/*.txt"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "$ROOT/search/b.md\n$ROOT/search/nested\n$ROOT/search/nested/deeper\n$ROOT/search/nested/deeper/other.md\n$ROOT/search/spaced dir\n$ROOT/search/upper.TXT\n$ROOT/search/中文"
+              }
+            ],
+            "structuredContent": {
+              "content": "$ROOT/search/b.md\n$ROOT/search/nested\n$ROOT/search/nested/deeper\n$ROOT/search/nested/deeper/other.md\n$ROOT/search/spaced dir\n$ROOT/search/upper.TXT\n$ROOT/search/中文"
+            }
+          }
+        },
+        {
+          "name": "search_files",
+          "args": {
+            "path": "$ROOT/search",
+            "pattern": "**/*.TXT"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "$ROOT/search/upper.TXT"
+              }
+            ],
+            "structuredContent": {
+              "content": "$ROOT/search/upper.TXT"
+            }
+          }
+        },
+        {
+          "name": "search_files",
+          "args": {
+            "path": "$ROOT/search",
+            "pattern": "**/*.txt",
+            "excludePatterns": [
+              "nested"
+            ]
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "$ROOT/search/.hidden.txt\n$ROOT/search/a.txt\n$ROOT/search/spaced dir/a space.txt\n$ROOT/search/中文/汉字.txt"
+              }
+            ],
+            "structuredContent": {
+              "content": "$ROOT/search/.hidden.txt\n$ROOT/search/a.txt\n$ROOT/search/spaced dir/a space.txt\n$ROOT/search/中文/汉字.txt"
+            }
+          }
+        },
+        {
+          "name": "search_files",
+          "args": {
+            "path": "$ROOT/search",
+            "pattern": "**/*.txt",
+            "excludePatterns": [
+              "nested/**"
+            ]
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "$ROOT/search/.hidden.txt\n$ROOT/search/a.txt\n$ROOT/search/spaced dir/a space.txt\n$ROOT/search/中文/汉字.txt"
+              }
+            ],
+            "structuredContent": {
+              "content": "$ROOT/search/.hidden.txt\n$ROOT/search/a.txt\n$ROOT/search/spaced dir/a space.txt\n$ROOT/search/中文/汉字.txt"
+            }
+          }
+        },
+        {
+          "name": "search_files",
+          "args": {
+            "path": "$ROOT/search",
+            "pattern": "**/*.txt",
+            "excludePatterns": [
+              "*.txt"
+            ]
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "$ROOT/search/nested/deeper/x.txt\n$ROOT/search/nested/inner.txt\n$ROOT/search/spaced dir/a space.txt\n$ROOT/search/中文/汉字.txt"
+              }
+            ],
+            "structuredContent": {
+              "content": "$ROOT/search/nested/deeper/x.txt\n$ROOT/search/nested/inner.txt\n$ROOT/search/spaced dir/a space.txt\n$ROOT/search/中文/汉字.txt"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mutations",
+      "files": {
+        "read.txt": "一\r\nsecond\r\nlast\n",
+        "write.txt": "old\n",
+        "edit.txt": "  one\r\n  two\r\n",
+        "move source.txt": "moved\n"
+      },
+      "dirs": [
+        "exists"
+      ],
+      "cases": [
+        {
+          "name": "read_text_file",
+          "args": {
+            "path": "$ROOT/mutations/read.txt"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "一\r\nsecond\r\nlast\n"
+              }
+            ],
+            "structuredContent": {
+              "content": "一\r\nsecond\r\nlast\n"
+            }
+          }
+        },
+        {
+          "name": "read_text_file",
+          "args": {
+            "path": "$ROOT/mutations/read.txt",
+            "head": 2
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "一\r\nsecond\r"
+              }
+            ],
+            "structuredContent": {
+              "content": "一\r\nsecond\r"
+            }
+          }
+        },
+        {
+          "name": "read_text_file",
+          "args": {
+            "path": "$ROOT/mutations/read.txt",
+            "tail": 2
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "last\n"
+              }
+            ],
+            "structuredContent": {
+              "content": "last\n"
+            }
+          }
+        },
+        {
+          "name": "get_file_info",
+          "args": {
+            "path": "$ROOT/mutations/write.txt"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "size: 4\ncreated: <created>\nmodified: <modified>\naccessed: <accessed>\nisDirectory: false\nisFile: true\npermissions: 640"
+              }
+            ],
+            "structuredContent": {
+              "content": "size: 4\ncreated: <created>\nmodified: <modified>\naccessed: <accessed>\nisDirectory: false\nisFile: true\npermissions: 640"
+            }
+          }
+        },
+        {
+          "name": "create_directory",
+          "args": {
+            "path": "$ROOT/mutations/exists"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "Successfully created directory $ROOT/mutations/exists"
+              }
+            ],
+            "structuredContent": {
+              "content": "Successfully created directory $ROOT/mutations/exists"
+            }
+          }
+        },
+        {
+          "name": "create_directory",
+          "args": {
+            "path": "$ROOT/mutations/new dir"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "Successfully created directory $ROOT/mutations/new dir"
+              }
+            ],
+            "structuredContent": {
+              "content": "Successfully created directory $ROOT/mutations/new dir"
+            }
+          }
+        },
+        {
+          "name": "write_file",
+          "args": {
+            "path": "$ROOT/mutations/write.txt",
+            "content": "新\n"
+          },
+          "checkFiles": [
+            "$ROOT/mutations/write.txt"
+          ],
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "Successfully wrote to $ROOT/mutations/write.txt"
+              }
+            ],
+            "structuredContent": {
+              "content": "Successfully wrote to $ROOT/mutations/write.txt"
+            }
+          },
+          "after": {
+            "$ROOT/mutations/write.txt": "新\n"
+          }
+        },
+        {
+          "name": "write_file",
+          "args": {
+            "path": "$ROOT/mutations/new file.txt",
+            "content": "created\n"
+          },
+          "checkFiles": [
+            "$ROOT/mutations/new file.txt"
+          ],
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "Successfully wrote to $ROOT/mutations/new file.txt"
+              }
+            ],
+            "structuredContent": {
+              "content": "Successfully wrote to $ROOT/mutations/new file.txt"
+            }
+          },
+          "after": {
+            "$ROOT/mutations/new file.txt": "created\n"
+          }
+        },
+        {
+          "name": "edit_file",
+          "args": {
+            "path": "$ROOT/mutations/edit.txt",
+            "edits": [
+              {
+                "oldText": "one\n two",
+                "newText": "three\n four"
+              }
+            ]
+          },
+          "checkFiles": [
+            "$ROOT/mutations/edit.txt"
+          ],
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "```diff\nIndex: $ROOT/mutations/edit.txt\n===================================================================\n--- $ROOT/mutations/edit.txt\toriginal\n+++ $ROOT/mutations/edit.txt\tmodified\n@@ -1,2 +1,2 @@\n-  one\n-  two\n+  three\n+  four\n```\n\n"
+              }
+            ],
+            "structuredContent": {
+              "content": "```diff\nIndex: $ROOT/mutations/edit.txt\n===================================================================\n--- $ROOT/mutations/edit.txt\toriginal\n+++ $ROOT/mutations/edit.txt\tmodified\n@@ -1,2 +1,2 @@\n-  one\n-  two\n+  three\n+  four\n```\n\n"
+            }
+          },
+          "after": {
+            "$ROOT/mutations/edit.txt": "  three\n  four\n"
+          }
+        },
+        {
+          "name": "move_file",
+          "args": {
+            "source": "$ROOT/mutations/move source.txt",
+            "destination": "$ROOT/mutations/move destination.txt"
+          },
+          "checkFiles": [
+            "$ROOT/mutations/move source.txt",
+            "$ROOT/mutations/move destination.txt"
+          ],
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "Successfully moved $ROOT/mutations/move source.txt to $ROOT/mutations/move destination.txt"
+              }
+            ],
+            "structuredContent": {
+              "content": "Successfully moved $ROOT/mutations/move source.txt to $ROOT/mutations/move destination.txt"
+            }
+          },
+          "after": {
+            "$ROOT/mutations/move source.txt": null,
+            "$ROOT/mutations/move destination.txt": "moved\n"
+          }
+        }
+      ]
+    }
+  ]
+}

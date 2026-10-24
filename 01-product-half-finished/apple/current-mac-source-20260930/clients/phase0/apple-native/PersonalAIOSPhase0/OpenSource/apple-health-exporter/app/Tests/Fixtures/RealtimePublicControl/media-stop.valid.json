@@ -1,0 +1,48 @@
+{
+  "operation": "media_stop",
+  "request_id": "media_stop_018f000000000011",
+  "idempotency_context": {
+    "idempotency_scope": {
+      "owner_module": "T11B",
+      "operation_kind": "realtime_media_stop",
+      "target_object_type": "DeviceLease",
+      "target_object_id": "018f0000-0000-7000-8000-000000000005",
+      "user_id": "018f0000-0000-7000-8000-000000000001"
+    },
+    "idempotency_key": "media_stop_018f000000000011",
+    "idempotency_profile_id": "https://personal-ai-os.local/contracts/realtime/idempotency/media-stop",
+    "idempotency_profile_version": "1.0.0",
+    "idempotency_profile_sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+    "idempotency_request_sha256": "7777777777777777777777777777777777777777777777777777777777777777"
+  },
+  "realtime_session_ref": {
+    "ref_type": "RealtimeSession",
+    "ref_id": "018f0000-0000-7000-8000-000000000004",
+    "object_version": "1",
+    "canonical_payload_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "device_lease_ref": {
+    "ref_type": "DeviceLease",
+    "ref_id": "018f0000-0000-7000-8000-000000000005",
+    "object_version": "1",
+    "canonical_payload_sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "continuity_id": "018f0000-0000-7000-8000-000000000003",
+  "transport_aliases": [
+    {
+      "alias_type": "room",
+      "issuer": "livekit_cloud",
+      "value": "room-opaque-fixture-1"
+    }
+  ],
+  "connection_epoch": "1",
+  "reason": "user_stop",
+  "release_scope": "media_device_lease_only",
+  "governance": {
+    "purpose_scopes": ["realtime_assistant"],
+    "consent_record_refs": ["018f0000-0000-7000-8000-000000000006"],
+    "policy_decision_refs": ["018f0000-0000-7000-8000-000000000007"],
+    "purpose_token_refs": ["018f0000-0000-7000-8000-000000000008"],
+    "capability_grant_refs": ["018f0000-0000-7000-8000-000000000009"]
+  }
+}

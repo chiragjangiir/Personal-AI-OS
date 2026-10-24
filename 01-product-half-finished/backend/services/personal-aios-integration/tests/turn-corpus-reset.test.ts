@@ -1,0 +1,32 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {promises as fs} from 'node:fs';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
+import {resetTurnCorpus} from '../src/voice/turn-collection.ts';
+import {readTurnCorpus} from '../tools/turn-eval.ts';
+const cutoff='2026-10-18T10:14:00.000Z';
+test('legacy corpus resets before cutoff, preserves exact retained bytes through real reader, repeats',async t=>{
+  const root=await fs.mkdtemp(join(tmpdir(),'turn-reset-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
+  const old='1700000000000-aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa',kept='1800000000000-bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb';
+  const newer=Buffer.from(JSON.stringify({schema:'paios.call-turn.v1',at:cutoff,label:'finished'})),audio=Buffer.from('synthetic audio fixture');
+  await fs.writeFile(join(root,old+'.json'),JSON.stringify({schema:'paios.call-turn.v1',at:'2026-10-18T10:00:00Z',label:'finished'}));
+  await fs.writeFile(join(root,old+'.wav'),audio);
+  await fs.writeFile(join(root,kept+'.json'),newer);await fs.writeFile(join(root,kept+'.wav'),audio);
+  assert.equal((await resetTurnCorpus(root,cutoff)).category.delete_count,2);
+  assert.equal((await fs.readdir(root)).length,4);
+  await resetTurnCorpus(root,cutoff,true);await resetTurnCorpus(root,cutoff,true);
+  assert.deepEqual(await fs.readFile(join(root,kept+'.json')),newer);
+  assert.deepEqual(await fs.readFile(join(root,kept+'.wav')),audio);
+  assert.equal((await readTurnCorpus(root)).length,1);
+  assert.equal((await resetTurnCorpus(root,cutoff)).category.delete_count,0);
+});
+test('unknown corpus cannot erase audio; absent corpus preview creates nothing',async t=>{
+  const root=await fs.mkdtemp(join(tmpdir(),'turn-reset-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
+  assert.equal((await resetTurnCorpus(join(root,'absent'),cutoff)).category.keep_count,0);
+  assert.deepEqual(await fs.readdir(root),[]);
+  await fs.writeFile(join(root,'unknown.wav'),'synthetic');
+  assert.deepEqual((await resetTurnCorpus(root,cutoff)).blockers,['unattributed_legacy_call_audio']);
+  await assert.rejects(resetTurnCorpus(root,cutoff,true),/RESET_TURN_CORPUS_UNRESOLVED/);
+  assert.equal(await fs.readFile(join(root,'unknown.wav'),'utf8'),'synthetic');
+});

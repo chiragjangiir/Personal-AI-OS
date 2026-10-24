@@ -1,0 +1,85 @@
+{
+  "authority_commit": "dcd8652133e87659b3201102159a8fb7c6e3692b",
+  "authority_amendments": [
+    {
+      "commit": "1d8048a315bd441f773f137cbe60a7f3267a25e6",
+      "outputs": [
+        "voiceprint_sample"
+      ]
+    }
+  ],
+  "formal_authority_bytes": 89811,
+  "formal_augmented_bytes": 147735,
+  "authority_group_counts": {
+    "$defs": 21,
+    "inputs": 36,
+    "outputs": 33
+  },
+  "extra_nodes": {
+    "$defs": [
+      "move_coordinate",
+      "move_position",
+      "ride_metrics",
+      "ride_summary",
+      "nav_progress",
+      "nav_step",
+      "voice_enrollment"
+    ],
+    "inputs": [
+      "ride_state",
+      "move_frame",
+      "nav_state",
+      "call_pcm",
+      "voice_enrollment_control",
+      "voice_trust_window_open",
+      "camera_capture_failed"
+    ],
+    "outputs": [
+      "ride_control",
+      "nav_route",
+      "nav_control",
+      "ride_feedback",
+      "voice_enrollment_state",
+      "voice_trust_window_opened",
+      "move_ack",
+      "camera_capture_once"
+    ]
+  },
+  "authority_top_level_keys": [
+    "$schema",
+    "$defs",
+    "version",
+    "schema",
+    "input_topic",
+    "output_topic",
+    "input_limit",
+    "output_limit",
+    "controls",
+    "inputs",
+    "outputs",
+    "voice_topic",
+    "voice_transport",
+    "$id",
+    "camera_topic"
+  ],
+  "payment_byte_parity": true,
+  "formal_pin": "f8fabc94597e216f1a67e9a73bc0d2b4ab43a01c2dbad9d75134eacb98e3c79e",
+  "payment_pin": "a48973e08dd595902339c775b8e648f3d7e6b04e274a7a361c42c43c5a85d1dc",
+  "canonical_authority_sha256": {
+    "$defs": "2d64728b4c37c0927490efdaea163eb50779b9c67ff4c7102e46aa84f5e629d8",
+    "inputs": "2fac7a1e0e1270778c713c2328864359d064e094863bcd6c7fb9f67821bd35ed",
+    "outputs": "273f06c45bca625969d29f35501e544c2b0cd95d7004130e810435f78fc24a60",
+    "header": "56df198a78db2900a65cdcfc256a82c4753f07e905b2b87dbb9edeef81c36461"
+  },
+  "release_commit": "9fc05c700310fd0d7c6aeec4d919c9177c0bb7cd",
+  "authority_nodes_include_release_extensions": true,
+  "extra_extensions": [
+    "owner-override-message.v1.json",
+    "call-avatar.v1.json",
+    "appearance-message.v1.json"
+  ],
+  "authority_extension_pins": {
+    "payment-message.v1.json": "a48973e08dd595902339c775b8e648f3d7e6b04e274a7a361c42c43c5a85d1dc",
+    "terminal-message.v1.json": "51637255782df1b458f8607a599ae8ba7bb73ce4973bae3a2189900ecd3b9204"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "@paios/phase0-demo-gateway",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.18.0 <25",
+    "pnpm": "11.9.0"
+  },
+  "scripts": {
+    "start": "node src/rayneo-persistent-production-entrypoint.ts --execution-owner hermes_text",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/*.test.ts",
+    "test:contract": "node --test tests/contract-consumer.test.ts",
+    "test:room": "node --test tests/room-loopback.test.ts"
+  },
+  "dependencies": {
+    "@hpke/core": "1.9.0",
+    "@livekit/rtc-node": "0.13.32",
+    "@modelcontextprotocol/sdk": "1.25.3",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "livekit-server-sdk": "2.13.3",
+    "sharp": "0.35.4"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "typescript": "5.9.3"
+  }
+}

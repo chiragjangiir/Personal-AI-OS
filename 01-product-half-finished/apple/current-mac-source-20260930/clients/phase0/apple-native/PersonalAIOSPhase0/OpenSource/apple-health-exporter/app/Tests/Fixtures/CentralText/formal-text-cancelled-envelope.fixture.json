@@ -1,0 +1,669 @@
+{
+  "schema": "paios.central.cancelled-text-fixture.v1",
+  "evidence": "actual POSIX sealed OUT followed by owner cancel; controlled source/native/SDK, no model/device",
+  "cancelled": {
+    "partial": {
+      "input_submit": {
+        "operation": "submit",
+        "event_id": "cancel-partial",
+        "captured_at": "2026-10-01T00:00:00.000Z",
+        "text": "immutable original"
+      },
+      "accepted": {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "accepted",
+        "event_id": "cancel-partial",
+        "processed_event_id": "d:1f400e5bbed8d3e43a061d67be9af975c5fdbb5edd95da36d926d41000fcf1fd",
+        "session_id": "continuity",
+        "admission": {
+          "state": "pending",
+          "run_id": null,
+          "idempotency_key": "paios:96214d240eac58171a455b0d52fb644233ce2c17f1acc958ec7df1eb5f546ffe"
+        }
+      },
+      "sealed_header": {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "result_header",
+        "event_id": "cancel-partial",
+        "processed_event_id": "d:1f400e5bbed8d3e43a061d67be9af975c5fdbb5edd95da36d926d41000fcf1fd",
+        "session_id": "continuity",
+        "run_id": "cancel-run",
+        "consumed_revision": 1,
+        "result_revision": 1,
+        "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+        "reply_epoch": 1,
+        "reply_phase": "sealed",
+        "reply_mode": "text",
+        "run_status": "completed",
+        "reply_status": "complete",
+        "result_status": "completed",
+        "delivery_status": "unknown",
+        "output_plan": [
+          {
+            "target_device_id": "mac",
+            "device_type": "mac",
+            "output_modes": [
+              "text"
+            ],
+            "route_version": "route-1"
+          }
+        ],
+        "text_replay": "pending",
+        "text_chunk_count": 9,
+        "pending_text_chunk_count": 9,
+        "rendered_text_through_seq": 0,
+        "pending_voice_chunk_count": 0,
+        "voice_transport": "not_supported",
+        "voice_status": "none",
+        "voice_error": null,
+        "receipt_status": "unknown",
+        "receipt_error": "RUN_RECEIPTS_SOURCE_NOT_CONFIGURED",
+        "receipt_sources": [],
+        "receipt_refs": []
+      },
+      "original_text_chunks": [
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "text_chunk",
+          "session_id": "continuity",
+          "processed_event_id": "d:1f400e5bbed8d3e43a061d67be9af975c5fdbb5edd95da36d926d41000fcf1fd",
+          "chunk": {
+            "event_id": "cancel-partial",
+            "final": false,
+            "message_ref": "native-final:cancel-run",
+            "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+            "reply_epoch": 1,
+            "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+            "route_version": "route-1",
+            "run_id": "cancel-run",
+            "seq": 1,
+            "target_device_id": "mac",
+            "text": "🔬中文"
+          }
+        },
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "text_chunk",
+          "session_id": "continuity",
+          "processed_event_id": "d:1f400e5bbed8d3e43a061d67be9af975c5fdbb5edd95da36d926d41000fcf1fd",
+          "chunk": {
+            "event_id": "cancel-partial",
+            "final": false,
+            "message_ref": "native-final:cancel-run",
+            "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+            "reply_epoch": 1,
+            "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+            "route_version": "route-1",
+            "run_id": "cancel-run",
+            "seq": 2,
+            "target_device_id": "mac",
+            "text": " im"
+          }
+        },
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "text_chunk",
+          "session_id": "continuity",
+          "processed_event_id": "d:1f400e5bbed8d3e43a061d67be9af975c5fdbb5edd95da36d926d41000fcf1fd",
+          "chunk": {
+            "event_id": "cancel-partial",
+            "final": false,
+            "message_ref": "native-final:cancel-run",
+            "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+            "reply_epoch": 1,
+            "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+            "route_version": "route-1",
+            "run_id": "cancel-run",
+            "seq": 3,
+            "target_device_id": "mac",
+            "text": "mut"
+          }
+        },
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "text_chunk",
+          "session_id": "continuity",
+          "processed_event_id": "d:1f400e5bbed8d3e43a061d67be9af975c5fdbb5edd95da36d926d41000fcf1fd",
+          "chunk": {
+            "event_id": "cancel-partial",
+            "final": false,
+            "message_ref": "native-final:cancel-run",
+            "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+            "reply_epoch": 1,
+            "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+            "route_version": "route-1",
+            "run_id": "cancel-run",
+            "seq": 4,
+            "target_device_id": "mac",
+            "text": "abl"
+          }
+        },
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "text_chunk",
+          "session_id": "continuity",
+          "processed_event_id": "d:1f400e5bbed8d3e43a061d67be9af975c5fdbb5edd95da36d926d41000fcf1fd",
+          "chunk": {
+            "event_id": "cancel-partial",
+            "final": false,
+            "message_ref": "native-final:cancel-run",
+            "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+            "reply_epoch": 1,
+            "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+            "route_version": "route-1",
+            "run_id": "cancel-run",
+            "seq": 5,
+            "target_device_id": "mac",
+            "text": "e c"
+          }
+        },
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "text_chunk",
+          "session_id": "continuity",
+          "processed_event_id": "d:1f400e5bbed8d3e43a061d67be9af975c5fdbb5edd95da36d926d41000fcf1fd",
+          "chunk": {
+            "event_id": "cancel-partial",
+            "final": false,
+            "message_ref": "native-final:cancel-run",
+            "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+            "reply_epoch": 1,
+            "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+            "route_version": "route-1",
+            "run_id": "cancel-run",
+            "seq": 6,
+            "target_device_id": "mac",
+            "text": "anc"
+          }
+        },
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "text_chunk",
+          "session_id": "continuity",
+          "processed_event_id": "d:1f400e5bbed8d3e43a061d67be9af975c5fdbb5edd95da36d926d41000fcf1fd",
+          "chunk": {
+            "event_id": "cancel-partial",
+            "final": false,
+            "message_ref": "native-final:cancel-run",
+            "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+            "reply_epoch": 1,
+            "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+            "route_version": "route-1",
+            "run_id": "cancel-run",
+            "seq": 7,
+            "target_device_id": "mac",
+            "text": "el "
+          }
+        },
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "text_chunk",
+          "session_id": "continuity",
+          "processed_event_id": "d:1f400e5bbed8d3e43a061d67be9af975c5fdbb5edd95da36d926d41000fcf1fd",
+          "chunk": {
+            "event_id": "cancel-partial",
+            "final": false,
+            "message_ref": "native-final:cancel-run",
+            "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+            "reply_epoch": 1,
+            "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+            "route_version": "route-1",
+            "run_id": "cancel-run",
+            "seq": 8,
+            "target_device_id": "mac",
+            "text": "tex"
+          }
+        },
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "text_chunk",
+          "session_id": "continuity",
+          "processed_event_id": "d:1f400e5bbed8d3e43a061d67be9af975c5fdbb5edd95da36d926d41000fcf1fd",
+          "chunk": {
+            "event_id": "cancel-partial",
+            "final": true,
+            "message_ref": "native-final:cancel-run",
+            "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+            "reply_epoch": 1,
+            "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+            "route_version": "route-1",
+            "run_id": "cancel-run",
+            "seq": 9,
+            "target_device_id": "mac",
+            "text": "t"
+          }
+        }
+      ],
+      "input_ack": {
+        "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+        "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+        "reply_epoch": 1,
+        "target_device_id": "mac",
+        "route_version": "route-1",
+        "highest_contiguous_seq": 2,
+        "status": "rendered",
+        "observed_at": "2026-10-01T00:00:00.000Z"
+      },
+      "ack_receipt": {
+        "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+        "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+        "reply_epoch": 1,
+        "target_device_id": "mac",
+        "route_version": "route-1",
+        "highest_contiguous_seq": 2,
+        "status": "rendered",
+        "observed_at": "2026-10-01T00:00:00.000Z",
+        "receipt_ref": "out-ack:b7e3037e71b105163d01c7d3129d6adae2b9a5cb055258f8530107d57e13c232"
+      },
+      "cancellation": {
+        "receipt_ref": "out-cancel:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+        "reply_epoch": 1,
+        "status": "interrupted"
+      },
+      "request": {
+        "operation": "result",
+        "processed_event_id": "d:1f400e5bbed8d3e43a061d67be9af975c5fdbb5edd95da36d926d41000fcf1fd"
+      },
+      "header": {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "result_header",
+        "event_id": "cancel-partial",
+        "processed_event_id": "d:1f400e5bbed8d3e43a061d67be9af975c5fdbb5edd95da36d926d41000fcf1fd",
+        "session_id": "continuity",
+        "run_id": "cancel-run",
+        "consumed_revision": 1,
+        "result_revision": 1,
+        "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+        "reply_epoch": 1,
+        "reply_phase": "interrupted",
+        "reply_mode": "text",
+        "run_status": "completed",
+        "reply_status": "partial",
+        "result_status": "interrupted",
+        "delivery_status": "partial",
+        "output_plan": [
+          {
+            "device_type": "mac",
+            "output_modes": [
+              "text"
+            ],
+            "route_version": "route-1",
+            "target_device_id": "mac"
+          }
+        ],
+        "text_replay": "pending",
+        "text_chunk_count": 9,
+        "pending_text_chunk_count": 7,
+        "rendered_text_through_seq": 2,
+        "pending_voice_chunk_count": 0,
+        "voice_transport": "not_supported",
+        "voice_status": "none",
+        "voice_error": null,
+        "receipt_status": "unknown",
+        "receipt_error": "RUN_RECEIPTS_SOURCE_NOT_CONFIGURED",
+        "receipt_sources": [],
+        "receipt_refs": []
+      },
+      "text_chunks": [],
+      "late_chunk": {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "text_chunk",
+        "session_id": "continuity",
+        "processed_event_id": "d:1f400e5bbed8d3e43a061d67be9af975c5fdbb5edd95da36d926d41000fcf1fd",
+        "chunk": {
+          "event_id": "cancel-partial",
+          "final": true,
+          "message_ref": "native-final:cancel-run",
+          "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+          "reply_epoch": 1,
+          "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+          "route_version": "route-1",
+          "run_id": "cancel-run",
+          "seq": 9,
+          "target_device_id": "mac",
+          "text": "t"
+        }
+      },
+      "evidence": {
+        "read_finalized_chunks": 0,
+        "sealed_replay_error": "SEALED_TEXT_OLD_EPOCH",
+        "late_ack_error": "OUTPUT_ACK_OLD_EPOCH"
+      }
+    },
+    "full": {
+      "input_submit": {
+        "operation": "submit",
+        "event_id": "cancel-full",
+        "captured_at": "2026-10-01T00:00:00.000Z",
+        "text": "immutable original"
+      },
+      "accepted": {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "accepted",
+        "event_id": "cancel-full",
+        "processed_event_id": "d:cb75a10bcc1d1d83ff898f5f9aa6afdc6c50700200666240f21811196ebfccd6",
+        "session_id": "continuity",
+        "admission": {
+          "state": "pending",
+          "run_id": null,
+          "idempotency_key": "paios:184378e4d53dbb7ed5269047ed760c59659db36ea59bb55cb4b6c068e80a8cc6"
+        }
+      },
+      "sealed_header": {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "result_header",
+        "event_id": "cancel-full",
+        "processed_event_id": "d:cb75a10bcc1d1d83ff898f5f9aa6afdc6c50700200666240f21811196ebfccd6",
+        "session_id": "continuity",
+        "run_id": "cancel-run",
+        "consumed_revision": 1,
+        "result_revision": 1,
+        "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+        "reply_epoch": 1,
+        "reply_phase": "sealed",
+        "reply_mode": "text",
+        "run_status": "completed",
+        "reply_status": "complete",
+        "result_status": "completed",
+        "delivery_status": "unknown",
+        "output_plan": [
+          {
+            "target_device_id": "mac",
+            "device_type": "mac",
+            "output_modes": [
+              "text"
+            ],
+            "route_version": "route-1"
+          }
+        ],
+        "text_replay": "pending",
+        "text_chunk_count": 9,
+        "pending_text_chunk_count": 9,
+        "rendered_text_through_seq": 0,
+        "pending_voice_chunk_count": 0,
+        "voice_transport": "not_supported",
+        "voice_status": "none",
+        "voice_error": null,
+        "receipt_status": "unknown",
+        "receipt_error": "RUN_RECEIPTS_SOURCE_NOT_CONFIGURED",
+        "receipt_sources": [],
+        "receipt_refs": []
+      },
+      "original_text_chunks": [
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "text_chunk",
+          "session_id": "continuity",
+          "processed_event_id": "d:cb75a10bcc1d1d83ff898f5f9aa6afdc6c50700200666240f21811196ebfccd6",
+          "chunk": {
+            "event_id": "cancel-full",
+            "final": false,
+            "message_ref": "native-final:cancel-run",
+            "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+            "reply_epoch": 1,
+            "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+            "route_version": "route-1",
+            "run_id": "cancel-run",
+            "seq": 1,
+            "target_device_id": "mac",
+            "text": "🔬中文"
+          }
+        },
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "text_chunk",
+          "session_id": "continuity",
+          "processed_event_id": "d:cb75a10bcc1d1d83ff898f5f9aa6afdc6c50700200666240f21811196ebfccd6",
+          "chunk": {
+            "event_id": "cancel-full",
+            "final": false,
+            "message_ref": "native-final:cancel-run",
+            "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+            "reply_epoch": 1,
+            "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+            "route_version": "route-1",
+            "run_id": "cancel-run",
+            "seq": 2,
+            "target_device_id": "mac",
+            "text": " im"
+          }
+        },
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "text_chunk",
+          "session_id": "continuity",
+          "processed_event_id": "d:cb75a10bcc1d1d83ff898f5f9aa6afdc6c50700200666240f21811196ebfccd6",
+          "chunk": {
+            "event_id": "cancel-full",
+            "final": false,
+            "message_ref": "native-final:cancel-run",
+            "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+            "reply_epoch": 1,
+            "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+            "route_version": "route-1",
+            "run_id": "cancel-run",
+            "seq": 3,
+            "target_device_id": "mac",
+            "text": "mut"
+          }
+        },
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "text_chunk",
+          "session_id": "continuity",
+          "processed_event_id": "d:cb75a10bcc1d1d83ff898f5f9aa6afdc6c50700200666240f21811196ebfccd6",
+          "chunk": {
+            "event_id": "cancel-full",
+            "final": false,
+            "message_ref": "native-final:cancel-run",
+            "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+            "reply_epoch": 1,
+            "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+            "route_version": "route-1",
+            "run_id": "cancel-run",
+            "seq": 4,
+            "target_device_id": "mac",
+            "text": "abl"
+          }
+        },
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "text_chunk",
+          "session_id": "continuity",
+          "processed_event_id": "d:cb75a10bcc1d1d83ff898f5f9aa6afdc6c50700200666240f21811196ebfccd6",
+          "chunk": {
+            "event_id": "cancel-full",
+            "final": false,
+            "message_ref": "native-final:cancel-run",
+            "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+            "reply_epoch": 1,
+            "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+            "route_version": "route-1",
+            "run_id": "cancel-run",
+            "seq": 5,
+            "target_device_id": "mac",
+            "text": "e c"
+          }
+        },
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "text_chunk",
+          "session_id": "continuity",
+          "processed_event_id": "d:cb75a10bcc1d1d83ff898f5f9aa6afdc6c50700200666240f21811196ebfccd6",
+          "chunk": {
+            "event_id": "cancel-full",
+            "final": false,
+            "message_ref": "native-final:cancel-run",
+            "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+            "reply_epoch": 1,
+            "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+            "route_version": "route-1",
+            "run_id": "cancel-run",
+            "seq": 6,
+            "target_device_id": "mac",
+            "text": "anc"
+          }
+        },
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "text_chunk",
+          "session_id": "continuity",
+          "processed_event_id": "d:cb75a10bcc1d1d83ff898f5f9aa6afdc6c50700200666240f21811196ebfccd6",
+          "chunk": {
+            "event_id": "cancel-full",
+            "final": false,
+            "message_ref": "native-final:cancel-run",
+            "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+            "reply_epoch": 1,
+            "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+            "route_version": "route-1",
+            "run_id": "cancel-run",
+            "seq": 7,
+            "target_device_id": "mac",
+            "text": "el "
+          }
+        },
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "text_chunk",
+          "session_id": "continuity",
+          "processed_event_id": "d:cb75a10bcc1d1d83ff898f5f9aa6afdc6c50700200666240f21811196ebfccd6",
+          "chunk": {
+            "event_id": "cancel-full",
+            "final": false,
+            "message_ref": "native-final:cancel-run",
+            "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+            "reply_epoch": 1,
+            "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+            "route_version": "route-1",
+            "run_id": "cancel-run",
+            "seq": 8,
+            "target_device_id": "mac",
+            "text": "tex"
+          }
+        },
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "text_chunk",
+          "session_id": "continuity",
+          "processed_event_id": "d:cb75a10bcc1d1d83ff898f5f9aa6afdc6c50700200666240f21811196ebfccd6",
+          "chunk": {
+            "event_id": "cancel-full",
+            "final": true,
+            "message_ref": "native-final:cancel-run",
+            "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+            "reply_epoch": 1,
+            "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+            "route_version": "route-1",
+            "run_id": "cancel-run",
+            "seq": 9,
+            "target_device_id": "mac",
+            "text": "t"
+          }
+        }
+      ],
+      "input_ack": {
+        "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+        "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+        "reply_epoch": 1,
+        "target_device_id": "mac",
+        "route_version": "route-1",
+        "highest_contiguous_seq": 9,
+        "status": "rendered",
+        "observed_at": "2026-10-01T00:00:00.000Z"
+      },
+      "ack_receipt": {
+        "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+        "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+        "reply_epoch": 1,
+        "target_device_id": "mac",
+        "route_version": "route-1",
+        "highest_contiguous_seq": 9,
+        "status": "rendered",
+        "observed_at": "2026-10-01T00:00:00.000Z",
+        "receipt_ref": "out-ack:25954fa6c348f7d0c64d11d6a2da7b6183cd3728311d68cdf519fdec053993e8"
+      },
+      "cancellation": {
+        "receipt_ref": "out-cancel:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+        "reply_epoch": 1,
+        "status": "interrupted"
+      },
+      "request": {
+        "operation": "result",
+        "processed_event_id": "d:cb75a10bcc1d1d83ff898f5f9aa6afdc6c50700200666240f21811196ebfccd6"
+      },
+      "header": {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "result_header",
+        "event_id": "cancel-full",
+        "processed_event_id": "d:cb75a10bcc1d1d83ff898f5f9aa6afdc6c50700200666240f21811196ebfccd6",
+        "session_id": "continuity",
+        "run_id": "cancel-run",
+        "consumed_revision": 1,
+        "result_revision": 1,
+        "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+        "reply_epoch": 1,
+        "reply_phase": "interrupted",
+        "reply_mode": "text",
+        "run_status": "completed",
+        "reply_status": "partial",
+        "result_status": "interrupted",
+        "delivery_status": "rendered",
+        "output_plan": [
+          {
+            "device_type": "mac",
+            "output_modes": [
+              "text"
+            ],
+            "route_version": "route-1",
+            "target_device_id": "mac"
+          }
+        ],
+        "text_replay": "pending",
+        "text_chunk_count": 9,
+        "pending_text_chunk_count": 0,
+        "rendered_text_through_seq": 9,
+        "pending_voice_chunk_count": 0,
+        "voice_transport": "not_supported",
+        "voice_status": "none",
+        "voice_error": null,
+        "receipt_status": "unknown",
+        "receipt_error": "RUN_RECEIPTS_SOURCE_NOT_CONFIGURED",
+        "receipt_sources": [],
+        "receipt_refs": []
+      },
+      "text_chunks": [],
+      "late_chunk": {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "text_chunk",
+        "session_id": "continuity",
+        "processed_event_id": "d:cb75a10bcc1d1d83ff898f5f9aa6afdc6c50700200666240f21811196ebfccd6",
+        "chunk": {
+          "event_id": "cancel-full",
+          "final": true,
+          "message_ref": "native-final:cancel-run",
+          "output_id": "output:0cbcb4e7bbcc3e8e148668c2a2508160d7023e6eec557b45196ada94eb3d2423",
+          "reply_epoch": 1,
+          "reply_id": "reply:d0607ae607468b834ace01f67a0498b404a1c54a27c7e686bbc33085aa6d9a2b",
+          "route_version": "route-1",
+          "run_id": "cancel-run",
+          "seq": 9,
+          "target_device_id": "mac",
+          "text": "t"
+        }
+      },
+      "evidence": {
+        "read_finalized_chunks": 0,
+        "sealed_replay_error": "SEALED_TEXT_OLD_EPOCH",
+        "late_ack_error": "OUTPUT_ACK_OLD_EPOCH"
+      }
+    }
+  },
+  "trusted_binding": {
+    "session_id": "continuity",
+    "device_id": "mac",
+    "connection_epoch": "1",
+    "expected_gateway_identity": "controlled-source-gateway",
+    "evidence": "controlled host fixture"
+  }
+}

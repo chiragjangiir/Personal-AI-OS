@@ -1,0 +1,89 @@
+{
+  "schema": "voiceprint-evaluation/v1",
+  "evidence": "synthetic",
+  "speaker_model": {
+    "id": "fixture",
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "dim": 32
+  },
+  "normalized_thresholds": {
+    "verified": 2,
+    "uncertain": 1
+  },
+  "normalized_calibration": {
+    "file": {
+      "verified": 2,
+      "uncertain": 1
+    },
+    "phone_app": {
+      "verified": 2,
+      "uncertain": 1
+    },
+    "glasses": {
+      "verified": 2,
+      "uncertain": 1
+    },
+    "mac": {
+      "verified": 2,
+      "uncertain": 1
+    },
+    "call": {
+      "verified": 2,
+      "uncertain": 1
+    },
+    "video": {
+      "verified": 2,
+      "uncertain": 1
+    },
+    "ambient": {
+      "verified": 2,
+      "uncertain": 1
+    },
+    "journal": {
+      "verified": 2,
+      "uncertain": 1
+    }
+  },
+  "samples": [
+    {"id":"enroll-0","channel":"file","role":"enroll","label":"owner","speech_ms":2000,"embedding":[1,0.0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"enroll-1","channel":"file","role":"enroll","label":"owner","speech_ms":2000,"embedding":[1,0.0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"enroll-2","channel":"file","role":"enroll","label":"owner","speech_ms":2000,"embedding":[1,0.0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"enroll-3","channel":"file","role":"enroll","label":"owner","speech_ms":2000,"embedding":[1,0.0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"enroll-4","channel":"file","role":"enroll","label":"owner","speech_ms":2000,"embedding":[1,0.0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"file-owner-0.9","channel":"file","role":"probe","label":"owner","speech_ms":2000,"embedding":[0.9,0.4358898943540673,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"file-owner-0.55","channel":"file","role":"probe","label":"owner","speech_ms":2000,"embedding":[0.55,0.8351646544245033,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"file-tv-0.2","channel":"file","role":"probe","label":"tv","speech_ms":2000,"embedding":[0.2,0.9797958971132712,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"file-other--0.2","channel":"file","role":"probe","label":"other","speech_ms":2000,"embedding":[-0.2,0.9797958971132712,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"phone_app-owner-0.9","channel":"phone_app","role":"probe","label":"owner","speech_ms":2000,"embedding":[0.9,0.4358898943540673,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"phone_app-owner-0.55","channel":"phone_app","role":"probe","label":"owner","speech_ms":2000,"embedding":[0.55,0.8351646544245033,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"phone_app-tv-0.2","channel":"phone_app","role":"probe","label":"tv","speech_ms":2000,"embedding":[0.2,0.9797958971132712,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"phone_app-other--0.2","channel":"phone_app","role":"probe","label":"other","speech_ms":2000,"embedding":[-0.2,0.9797958971132712,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"glasses-owner-0.9","channel":"glasses","role":"probe","label":"owner","speech_ms":2000,"embedding":[0.9,0.4358898943540673,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"glasses-owner-0.55","channel":"glasses","role":"probe","label":"owner","speech_ms":2000,"embedding":[0.55,0.8351646544245033,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"glasses-tv-0.2","channel":"glasses","role":"probe","label":"tv","speech_ms":2000,"embedding":[0.2,0.9797958971132712,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"glasses-other--0.2","channel":"glasses","role":"probe","label":"other","speech_ms":2000,"embedding":[-0.2,0.9797958971132712,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"mac-owner-0.9","channel":"mac","role":"probe","label":"owner","speech_ms":2000,"embedding":[0.9,0.4358898943540673,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"mac-owner-0.55","channel":"mac","role":"probe","label":"owner","speech_ms":2000,"embedding":[0.55,0.8351646544245033,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"mac-tv-0.2","channel":"mac","role":"probe","label":"tv","speech_ms":2000,"embedding":[0.2,0.9797958971132712,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"mac-other--0.2","channel":"mac","role":"probe","label":"other","speech_ms":2000,"embedding":[-0.2,0.9797958971132712,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"call-owner-0.9","channel":"call","role":"probe","label":"owner","speech_ms":2000,"embedding":[0.9,0.4358898943540673,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"call-owner-0.55","channel":"call","role":"probe","label":"owner","speech_ms":2000,"embedding":[0.55,0.8351646544245033,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"call-tv-0.2","channel":"call","role":"probe","label":"tv","speech_ms":2000,"embedding":[0.2,0.9797958971132712,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"call-other--0.2","channel":"call","role":"probe","label":"other","speech_ms":2000,"embedding":[-0.2,0.9797958971132712,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"cohort-0","channel":"file","role":"cohort","label":"other","speech_ms":2000,"embedding":[0.1,0.99498743710662,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"cohort-1","channel":"file","role":"cohort","label":"other","speech_ms":2000,"embedding":[-0.3,0.9539392014169457,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"cohort-2","channel":"file","role":"cohort","label":"other","speech_ms":2000,"embedding":[-0.7,0.714142842854285,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"video-owner-0.9","channel":"video","role":"probe","label":"owner","speech_ms":2000,"embedding":[0.9,0.4358898943540673,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"video-owner-0.55","channel":"video","role":"probe","label":"owner","speech_ms":2000,"embedding":[0.55,0.8351646544245033,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"video-tv-0.2","channel":"video","role":"probe","label":"tv","speech_ms":2000,"embedding":[0.2,0.9797958971132712,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"video-other--0.2","channel":"video","role":"probe","label":"other","speech_ms":2000,"embedding":[-0.2,0.9797958971132712,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"ambient-owner-0.9","channel":"ambient","role":"probe","label":"owner","speech_ms":2000,"embedding":[0.9,0.4358898943540673,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"ambient-owner-0.55","channel":"ambient","role":"probe","label":"owner","speech_ms":2000,"embedding":[0.55,0.8351646544245033,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"ambient-tv-0.2","channel":"ambient","role":"probe","label":"tv","speech_ms":2000,"embedding":[0.2,0.9797958971132712,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"ambient-other--0.2","channel":"ambient","role":"probe","label":"other","speech_ms":2000,"embedding":[-0.2,0.9797958971132712,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"journal-owner-0.9","channel":"journal","role":"probe","label":"owner","speech_ms":2000,"embedding":[0.9,0.4358898943540673,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"journal-owner-0.55","channel":"journal","role":"probe","label":"owner","speech_ms":2000,"embedding":[0.55,0.8351646544245033,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"journal-tv-0.2","channel":"journal","role":"probe","label":"tv","speech_ms":2000,"embedding":[0.2,0.9797958971132712,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},
+    {"id":"journal-other--0.2","channel":"journal","role":"probe","label":"other","speech_ms":2000,"embedding":[-0.2,0.9797958971132712,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}
+  ]
+}

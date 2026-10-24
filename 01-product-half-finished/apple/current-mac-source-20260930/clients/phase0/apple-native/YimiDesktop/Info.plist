@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>依米</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.0.1</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>视频通话时传送你的画面</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>按你的要求通过系统事件向已确认的微信窗口粘贴文字或附件。</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>实时通话和按住说话时听你说话</string>
+	<key>CFBundleDisplayName</key>
+	<string>依米</string>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
+</dict>
+</plist>

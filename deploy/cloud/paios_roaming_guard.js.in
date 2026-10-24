@@ -1,0 +1,77 @@
+const JSON_TYPE = 'application/json; charset=utf-8';
+const INVALID = '{"error":"INVALID_REQUEST"}';
+const NOT_FOUND = '{"error":"ROUTE_NOT_FOUND"}';
+const EXACT_HOST = '@PUBLIC_AUTHORITY@';
+const LEGACY_HOSTS = @LEGACY_AUTHORITIES@;
+const HEADER_TOKEN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+const forbidden = [
+  'cookie', 'range', 'trailer', 'transfer-encoding', 'content-encoding', 'te',
+  'forwarded', 'x-real-ip', 'proxy-connection', 'connection', 'upgrade', 'keep-alive',
+];
+function contains(values, value) {
+  return values.indexOf(value) !== -1;
+}
+function isForbidden(name) {
+  return contains(forbidden, name) || isForwardingHeader(name);
+}
+function isForwardingHeader(name) {
+  return name === 'forwarded' || name === 'x-real-ip' ||
+    name.startsWith('x-forwarded-');
+}
+function asciiLower(value) {
+  return value.replace(/[A-Z]/g, character =>
+    String.fromCharCode(character.charCodeAt(0) + 32));
+}
+function fail(r) {
+  r.headersOut['Content-Type'] = JSON_TYPE;
+  r.headersOut['Cache-Control'] = 'no-store';
+  r.headersOut['X-Content-Type-Options'] = 'nosniff';
+  r.return(400, INVALID);
+}
+function one(rows, name) {
+  let found = null;
+  let count = 0;
+  for (let index = 0; index < rows.length; index++) {
+    if (rows[index][0] === name) { found = rows[index][1]; count++; }
+  }
+  return count === 1 ? found : null;
+}
+function validate(r, legacy) {
+  const rows = [];
+  for (let index = 0; index < r.rawHeadersIn.length; index++) {
+    rows.push([r.rawHeadersIn[index][0].toLowerCase(), r.rawHeadersIn[index][1]]);
+  }
+  const names = [];
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+    const name = rows[rowIndex][0];
+    const value = rows[rowIndex][1];
+    const wsScalar = name === 'connection' || name === 'upgrade';
+    if (!HEADER_TOKEN.test(name) || contains(names, name) ||
+        /[\x00-\x08\x0a-\x1f\x7f]/.test(value) ||
+        (!wsScalar && (/\x09/.test(value) || value !== value.trim()))) return fail(r);
+    names.push(name);
+  }
+  const host = one(rows, 'host');
+  if (legacy ? !contains(LEGACY_HOSTS, host) : host !== EXACT_HOST) return fail(r);
+  const watchWait = r.variables.paios_roaming_route_class === 'watch_turn' && r.variables.args === 'wait=25';
+  if (r.variables.is_args !== '' && !watchWait) return fail(r);
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+    const name = rows[rowIndex][0];
+    if (isForwardingHeader(name) && (!legacy || !contains([
+      'x-forwarded-host', 'x-forwarded-proto', 'x-forwarded-for'], name))) return fail(r);
+  }
+  if (legacy && (one(rows, 'x-forwarded-host') !== host ||
+      one(rows, 'x-forwarded-proto') !== 'https' || !one(rows, 'x-forwarded-for') ||
+      one(rows, 'x-paios-trusted-edge') !== 'tencent-nginx-loopback-v1' ||
+      !contains(['ipv4', 'ipv6'], one(rows, 'x-paios-trusted-source-family')) ||
+      !one(rows, 'x-paios-proxy-attestation'))) return fail(r);
+}
+function enforce(r) { return validate(r, false); }
+function enforceLegacy(r) { return validate(r, true); }
+function notFound(r) {
+  r.headersOut['Content-Type'] = JSON_TYPE;
+  r.headersOut['Cache-Control'] = 'no-store';
+  r.headersOut['X-Content-Type-Options'] = 'nosniff';
+  r.return(404, NOT_FOUND);
+}
+export default { enforce, enforceLegacy, notFound };

@@ -1,0 +1,84 @@
+# Standalone remote builder beside staging, with its own secrets and project.
+# Before exposing this port, allow only the runtime host's egress IPv4 in the cloud firewall.
+# To expose it deliberately, set PAIOS_BUILDER_BIND to the host's selected interface address.
+name: ${PAIOS_BUILDER_PROJECT:-paios-workshop-builder}
+services:
+  builder:
+    image: ${PAIOS_HERMES_IMAGE:?build the Hermes image with the workshop service first}
+    entrypoint: [/opt/hermes/.venv/bin/python]
+    command: [/opt/paios/integrations/hermes/personal_aios/workshop_builder.py]
+    working_dir: /opt/hermes
+    restart: unless-stopped
+    init: true
+    ports: ["${PAIOS_BUILDER_BIND:-127.0.0.1}:${PAIOS_BUILDER_PORT:-18664}:18664"]
+    environment:
+      HERMES_HOME: /opt/data
+      PAIOS_WORKSHOP_HOST: workshop
+      HERMES_WRITE_SAFE_ROOT: /workshop
+      PAIOS_SECRET_ROOT: /run/secrets
+      PAIOS_BUILDER_BIND: 0.0.0.0
+      PAIOS_BUILDER_PORT: "18664"
+      PAIOS_BUILDER_TLS_CERT_FILE: /run/secrets/workshop-builder.crt
+      PAIOS_BUILDER_TLS_KEY_FILE: /run/secrets/workshop-builder.tls.key
+      PAIOS_BUILDER_PROVIDER: ${PAIOS_BUILDER_PROVIDER:-paios-builder}
+      PAIOS_BUILDER_BASE_URL: ${PAIOS_BUILDER_BASE_URL:-https://opencode.ai/zen/go/v1}
+      PAIOS_BUILDER_MODEL: ${PAIOS_BUILDER_MODEL:-deepseek-v4.1-flash}
+      PAIOS_BUILDER_REPAIR_MODEL: ${PAIOS_BUILDER_REPAIR_MODEL:-}
+      PAIOS_BUILDER_MAX_TOOL_CALLS: ${PAIOS_BUILDER_MAX_TOOL_CALLS:-120}
+      PAIOS_BUILDER_TOOL_CALL_MILESTONE_INTERVAL: ${PAIOS_BUILDER_TOOL_CALL_MILESTONE_INTERVAL:-20}
+      PAIOS_RELEASE_REQUESTS: /srv/release-requests
+    read_only: true
+    tmpfs: [/opt/data, /tmp]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETUID, SETGID, KILL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 768m
+    memswap_limit: 1024m
+    cpus: 1.0
+    pids_limit: 128
+    volumes:
+      - workshop-access:/run/workshop-access
+      - ${PAIOS_SECRET_ROOT:?}/opencode.key:/run/secrets/opencode.key:ro
+      - ${PAIOS_SECRET_ROOT:?}/workshop-builder.key:/run/secrets/workshop-builder.key:ro
+      - ${PAIOS_SECRET_ROOT:?}/workshop-builder.crt:/run/secrets/workshop-builder.crt:ro
+      - ${PAIOS_SECRET_ROOT:?}/workshop-builder.tls.key:/run/secrets/workshop-builder.tls.key:ro
+      # Product repair queue: the builder writes request.json + candidate.patch; the host release runner (root)
+      # builds, tests and stages them and writes result.json. base.json names the accepted repair base.
+      - ${PAIOS_RELEASE_REQUESTS:?}:/srv/release-requests
+    depends_on:
+      workshop: {condition: service_healthy}
+  workshop:
+    image: ${PAIOS_WORKSHOP_IMAGE:?}
+    entrypoint: [/bin/sh, -ec]
+    command:
+      - |
+        mkdir -p /srv/owner/in /srv/owner/out
+        printf '%s\n' '{}' > /srv/owner/config.json
+        exec /usr/local/bin/workshop-start
+    restart: unless-stopped
+    init: true
+    environment:
+      PAIOS_WORKSHOP_DENY_HOSTS: ${PAIOS_WORKSHOP_DENY_HOSTS:?list owner public API and LiveKit hosts}
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN, SYS_ADMIN, SETPCAP, SETUID, SETGID, SYS_CHROOT, CHOWN, FOWNER, DAC_OVERRIDE, AUDIT_WRITE, KILL]
+    security_opt: [no-new-privileges:true, apparmor:unconfined]
+    sysctls: {net.ipv6.conf.all.disable_ipv6: "1", net.ipv6.conf.default.disable_ipv6: "1"}
+    mem_limit: 512m
+    memswap_limit: 768m
+    cpus: 0.5
+    pids_limit: 128
+    tmpfs: [/run, /tmp, /workshop, /srv/workshop-snapshots, /srv/owner, /var/lib/workshop-ssh]
+    volumes:
+      - workshop-access:/run/workshop-access:ro
+      - ${PAIOS_BUILDER_PUBLIC_IPV4_FILE:?}:/run/workshop-public-ipv4:ro
+      # The build host's product Git store (core.sharedRepository=0644): repair jobs clone it shared and sparse.
+      - ${PAIOS_RELEASE_REPO:?}:/srv/source.git:ro
+    healthcheck:
+      test: [CMD, python3, -c, "import socket; socket.create_connection(('127.0.0.1',2222),timeout=2).close()"]
+      interval: 10s
+      timeout: 3s
+      start_period: 10s
+      retries: 6
+volumes:
+  workshop-access:

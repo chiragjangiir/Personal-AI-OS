@@ -1,0 +1,264 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-ai-os.local/contracts/realtime/realtime-conversation-turn-receipt.v1.schema.json",
+  "title": "RealtimeConversationTurnReceipt",
+  "type": "object",
+  "required": [
+    "schema",
+    "receipt_id",
+    "idempotency_scope",
+    "idempotency_key",
+    "idempotency_payload_sha256",
+    "committed_at",
+    "realtime_session_ref",
+    "device_lease_ref",
+    "continuity_id",
+    "connection_epoch",
+    "lease_version",
+    "input_kind",
+    "input_id",
+    "assistant_text",
+    "assistant_text_sha256",
+    "delivery_state",
+    "publish_observation"
+  ],
+  "properties": {
+    "schema": { "const": "realtime.conversation.turn.completed.v1" },
+    "receipt_id": {
+      "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/EventId"
+    },
+    "idempotency_scope": { "const": "realtime.conversation_turn.v1" },
+    "idempotency_key": {
+      "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/IdempotencyKey"
+    },
+    "idempotency_payload_sha256": {
+      "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+    },
+    "committed_at": { "type": "string", "format": "date-time" },
+    "realtime_session_ref": {
+      "allOf": [
+        {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/CanonicalObjectVersionRef"
+        },
+        {
+          "properties": {
+            "ref_type": { "const": "RealtimeSession" }
+          }
+        }
+      ]
+    },
+    "device_lease_ref": {
+      "allOf": [
+        {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/CanonicalObjectVersionRef"
+        },
+        {
+          "properties": {
+            "ref_type": { "const": "DeviceLease" }
+          }
+        }
+      ]
+    },
+    "continuity_id": {
+      "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ContinuityId"
+    },
+    "connection_epoch": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]{0,37}$"
+    },
+    "lease_version": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]{0,37}$"
+    },
+    "input_kind": {
+      "type": "string",
+      "enum": ["typed", "audio", "visual"]
+    },
+    "input_id": { "type": "string" },
+    "final_transcript_evidence_ref": {
+      "allOf": [
+        {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/CanonicalObjectVersionRef"
+        },
+        {
+          "properties": {
+            "ref_type": { "const": "FinalTranscriptEvidence" }
+          }
+        }
+      ]
+    },
+    "source_visual_refs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "allOf": [
+          {
+            "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/CanonicalObjectVersionRef"
+          },
+          {
+            "oneOf": [
+              {
+                "properties": {
+                  "ref_type": { "const": "SourceArtifact" }
+                }
+              },
+              {
+                "properties": {
+                  "ref_type": { "const": "ArtifactVersion" }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "user_text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 8192,
+      "pattern": "^[^\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]*$"
+    },
+    "user_text_sha256": {
+      "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+    },
+    "assistant_text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16384,
+      "pattern": "^[^\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]*$"
+    },
+    "assistant_text_sha256": {
+      "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+    },
+    "delivery_state": {
+      "type": "string",
+      "enum": ["completed", "indeterminate"]
+    },
+    "publish_observation": {
+      "type": "object",
+      "required": ["state", "observed_at"],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["confirmed", "ambiguous"]
+        },
+        "observed_at": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "input_kind": { "const": "typed" }
+        },
+        "required": ["input_kind"]
+      },
+      "then": {
+        "required": ["user_text", "user_text_sha256"],
+        "properties": {
+          "input_id": {
+            "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/IdempotencyKey"
+          }
+        },
+        "not": {
+          "anyOf": [
+            { "required": ["final_transcript_evidence_ref"] },
+            { "required": ["source_visual_refs"] }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "input_kind": { "const": "audio" }
+        },
+        "required": ["input_kind"]
+      },
+      "then": {
+        "required": [
+          "user_text",
+          "user_text_sha256",
+          "final_transcript_evidence_ref"
+        ],
+        "properties": {
+          "input_id": {
+            "$ref": "#/$defs/SegmentId"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "input_kind": { "const": "visual" }
+        },
+        "required": ["input_kind"]
+      },
+      "then": {
+        "required": ["source_visual_refs"],
+        "properties": {
+          "input_id": {
+            "$ref": "#/$defs/SegmentId"
+          }
+        },
+        "not": {
+          "anyOf": [
+            { "required": ["user_text"] },
+            { "required": ["user_text_sha256"] },
+            { "required": ["final_transcript_evidence_ref"] }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "delivery_state": { "const": "completed" }
+        },
+        "required": ["delivery_state"]
+      },
+      "then": {
+        "required": ["publish_observation"],
+        "properties": {
+          "publish_observation": {
+            "required": ["state"],
+            "properties": {
+              "state": { "const": "confirmed" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "delivery_state": { "const": "indeterminate" }
+        },
+        "required": ["delivery_state"]
+      },
+      "then": {
+        "required": ["publish_observation"],
+        "properties": {
+          "publish_observation": {
+            "required": ["state"],
+            "properties": {
+              "state": { "const": "ambiguous" }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "SegmentId": {
+      "type": "string",
+      "pattern": "^rayneo_segment_[a-f0-9]{20}$"
+    }
+  }
+}

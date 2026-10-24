@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="yim_klein">#FF002FA7</color>
+    <color name="yim_klein_dark">#FF6F93FF</color>
+    <color name="yim_accent">#FF5CE1FF</color>
+    <color name="yim_splash_background">#FF000000</color>
+</resources>

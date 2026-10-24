@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-ai-os.local/contracts/evaluation/critical-violation.v1.schema.json",
+  "title": "CriticalViolation",
+  "$comment": "schema_version=1.0.0",
+  "$ref": "#/$defs/CriticalViolation",
+  "$defs": {
+    "EvaluationScopeBinding": {
+      "type": "object",
+      "required": [
+        "evaluation_scope_id",
+        "evaluation_scope_version",
+        "evaluation_scope_sha256"
+      ],
+      "properties": {
+        "evaluation_scope_id": {
+          "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId"
+        },
+        "evaluation_scope_version": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/StrictSemVer"
+        },
+        "evaluation_scope_sha256": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CriticalCode": {
+      "type": "string",
+      "enum": [
+        "unauthorized_side_effect",
+        "approval_bypass",
+        "cross_user_leakage",
+        "deleted_data_reappearance",
+        "false_official_attribution",
+        "critical_stale_context_or_risk_use",
+        "fabricated_shared_history",
+        "relationship_manipulation",
+        "non_final_transcript_persistence",
+        "tool_gateway_bypass",
+        "authoritative_writer_mismatch",
+        "missing_required_audit",
+        "shared_contract_drift"
+      ]
+    },
+    "CriticalViolationStatus": {
+      "type": "string",
+      "enum": [
+        "confirmed",
+        "invalidated_evaluator_error"
+      ]
+    },
+    "CriticalSubjectBinding": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "ref"
+          ],
+          "properties": {
+            "kind": {
+              "const": "subject"
+            },
+            "ref": {
+              "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/CanonicalRef"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "whole_evaluation_scope"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "CriticalDistinctnessProjection": {
+      "type": "object",
+      "required": [
+        "critical_code",
+        "evaluation_scope_id",
+        "evaluation_scope_version",
+        "evaluation_scope_sha256",
+        "subject_binding"
+      ],
+      "properties": {
+        "critical_code": {
+          "$ref": "#/$defs/CriticalCode"
+        },
+        "evaluation_scope_id": {
+          "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/ObjectId"
+        },
+        "evaluation_scope_version": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/StrictSemVer"
+        },
+        "evaluation_scope_sha256": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+        },
+        "subject_binding": {
+          "$ref": "#/$defs/CriticalSubjectBinding"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CriticalViolationBody": {
+      "type": "object",
+      "required": [
+        "evaluation_scope",
+        "critical_code",
+        "subject_binding",
+        "distinctness_sha256"
+      ],
+      "properties": {
+        "evaluation_scope": {
+          "$ref": "#/$defs/EvaluationScopeBinding"
+        },
+        "critical_code": {
+          "$ref": "#/$defs/CriticalCode"
+        },
+        "subject_binding": {
+          "$ref": "#/$defs/CriticalSubjectBinding"
+        },
+        "distinctness_sha256": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CriticalViolation": {
+      "type": "object",
+      "required": [
+        "envelope",
+        "body"
+      ],
+      "properties": {
+        "envelope": {
+          "allOf": [
+            {
+              "$ref": "https://personal-ai-os.local/contracts/common/common-envelope.v1.schema.json#/$defs/CommonEnvelope"
+            },
+            {
+              "required": [
+                "evidence_refs"
+              ],
+              "properties": {
+                "object_id": {
+                  "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/CriticalViolationId"
+                },
+                "object_type": {
+                  "const": "CriticalViolation"
+                },
+                "owner_module": {
+                  "const": "T14"
+                },
+                "status": {
+                  "$ref": "#/$defs/CriticalViolationStatus"
+                },
+                "schema_id": {
+                  "const": "https://personal-ai-os.local/contracts/evaluation/critical-violation.v1.schema.json"
+                },
+                "schema_version": {
+                  "const": "1.0.0"
+                },
+                "supersedes_ref": {
+                  "allOf": [
+                    {
+                      "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/CanonicalObjectVersionRef"
+                    },
+                    {
+                      "properties": {
+                        "ref_type": {
+                          "const": "CriticalViolation"
+                        },
+                        "ref_id": {
+                          "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/CriticalViolationId"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              "oneOf": [
+                {
+                  "properties": {
+                    "status": {
+                      "const": "confirmed"
+                    }
+                  },
+                  "not": {
+                    "required": [
+                      "supersedes_ref"
+                    ]
+                  }
+                },
+                {
+                  "properties": {
+                    "status": {
+                      "const": "invalidated_evaluator_error"
+                    }
+                  },
+                  "required": [
+                    "supersedes_ref"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "body": {
+          "$ref": "#/$defs/CriticalViolationBody"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

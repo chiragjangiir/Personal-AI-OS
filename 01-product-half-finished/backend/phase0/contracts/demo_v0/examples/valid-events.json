@@ -1,0 +1,676 @@
+{
+  "fixture_version": "phase0-demo/0.1",
+  "description": "Schema-valid, semantically ordered Phase 0 multi-device demo timeline. Values are synthetic contract fixtures and are not real-device Gate evidence.",
+  "retry_control": {
+    "source_event_id": "00000000-0000-4000-8000-000000000001",
+    "rule": "Only an identical canonical envelope with the same event_id and idempotency_key is a no-op; receive metadata is outside the envelope."
+  },
+  "state_machine_controls": {
+    "capture_restart_after_stop_requires_new_stream_id": true,
+    "reconnect_requires_never_used_connection_id": true,
+    "handoff_completion_request_single_consume": true,
+    "cleanup_terminal_retry_exception": "identical_cleanup_completed_receipt_only"
+  },
+  "credential_scan_controls": {
+    "scan_raw_and_once_percent_decoded": true,
+    "invalid_or_nested_percent_encoding_rejected": true,
+    "ordinary_livekit_locator_allowed": "livekit://room/phase0_demo_session_001/track/abcdefghij.example.signature"
+  },
+  "events": [
+    {
+      "schema_version": "phase0-demo/0.1",
+      "event_type": "paios.phase0.demo.session.started",
+      "event_id": "00000000-0000-4000-8000-000000000001",
+      "session_id": "phase0_demo_session_001",
+      "trace_id": "10000000-0000-4000-8000-000000000001",
+      "occurred_at": "2026-07-21T09:00:00Z",
+      "expires_at": "2026-07-21T10:05:00Z",
+      "origin": {
+        "device_id": "windows_gateway_01",
+        "device_class": "windows_gateway",
+        "client_instance_id": "gateway_client_01"
+      },
+      "connection": {
+        "id": "gateway_conn_01",
+        "epoch": 0,
+        "state": "connected"
+      },
+      "sequence": {
+        "stream_id": "gateway_control",
+        "number": 1
+      },
+      "idempotency_key": "session-start-001",
+      "payload": {
+        "active_device_id": "iphone_01",
+        "active_device_lease_version": 1,
+        "session_expires_at": "2026-07-21T10:00:00Z",
+        "cleanup_deadline_at": "2026-07-21T10:05:00Z",
+        "credential_lease": {
+          "credential_id": "credential_lease_01",
+          "expires_at": "2026-07-21T09:15:00Z",
+          "scopes": ["room_join", "publish_data", "subscribe"]
+        }
+      }
+    },
+    {
+      "schema_version": "phase0-demo/0.1",
+      "event_type": "paios.phase0.demo.device.status",
+      "event_id": "00000000-0000-4000-8000-000000000002",
+      "session_id": "phase0_demo_session_001",
+      "trace_id": "10000000-0000-4000-8000-000000000001",
+      "occurred_at": "2026-07-21T09:00:02Z",
+      "expires_at": "2026-07-21T10:05:00Z",
+      "origin": {
+        "device_id": "iphone_01",
+        "device_class": "iphone",
+        "client_instance_id": "iphone_client_01"
+      },
+      "connection": {
+        "id": "iphone_conn_01",
+        "epoch": 0,
+        "state": "connected"
+      },
+      "sequence": {
+        "stream_id": "device_status",
+        "number": 1
+      },
+      "idempotency_key": "iphone-online-001",
+      "payload": {
+        "device_id": "iphone_01",
+        "status": "online",
+        "transport": "livekit",
+        "capabilities": ["audio_input", "audio_output", "location", "text_output"],
+        "observed_at": "2026-07-21T09:00:02Z"
+      }
+    },
+    {
+      "schema_version": "phase0-demo/0.1",
+      "event_type": "paios.phase0.demo.capture.status",
+      "event_id": "00000000-0000-4000-8000-000000000003",
+      "session_id": "phase0_demo_session_001",
+      "trace_id": "10000000-0000-4000-8000-000000000001",
+      "occurred_at": "2026-07-21T09:00:05Z",
+      "expires_at": "2026-07-21T10:05:00Z",
+      "origin": {
+        "device_id": "iphone_01",
+        "device_class": "iphone",
+        "client_instance_id": "iphone_client_01"
+      },
+      "connection": {
+        "id": "iphone_conn_01",
+        "epoch": 0,
+        "state": "connected"
+      },
+      "sequence": {
+        "stream_id": "audio_capture",
+        "number": 1
+      },
+      "idempotency_key": "iphone-audio-start-001",
+      "payload": {
+        "device_id": "iphone_01",
+        "capture_kind": "audio",
+        "status": "started",
+        "explicit_user_action": true,
+        "indicator_visible": true,
+        "observed_at": "2026-07-21T09:00:05Z"
+      }
+    },
+    {
+      "schema_version": "phase0-demo/0.1",
+      "event_type": "paios.phase0.demo.transcript.final",
+      "event_id": "00000000-0000-4000-8000-000000000004",
+      "session_id": "phase0_demo_session_001",
+      "trace_id": "10000000-0000-4000-8000-000000000001",
+      "occurred_at": "2026-07-21T09:00:12Z",
+      "expires_at": "2026-07-21T10:05:00Z",
+      "origin": {
+        "device_id": "iphone_01",
+        "device_class": "iphone",
+        "client_instance_id": "iphone_client_01"
+      },
+      "connection": {
+        "id": "iphone_conn_01",
+        "epoch": 0,
+        "state": "connected"
+      },
+      "sequence": {
+        "stream_id": "voice_input",
+        "number": 1
+      },
+      "idempotency_key": "iphone-transcript-001",
+      "payload": {
+        "text": "我准备出去跑步。",
+        "language": "zh-CN",
+        "is_final": true,
+        "source_media_id": "iphone_audio_001"
+      }
+    },
+    {
+      "schema_version": "phase0-demo/0.1",
+      "event_type": "paios.phase0.demo.location.observed",
+      "event_id": "00000000-0000-4000-8000-000000000005",
+      "session_id": "phase0_demo_session_001",
+      "trace_id": "10000000-0000-4000-8000-000000000001",
+      "occurred_at": "2026-07-21T09:00:15Z",
+      "expires_at": "2026-07-21T10:05:00Z",
+      "origin": {
+        "device_id": "iphone_01",
+        "device_class": "iphone",
+        "client_instance_id": "iphone_client_01"
+      },
+      "connection": {
+        "id": "iphone_conn_01",
+        "epoch": 0,
+        "state": "connected"
+      },
+      "sequence": {
+        "stream_id": "location_stream",
+        "number": 1
+      },
+      "idempotency_key": "iphone-location-001",
+      "payload": {
+        "latitude": 31.2304,
+        "longitude": 121.4737,
+        "accuracy_m": 12.5,
+        "activity": "running",
+        "observed_at": "2026-07-21T09:00:15Z",
+        "authorization_mode": "foreground"
+      }
+    },
+    {
+      "schema_version": "phase0-demo/0.1",
+      "event_type": "paios.phase0.demo.workout.metric",
+      "event_id": "00000000-0000-4000-8000-000000000006",
+      "session_id": "phase0_demo_session_001",
+      "trace_id": "10000000-0000-4000-8000-000000000001",
+      "occurred_at": "2026-07-21T09:01:00Z",
+      "expires_at": "2026-07-21T10:05:00Z",
+      "origin": {
+        "device_id": "watch_01",
+        "device_class": "apple_watch",
+        "client_instance_id": "watch_client_01",
+        "relay": {
+          "relay_device_id": "iphone_01",
+          "relay_device_class": "iphone",
+          "transport": "watch_connectivity"
+        }
+      },
+      "connection": {
+        "id": "iphone_conn_01",
+        "epoch": 0,
+        "state": "connected"
+      },
+      "sequence": {
+        "stream_id": "workout_run_01",
+        "number": 1
+      },
+      "idempotency_key": "watch-workout-001",
+      "payload": {
+        "workout_id": "workout_001",
+        "workout_kind": "running",
+        "observed_at": "2026-07-21T09:01:00Z",
+        "metrics": [
+          { "name": "heart_rate", "value": 132, "unit": "bpm" },
+          { "name": "elapsed_time", "value": 60, "unit": "s" }
+        ]
+      }
+    },
+    {
+      "schema_version": "phase0-demo/0.1",
+      "event_type": "paios.phase0.demo.confirmation.requested",
+      "event_id": "00000000-0000-4000-8000-000000000007",
+      "session_id": "phase0_demo_session_001",
+      "trace_id": "10000000-0000-4000-8000-000000000001",
+      "occurred_at": "2026-07-21T09:01:05Z",
+      "expires_at": "2026-07-21T10:05:00Z",
+      "origin": {
+        "device_id": "windows_gateway_01",
+        "device_class": "windows_gateway",
+        "client_instance_id": "gateway_client_01"
+      },
+      "connection": {
+        "id": "gateway_conn_01",
+        "epoch": 0,
+        "state": "connected"
+      },
+      "sequence": {
+        "stream_id": "gateway_control",
+        "number": 2,
+        "previous_event_id": "00000000-0000-4000-8000-000000000001"
+      },
+      "idempotency_key": "confirm-request-001",
+      "payload": {
+        "confirmation_id": "confirmation_001",
+        "target_device_id": "watch_01",
+        "prompt": "是否开始记录？",
+        "choices": ["yes", "no"],
+        "expires_at": "2026-07-21T09:06:05Z"
+      }
+    },
+    {
+      "schema_version": "phase0-demo/0.1",
+      "event_type": "paios.phase0.demo.confirmation.responded",
+      "event_id": "00000000-0000-4000-8000-000000000008",
+      "session_id": "phase0_demo_session_001",
+      "trace_id": "10000000-0000-4000-8000-000000000001",
+      "occurred_at": "2026-07-21T09:01:10Z",
+      "expires_at": "2026-07-21T10:05:00Z",
+      "origin": {
+        "device_id": "watch_01",
+        "device_class": "apple_watch",
+        "client_instance_id": "watch_client_01",
+        "relay": {
+          "relay_device_id": "iphone_01",
+          "relay_device_class": "iphone",
+          "transport": "watch_connectivity"
+        }
+      },
+      "connection": {
+        "id": "iphone_conn_01",
+        "epoch": 0,
+        "state": "connected"
+      },
+      "sequence": {
+        "stream_id": "watch_confirm",
+        "number": 1
+      },
+      "idempotency_key": "confirm-response-001",
+      "payload": {
+        "confirmation_id": "confirmation_001",
+        "request_event_id": "00000000-0000-4000-8000-000000000007",
+        "choice": "yes",
+        "responded_at": "2026-07-21T09:01:10Z"
+      }
+    },
+    {
+      "schema_version": "phase0-demo/0.1",
+      "event_type": "paios.phase0.demo.media.referenced",
+      "event_id": "00000000-0000-4000-8000-000000000009",
+      "session_id": "phase0_demo_session_001",
+      "trace_id": "10000000-0000-4000-8000-000000000001",
+      "occurred_at": "2026-07-21T09:02:00Z",
+      "expires_at": "2026-07-21T10:05:00Z",
+      "origin": {
+        "device_id": "rayneo_01",
+        "device_class": "rayneo",
+        "client_instance_id": "rayneo_client_01"
+      },
+      "connection": {
+        "id": "rayneo_conn_01",
+        "epoch": 0,
+        "state": "connected"
+      },
+      "sequence": {
+        "stream_id": "vision_stream",
+        "number": 1
+      },
+      "idempotency_key": "rayneo-frame-001",
+      "payload": {
+        "media_ref": {
+          "media_id": "rayneo_frame_001",
+          "kind": "image",
+          "transport": "livekit_track",
+          "locator": "livekit://room/phase0_demo_session_001/track/rayneo_frame_001",
+          "mime_type": "image/jpeg",
+          "capture_mode": "user_triggered_frame",
+          "expires_at": "2026-07-21T10:00:00Z"
+        },
+        "explicit_capture": true
+      }
+    },
+    {
+      "schema_version": "phase0-demo/0.1",
+      "event_type": "paios.phase0.demo.device.telemetry",
+      "event_id": "00000000-0000-4000-8000-000000000010",
+      "session_id": "phase0_demo_session_001",
+      "trace_id": "10000000-0000-4000-8000-000000000001",
+      "occurred_at": "2026-07-21T09:02:01Z",
+      "expires_at": "2026-07-21T10:05:00Z",
+      "origin": {
+        "device_id": "rayneo_01",
+        "device_class": "rayneo",
+        "client_instance_id": "rayneo_client_01"
+      },
+      "connection": {
+        "id": "rayneo_conn_01",
+        "epoch": 0,
+        "state": "connected"
+      },
+      "sequence": {
+        "stream_id": "telemetry_stream",
+        "number": 1
+      },
+      "idempotency_key": "rayneo-telemetry-001",
+      "payload": {
+        "device_id": "rayneo_01",
+        "observed_at": "2026-07-21T09:02:01Z",
+        "metrics": [
+          { "name": "battery", "value": 87, "unit": "percent" },
+          { "name": "temperature", "value": 36.5, "unit": "celsius" },
+          { "name": "frame_rate", "value": 1, "unit": "fps" }
+        ]
+      }
+    },
+    {
+      "schema_version": "phase0-demo/0.1",
+      "event_type": "paios.phase0.demo.model.requested",
+      "event_id": "00000000-0000-4000-8000-000000000011",
+      "session_id": "phase0_demo_session_001",
+      "trace_id": "10000000-0000-4000-8000-000000000001",
+      "occurred_at": "2026-07-21T09:02:02Z",
+      "expires_at": "2026-07-21T10:05:00Z",
+      "origin": {
+        "device_id": "windows_gateway_01",
+        "device_class": "windows_gateway",
+        "client_instance_id": "gateway_client_01"
+      },
+      "connection": {
+        "id": "gateway_conn_01",
+        "epoch": 0,
+        "state": "connected"
+      },
+      "sequence": {
+        "stream_id": "gateway_control",
+        "number": 3,
+        "previous_event_id": "00000000-0000-4000-8000-000000000007"
+      },
+      "idempotency_key": "model-request-001",
+      "payload": {
+        "input_event_ids": [
+          "00000000-0000-4000-8000-000000000004",
+          "00000000-0000-4000-8000-000000000009"
+        ],
+        "requested_outputs": ["text", "audio", "ar_card"]
+      }
+    },
+    {
+      "schema_version": "phase0-demo/0.1",
+      "event_type": "paios.phase0.demo.model.result",
+      "event_id": "00000000-0000-4000-8000-000000000012",
+      "session_id": "phase0_demo_session_001",
+      "trace_id": "10000000-0000-4000-8000-000000000001",
+      "occurred_at": "2026-07-21T09:02:04Z",
+      "expires_at": "2026-07-21T10:05:00Z",
+      "origin": {
+        "device_id": "windows_gateway_01",
+        "device_class": "windows_gateway",
+        "client_instance_id": "gateway_client_01"
+      },
+      "connection": {
+        "id": "gateway_conn_01",
+        "epoch": 0,
+        "state": "connected"
+      },
+      "sequence": {
+        "stream_id": "gateway_control",
+        "number": 4,
+        "previous_event_id": "00000000-0000-4000-8000-000000000011"
+      },
+      "idempotency_key": "model-result-001",
+      "payload": {
+        "request_event_id": "00000000-0000-4000-8000-000000000011",
+        "result_id": "model_result_001",
+        "status": "success",
+        "provider": "local",
+        "model": "gemma4-12b",
+        "latency_ms": 1840,
+        "non_authoritative": true,
+        "outputs": [
+          {
+            "modality": "text",
+            "text": "已看到标牌；跑步前请确认采集已经开始。",
+            "language": "zh-CN"
+          },
+          {
+            "modality": "audio",
+            "media_ref": {
+              "media_id": "audio_reply_001",
+              "kind": "audio",
+              "transport": "livekit_track",
+              "locator": "livekit://room/phase0_demo_session_001/track/audio_reply_001",
+              "mime_type": "audio/opus",
+              "capture_mode": "generated",
+              "expires_at": "2026-07-21T10:00:00Z"
+            }
+          },
+          {
+            "modality": "ar_card",
+            "card": {
+              "card_id": "run_status_001",
+              "title": "跑步记录已开始",
+              "body": "心率 132 bpm"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "schema_version": "phase0-demo/0.1",
+      "event_type": "paios.phase0.demo.handoff.requested",
+      "event_id": "00000000-0000-4000-8000-000000000013",
+      "session_id": "phase0_demo_session_001",
+      "trace_id": "10000000-0000-4000-8000-000000000001",
+      "occurred_at": "2026-07-21T09:02:05Z",
+      "expires_at": "2026-07-21T10:05:00Z",
+      "origin": {
+        "device_id": "windows_gateway_01",
+        "device_class": "windows_gateway",
+        "client_instance_id": "gateway_client_01"
+      },
+      "connection": {
+        "id": "gateway_conn_01",
+        "epoch": 0,
+        "state": "connected"
+      },
+      "sequence": {
+        "stream_id": "gateway_control",
+        "number": 5,
+        "previous_event_id": "00000000-0000-4000-8000-000000000012"
+      },
+      "idempotency_key": "handoff-request-001",
+      "payload": {
+        "handoff_id": "handoff_001",
+        "from_device_id": "iphone_01",
+        "to_device_id": "rayneo_01",
+        "expected_active_device_lease_version": 1,
+        "reason": "demo_step"
+      }
+    },
+    {
+      "schema_version": "phase0-demo/0.1",
+      "event_type": "paios.phase0.demo.handoff.completed",
+      "event_id": "00000000-0000-4000-8000-000000000014",
+      "session_id": "phase0_demo_session_001",
+      "trace_id": "10000000-0000-4000-8000-000000000001",
+      "occurred_at": "2026-07-21T09:02:07Z",
+      "expires_at": "2026-07-21T10:05:00Z",
+      "origin": {
+        "device_id": "windows_gateway_01",
+        "device_class": "windows_gateway",
+        "client_instance_id": "gateway_client_01"
+      },
+      "connection": {
+        "id": "gateway_conn_01",
+        "epoch": 0,
+        "state": "connected"
+      },
+      "sequence": {
+        "stream_id": "gateway_control",
+        "number": 6,
+        "previous_event_id": "00000000-0000-4000-8000-000000000013"
+      },
+      "idempotency_key": "handoff-complete-001",
+      "payload": {
+        "handoff_id": "handoff_001",
+        "request_event_id": "00000000-0000-4000-8000-000000000013",
+        "from_device_id": "iphone_01",
+        "to_device_id": "rayneo_01",
+        "active_device_id": "rayneo_01",
+        "active_device_lease_version": 2,
+        "old_device_output_suppressed": true,
+        "completed_at": "2026-07-21T09:02:07Z"
+      }
+    },
+    {
+      "schema_version": "phase0-demo/0.1",
+      "event_type": "paios.phase0.demo.delivery.requested",
+      "event_id": "00000000-0000-4000-8000-000000000015",
+      "session_id": "phase0_demo_session_001",
+      "trace_id": "10000000-0000-4000-8000-000000000001",
+      "occurred_at": "2026-07-21T09:02:08Z",
+      "expires_at": "2026-07-21T10:05:00Z",
+      "origin": {
+        "device_id": "windows_gateway_01",
+        "device_class": "windows_gateway",
+        "client_instance_id": "gateway_client_01"
+      },
+      "connection": {
+        "id": "gateway_conn_01",
+        "epoch": 0,
+        "state": "connected"
+      },
+      "sequence": {
+        "stream_id": "gateway_control",
+        "number": 7,
+        "previous_event_id": "00000000-0000-4000-8000-000000000014"
+      },
+      "idempotency_key": "delivery-request-001",
+      "payload": {
+        "result_event_id": "00000000-0000-4000-8000-000000000012",
+        "target_device_id": "rayneo_01",
+        "channel": "ar",
+        "active_device_lease_version": 2,
+        "suppress_other_devices": true
+      }
+    },
+    {
+      "schema_version": "phase0-demo/0.1",
+      "event_type": "paios.phase0.demo.delivery.acknowledged",
+      "event_id": "00000000-0000-4000-8000-000000000016",
+      "session_id": "phase0_demo_session_001",
+      "trace_id": "10000000-0000-4000-8000-000000000001",
+      "occurred_at": "2026-07-21T09:02:09Z",
+      "expires_at": "2026-07-21T10:05:00Z",
+      "origin": {
+        "device_id": "rayneo_01",
+        "device_class": "rayneo",
+        "client_instance_id": "rayneo_client_01"
+      },
+      "connection": {
+        "id": "rayneo_conn_01",
+        "epoch": 0,
+        "state": "connected"
+      },
+      "sequence": {
+        "stream_id": "delivery_ack",
+        "number": 1
+      },
+      "idempotency_key": "delivery-ack-001",
+      "payload": {
+        "delivery_event_id": "00000000-0000-4000-8000-000000000015",
+        "target_device_id": "rayneo_01",
+        "active_device_lease_version": 2,
+        "disposition": "rendered",
+        "acknowledged_at": "2026-07-21T09:02:09Z"
+      }
+    },
+    {
+      "schema_version": "phase0-demo/0.1",
+      "event_type": "paios.phase0.demo.connection.reconnected",
+      "event_id": "00000000-0000-4000-8000-000000000017",
+      "session_id": "phase0_demo_session_001",
+      "trace_id": "10000000-0000-4000-8000-000000000001",
+      "occurred_at": "2026-07-21T09:03:00Z",
+      "expires_at": "2026-07-21T10:05:00Z",
+      "origin": {
+        "device_id": "iphone_01",
+        "device_class": "iphone",
+        "client_instance_id": "iphone_client_01"
+      },
+      "connection": {
+        "id": "iphone_conn_02",
+        "epoch": 1,
+        "state": "reconnected",
+        "resumed_from_connection_id": "iphone_conn_01"
+      },
+      "sequence": {
+        "stream_id": "voice_input",
+        "number": 2,
+        "previous_event_id": "00000000-0000-4000-8000-000000000004"
+      },
+      "idempotency_key": "iphone-reconnect-001",
+      "payload": {
+        "previous_connection_id": "iphone_conn_01",
+        "new_connection_id": "iphone_conn_02",
+        "resume_stream_id": "voice_input",
+        "last_acked_sequence": 1,
+        "replay_from_sequence": 2,
+        "outage_ms": 4200
+      }
+    },
+    {
+      "schema_version": "phase0-demo/0.1",
+      "event_type": "paios.phase0.demo.session.ended",
+      "event_id": "00000000-0000-4000-8000-000000000018",
+      "session_id": "phase0_demo_session_001",
+      "trace_id": "10000000-0000-4000-8000-000000000001",
+      "occurred_at": "2026-07-21T09:20:00Z",
+      "expires_at": "2026-07-21T10:05:00Z",
+      "origin": {
+        "device_id": "windows_gateway_01",
+        "device_class": "windows_gateway",
+        "client_instance_id": "gateway_client_01"
+      },
+      "connection": {
+        "id": "gateway_conn_01",
+        "epoch": 0,
+        "state": "connected"
+      },
+      "sequence": {
+        "stream_id": "gateway_control",
+        "number": 8,
+        "previous_event_id": "00000000-0000-4000-8000-000000000015"
+      },
+      "idempotency_key": "session-end-001",
+      "payload": {
+        "reason": "gate_complete",
+        "ended_at": "2026-07-21T09:20:00Z",
+        "cleanup_deadline_at": "2026-07-21T09:25:00Z"
+      }
+    },
+    {
+      "schema_version": "phase0-demo/0.1",
+      "event_type": "paios.phase0.demo.session.cleanup.completed",
+      "event_id": "00000000-0000-4000-8000-000000000019",
+      "session_id": "phase0_demo_session_001",
+      "trace_id": "10000000-0000-4000-8000-000000000001",
+      "occurred_at": "2026-07-21T09:24:00Z",
+      "expires_at": "2026-07-21T10:24:00Z",
+      "origin": {
+        "device_id": "windows_gateway_01",
+        "device_class": "windows_gateway",
+        "client_instance_id": "gateway_client_01"
+      },
+      "connection": {
+        "id": "gateway_conn_01",
+        "epoch": 0,
+        "state": "connected"
+      },
+      "sequence": {
+        "stream_id": "cleanup_receipt",
+        "number": 1
+      },
+      "idempotency_key": "cleanup-complete-001",
+      "payload": {
+        "status": "complete",
+        "completed_at": "2026-07-21T09:24:00Z",
+        "removed": {
+          "events": 18,
+          "media_objects": 2,
+          "session_rows": 1,
+          "model_cache_entries": 1
+        }
+      }
+    }
+  ]
+}

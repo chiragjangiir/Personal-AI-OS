@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-ai-os.local/contracts/common/classification.v1.schema.json",
+  "title": "CanonicalClassification",
+  "$comment": "schema_version=1.0.0",
+  "not": {},
+  "$defs": {
+    "DataSensitivityClass": {
+      "type": "string",
+      "enum": ["G0", "G1", "G2", "G3", "G4"]
+    },
+    "ActionRiskClass": {
+      "type": "string",
+      "enum": ["R0", "R1", "R2", "R3", "R4"]
+    },
+    "EgressMode": {
+      "type": "string",
+      "enum": ["E0", "E1", "E2", "E3"]
+    },
+    "DeliveryUrgencyClass": {
+      "type": "string",
+      "enum": [
+        "notify",
+        "important",
+        "urgent_policy_review",
+        "emergency_obligation"
+      ]
+    }
+  }
+}

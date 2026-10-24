@@ -1,0 +1,11 @@
+[Unit]
+Description=Product repair candidates queued by the remote builder
+
+[Path]
+PathChanged=/srv/paios/release-requests
+# Production's state, pushed by its ship unit: refreshes the repair base.
+PathChanged=/srv/paios/release-exchange/production.json
+Unit=paios-release-requests.service
+
+[Install]
+WantedBy=paths.target

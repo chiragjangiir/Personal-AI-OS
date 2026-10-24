@@ -1,0 +1,4 @@
+FROM nginx:stable
+RUN version="$(njs -v)" && dpkg --compare-versions "$version" ge 0.9.9
+COPY deploy/cloud/nginx.conf /etc/nginx/nginx.conf
+RUN mkdir -p /etc/paios-roaming

@@ -1,0 +1,107 @@
+{
+  "states": {
+    "pending": "done",
+    "notified": "notified",
+    "delivered": "delivered",
+    "quarantined": "invalid",
+    "delivery_failed": "delivery-failed"
+  },
+  "terminal_reasons": [
+    "completed",
+    "cancelled_by_user",
+    "failed",
+    "error",
+    "timed_out",
+    "interrupted"
+  ],
+  "retained_history": {
+    "validation": "Gateway spool lifecycle validates delivered records without delivering or notifying again.",
+    "principal_recovery": "A missing principal may be recovered only from a unique protected errand-origins binding for the exact job, validated against its principal/job storage key. Never infer the current owner.",
+    "preimages": "A recovered record retains its exact bytes at <original filename>.principal-recovery. A quarantined historical delivered record retains its exact bytes and source filename at <original filename>.quarantine-source; the active terminal becomes <job>.invalid.json.",
+    "unknown": "Quarantined records without validated delivery-failure facts have unverified owner, time and outcome. Validated delivery failures retain their executor outcome even after quarantine. Self metrics expose a spool-wide unknown count and incomplete coverage; they exclude these records from owner success/failure counts."
+  },
+  "fields": {
+    "partial_findings": {
+      "type": "object",
+      "required": false,
+      "records": ["done", "notified", "delivered", "delivery-failed", "invalid"],
+      "properties": {"verified": "string[]", "not_verified": "string[]", "last_screen_text": "string", "truncated": "boolean"},
+      "meaning": "Non-success result only. Latest tagged todo ledger: only claimed_verified items enter verified; all other supported statuses stay not_verified. At most 32 ledger items and 6000 characters combined, plus 4000 characters of the last observed screen text. Truncation is explicit. Also retained as trace.findings in running and terminal records for restart recovery. Gateway forwards these observations to the reporting run; model claims are not independent action or payment receipts."
+    },
+    "delivery_failure": {
+      "type": "object",
+      "required": false,
+      "records": [
+        "done",
+        "notified",
+        "delivery-failed",
+        "invalid"
+      ],
+      "properties": {
+        "error_code": "identifier",
+        "failed_at": "utc",
+        "stage": "optional lowercase identifier: the delivery stage that failed, e.g. report_run (before recipient selection)",
+        "reason": "optional text (1-1000): what failed at that stage, taken from the sealed report result"
+      },
+      "meaning": "Gateway-owned report failure. Preserve the executor result, stop report retries, admit one errand_delivery_failed observation (with stage and reason when known) to the main agent, then quarantine. Notification admission is retried at most once a minute. The executor job's own outcome stays in success/terminal_reason."
+    },
+    "report_absorbed": {
+      "type": "boolean",
+      "required": false,
+      "records": ["delivered"],
+      "meaning": "Gateway-owned. The self_check_of result's report run ended silent because the owning self-check reports it; no separate owner report was due and no delivery failure exists."
+    },
+    "origin_processed_event_id": {
+      "type": "identifier",
+      "required": false,
+      "records": [
+        "running",
+        "done",
+        "notified",
+        "delivered",
+        "delivery-failed",
+        "invalid"
+      ],
+      "meaning": "ProcessedEvent that originated this job; legacy records may omit it.",
+      "trust": "Untrusted executor wire data until the integration validates the protected principal_id/job_id origin mapping. Not payment lineage."
+    },
+    "trace": {
+      "type": "object",
+      "required": false,
+      "records": [
+        "running",
+        "done",
+        "notified",
+        "delivered",
+        "delivery-failed",
+        "invalid"
+      ],
+      "meaning": "Owner-scoped internal step evidence. At most 32 finished steps, one in_progress step and truncated_steps; model waits use observed model-call lifetimes. Full trace is read through phone_status and is not forwarded as public card text."
+    },
+    "evidence_ref": {
+      "type": "object",
+      "required": false,
+      "records": [
+        "done",
+        "notified",
+        "delivered",
+        "delivery-failed",
+        "invalid"
+      ],
+      "meaning": "Read this job's durable evidence through phone_status(job_id); the native principal binding remains authoritative."
+    },
+    "self_check_of": {
+      "type": "identifier",
+      "required": false,
+      "records": [
+        "running",
+        "done",
+        "notified",
+        "delivered",
+        "delivery-failed",
+        "invalid"
+      ],
+      "meaning": "Failure whose self-check initiated this job. Prevents recursive checks; grants no authorization."
+    }
+  }
+}

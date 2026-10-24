@@ -1,0 +1,148 @@
+{
+  "trusted_binding": {
+    "session_id": "continuity",
+    "device_id": "phone-voice",
+    "connection_epoch": "1",
+    "expected_gateway_identity": "controlled-source-gateway",
+    "max_packet_bytes": 12288,
+    "voice_transport": "wav_byte_stream_v1"
+  },
+  "submit": {
+    "operation": "submit",
+    "event_id": "voice-source-event",
+    "captured_at": "2026-10-01T00:00:00.000Z",
+    "text": "原用户文字"
+  },
+  "accepted": {
+    "operation": "accepted",
+    "event_id": "voice-source-event",
+    "processed_event_id": "d:5ed299c64d2fea735e22c6da8e9250529a90a5eab1e1ae6b0cfd78d1ce66c3ee",
+    "session_id": "continuity",
+    "admission": {
+      "state": "pending",
+      "run_id": null,
+      "idempotency_key": "paios:7ffd89b1d082a1dbdd36d3d728e64d387304232b3c13c5789e71daf8b67c8211"
+    },
+    "schema_version": "paios.central.text-envelope.v1"
+  },
+  "header": {
+    "schema_version": "paios.central.text-envelope.v1",
+    "operation": "result_header",
+    "event_id": "voice-source-event",
+    "processed_event_id": "d:5ed299c64d2fea735e22c6da8e9250529a90a5eab1e1ae6b0cfd78d1ce66c3ee",
+    "session_id": "continuity",
+    "run_id": "voice-native-1",
+    "consumed_revision": 1,
+    "result_revision": 1,
+    "reply_id": "reply:68f27316e66d8d1a1ad2bb0bb1a2a37ce370575a6fce20e5cd024af9797f2ec3",
+    "reply_epoch": 1,
+    "reply_phase": "sealed",
+    "reply_mode": "text_and_voice",
+    "run_status": "completed",
+    "reply_status": "complete",
+    "result_status": "completed",
+    "delivery_status": "unknown",
+    "output_plan": [
+      {
+        "device_type": "phone",
+        "output_modes": [
+          "text",
+          "voice"
+        ],
+        "route_version": "route-1",
+        "target_device_id": "phone-voice"
+      }
+    ],
+    "text_replay": "pending",
+    "text_chunk_count": 1,
+    "rendered_text_through_seq": 0,
+    "pending_text_chunk_count": 1,
+    "pending_voice_chunk_count": 1,
+    "voice_transport": "wav_byte_stream_v1",
+    "voice_status": "ready",
+    "receipt_status": "unknown",
+    "voice_error": null,
+    "receipt_error": "RUN_RECEIPTS_SOURCE_NOT_CONFIGURED",
+    "receipt_sources": [],
+    "receipt_refs": []
+  },
+  "text_chunks": [
+    {
+      "operation": "text_chunk",
+      "session_id": "continuity",
+      "processed_event_id": "d:5ed299c64d2fea735e22c6da8e9250529a90a5eab1e1ae6b0cfd78d1ce66c3ee",
+      "chunk": {
+        "event_id": "voice-source-event",
+        "final": true,
+        "message_ref": "native-final:voice-native-1",
+        "output_id": "output:88a5689b2c21f53fc35bde7995b399ad179268a847792b55779df12506d955d9",
+        "reply_epoch": 1,
+        "reply_id": "reply:68f27316e66d8d1a1ad2bb0bb1a2a37ce370575a6fce20e5cd024af9797f2ec3",
+        "route_version": "route-1",
+        "run_id": "voice-native-1",
+        "seq": 1,
+        "target_device_id": "phone-voice",
+        "text": "原回复🔬"
+      },
+      "schema_version": "paios.central.text-envelope.v1"
+    }
+  ],
+  "voice": {
+    "operation": "voice_chunk",
+    "session_id": "continuity",
+    "event_id": "voice-source-event",
+    "processed_event_id": "d:5ed299c64d2fea735e22c6da8e9250529a90a5eab1e1ae6b0cfd78d1ce66c3ee",
+    "chunk": {
+      "audio": {
+        "bytes": 524,
+        "duration_ms": 10,
+        "mime": "audio/wav",
+        "ref": "audio:9653315eefbbfda9cc7199d585b1d0b1fbb81788e6a3fa085744d3aeaf887531",
+        "sha256": "4afc69be59c1e5da4ecb345b729e7f8a0d81539738b1042f4bb1b58c2fe5b4ae"
+      },
+      "channels": 1,
+      "codec": "pcm_s16le",
+      "final": true,
+      "output_id": "voice:88a5689b2c21f53fc35bde7995b399ad179268a847792b55779df12506d955d9",
+      "reply_epoch": 1,
+      "reply_id": "reply:68f27316e66d8d1a1ad2bb0bb1a2a37ce370575a6fce20e5cd024af9797f2ec3",
+      "route_version": "route-1",
+      "sample_rate": 24000,
+      "seq": 1,
+      "target_device_id": "phone-voice",
+      "text_range": {
+        "end": 4,
+        "start": 0
+      }
+    },
+    "schema_version": "paios.central.text-envelope.v1"
+  },
+  "ack": {
+    "output_id": "voice:88a5689b2c21f53fc35bde7995b399ad179268a847792b55779df12506d955d9",
+    "reply_id": "reply:68f27316e66d8d1a1ad2bb0bb1a2a37ce370575a6fce20e5cd024af9797f2ec3",
+    "reply_epoch": 1,
+    "target_device_id": "phone-voice",
+    "route_version": "route-1",
+    "highest_contiguous_seq": 1,
+    "status": "played",
+    "observed_at": "2026-10-01T00:00:00.000Z"
+  },
+  "ack_receipt": {
+    "operation": "ack_receipt",
+    "session_id": "continuity",
+    "processed_event_id": "d:5ed299c64d2fea735e22c6da8e9250529a90a5eab1e1ae6b0cfd78d1ce66c3ee",
+    "receipt": {
+      "highest_contiguous_seq": 1,
+      "observed_at": "2026-10-01T00:00:00.000Z",
+      "output_id": "voice:88a5689b2c21f53fc35bde7995b399ad179268a847792b55779df12506d955d9",
+      "reply_epoch": 1,
+      "reply_id": "reply:68f27316e66d8d1a1ad2bb0bb1a2a37ce370575a6fce20e5cd024af9797f2ec3",
+      "route_version": "route-1",
+      "status": "played",
+      "target_device_id": "phone-voice",
+      "receipt_ref": "out-ack:1633f56591f57b79f5fc086ab4c56819124287e72bf647ce8bf677ede9beb305"
+    },
+    "schema_version": "paios.central.text-envelope.v1"
+  },
+  "wav_base64": "UklGRgQCAABXQVZFZm10IBAAAAABAAEAwF0AAIC7AAACABAAZGF0YeABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+}

@@ -1,0 +1,10 @@
+[Unit]
+Description=依米's 「改回去」 requests on production
+
+[Path]
+PathChanged=/srv/paios/release-spool/rollback
+PathChanged=/srv/paios/release-spool/decisions
+Unit=paios-release-ship.service
+
+[Install]
+WantedBy=paths.target

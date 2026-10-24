@@ -1,0 +1,3629 @@
+{
+  "version": 1,
+  "schema": "paios.payment.wire.v1",
+  "$defs": {
+    "fen": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100000000
+    },
+    "nonce": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "pid": {
+      "type": "string",
+      "pattern": "^pay-[0-9a-f-]{36}$"
+    },
+    "iid": {
+      "type": "string",
+      "pattern": "^pi-[0-9a-f-]{36}$"
+    },
+    "aid": {
+      "type": "string",
+      "pattern": "^apr-[0-9a-f-]{36}$"
+    },
+    "cid": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+    },
+    "b64": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
+    },
+    "reason": {
+      "type": "string",
+      "enum": [
+        "INITIATING_NOT_VOICE",
+        "INITIATING_NOT_OWNER_VERIFIED",
+        "DIFFERENT_TERMINAL",
+        "TERMINAL_LOCKED",
+        "REQUEST_STALE",
+        "OVER_AUTO_LIMIT",
+        "OVER_AUTO_DAY_LIMIT",
+        "OVER_VOICE_LIMIT",
+        "OVER_BUDGET",
+        "NEW_PAYEE",
+        "PAYEE_UNREADABLE",
+        "SAME_PAYEE_RECENT",
+        "AUTO_PAUSED",
+        "VOICE_NOT_RECOGNIZED",
+        "VOICE_INSUFFICIENT",
+        "VOICE_ATTEMPTS_EXHAUSTED",
+        "VOICE_UNAVAILABLE",
+        "VOICE_DISABLED",
+        "AUTO_DISABLED",
+        "LOCKS_NOT_ENABLED",
+        "AMOUNT_CHANGED",
+        "AUTO_INTERRUPTED"
+      ]
+    },
+    "pstate": {
+      "type": "string",
+      "enum": [
+        "awaiting_owner",
+        "auto_pending",
+        "verifying",
+        "granted",
+        "paying",
+        "paid",
+        "outcome_unknown",
+        "cancelled",
+        "expired",
+        "superseded",
+        "failed"
+      ]
+    },
+    "method": {
+      "type": "string",
+      "enum": [
+        "card",
+        "voice",
+        "auto"
+      ]
+    },
+    "payee_key": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "purpose": {
+      "type": "string",
+      "enum": [
+        "keys_register",
+        "phone_unlock",
+        "settings",
+        "approval",
+        "voiceprint_forget"
+      ]
+    },
+    "approval_kind": {
+      "type": "string",
+      "enum": [
+        "glasses_unlock",
+        "voiceprint_enrol",
+        "voice_enrollment"
+      ]
+    },
+    "prerequisite": {
+      "type": "string",
+      "enum": [
+        "VOICEPRINT",
+        "PHONE_LOCK",
+        "GLASSES_LOCK",
+        "DEVICE_KEYS",
+        "VOICE_PAY"
+      ]
+    },
+    "order_cancel": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "done",
+        "failed",
+        "not_attempted",
+        "not_needed"
+      ]
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "auto_order_fen": {
+          "$ref": "#/$defs/fen"
+        },
+        "auto_day_fen": {
+          "$ref": "#/$defs/fen"
+        },
+        "voice_order_fen": {
+          "$ref": "#/$defs/fen"
+        }
+      },
+      "required": [
+        "auto_order_fen",
+        "auto_day_fen",
+        "voice_order_fen"
+      ]
+    },
+    "change": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "voice"
+            },
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "kind",
+            "enabled"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "auto"
+            },
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "kind",
+            "enabled"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "limits"
+            },
+            "auto_order_fen": {
+              "$ref": "#/$defs/fen"
+            },
+            "auto_day_fen": {
+              "$ref": "#/$defs/fen"
+            },
+            "voice_order_fen": {
+              "$ref": "#/$defs/fen"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "anyOf": [
+            {
+              "properties": {
+                "auto_order_fen": {}
+              },
+              "required": [
+                "auto_order_fen"
+              ]
+            },
+            {
+              "properties": {
+                "auto_day_fen": {}
+              },
+              "required": [
+                "auto_day_fen"
+              ]
+            },
+            {
+              "properties": {
+                "voice_order_fen": {}
+              },
+              "required": [
+                "voice_order_fen"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "phone_lock"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "relock_s": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "kind",
+            "enabled"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "relock"
+            },
+            "relock_s": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "kind",
+            "relock_s"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "glasses_lock"
+            },
+            "device_id": {
+              "$ref": "#/$defs/cid"
+            },
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "kind",
+            "device_id",
+            "enabled"
+          ]
+        }
+      ]
+    },
+    "methods": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "voice": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "available": {
+              "type": "boolean"
+            },
+            "reason": {
+              "$ref": "#/$defs/reason"
+            },
+            "tries_left": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "available",
+            "tries_left"
+          ]
+        },
+        "auto": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "available": {
+              "type": "boolean"
+            },
+            "reason": {
+              "$ref": "#/$defs/reason"
+            }
+          },
+          "required": [
+            "available"
+          ]
+        }
+      },
+      "required": [
+        "voice",
+        "auto"
+      ]
+    },
+    "card": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "payment_id": {
+          "$ref": "#/$defs/pid"
+        },
+        "intent_id": {
+          "$ref": "#/$defs/iid"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "state": {
+          "$ref": "#/$defs/pstate"
+        },
+        "amount_fen": {
+          "$ref": "#/$defs/fen"
+        },
+        "payee": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "app": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "maxItems": 5
+        },
+        "delivery": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "expires_in_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "auto_in_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "decision_nonce": {
+          "$ref": "#/$defs/nonce"
+        },
+        "payee_key": {
+          "$ref": "#/$defs/payee_key"
+        },
+        "methods": {
+          "$ref": "#/$defs/methods"
+        },
+        "notice": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "$ref": "#/$defs/reason"
+            },
+            "amount_fen": {
+              "$ref": "#/$defs/fen"
+            },
+            "previous_amount_fen": {
+              "$ref": "#/$defs/fen"
+            },
+            "limit_fen": {
+              "$ref": "#/$defs/fen"
+            }
+          },
+          "required": [
+            "reason"
+          ]
+        },
+        "result": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "method": {
+              "$ref": "#/$defs/method"
+            },
+            "terminal": {
+              "type": "string",
+              "enum": [
+                "phone",
+                "glasses"
+              ]
+            },
+            "order_cancel": {
+              "$ref": "#/$defs/order_cancel"
+            },
+            "finished_ago_ms": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "finished_ago_ms"
+          ]
+        },
+        "today_auto_used_fen": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "payment_id",
+        "intent_id",
+        "version",
+        "state",
+        "amount_fen",
+        "app",
+        "items",
+        "expires_in_ms",
+        "methods"
+      ]
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "approval_id": {
+          "$ref": "#/$defs/aid"
+        },
+        "kind": {
+          "$ref": "#/$defs/approval_kind"
+        },
+        "target_device_id": {
+          "$ref": "#/$defs/cid"
+        },
+        "device_label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "expires_in_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "nonce": {
+          "$ref": "#/$defs/nonce"
+        }
+      },
+      "required": [
+        "approval_id",
+        "kind",
+        "target_device_id",
+        "device_label",
+        "expires_in_ms",
+        "nonce"
+      ]
+    },
+    "record_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "payment_id": {
+          "$ref": "#/$defs/pid"
+        },
+        "at": {
+          "type": "string",
+          "format": "paios-utc"
+        },
+        "app": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "payee": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400
+        },
+        "amount_fen": {
+          "$ref": "#/$defs/fen"
+        },
+        "state": {
+          "$ref": "#/$defs/pstate"
+        },
+        "method": {
+          "$ref": "#/$defs/method"
+        },
+        "terminal": {
+          "type": "string",
+          "enum": [
+            "phone",
+            "glasses"
+          ]
+        }
+      },
+      "required": [
+        "payment_id",
+        "at",
+        "app",
+        "summary",
+        "amount_fen",
+        "state"
+      ]
+    },
+    "record_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "state": {
+          "$ref": "#/$defs/pstate"
+        },
+        "method": {
+          "$ref": "#/$defs/method"
+        },
+        "decision": {
+          "type": "string",
+          "enum": [
+            "pay",
+            "cancel"
+          ]
+        },
+        "amount_fen": {
+          "$ref": "#/$defs/fen"
+        },
+        "old_amount_fen": {
+          "$ref": "#/$defs/fen"
+        },
+        "read_amount_fen": {
+          "$ref": "#/$defs/fen"
+        },
+        "payee": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "maxItems": 5
+        },
+        "outcome": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "detail": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "verdict": {
+          "type": "string",
+          "enum": [
+            "pass",
+            "uncertain",
+            "fail",
+            "insufficient",
+            "unavailable"
+          ]
+        },
+        "tries_left": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "change_kind": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "signed": {
+          "type": "boolean"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "relock_s": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "cause": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "turned_off": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "voice",
+              "auto"
+            ]
+          },
+          "maxItems": 2
+        },
+        "until_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "kind": {
+          "$ref": "#/$defs/approval_kind"
+        },
+        "decision_label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        }
+      },
+      "required": []
+    },
+    "records_cursor": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "$comment": "Authority-owned canonical base64url JSON [created_at_ms,payment_id], ordered by created_at_ms DESC then payment_id ASC; clients echo unchanged."
+    }
+  },
+  "inputs": {
+    "payment_decide": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "const": "payment_decide"
+          },
+          "control_id": {
+            "$ref": "#/$defs/cid"
+          },
+          "payment_id": {
+            "$ref": "#/$defs/pid"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "pay",
+              "cancel"
+            ]
+          },
+          "statement_b64": {
+            "$ref": "#/$defs/b64"
+          },
+          "signature_b64": {
+            "$ref": "#/$defs/b64"
+          }
+        },
+        "required": [
+          "operation",
+          "control_id",
+          "payment_id",
+          "decision"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "decision": {
+                  "const": "pay"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "statement_b64": {},
+                "signature_b64": {}
+              },
+              "required": [
+                "statement_b64",
+                "signature_b64"
+              ]
+            }
+          }
+        ]
+      },
+      "error": "FORMAL_PAYMENT_INPUT_INVALID"
+    },
+    "payment_challenge_get": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "const": "payment_challenge_get"
+          },
+          "request_id": {
+            "$ref": "#/$defs/cid"
+          },
+          "purpose": {
+            "$ref": "#/$defs/purpose"
+          }
+        },
+        "required": [
+          "operation",
+          "request_id",
+          "purpose"
+        ]
+      },
+      "error": "FORMAL_PAYMENT_INPUT_INVALID"
+    },
+    "payment_keys_register": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "const": "payment_keys_register"
+          },
+          "control_id": {
+            "$ref": "#/$defs/cid"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "device",
+              "user"
+            ]
+          },
+          "public_x963_b64": {
+            "$ref": "#/$defs/b64"
+          },
+          "statement_b64": {
+            "$ref": "#/$defs/b64"
+          },
+          "signature_b64": {
+            "$ref": "#/$defs/b64"
+          },
+          "device_signature_b64": {
+            "$ref": "#/$defs/b64"
+          }
+        },
+        "required": [
+          "operation",
+          "control_id",
+          "role",
+          "public_x963_b64",
+          "statement_b64",
+          "signature_b64"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "role": {
+                  "const": "user"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "device_signature_b64": {}
+              },
+              "required": [
+                "device_signature_b64"
+              ]
+            }
+          }
+        ]
+      },
+      "error": "FORMAL_PAYMENT_INPUT_INVALID"
+    },
+    "phone_unlock": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "const": "phone_unlock"
+          },
+          "control_id": {
+            "$ref": "#/$defs/cid"
+          },
+          "statement_b64": {
+            "$ref": "#/$defs/b64"
+          },
+          "signature_b64": {
+            "$ref": "#/$defs/b64"
+          }
+        },
+        "required": [
+          "operation",
+          "control_id",
+          "statement_b64",
+          "signature_b64"
+        ]
+      },
+      "error": "FORMAL_PAYMENT_INPUT_INVALID"
+    },
+    "phone_presence": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "const": "phone_presence"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "foreground",
+              "background",
+              "locked"
+            ]
+          }
+        },
+        "required": [
+          "operation",
+          "state"
+        ]
+      },
+      "error": "FORMAL_PAYMENT_INPUT_INVALID"
+    },
+    "payment_settings_get": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "const": "payment_settings_get"
+          },
+          "request_id": {
+            "$ref": "#/$defs/cid"
+          }
+        },
+        "required": [
+          "operation",
+          "request_id"
+        ]
+      },
+      "error": "FORMAL_PAYMENT_INPUT_INVALID"
+    },
+    "payment_settings_set": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "const": "payment_settings_set"
+          },
+          "control_id": {
+            "$ref": "#/$defs/cid"
+          },
+          "policy_version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "change": {
+            "$ref": "#/$defs/change"
+          },
+          "statement_b64": {
+            "$ref": "#/$defs/b64"
+          },
+          "signature_b64": {
+            "$ref": "#/$defs/b64"
+          }
+        },
+        "required": [
+          "operation",
+          "control_id",
+          "policy_version",
+          "change"
+        ]
+      },
+      "error": "FORMAL_PAYMENT_INPUT_INVALID"
+    },
+    "payment_approval_decide": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "const": "payment_approval_decide"
+          },
+          "control_id": {
+            "$ref": "#/$defs/cid"
+          },
+          "approval_id": {
+            "$ref": "#/$defs/aid"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "deny"
+            ]
+          },
+          "statement_b64": {
+            "$ref": "#/$defs/b64"
+          },
+          "signature_b64": {
+            "$ref": "#/$defs/b64"
+          }
+        },
+        "required": [
+          "operation",
+          "control_id",
+          "approval_id",
+          "decision"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "decision": {
+                  "const": "approve"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "statement_b64": {},
+                "signature_b64": {}
+              },
+              "required": [
+                "statement_b64",
+                "signature_b64"
+              ]
+            }
+          }
+        ]
+      },
+      "error": "FORMAL_PAYMENT_INPUT_INVALID"
+    },
+    "payment_records_get": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "const": "payment_records_get"
+          },
+          "request_id": {
+            "$ref": "#/$defs/cid"
+          },
+          "before": {
+            "$ref": "#/$defs/records_cursor"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          }
+        },
+        "required": [
+          "operation",
+          "request_id"
+        ]
+      },
+      "error": "FORMAL_PAYMENT_INPUT_INVALID"
+    },
+    "payment_record_get": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "const": "payment_record_get"
+          },
+          "request_id": {
+            "$ref": "#/$defs/cid"
+          },
+          "payment_id": {
+            "$ref": "#/$defs/pid"
+          },
+          "before_seq": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "operation",
+          "request_id",
+          "payment_id"
+        ]
+      },
+      "error": "FORMAL_PAYMENT_INPUT_INVALID"
+    },
+    "payment_dispute": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "const": "payment_dispute"
+          },
+          "control_id": {
+            "$ref": "#/$defs/cid"
+          },
+          "payment_id": {
+            "$ref": "#/$defs/pid"
+          }
+        },
+        "required": [
+          "operation",
+          "control_id",
+          "payment_id"
+        ]
+      },
+      "error": "FORMAL_PAYMENT_INPUT_INVALID"
+    },
+    "voiceprint_channel_forget": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "const": "voiceprint_channel_forget"
+          },
+          "control_id": {
+            "$ref": "#/$defs/cid"
+          },
+          "channel": {
+            "const": "glasses"
+          },
+          "statement_b64": {
+            "$ref": "#/$defs/b64"
+          },
+          "signature_b64": {
+            "$ref": "#/$defs/b64"
+          }
+        },
+        "required": [
+          "operation",
+          "control_id",
+          "channel",
+          "statement_b64",
+          "signature_b64"
+        ]
+      },
+      "error": "FORMAL_PAYMENT_INPUT_INVALID"
+    },
+    "glasses_unlock_request": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "const": "glasses_unlock_request"
+          },
+          "control_id": {
+            "$ref": "#/$defs/cid"
+          },
+          "lock_cycle": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "operation",
+          "control_id",
+          "lock_cycle"
+        ]
+      },
+      "error": "FORMAL_PAYMENT_INPUT_INVALID"
+    },
+    "glasses_lock": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "const": "glasses_lock"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "screen_off",
+              "user"
+            ]
+          }
+        },
+        "required": [
+          "operation",
+          "reason"
+        ]
+      },
+      "error": "FORMAL_PAYMENT_INPUT_INVALID"
+    },
+    "voiceprint_enrol_request": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "const": "voiceprint_enrol_request"
+          },
+          "control_id": {
+            "$ref": "#/$defs/cid"
+          },
+          "purpose": {
+            "const": "conversation"
+          }
+        },
+        "required": [
+          "operation",
+          "control_id"
+        ]
+      },
+      "error": "FORMAL_PAYMENT_INPUT_INVALID"
+    }
+  },
+  "outputs": {
+    "payment_cards": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "payment_cards"
+        },
+        "session_id": {
+          "$ref": "#/$defs/cid"
+        },
+        "cards": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/card"
+          },
+          "maxItems": 2
+        },
+        "complete": {
+          "const": true
+        }
+      },
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "cards",
+        "complete"
+      ],
+      "$comment": "complete live set per owner; at most 2 open cards, then recent terminal cards in remaining slots. A new checkpoint at capacity gets PAYMENT_CHECKPOINT_ACTIVE (409), never evicts a live card. Maximum 3-card envelope is 17823 bytes; 2 cards fit the 12288-byte transport limit without reducing any field cap."
+    },
+    "payment_notice": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "payment_notice"
+        },
+        "session_id": {
+          "$ref": "#/$defs/cid"
+        },
+        "notice": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "payment_id": {
+                  "$ref": "#/$defs/pid"
+                },
+                "state": {
+                  "$ref": "#/$defs/pstate"
+                },
+                "reason": {
+                  "const": "TERMINAL_LOCKED"
+                },
+                "expires_in_ms": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "payment_id",
+                "state",
+                "reason",
+                "expires_in_ms"
+              ]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "payment_id": {
+                  "$ref": "#/$defs/pid"
+                },
+                "state": {
+                  "$ref": "#/$defs/pstate"
+                },
+                "amount_fen": {
+                  "$ref": "#/$defs/fen"
+                },
+                "payee": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "line": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "voice_hint": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "type": "string",
+                  "enum": [
+                    "INITIATING_NOT_VOICE",
+                    "INITIATING_NOT_OWNER_VERIFIED",
+                    "DIFFERENT_TERMINAL",
+                    "REQUEST_STALE",
+                    "OVER_AUTO_LIMIT",
+                    "OVER_AUTO_DAY_LIMIT",
+                    "OVER_VOICE_LIMIT",
+                    "OVER_BUDGET",
+                    "NEW_PAYEE",
+                    "PAYEE_UNREADABLE",
+                    "SAME_PAYEE_RECENT",
+                    "AUTO_PAUSED",
+                    "VOICE_NOT_RECOGNIZED",
+                    "VOICE_INSUFFICIENT",
+                    "VOICE_ATTEMPTS_EXHAUSTED",
+                    "VOICE_UNAVAILABLE",
+                    "VOICE_DISABLED",
+                    "AUTO_DISABLED",
+                    "LOCKS_NOT_ENABLED",
+                    "AMOUNT_CHANGED",
+                    "AUTO_INTERRUPTED"
+                  ]
+                },
+                "expires_in_ms": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "payment_id",
+                "state",
+                "voice_hint"
+              ]
+            }
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "notice"
+      ]
+    },
+    "payment_settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "payment_settings"
+        },
+        "session_id": {
+          "$ref": "#/$defs/cid"
+        },
+        "request_id": {
+          "$ref": "#/$defs/cid"
+        },
+        "wire_version": {
+          "const": 1
+        },
+        "policy_version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "voice_enabled": {
+          "type": "boolean"
+        },
+        "auto_enabled": {
+          "type": "boolean"
+        },
+        "paused_until": {
+          "type": "string",
+          "format": "paios-utc"
+        },
+        "limits": {
+          "$ref": "#/$defs/limits"
+        },
+        "limit_max_fen": {
+          "$ref": "#/$defs/fen"
+        },
+        "today_auto_used_fen": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "locks": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "phone": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "relock_s": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "relock_choices_s": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "maxItems": 16
+                },
+                "unlocked": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "enabled",
+                "relock_s",
+                "relock_choices_s",
+                "unlocked"
+              ]
+            },
+            "glasses": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "paired": {
+                  "type": "boolean"
+                },
+                "device_id": {
+                  "$ref": "#/$defs/cid"
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "unlocked": {
+                  "type": "boolean"
+                },
+                "worn": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "paired",
+                "enabled",
+                "unlocked",
+                "worn"
+              ]
+            }
+          },
+          "required": [
+            "phone",
+            "glasses"
+          ]
+        },
+        "voiceprint": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "phone_app": {
+              "type": "boolean"
+            },
+            "glasses": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "phone_app",
+            "glasses"
+          ]
+        },
+        "keys": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "device": {
+              "type": "boolean"
+            },
+            "user": {
+              "type": "boolean"
+            },
+            "registered_at": {
+              "type": "string",
+              "format": "paios-utc"
+            }
+          },
+          "required": [
+            "device",
+            "user"
+          ]
+        },
+        "prerequisites": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "voice": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/prerequisite"
+              },
+              "maxItems": 5
+            },
+            "auto": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/prerequisite"
+              },
+              "maxItems": 5
+            }
+          },
+          "required": [
+            "voice",
+            "auto"
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "wire_version",
+        "policy_version",
+        "voice_enabled",
+        "auto_enabled",
+        "limits",
+        "limit_max_fen",
+        "today_auto_used_fen",
+        "locks",
+        "voiceprint",
+        "keys",
+        "prerequisites"
+      ]
+    },
+    "payment_lock_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "payment_lock_state"
+        },
+        "session_id": {
+          "$ref": "#/$defs/cid"
+        },
+        "lock_enabled": {
+          "type": "boolean"
+        },
+        "locked": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "awaiting_phone",
+            "not_worn",
+            "expired",
+            "denied",
+            "disabled"
+          ]
+        },
+        "approval_expires_in_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "wear_poll_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "enrolment": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "granted": {
+              "type": "boolean"
+            },
+            "expires_in_ms": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "sentences": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "maxItems": 8
+            }
+          },
+          "required": [
+            "granted"
+          ]
+        },
+        "voice_enrollment": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "granted": {
+              "type": "boolean"
+            },
+            "expires_in_ms": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "granted"
+          ]
+        },
+        "lock_cycle": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "lock_enabled",
+        "locked",
+        "wear_poll_ms"
+      ]
+    },
+    "payment_approvals": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "payment_approvals"
+        },
+        "session_id": {
+          "$ref": "#/$defs/cid"
+        },
+        "approvals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/approval"
+          },
+          "maxItems": 2
+        },
+        "complete": {
+          "const": true
+        }
+      },
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "approvals",
+        "complete"
+      ],
+      "$comment": "complete pending set per owner, at most 2. A new request at capacity gets APPROVAL_BUSY (409), never evicts a pending approval. Bound matches the complete card snapshot."
+    },
+    "payment_challenge": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "payment_challenge"
+        },
+        "session_id": {
+          "$ref": "#/$defs/cid"
+        },
+        "request_id": {
+          "$ref": "#/$defs/cid"
+        },
+        "purpose": {
+          "$ref": "#/$defs/purpose"
+        },
+        "nonce": {
+          "$ref": "#/$defs/nonce"
+        },
+        "expires_in_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "request_id",
+        "purpose",
+        "nonce",
+        "expires_in_ms"
+      ]
+    },
+    "payment_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "payment_receipt"
+        },
+        "session_id": {
+          "$ref": "#/$defs/cid"
+        },
+        "control_id": {
+          "$ref": "#/$defs/cid"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "error_code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "missing": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/prerequisite"
+          },
+          "maxItems": 5
+        },
+        "payment_id": {
+          "$ref": "#/$defs/pid"
+        },
+        "state": {
+          "$ref": "#/$defs/pstate"
+        }
+      },
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "control_id",
+        "ok"
+      ]
+    },
+    "payment_records": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "payment_records"
+        },
+        "session_id": {
+          "$ref": "#/$defs/cid"
+        },
+        "request_id": {
+          "$ref": "#/$defs/cid"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/record_item"
+          },
+          "maxItems": 50
+        },
+        "next_before": {
+          "$ref": "#/$defs/records_cursor"
+        }
+      },
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "request_id",
+        "items"
+      ],
+      "$comment": "complete records packed by serialized envelope size <= 12288 and requested limit. next_before is a lossless authority-owned cursor, including the payment_id timestamp tie-breaker."
+    },
+    "payment_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "payment_record"
+        },
+        "session_id": {
+          "$ref": "#/$defs/cid"
+        },
+        "request_id": {
+          "$ref": "#/$defs/cid"
+        },
+        "payment": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "payment_id": {
+              "$ref": "#/$defs/pid"
+            },
+            "at": {
+              "type": "string",
+              "format": "paios-utc"
+            },
+            "app": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20
+            },
+            "payee": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 400
+            },
+            "amount_fen": {
+              "$ref": "#/$defs/fen"
+            },
+            "state": {
+              "$ref": "#/$defs/pstate"
+            },
+            "method": {
+              "$ref": "#/$defs/method"
+            },
+            "terminal": {
+              "type": "string",
+              "enum": [
+                "phone",
+                "glasses"
+              ]
+            },
+            "intent_id": {
+              "$ref": "#/$defs/iid"
+            },
+            "initiating_text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "order_cancel": {
+              "$ref": "#/$defs/order_cancel"
+            }
+          },
+          "required": [
+            "payment_id",
+            "at",
+            "app",
+            "summary",
+            "amount_fen",
+            "state",
+            "intent_id"
+          ]
+        },
+        "timeline": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "at": {
+                "type": "string",
+                "format": "paios-utc"
+              },
+              "kind": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32
+              },
+              "terminal": {
+                "type": "string",
+                "enum": [
+                  "phone",
+                  "glasses"
+                ]
+              },
+              "data": {
+                "$ref": "#/$defs/record_data"
+              }
+            },
+            "required": [
+              "at",
+              "kind",
+              "data"
+            ]
+          },
+          "maxItems": 64
+        },
+        "next_seq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "request_id",
+        "payment",
+        "timeline"
+      ],
+      "$comment": "complete timeline events paged by immutable audit event sequence, newest page first and each page chronological. Echo next_seq as before_seq to reach older events; no history is discarded. Short continuation name preserves existing field caps within 12288 bytes."
+    }
+  },
+  "examples": {
+    "payment_decide": [
+      {
+        "operation": "payment_decide",
+        "control_id": "ctl-1",
+        "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+        "decision": "pay",
+        "statement_b64": "e30=",
+        "signature_b64": "AQ=="
+      },
+      {
+        "operation": "payment_decide",
+        "control_id": "ctl-2",
+        "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+        "decision": "cancel"
+      }
+    ],
+    "payment_challenge_get": [
+      {
+        "operation": "payment_challenge_get",
+        "request_id": "req-1",
+        "purpose": "keys_register"
+      },
+      {
+        "operation": "payment_challenge_get",
+        "request_id": "req-1",
+        "purpose": "phone_unlock"
+      },
+      {
+        "operation": "payment_challenge_get",
+        "request_id": "req-1",
+        "purpose": "settings"
+      },
+      {
+        "operation": "payment_challenge_get",
+        "request_id": "req-1",
+        "purpose": "approval"
+      },
+      {
+        "operation": "payment_challenge_get",
+        "request_id": "req-1",
+        "purpose": "voiceprint_forget"
+      }
+    ],
+    "payment_keys_register": [
+      {
+        "operation": "payment_keys_register",
+        "control_id": "ctl-1",
+        "role": "device",
+        "public_x963_b64": "BA==",
+        "statement_b64": "e30=",
+        "signature_b64": "AQ=="
+      },
+      {
+        "operation": "payment_keys_register",
+        "control_id": "ctl-1",
+        "role": "user",
+        "public_x963_b64": "BA==",
+        "statement_b64": "e30=",
+        "signature_b64": "AQ==",
+        "device_signature_b64": "AQ=="
+      }
+    ],
+    "phone_unlock": [
+      {
+        "operation": "phone_unlock",
+        "control_id": "ctl-1",
+        "statement_b64": "e30=",
+        "signature_b64": "AQ=="
+      }
+    ],
+    "phone_presence": [
+      {
+        "operation": "phone_presence",
+        "state": "foreground"
+      },
+      {
+        "operation": "phone_presence",
+        "state": "background"
+      },
+      {
+        "operation": "phone_presence",
+        "state": "locked"
+      }
+    ],
+    "payment_settings_get": [
+      {
+        "operation": "payment_settings_get",
+        "request_id": "req-1"
+      }
+    ],
+    "payment_settings_set": [
+      {
+        "operation": "payment_settings_set",
+        "control_id": "ctl-1",
+        "policy_version": 1,
+        "change": {
+          "kind": "voice",
+          "enabled": true
+        },
+        "statement_b64": "e30=",
+        "signature_b64": "AQ=="
+      },
+      {
+        "operation": "payment_settings_set",
+        "control_id": "ctl-1",
+        "policy_version": 1,
+        "change": {
+          "kind": "auto",
+          "enabled": false
+        },
+        "statement_b64": "e30=",
+        "signature_b64": "AQ=="
+      },
+      {
+        "operation": "payment_settings_set",
+        "control_id": "ctl-1",
+        "policy_version": 1,
+        "change": {
+          "kind": "limits",
+          "auto_order_fen": 5000
+        },
+        "statement_b64": "e30=",
+        "signature_b64": "AQ=="
+      },
+      {
+        "operation": "payment_settings_set",
+        "control_id": "ctl-1",
+        "policy_version": 1,
+        "change": {
+          "kind": "phone_lock",
+          "enabled": true,
+          "relock_s": 60
+        },
+        "statement_b64": "e30=",
+        "signature_b64": "AQ=="
+      },
+      {
+        "operation": "payment_settings_set",
+        "control_id": "ctl-1",
+        "policy_version": 1,
+        "change": {
+          "kind": "relock",
+          "relock_s": 300
+        },
+        "statement_b64": "e30=",
+        "signature_b64": "AQ=="
+      },
+      {
+        "operation": "payment_settings_set",
+        "control_id": "ctl-1",
+        "policy_version": 1,
+        "change": {
+          "kind": "glasses_lock",
+          "device_id": "glasses-1",
+          "enabled": true
+        },
+        "statement_b64": "e30=",
+        "signature_b64": "AQ=="
+      }
+    ],
+    "payment_approval_decide": [
+      {
+        "operation": "payment_approval_decide",
+        "control_id": "ctl-1",
+        "approval_id": "apr-00000000-0000-4000-8000-000000000001",
+        "decision": "approve",
+        "statement_b64": "e30=",
+        "signature_b64": "AQ=="
+      },
+      {
+        "operation": "payment_approval_decide",
+        "control_id": "ctl-1",
+        "approval_id": "apr-00000000-0000-4000-8000-000000000001",
+        "decision": "deny"
+      }
+    ],
+    "payment_records_get": [
+      {
+        "operation": "payment_records_get",
+        "request_id": "req-1",
+        "limit": 50
+      },
+      {
+        "operation": "payment_records_get",
+        "request_id": "records-next",
+        "before": "WzE3OTIwNjU2MDAwMDAsInBheS0wMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiXQ",
+        "limit": 50
+      }
+    ],
+    "payment_record_get": [
+      {
+        "operation": "payment_record_get",
+        "request_id": "req-1",
+        "payment_id": "pay-00000000-0000-4000-8000-000000000001"
+      },
+      {
+        "operation": "payment_record_get",
+        "request_id": "timeline-next",
+        "payment_id": "pay-00000000-0000-0000-0000-000000000001",
+        "before_seq": 41
+      }
+    ],
+    "payment_dispute": [
+      {
+        "operation": "payment_dispute",
+        "control_id": "ctl-1",
+        "payment_id": "pay-00000000-0000-4000-8000-000000000001"
+      }
+    ],
+    "voiceprint_channel_forget": [
+      {
+        "operation": "voiceprint_channel_forget",
+        "control_id": "ctl-1",
+        "channel": "glasses",
+        "statement_b64": "e30=",
+        "signature_b64": "AQ=="
+      }
+    ],
+    "glasses_unlock_request": [
+      {
+        "operation": "glasses_unlock_request",
+        "control_id": "ctl-1",
+        "lock_cycle": 0
+      }
+    ],
+    "glasses_lock": [
+      {
+        "operation": "glasses_lock",
+        "reason": "screen_off"
+      }
+    ],
+    "voiceprint_enrol_request": [
+      {
+        "operation": "voiceprint_enrol_request",
+        "control_id": "ctl-1"
+      },
+      {
+        "operation": "voiceprint_enrol_request",
+        "control_id": "ctl-2",
+        "purpose": "conversation"
+      }
+    ],
+    "payment_cards": [
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "auto_pending",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "auto_in_ms": 5000
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "verifying",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "granted",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "paying",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "paid",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "result": {
+              "method": "card",
+              "terminal": "phone",
+              "finished_ago_ms": 0
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "outcome_unknown",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "result": {
+              "method": "card",
+              "terminal": "phone",
+              "finished_ago_ms": 0
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "cancelled",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "result": {
+              "method": "card",
+              "terminal": "phone",
+              "finished_ago_ms": 0
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "expired",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "result": {
+              "method": "card",
+              "terminal": "phone",
+              "finished_ago_ms": 0
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "superseded",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "result": {
+              "method": "card",
+              "terminal": "phone",
+              "finished_ago_ms": 0
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "failed",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "result": {
+              "method": "card",
+              "terminal": "phone",
+              "finished_ago_ms": 0
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "notice": {
+              "reason": "INITIATING_NOT_VOICE"
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "notice": {
+              "reason": "INITIATING_NOT_OWNER_VERIFIED"
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "notice": {
+              "reason": "DIFFERENT_TERMINAL"
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "notice": {
+              "reason": "TERMINAL_LOCKED"
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "notice": {
+              "reason": "REQUEST_STALE"
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "notice": {
+              "reason": "OVER_AUTO_LIMIT"
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "notice": {
+              "reason": "OVER_AUTO_DAY_LIMIT"
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "notice": {
+              "reason": "OVER_VOICE_LIMIT"
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "notice": {
+              "reason": "OVER_BUDGET"
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "notice": {
+              "reason": "NEW_PAYEE"
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "notice": {
+              "reason": "PAYEE_UNREADABLE"
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "notice": {
+              "reason": "SAME_PAYEE_RECENT"
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "notice": {
+              "reason": "AUTO_PAUSED"
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "notice": {
+              "reason": "VOICE_NOT_RECOGNIZED"
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "notice": {
+              "reason": "VOICE_INSUFFICIENT"
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "notice": {
+              "reason": "VOICE_ATTEMPTS_EXHAUSTED"
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "notice": {
+              "reason": "VOICE_UNAVAILABLE"
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "notice": {
+              "reason": "VOICE_DISABLED"
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "notice": {
+              "reason": "AUTO_DISABLED"
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "notice": {
+              "reason": "LOCKS_NOT_ENABLED"
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "notice": {
+              "reason": "AMOUNT_CHANGED"
+            }
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_cards",
+        "session_id": "session-1",
+        "cards": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+            "version": 1,
+            "state": "awaiting_owner",
+            "amount_fen": 1660,
+            "payee": "一点点",
+            "app": "千问",
+            "items": [
+              "香柠养乐多"
+            ],
+            "expires_in_ms": 300000,
+            "decision_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "payee_key": "0000000000000000000000000000000000000000000000000000000000000000",
+            "methods": {
+              "voice": {
+                "available": false,
+                "reason": "INITIATING_NOT_VOICE",
+                "tries_left": 2
+              },
+              "auto": {
+                "available": false,
+                "reason": "AUTO_DISABLED"
+              }
+            },
+            "notice": {
+              "reason": "AUTO_INTERRUPTED"
+            }
+          }
+        ],
+        "complete": true
+      }
+    ],
+    "payment_notice": [
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_notice",
+        "session_id": "session-1",
+        "notice": null
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_notice",
+        "session_id": "session-1",
+        "notice": {
+          "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+          "state": "awaiting_owner",
+          "amount_fen": 1660,
+          "payee": "一点点",
+          "line": "香柠养乐多",
+          "voice_hint": true,
+          "expires_in_ms": 300000
+        }
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_notice",
+        "session_id": "session-1",
+        "notice": {
+          "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+          "state": "awaiting_owner",
+          "reason": "TERMINAL_LOCKED",
+          "expires_in_ms": 300000
+        }
+      }
+    ],
+    "payment_settings": [
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_settings",
+        "session_id": "session-1",
+        "wire_version": 1,
+        "policy_version": 1,
+        "voice_enabled": false,
+        "auto_enabled": false,
+        "limits": {
+          "auto_order_fen": 5000,
+          "auto_day_fen": 15000,
+          "voice_order_fen": 20000
+        },
+        "limit_max_fen": 100000,
+        "today_auto_used_fen": 0,
+        "locks": {
+          "phone": {
+            "enabled": false,
+            "relock_s": 60,
+            "relock_choices_s": [
+              0,
+              60,
+              300,
+              900
+            ],
+            "unlocked": false
+          },
+          "glasses": {
+            "paired": true,
+            "device_id": "glasses-1",
+            "enabled": false,
+            "unlocked": false,
+            "worn": true
+          }
+        },
+        "voiceprint": {
+          "phone_app": false,
+          "glasses": false
+        },
+        "keys": {
+          "device": false,
+          "user": false
+        },
+        "prerequisites": {
+          "voice": [
+            "VOICEPRINT",
+            "PHONE_LOCK",
+            "GLASSES_LOCK",
+            "DEVICE_KEYS"
+          ],
+          "auto": [
+            "VOICE_PAY"
+          ]
+        }
+      }
+    ],
+    "payment_lock_state": [
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_lock_state",
+        "session_id": "session-1",
+        "lock_enabled": true,
+        "locked": true,
+        "reason": "awaiting_phone",
+        "wear_poll_ms": 2000
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_lock_state",
+        "session_id": "session-1",
+        "lock_enabled": true,
+        "locked": false,
+        "wear_poll_ms": 2000,
+        "enrolment": {
+          "granted": true,
+          "expires_in_ms": 600000,
+          "sentences": [
+            "录入语句"
+          ]
+        },
+        "lock_cycle": 0
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_lock_state",
+        "session_id": "session-1",
+        "lock_enabled": false,
+        "locked": false,
+        "reason": "disabled",
+        "wear_poll_ms": 2000,
+        "enrolment": {
+          "granted": false
+        },
+        "voice_enrollment": {
+          "granted": true,
+          "expires_in_ms": 600000
+        }
+      }
+    ],
+    "payment_approvals": [
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_approvals",
+        "session_id": "session-1",
+        "approvals": [
+          {
+            "approval_id": "apr-00000000-0000-4000-8000-000000000001",
+            "kind": "glasses_unlock",
+            "target_device_id": "glasses-1",
+            "device_label": "眼镜",
+            "expires_in_ms": 120000,
+            "nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          }
+        ],
+        "complete": true
+      }
+    ],
+    "payment_challenge": [
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_challenge",
+        "session_id": "session-1",
+        "request_id": "req-1",
+        "purpose": "settings",
+        "nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "expires_in_ms": 120000
+      }
+    ],
+    "payment_receipt": [
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_receipt",
+        "session_id": "session-1",
+        "control_id": "ctl-1",
+        "ok": true,
+        "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+        "state": "granted"
+      },
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_receipt",
+        "session_id": "session-1",
+        "control_id": "ctl-1",
+        "ok": false,
+        "error_code": "PAYMENT_PREREQUISITE_MISSING",
+        "missing": [
+          "VOICE_PAY"
+        ]
+      }
+    ],
+    "payment_records": [
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_records",
+        "session_id": "session-1",
+        "request_id": "req-1",
+        "items": [
+          {
+            "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+            "at": "2026-10-15T00:00:00.000Z",
+            "app": "千问",
+            "payee": "一点点",
+            "summary": "香柠养乐多",
+            "amount_fen": 1660,
+            "state": "paid",
+            "method": "card",
+            "terminal": "phone"
+          }
+        ],
+        "next_before": "WzE3OTIwNjU2MDAwMDAsInBheS0wMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiXQ"
+      }
+    ],
+    "payment_record": [
+      {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "payment_record",
+        "session_id": "session-1",
+        "request_id": "req-1",
+        "payment": {
+          "payment_id": "pay-00000000-0000-4000-8000-000000000001",
+          "at": "2026-10-15T00:00:00.000Z",
+          "app": "千问",
+          "payee": "一点点",
+          "summary": "香柠养乐多",
+          "amount_fen": 1660,
+          "state": "paid",
+          "method": "card",
+          "terminal": "phone",
+          "intent_id": "pi-00000000-0000-4000-8000-000000000001",
+          "initiating_text": "帮我点一杯香柠养乐多"
+        },
+        "timeline": [
+          {
+            "at": "2026-10-15T00:00:00.000Z",
+            "kind": "grant_issued",
+            "terminal": "phone",
+            "data": {
+              "method": "card",
+              "amount_fen": 1660
+            }
+          }
+        ],
+        "next_seq": 41
+      }
+    ]
+  }
+}

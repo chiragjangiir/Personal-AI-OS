@@ -1,0 +1,1499 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-ai-os.local/contracts/governance/audit-record.v1.schema.json",
+  "title": "AuditRecord",
+  "$comment": "schema_version=1.0.0; NOT_PROVEN_BY_SCHEMA: operation-code/tuple equality; accepted bytes/JCS/hashes; first-failure truth; caller/server authority; frozen tuple precedence; target existence/applicability; current T03/retention re-resolution; PostgreSQL membership/append/atomic visibility/order/fail-stop/append-only; claim/fence; production mutation/effect absence; deletion completeness; replay determinism/non-resurrection; export minimization; dependency graph; RFC-007 registration.",
+  "$ref": "#/$defs/AuditRecord",
+  "$defs": {
+    "AuditRecordStatus": {
+      "type": "string",
+      "const": "recorded"
+    },
+    "AuditEventClass": {
+      "type": "string",
+      "enum": ["authenticated_user_bound_pre_claim_rejection", "protected_authority_evaluation", "authoritative_state_commit", "delivery_effect_attempt", "terminal_reconciliation", "correction", "deletion", "replay", "retention_legal_hold", "export"]
+    },
+    "OperationCode": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
+    },
+    "ResolvedOperationCodeBinding": {
+      "type": "object",
+      "required": [
+        "binding_kind",
+        "operation_code"
+      ],
+      "properties": {
+        "binding_kind": {
+          "const": "server_registry_operation_code"
+        },
+        "operation_code": {
+          "$ref": "#/$defs/OperationCode"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UnresolvedPreClaimOperationCodeSentinel": {
+      "type": "object",
+      "required": [
+        "binding_kind",
+        "reason"
+      ],
+      "properties": {
+        "binding_kind": {
+          "const": "unresolved_preclaim_operation_code"
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "expected_operation_code_unavailable",
+            "expected_operation_code_ambiguous"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "OperationCodeBinding": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ResolvedOperationCodeBinding"
+        },
+        {
+          "$ref": "#/$defs/UnresolvedPreClaimOperationCodeSentinel"
+        }
+      ]
+    },
+    "ResolvedOperationContractBinding": {
+      "type": "object",
+      "required": ["binding_kind", "operation_contract_id", "operation_contract_version", "operation_contract_sha256", "request_intent_profile", "request_intent_profile_sha256", "result_schema_id", "result_schema_version", "result_schema_sha256"],
+      "properties": {
+        "binding_kind": {
+          "const": "resolved_operation_contract"
+        },
+        "operation_contract_id": {
+          "$ref": "https://personal-ai-os.local/contracts/common/common-envelope.v1.schema.json#/$defs/CommonEnvelope/properties/schema_id"
+        },
+        "operation_contract_version": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/StrictSemVer"
+        },
+        "operation_contract_sha256": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+        },
+        "request_intent_profile": {
+          "$ref": "https://personal-ai-os.local/contracts/common/idempotency-replay.v1.schema.json#/$defs/IdempotencyProfileDefinition"
+        },
+        "request_intent_profile_sha256": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+        },
+        "result_schema_id": {
+          "$ref": "https://personal-ai-os.local/contracts/common/common-envelope.v1.schema.json#/$defs/CommonEnvelope/properties/schema_id"
+        },
+        "result_schema_version": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/StrictSemVer"
+        },
+        "result_schema_sha256": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PersistedExpectedOperationTupleBinding": {
+      "type": "object",
+      "required": ["binding_kind", "registered_operation_code", "operation_contract_id", "operation_contract_version", "operation_contract_sha256", "request_intent_profile_id", "request_intent_profile_version", "request_intent_profile_sha256", "request_schema_id", "request_schema_version", "request_schema_sha256", "result_schema_id", "result_schema_version", "result_schema_sha256"],
+      "properties": {
+        "binding_kind": {
+          "const": "persisted_expected_operation_tuple"
+        },
+        "registered_operation_code": {
+          "$ref": "#/$defs/OperationCode"
+        },
+        "operation_contract_id": {
+          "$ref": "https://personal-ai-os.local/contracts/common/common-envelope.v1.schema.json#/$defs/CommonEnvelope/properties/schema_id"
+        },
+        "operation_contract_version": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/StrictSemVer"
+        },
+        "operation_contract_sha256": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+        },
+        "request_intent_profile_id": {
+          "$ref": "https://personal-ai-os.local/contracts/common/common-envelope.v1.schema.json#/$defs/CommonEnvelope/properties/schema_id"
+        },
+        "request_intent_profile_version": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/StrictSemVer"
+        },
+        "request_intent_profile_sha256": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+        },
+        "request_schema_id": {
+          "$ref": "https://personal-ai-os.local/contracts/common/common-envelope.v1.schema.json#/$defs/CommonEnvelope/properties/schema_id"
+        },
+        "request_schema_version": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/StrictSemVer"
+        },
+        "request_schema_sha256": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+        },
+        "result_schema_id": {
+          "$ref": "https://personal-ai-os.local/contracts/common/common-envelope.v1.schema.json#/$defs/CommonEnvelope/properties/schema_id"
+        },
+        "result_schema_version": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/StrictSemVer"
+        },
+        "result_schema_sha256": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UnresolvedPreClaimOperationContractSentinel": {
+      "type": "object",
+      "required": [
+        "binding_kind",
+        "reason"
+      ],
+      "properties": {
+        "binding_kind": {
+          "const": "unresolved_preclaim_operation_contract"
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "expected_operation_tuple_unavailable",
+            "expected_operation_tuple_ambiguous"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "OperationContractBinding": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ResolvedOperationContractBinding"
+        },
+        {
+          "$ref": "#/$defs/PersistedExpectedOperationTupleBinding"
+        },
+        {
+          "$ref": "#/$defs/UnresolvedPreClaimOperationContractSentinel"
+        }
+      ]
+    },
+    "ResolvedRequestIntentBinding": {
+      "type": "object",
+      "required": [
+        "binding_kind",
+        "request_intent_sha256"
+      ],
+      "properties": {
+        "binding_kind": {
+          "const": "resolved_request_intent"
+        },
+        "request_intent_sha256": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UnresolvedPreClaimRequestSentinel": {
+      "type": "object",
+      "required": [
+        "binding_kind",
+        "unavailability_reason"
+      ],
+      "properties": {
+        "binding_kind": {
+          "const": "unresolved_pre_claim_request"
+        },
+        "unavailability_reason": {
+          "type": "string",
+          "enum": ["expected_operation_contract_unavailable", "expected_operation_contract_integrity_mismatch", "expected_profile_unavailable", "expected_profile_integrity_mismatch", "expected_request_schema_unavailable", "expected_request_schema_integrity_mismatch", "expected_result_schema_unavailable", "expected_result_schema_integrity_mismatch", "request_document_invalid", "request_schema_validation_failed", "intent_root_resolution_failed", "intent_canonicalization_failed"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "UnevaluatedRequestIntentSentinel": {
+      "type": "object",
+      "required": [
+        "binding_kind"
+      ],
+      "properties": {
+        "binding_kind": {
+          "const": "unevaluated_due_to_unresolved_operation_tuple"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RequestIntentBinding": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ResolvedRequestIntentBinding"
+        },
+        {
+          "$ref": "#/$defs/UnresolvedPreClaimRequestSentinel"
+        },
+        {
+          "$ref": "#/$defs/UnevaluatedRequestIntentSentinel"
+        }
+      ]
+    },
+    "ExistingCanonicalObjectTargetBinding": {
+      "type": "object",
+      "required": [
+        "binding_kind",
+        "target_ref"
+      ],
+      "properties": {
+        "binding_kind": {
+          "const": "existing_canonical_object"
+        },
+        "target_ref": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/CanonicalObjectVersionRef"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SameTransactionCanonicalObjectTargetSentinel": {
+      "type": "object",
+      "required": [
+        "binding_kind",
+        "target_object_type",
+        "target_object_id",
+        "target_object_version"
+      ],
+      "properties": {
+        "binding_kind": {
+          "const": "same_transaction_canonical_object"
+        },
+        "target_object_type": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/CanonicalObjectVersionRef/properties/ref_type"
+        },
+        "target_object_id": {
+          "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/UuidV7"
+        },
+        "target_object_version": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/CanonicalObjectVersionRef/properties/object_version"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ProtectedOperationWithoutCanonicalTargetSentinel": {
+      "type": "object",
+      "required": [
+        "binding_kind"
+      ],
+      "properties": {
+        "binding_kind": {
+          "const": "protected_operation_without_canonical_target"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UnresolvedPreClaimTargetSentinel": {
+      "type": "object",
+      "required": [
+        "binding_kind",
+        "unavailability_reason"
+      ],
+      "properties": {
+        "binding_kind": {
+          "const": "unresolved_pre_claim_target"
+        },
+        "unavailability_reason": {
+          "type": "string",
+          "enum": ["unevaluated_due_unresolved_operation", "unevaluated_due_operation_material_unresolved", "target_identity_not_allocated_preclaim", "target_selector_missing", "target_selector_invalid", "target_resolution_unavailable", "target_resolution_ambiguous", "target_not_found_or_inactive", "target_integrity_mismatch"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "AuditedTargetBinding": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ExistingCanonicalObjectTargetBinding"
+        },
+        {
+          "$ref": "#/$defs/SameTransactionCanonicalObjectTargetSentinel"
+        },
+        {
+          "$ref": "#/$defs/ProtectedOperationWithoutCanonicalTargetSentinel"
+        },
+        {
+          "$ref": "#/$defs/UnresolvedPreClaimTargetSentinel"
+        }
+      ]
+    },
+    "ObservedDisposition": {
+      "type": "string",
+      "enum": ["rejected_without_claim", "evaluation_recorded", "authoritative_commit_observed", "attempt_intent_recorded", "terminal_reconciliation_observed", "non_mutating_observation_recorded"]
+    },
+    "AtomicityMode": {
+      "type": "string",
+      "enum": ["independent_pre_claim_rejection", "atomic_with_authoritative_commit", "durable_before_external_effect", "atomic_with_reconciliation_commit", "non_mutating_protected_observation"]
+    },
+    "OutcomeSummary": {
+      "type": "object",
+      "required": [
+        "outcome_class"
+      ],
+      "properties": {
+        "outcome_class": {
+          "$ref": "https://personal-ai-os.local/contracts/common/outcome-error.v1.schema.json#/$defs/OutcomeClass"
+        },
+        "error_family": {
+          "$ref": "https://personal-ai-os.local/contracts/common/outcome-error.v1.schema.json#/$defs/ErrorFamily"
+        },
+        "error_code": {
+          "$ref": "https://personal-ai-os.local/contracts/common/outcome-error.v1.schema.json#/$defs/ErrorCode"
+        },
+        "retry_class": {
+          "$ref": "https://personal-ai-os.local/contracts/common/outcome-error.v1.schema.json#/$defs/RetryClass"
+        },
+        "resolution_mode": {
+          "$ref": "https://personal-ai-os.local/contracts/common/outcome-error.v1.schema.json#/$defs/ResolutionMode"
+        }
+      },
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "outcome_class": {
+                  "const": "pre_claim_rejection"
+                }
+              },
+              "required": [
+                "error_family",
+                "error_code",
+                "retry_class"
+              ],
+              "not": {
+                "required": [
+                  "resolution_mode"
+                ]
+              }
+            },
+            {
+              "properties": {
+                "outcome_class": {
+                  "const": "rollback_no_commit"
+                }
+              },
+              "required": [
+                "error_family",
+                "error_code",
+                "retry_class"
+              ],
+              "not": {
+                "required": [
+                  "resolution_mode"
+                ]
+              }
+            },
+            {
+              "properties": {
+                "outcome_class": {
+                  "const": "committed_rejection"
+                },
+                "resolution_mode": {
+                  "enum": [
+                    "direct",
+                    "reconciled_no_effect"
+                  ]
+                }
+              },
+              "required": [
+                "error_family",
+                "error_code",
+                "retry_class",
+                "resolution_mode"
+              ]
+            },
+            {
+              "properties": {
+                "outcome_class": {
+                  "const": "committed_success"
+                },
+                "resolution_mode": {
+                  "enum": [
+                    "direct",
+                    "reconciled_effect_confirmed"
+                  ]
+                }
+              },
+              "required": [
+                "resolution_mode"
+              ],
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "error_family"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "error_code"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "retry_class"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "properties": {
+                "outcome_class": {
+                  "const": "indeterminate"
+                },
+                "retry_class": {
+                  "const": "never"
+                }
+              },
+              "required": [
+                "error_family",
+                "error_code",
+                "retry_class"
+              ],
+              "not": {
+                "required": [
+                  "resolution_mode"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "if": {
+            "required": [
+              "error_family"
+            ]
+          },
+          "then": {
+            "oneOf": [
+              {
+                "properties": {
+                  "error_family": {
+                    "const": "validation"
+                  },
+                  "error_code": {
+                    "pattern": "^validation\\.[a-z0-9_]+$"
+                  }
+                },
+                "required": [
+                  "error_family",
+                  "error_code"
+                ]
+              },
+              {
+                "properties": {
+                  "error_family": {
+                    "const": "authn"
+                  },
+                  "error_code": {
+                    "pattern": "^authn\\.[a-z0-9_]+$"
+                  }
+                },
+                "required": [
+                  "error_family",
+                  "error_code"
+                ]
+              },
+              {
+                "properties": {
+                  "error_family": {
+                    "const": "authz"
+                  },
+                  "error_code": {
+                    "pattern": "^authz\\.[a-z0-9_]+$"
+                  }
+                },
+                "required": [
+                  "error_family",
+                  "error_code"
+                ]
+              },
+              {
+                "properties": {
+                  "error_family": {
+                    "const": "policy"
+                  },
+                  "error_code": {
+                    "pattern": "^policy\\.[a-z0-9_]+$"
+                  }
+                },
+                "required": [
+                  "error_family",
+                  "error_code"
+                ]
+              },
+              {
+                "properties": {
+                  "error_family": {
+                    "const": "state"
+                  },
+                  "error_code": {
+                    "pattern": "^state\\.[a-z0-9_]+$"
+                  }
+                },
+                "required": [
+                  "error_family",
+                  "error_code"
+                ]
+              },
+              {
+                "properties": {
+                  "error_family": {
+                    "const": "conflict"
+                  },
+                  "error_code": {
+                    "pattern": "^conflict\\.[a-z0-9_]+$"
+                  }
+                },
+                "required": [
+                  "error_family",
+                  "error_code"
+                ]
+              },
+              {
+                "properties": {
+                  "error_family": {
+                    "const": "dependency"
+                  },
+                  "error_code": {
+                    "pattern": "^dependency\\.[a-z0-9_]+$"
+                  }
+                },
+                "required": [
+                  "error_family",
+                  "error_code"
+                ]
+              },
+              {
+                "properties": {
+                  "error_family": {
+                    "const": "provider"
+                  },
+                  "error_code": {
+                    "pattern": "^provider\\.[a-z0-9_]+$"
+                  }
+                },
+                "required": [
+                  "error_family",
+                  "error_code"
+                ]
+              },
+              {
+                "properties": {
+                  "error_family": {
+                    "const": "tool"
+                  },
+                  "error_code": {
+                    "pattern": "^tool\\.[a-z0-9_]+$"
+                  }
+                },
+                "required": [
+                  "error_family",
+                  "error_code"
+                ]
+              },
+              {
+                "properties": {
+                  "error_family": {
+                    "const": "storage"
+                  },
+                  "error_code": {
+                    "pattern": "^storage\\.[a-z0-9_]+$"
+                  }
+                },
+                "required": [
+                  "error_family",
+                  "error_code"
+                ]
+              },
+              {
+                "properties": {
+                  "error_family": {
+                    "const": "security"
+                  },
+                  "error_code": {
+                    "pattern": "^security\\.[a-z0-9_]+$"
+                  }
+                },
+                "required": [
+                  "error_family",
+                  "error_code"
+                ]
+              },
+              {
+                "properties": {
+                  "error_family": {
+                    "const": "privacy"
+                  },
+                  "error_code": {
+                    "pattern": "^privacy\\.[a-z0-9_]+$"
+                  }
+                },
+                "required": [
+                  "error_family",
+                  "error_code"
+                ]
+              },
+              {
+                "properties": {
+                  "error_family": {
+                    "const": "deletion"
+                  },
+                  "error_code": {
+                    "pattern": "^deletion\\.[a-z0-9_]+$"
+                  }
+                },
+                "required": [
+                  "error_family",
+                  "error_code"
+                ]
+              },
+              {
+                "properties": {
+                  "error_family": {
+                    "const": "replay"
+                  },
+                  "error_code": {
+                    "pattern": "^replay\\.[a-z0-9_]+$"
+                  }
+                },
+                "required": [
+                  "error_family",
+                  "error_code"
+                ]
+              },
+              {
+                "properties": {
+                  "error_family": {
+                    "const": "risk"
+                  },
+                  "error_code": {
+                    "pattern": "^risk\\.[a-z0-9_]+$"
+                  }
+                },
+                "required": [
+                  "error_family",
+                  "error_code"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "RetentionPolicyBinding": {
+      "allOf": [
+        {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/ArtifactBinding"
+        },
+        {
+          "properties": {
+            "artifact_type": {
+              "const": "policy_bundle"
+            }
+          }
+        }
+      ]
+    },
+    "AuditRecordBody": {
+      "type": "object",
+      "required": ["audit_event_class", "operation_code_binding", "operation_contract_binding", "request_intent_binding", "audited_target_binding", "observed_disposition", "atomicity_mode", "retention_policy_binding"],
+      "properties": {
+        "audit_event_class": {
+          "$ref": "#/$defs/AuditEventClass"
+        },
+        "operation_code_binding": {
+          "$ref": "#/$defs/OperationCodeBinding"
+        },
+        "operation_contract_binding": {
+          "$ref": "#/$defs/OperationContractBinding"
+        },
+        "request_intent_binding": {
+          "$ref": "#/$defs/RequestIntentBinding"
+        },
+        "audited_target_binding": {
+          "$ref": "#/$defs/AuditedTargetBinding"
+        },
+        "observed_disposition": {
+          "$ref": "#/$defs/ObservedDisposition"
+        },
+        "atomicity_mode": {
+          "$ref": "#/$defs/AtomicityMode"
+        },
+        "retention_policy_binding": {
+          "$ref": "#/$defs/RetentionPolicyBinding"
+        },
+        "outcome_summary": {
+          "$ref": "#/$defs/OutcomeSummary"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "anyOf": [
+              {
+                "properties": {
+                  "operation_code_binding": {
+                    "properties": {
+                      "binding_kind": {
+                        "const": "unresolved_preclaim_operation_code"
+                      }
+                    },
+                    "required": [
+                      "binding_kind"
+                    ]
+                  }
+                },
+                "required": [
+                  "operation_code_binding"
+                ]
+              },
+              {
+                "properties": {
+                  "operation_contract_binding": {
+                    "properties": {
+                      "binding_kind": {
+                        "enum": [
+                          "persisted_expected_operation_tuple",
+                          "unresolved_preclaim_operation_contract"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "binding_kind"
+                    ]
+                  }
+                },
+                "required": [
+                  "operation_contract_binding"
+                ]
+              },
+              {
+                "properties": {
+                  "request_intent_binding": {
+                    "properties": {
+                      "binding_kind": {
+                        "enum": [
+                          "unresolved_pre_claim_request",
+                          "unevaluated_due_to_unresolved_operation_tuple"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "binding_kind"
+                    ]
+                  }
+                },
+                "required": [
+                  "request_intent_binding"
+                ]
+              },
+              {
+                "properties": {
+                  "audited_target_binding": {
+                    "properties": {
+                      "binding_kind": {
+                        "const": "unresolved_pre_claim_target"
+                      }
+                    },
+                    "required": [
+                      "binding_kind"
+                    ]
+                  }
+                },
+                "required": [
+                  "audited_target_binding"
+                ]
+              }
+            ]
+          },
+          "then": {
+            "required": [
+              "outcome_summary"
+            ],
+            "properties": {
+              "audit_event_class": {
+                "const": "authenticated_user_bound_pre_claim_rejection"
+              },
+              "observed_disposition": {
+                "const": "rejected_without_claim"
+              },
+              "atomicity_mode": {
+                "const": "independent_pre_claim_rejection"
+              },
+              "outcome_summary": {
+                "properties": {
+                  "outcome_class": {
+                    "const": "pre_claim_rejection"
+                  }
+                },
+                "required": [
+                  "outcome_class"
+                ]
+              }
+            }
+          }
+        },
+        {"if": {"properties": {"audited_target_binding": {"properties": {"binding_kind": {"const": "same_transaction_canonical_object"}}, "required": ["binding_kind"]}}, "required": ["audited_target_binding"]}, "then": {"properties": {"audit_event_class": {"const": "authoritative_state_commit"}, "atomicity_mode": {"const": "atomic_with_authoritative_commit"}}}},
+        {
+          "if": {
+            "properties": {
+              "operation_contract_binding": {
+                "properties": {
+                  "binding_kind": {
+                    "const": "unresolved_preclaim_operation_contract"
+                  }
+                },
+                "required": [
+                  "binding_kind"
+                ]
+              }
+            },
+            "required": [
+              "operation_contract_binding"
+            ]
+          },
+          "then": {
+            "properties": {
+              "request_intent_binding": {
+                "properties": {
+                  "binding_kind": {
+                    "const": "unevaluated_due_to_unresolved_operation_tuple"
+                  }
+                },
+                "required": [
+                  "binding_kind"
+                ]
+              },
+              "audited_target_binding": {
+                "properties": {
+                  "binding_kind": {
+                    "const": "unresolved_pre_claim_target"
+                  },
+                  "unavailability_reason": {
+                    "const": "unevaluated_due_unresolved_operation"
+                  }
+                },
+                "required": [
+                  "binding_kind",
+                  "unavailability_reason"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation_code_binding": {
+                "properties": {
+                  "binding_kind": {
+                    "const": "unresolved_preclaim_operation_code"
+                  }
+                },
+                "required": [
+                  "binding_kind"
+                ]
+              }
+            },
+            "required": [
+              "operation_code_binding"
+            ]
+          },
+          "then": {
+            "properties": {
+              "operation_contract_binding": {
+                "properties": {
+                  "binding_kind": {
+                    "const": "unresolved_preclaim_operation_contract"
+                  }
+                },
+                "required": [
+                  "binding_kind"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation_contract_binding": {
+                "properties": {
+                  "binding_kind": {
+                    "const": "persisted_expected_operation_tuple"
+                  }
+                },
+                "required": [
+                  "binding_kind"
+                ]
+              }
+            },
+            "required": [
+              "operation_contract_binding"
+            ]
+          },
+          "then": {
+            "properties": {
+              "operation_code_binding": {
+                "properties": {
+                  "binding_kind": {
+                    "const": "server_registry_operation_code"
+                  }
+                },
+                "required": [
+                  "binding_kind"
+                ]
+              },
+              "request_intent_binding": {
+                "properties": {
+                  "binding_kind": {
+                    "const": "unresolved_pre_claim_request"
+                  },
+                  "unavailability_reason": {
+                    "enum": [
+                      "expected_operation_contract_unavailable",
+                      "expected_operation_contract_integrity_mismatch",
+                      "expected_profile_unavailable",
+                      "expected_profile_integrity_mismatch",
+                      "expected_request_schema_unavailable",
+                      "expected_request_schema_integrity_mismatch",
+                      "expected_result_schema_unavailable",
+                      "expected_result_schema_integrity_mismatch"
+                    ]
+                  }
+                },
+                "required": [
+                  "binding_kind",
+                  "unavailability_reason"
+                ]
+              },
+              "audited_target_binding": {
+                "oneOf": [
+                  {
+                    "properties": {
+                      "binding_kind": {
+                        "const": "existing_canonical_object"
+                      }
+                    },
+                    "required": [
+                      "binding_kind"
+                    ]
+                  },
+                  {
+                    "properties": {
+                      "binding_kind": {
+                        "const": "protected_operation_without_canonical_target"
+                      }
+                    },
+                    "required": [
+                      "binding_kind"
+                    ]
+                  },
+                  {
+                    "properties": {
+                      "binding_kind": {
+                        "const": "unresolved_pre_claim_target"
+                      },
+                      "unavailability_reason": {
+                        "enum": [
+                          "unevaluated_due_operation_material_unresolved",
+                          "target_identity_not_allocated_preclaim",
+                          "target_selector_missing",
+                          "target_selector_invalid",
+                          "target_resolution_unavailable",
+                          "target_resolution_ambiguous",
+                          "target_not_found_or_inactive",
+                          "target_integrity_mismatch"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "binding_kind",
+                      "unavailability_reason"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation_contract_binding": {
+                "properties": {
+                  "binding_kind": {
+                    "const": "resolved_operation_contract"
+                  }
+                },
+                "required": [
+                  "binding_kind"
+                ]
+              }
+            },
+            "required": [
+              "operation_contract_binding"
+            ]
+          },
+          "then": {
+            "properties": {
+              "operation_code_binding": {
+                "properties": {
+                  "binding_kind": {
+                    "const": "server_registry_operation_code"
+                  }
+                },
+                "required": [
+                  "binding_kind"
+                ]
+              },
+              "request_intent_binding": {
+                "oneOf": [
+                  {
+                    "properties": {
+                      "binding_kind": {
+                        "const": "resolved_request_intent"
+                      }
+                    },
+                    "required": [
+                      "binding_kind"
+                    ]
+                  },
+                  {
+                    "properties": {
+                      "binding_kind": {
+                        "const": "unresolved_pre_claim_request"
+                      },
+                      "unavailability_reason": {
+                        "enum": [
+                          "request_document_invalid",
+                          "request_schema_validation_failed",
+                          "intent_root_resolution_failed",
+                          "intent_canonicalization_failed"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "binding_kind",
+                      "unavailability_reason"
+                    ]
+                  }
+                ]
+              },
+              "audited_target_binding": {
+                "oneOf": [
+                  {
+                    "properties": {
+                      "binding_kind": {
+                        "const": "existing_canonical_object"
+                      }
+                    },
+                    "required": [
+                      "binding_kind"
+                    ]
+                  },
+                  {
+                    "properties": {
+                      "binding_kind": {
+                        "const": "same_transaction_canonical_object"
+                      }
+                    },
+                    "required": [
+                      "binding_kind"
+                    ]
+                  },
+                  {
+                    "properties": {
+                      "binding_kind": {
+                        "const": "protected_operation_without_canonical_target"
+                      }
+                    },
+                    "required": [
+                      "binding_kind"
+                    ]
+                  },
+                  {
+                    "properties": {
+                      "binding_kind": {
+                        "const": "unresolved_pre_claim_target"
+                      },
+                      "unavailability_reason": {
+                        "enum": [
+                          "target_identity_not_allocated_preclaim",
+                          "target_selector_missing",
+                          "target_selector_invalid",
+                          "target_resolution_unavailable",
+                          "target_resolution_ambiguous",
+                          "target_not_found_or_inactive",
+                          "target_integrity_mismatch"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "binding_kind",
+                      "unavailability_reason"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "audit_event_class": {
+                "const": "authenticated_user_bound_pre_claim_rejection"
+              }
+            },
+            "required": [
+              "audit_event_class"
+            ]
+          },
+          "then": {
+            "properties": {
+              "audited_target_binding": {
+                "not": {
+                  "properties": {
+                    "binding_kind": {
+                      "const": "same_transaction_canonical_object"
+                    }
+                  },
+                  "required": [
+                    "binding_kind"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "not": {
+              "properties": {
+                "audit_event_class": {
+                  "const": "authenticated_user_bound_pre_claim_rejection"
+                }
+              },
+              "required": [
+                "audit_event_class"
+              ]
+            }
+          },
+          "then": {
+            "properties": {
+              "operation_code_binding": {
+                "properties": {
+                  "binding_kind": {
+                    "const": "server_registry_operation_code"
+                  }
+                },
+                "required": [
+                  "binding_kind"
+                ]
+              },
+              "operation_contract_binding": {
+                "properties": {
+                  "binding_kind": {
+                    "const": "resolved_operation_contract"
+                  }
+                },
+                "required": [
+                  "binding_kind"
+                ]
+              },
+              "request_intent_binding": {
+                "properties": {
+                  "binding_kind": {
+                    "const": "resolved_request_intent"
+                  }
+                },
+                "required": [
+                  "binding_kind"
+                ]
+              },
+              "audited_target_binding": {
+                "oneOf": [
+                  {
+                    "properties": {
+                      "binding_kind": {
+                        "const": "existing_canonical_object"
+                      }
+                    },
+                    "required": [
+                      "binding_kind"
+                    ]
+                  },
+                  {
+                    "properties": {
+                      "binding_kind": {
+                        "const": "same_transaction_canonical_object"
+                      }
+                    },
+                    "required": [
+                      "binding_kind"
+                    ]
+                  },
+                  {
+                    "properties": {
+                      "binding_kind": {
+                        "const": "protected_operation_without_canonical_target"
+                      }
+                    },
+                    "required": [
+                      "binding_kind"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "audit_event_class": {
+                "const": "authenticated_user_bound_pre_claim_rejection"
+              }
+            },
+            "required": [
+              "audit_event_class"
+            ]
+          },
+          "then": {
+            "required": [
+              "outcome_summary"
+            ],
+            "properties": {
+              "outcome_summary": {
+                "properties": {
+                  "outcome_class": {
+                    "const": "pre_claim_rejection"
+                  }
+                },
+                "required": [
+                  "outcome_class"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "audit_event_class": {
+                "const": "terminal_reconciliation"
+              }
+            },
+            "required": [
+              "audit_event_class"
+            ]
+          },
+          "then": {
+            "required": [
+              "outcome_summary"
+            ],
+            "properties": {
+              "outcome_summary": {
+                "oneOf": [
+                  {
+                    "properties": {
+                      "outcome_class": {
+                        "const": "committed_rejection"
+                      },
+                      "resolution_mode": {
+                        "const": "reconciled_no_effect"
+                      }
+                    },
+                    "required": [
+                      "outcome_class",
+                      "resolution_mode"
+                    ]
+                  },
+                  {
+                    "properties": {
+                      "outcome_class": {
+                        "const": "committed_success"
+                      },
+                      "resolution_mode": {
+                        "const": "reconciled_effect_confirmed"
+                      }
+                    },
+                    "required": [
+                      "outcome_class",
+                      "resolution_mode"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "audit_event_class": {
+                "const": "delivery_effect_attempt"
+              }
+            },
+            "required": [
+              "audit_event_class"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "outcome_summary"
+              ]
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "AuditRecord": {
+      "type": "object",
+      "required": [
+        "envelope",
+        "body"
+      ],
+      "properties": {
+        "envelope": {
+          "allOf": [
+            {
+              "$ref": "https://personal-ai-os.local/contracts/common/common-envelope.v1.schema.json#/$defs/CommonEnvelope"
+            },
+            {
+              "required": [
+                "trace_id"
+              ],
+              "properties": {
+                "object_id": {
+                  "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/AuditRecordId"
+                },
+                "object_type": {
+                  "const": "AuditRecord"
+                },
+                "owner_module": {
+                  "const": "T03"
+                },
+                "status": {
+                  "$ref": "#/$defs/AuditRecordStatus"
+                },
+                "schema_id": {
+                  "const": "https://personal-ai-os.local/contracts/governance/audit-record.v1.schema.json"
+                },
+                "schema_version": {
+                  "const": "1.0.0"
+                }
+              },
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "audit_ref"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "supersedes_ref"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "correction_refs"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "body": {
+          "$ref": "#/$defs/AuditRecordBody"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "body": {
+                "properties": {
+                  "request_intent_binding": {
+                    "properties": {
+                      "binding_kind": {
+                        "enum": [
+                          "unresolved_pre_claim_request",
+                          "unevaluated_due_to_unresolved_operation_tuple"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "binding_kind"
+                    ]
+                  }
+                },
+                "required": [
+                  "request_intent_binding"
+                ]
+              }
+            },
+            "required": [
+              "body"
+            ]
+          },
+          "then": {
+            "properties": {
+              "envelope": {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "idempotency_scope"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "idempotency_key"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "idempotency_profile_id"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "idempotency_profile_version"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "idempotency_profile_sha256"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "idempotency_request_sha256"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    }
+  }
+}

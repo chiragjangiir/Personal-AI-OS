@@ -1,0 +1,1752 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		E7A000000000000000000011 /* WatchDeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A000000000000000000001 /* WatchDeepLink.swift */; };
+		E7A000000000000000000012 /* WatchWidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A000000000000000000002 /* WatchWidgetSnapshot.swift */; };
+		E7A000000000000000000013 /* WatchWidgetProjection.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A000000000000000000003 /* WatchWidgetProjection.swift */; };
+		E7A000000000000000000014 /* WatchRideFigures.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A000000000000000000004 /* WatchRideFigures.swift */; };
+		E7A000000000000000000015 /* WatchWidgetPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A000000000000000000005 /* WatchWidgetPublisher.swift */; };
+		E7A000000000000000000016 /* YimiWatchWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A000000000000000000006 /* YimiWatchWidget.swift */; };
+		E7A000000000000000000017 /* YimiWatchWidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A000000000000000000007 /* YimiWatchWidgetViews.swift */; };
+		E7A000000000000000000018 /* WatchWidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A000000000000000000002 /* WatchWidgetSnapshot.swift */; };
+		E7A000000000000000000019 /* WatchDeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A000000000000000000001 /* WatchDeepLink.swift */; };
+		E7A00000000000000000001A /* YimiDesign.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000001 /* YimiDesign.swift */; };
+		E7A00000000000000000001B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000019 /* Assets.xcassets */; };
+		E7A00000000000000000001C /* YimiWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E7A00000000000000000000A /* YimiWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		E7A00000000000000000001D /* WatchRideFiguresTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A00000000000000000000B /* WatchRideFiguresTests.swift */; };
+		F01110000000000000000003 /* AssistantWakeListeningTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F01120000000000000000003 /* AssistantWakeListeningTests.swift */; };
+		F01110000000000000000001 /* AssistantWakeListening.swift in Sources */ = {isa = PBXBuildFile; fileRef = F01120000000000000000001 /* AssistantWakeListening.swift */; };
+		F01110000000000000000002 /* VoiceWake in Frameworks */ = {isa = PBXBuildFile; productRef = F01150000000000000000001 /* VoiceWake */; };
+		BB1000000000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB2000000000000000000001 /* Assets.xcassets */; };
+		FA10000000000000000000D2 /* PlaceSensingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA20000000000000000000D2 /* PlaceSensingService.swift */; };
+		FA10000000000000000000D1 /* PlaceUpload.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA20000000000000000000D1 /* PlaceUpload.swift */; };
+		FE1000000000000000000003 /* YimiConversationTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE2000000000000000000003 /* YimiConversationTimeline.swift */; };
+		D61000000000000000000001 /* AssistantTerminalTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = D62000000000000000000001 /* AssistantTerminalTimeline.swift */; };
+		FD1000000000000000000002 /* YimiContactsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD2000000000000000000002 /* YimiContactsView.swift */; };
+		FD1000000000000000000001 /* AssistantContactsSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD2000000000000000000001 /* AssistantContactsSync.swift */; };
+		FC1000000000000000000000 /* AssistantContactsSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC2000000000000000000000 /* AssistantContactsSource.swift */; };
+		FB1000000000000000000001 /* AssistantHealthSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB2000000000000000000001 /* AssistantHealthSync.swift */; };
+		FB1000000000000000000000 /* AssistantHealthWire.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB2000000000000000000000 /* AssistantHealthWire.swift */; };
+		F10000000000000000000009 /* YimiHealthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000009 /* YimiHealthView.swift */; };
+		FC1000000000000000000002 /* AssistantCentralControlTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC2000000000000000000002 /* AssistantCentralControlTests.swift */; };
+		FC1000000000000000000003 /* formal-control-envelope.fixture.json in Resources */ = {isa = PBXBuildFile; fileRef = FC2000000000000000000003 /* formal-control-envelope.fixture.json */; };
+		FC1000000000000000000001 /* Contracts in Resources */ = {isa = PBXBuildFile; fileRef = FC2000000000000000000001 /* Contracts */; };
+		FC1000000000000000000010 /* Avatar in Resources */ = {isa = PBXBuildFile; fileRef = FC2000000000000000000010 /* Avatar */; };
+		FA1000000000000000000002 /* AssistantCentralTextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2000000000000000000002 /* AssistantCentralTextTests.swift */; };
+		FA1000000000000000000078 /* CentralVoiceTurnTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2000000000000000000078 /* CentralVoiceTurnTests.swift */; };
+		FA1000000000000000000003 /* formal-text-envelope.fixture.json in Resources */ = {isa = PBXBuildFile; fileRef = FA2000000000000000000003 /* formal-text-envelope.fixture.json */; };
+		FA1000000000000000000004 /* automatic-text-envelope.fixture.json in Resources */ = {isa = PBXBuildFile; fileRef = FA2000000000000000000004 /* automatic-text-envelope.fixture.json */; };
+		FA1000000000000000000005 /* formal-text-cancelled-envelope.fixture.json in Resources */ = {isa = PBXBuildFile; fileRef = FA2000000000000000000005 /* formal-text-cancelled-envelope.fixture.json */; };
+		FA1000000000000000000001 /* AssistantCentralTextWire.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2000000000000000000001 /* AssistantCentralTextWire.swift */; };
+		FA1000000000000000000077 /* AssistantVoiceTurn.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2000000000000000000077 /* AssistantVoiceTurn.swift */; };
+		FA10000000000000000000CB /* CallRingback.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA20000000000000000000CB /* CallRingback.swift */; };
+		FA100000000000000000007A /* AssistantVoiceprint.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA200000000000000000007A /* AssistantVoiceprint.swift */; };
+		FA1000000000000000000079 /* RealtimeDevicePairing.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2000000000000000000079 /* RealtimeDevicePairing.swift */; };
+		AD1800000000000000000001 /* RealtimeMacPairing.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD1800000000000000000002 /* RealtimeMacPairing.swift */; };
+		E10000000000000000000003 /* AssistantVideoPreviewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000003 /* AssistantVideoPreviewModel.swift */; };
+		CA0100000000000000000001 /* AssistantCameraJPEG.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0200000000000000000001 /* AssistantCameraJPEG.swift */; };
+		E10000000000000000000002 /* AssistantPhysicalCanary.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000002 /* AssistantPhysicalCanary.swift */; };
+		E10000000000000000000001 /* AssistantDebugLaunch.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000001 /* AssistantDebugLaunch.swift */; };
+		A10000000000000000000001 /* HealthKitExporterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* HealthKitExporterApp.swift */; };
+		A10000000000000000000002 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* AppModel.swift */; };
+		A10000000000000000000003 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* ContentView.swift */; };
+		A10000000000000000000004 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* Models.swift */; };
+		A10000000000000000000005 /* HealthTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000005 /* HealthTypes.swift */; };
+		A10000000000000000000006 /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000006 /* Persistence.swift */; };
+		A10000000000000000000007 /* HealthQueryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* HealthQueryService.swift */; };
+		A10000000000000000000008 /* Networking.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000008 /* Networking.swift */; };
+		A10000000000000000000009 /* SyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000009 /* SyncCoordinator.swift */; };
+		A1000000000000000000000A /* BackgroundSyncRegistrar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000A /* BackgroundSyncRegistrar.swift */; };
+		A1000000000000000000000B /* ContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000B /* ContractTests.swift */; };
+		A1000000000000000000000C /* PersistenceSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000C /* PersistenceSyncTests.swift */; };
+		A1000000000000000000000D /* RetryBackfillTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000D /* RetryBackfillTests.swift */; };
+		A1000000000000000000000E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000012 /* PrivacyInfo.xcprivacy */; };
+		B10000000000000000000001 /* AssistantSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000001 /* AssistantSessionCoordinator.swift */; };
+		B10000000000000000000002 /* AssistantBootstrapProviding.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000002 /* AssistantBootstrapProviding.swift */; };
+		B10000000000000000000003 /* LiveKitSessionAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000003 /* LiveKitSessionAdapter.swift */; };
+		B10000000000000000000004 /* MediaPermissionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000004 /* MediaPermissionCoordinator.swift */; };
+		B10000000000000000000005 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000005 /* LocationService.swift */; };
+		B10000000000000000000006 /* NetworkPathMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000006 /* NetworkPathMonitor.swift */; };
+		B10000000000000000000007 /* AppleReceiptStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000007 /* AppleReceiptStore.swift */; };
+		B10000000000000000000008 /* AssistantViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000008 /* AssistantViewModel.swift */; };
+		B10000000000000000000009 /* AssistantView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000009 /* AssistantView.swift */; };
+		E41800000000000000000003 /* AssistantVoiceEnrollmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E41800000000000000000004 /* AssistantVoiceEnrollmentTests.swift */; };
+		B1000000000000000000000A /* AssistantSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000000A /* AssistantSessionTests.swift */; };
+		B1000000000000000000000B /* LiveKitSessionAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000000B /* LiveKitSessionAdapterTests.swift */; };
+		B1000000000000000000000C /* LocationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000000C /* LocationServiceTests.swift */; };
+		B1000000000000000000000D /* LiveKit in Frameworks */ = {isa = PBXBuildFile; productRef = B30000000000000000000001 /* LiveKit */; };
+		C10000000000000000000001 /* RealtimePublicControlModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000001 /* RealtimePublicControlModels.swift */; };
+		C10000000000000000000002 /* RealtimePublicControlAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000002 /* RealtimePublicControlAdapter.swift */; };
+		C10000000000000000000004 /* WatchAssistantPacket.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000004 /* WatchAssistantPacket.swift */; };
+		C10000000000000000000008 /* RealtimePublicControlAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000008 /* RealtimePublicControlAdapterTests.swift */; };
+		C1000000000000000000000B /* bootstrap-request.valid.json in Resources */ = {isa = PBXBuildFile; fileRef = C2000000000000000000000E /* bootstrap-request.valid.json */; };
+		C1000000000000000000000C /* bootstrap-response.valid.json in Resources */ = {isa = PBXBuildFile; fileRef = C2000000000000000000000F /* bootstrap-response.valid.json */; };
+		C1000000000000000000000D /* credential-refresh.valid.json in Resources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000010 /* credential-refresh.valid.json */; };
+		C1000000000000000000000E /* e2ee-key-resolve.valid.json in Resources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000011 /* e2ee-key-resolve.valid.json */; };
+		C1000000000000000000000F /* handoff.valid.json in Resources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000012 /* handoff.valid.json */; };
+		C10000000000000000000010 /* media-stop.valid.json in Resources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000013 /* media-stop.valid.json */; };
+		D10000000000000000000001 /* AssistantComposition.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000001 /* AssistantComposition.swift */; };
+		D10000000000000000000002 /* AssistantVideoPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000002 /* AssistantVideoPreview.swift */; };
+		D10000000000000000000003 /* AssistantMediaLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000003 /* AssistantMediaLifecycle.swift */; };
+		D10000000000000000000004 /* AssistantNotificationCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000004 /* AssistantNotificationCenter.swift */; };
+		D10000000000000000000005 /* AssistantResultStreaming.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000005 /* AssistantResultStreaming.swift */; };
+		D10000000000000000000006 /* AssistantLoopbackProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000006 /* AssistantLoopbackProvider.swift */; };
+		D10000000000000000000007 /* AssistantLocalOperationDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000007 /* AssistantLocalOperationDatabase.swift */; };
+		D10000000000000000000008 /* WatchConnectivityPhoneAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000008 /* WatchConnectivityPhoneAdapter.swift */; };
+		D10000000000000000000009 /* WatchLocalEnvelope.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000009 /* WatchLocalEnvelope.swift */; };
+		D1000000000000000000000A /* AssistantMediaLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2000000000000000000000A /* AssistantMediaLifecycleTests.swift */; };
+		D1000000000000000000000B /* AssistantNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2000000000000000000000B /* AssistantNotificationTests.swift */; };
+		D1000000000000000000000C /* AssistantResultStreamingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2000000000000000000000C /* AssistantResultStreamingTests.swift */; };
+		D61000000000000000000002 /* AssistantTerminalTimelineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D62000000000000000000002 /* AssistantTerminalTimelineTests.swift */; };
+		D1000000000000000000000D /* AssistantLocalOperationDatabaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2000000000000000000000D /* AssistantLocalOperationDatabaseTests.swift */; };
+		D1000000000000000000000E /* NetworkPathMonitorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2000000000000000000000E /* NetworkPathMonitorTests.swift */; };
+		D1000000000000000000000F /* AssistantCompositionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2000000000000000000000F /* AssistantCompositionTests.swift */; };
+		D10000000000000000000010 /* WatchConnectivityPhoneAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000010 /* WatchConnectivityPhoneAdapterTests.swift */; };
+		D10000000000000000000011 /* WatchLocalEnvelope.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000009 /* WatchLocalEnvelope.swift */; };
+		D10000000000000000000012 /* WatchAssistantPacket.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000004 /* WatchAssistantPacket.swift */; };
+		D10000000000000000000013 /* PersonalAIOSWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000011 /* PersonalAIOSWatchApp.swift */; };
+		D10000000000000000000014 /* WatchAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000012 /* WatchAppDelegate.swift */; };
+		D10000000000000000000015 /* WatchConnectivityAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000013 /* WatchConnectivityAdapter.swift */; };
+		D10000000000000000000016 /* WatchWorkoutCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000014 /* WatchWorkoutCoordinator.swift */; };
+		D10000000000000000000017 /* WatchNotificationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000015 /* WatchNotificationCoordinator.swift */; };
+		D1000000000000000000001B /* WatchConnectivityAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000024 /* WatchConnectivityAdapterTests.swift */; };
+		D1000000000000000000001C /* WatchWorkoutCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000025 /* WatchWorkoutCoordinatorTests.swift */; };
+		D1000000000000000000001D /* WatchConnectivityBridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2000000000000000000000A /* WatchConnectivityBridgeTests.swift */; };
+		D1000000000000000000001E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000019 /* Assets.xcassets */; };
+		D1000000000000000000001F /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = E50000000000000000000001 /* GRDB */; };
+		D10000000000000000000020 /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D2000000000000000000001E /* WatchConnectivity.framework */; };
+		D10000000000000000000021 /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D2000000000000000000001F /* UserNotifications.framework */; };
+		D10000000000000000000022 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D20000000000000000000020 /* HealthKit.framework */; };
+		D10000000000000000000023 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D20000000000000000000021 /* AVFoundation.framework */; };
+		D10000000000000000000024 /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D20000000000000000000022 /* CoreLocation.framework */; };
+		D10000000000000000000025 /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D20000000000000000000023 /* Network.framework */; };
+		D10000000000000000000026 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D20000000000000000000020 /* HealthKit.framework */; };
+		D10000000000000000000027 /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D2000000000000000000001E /* WatchConnectivity.framework */; };
+		D10000000000000000000028 /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D2000000000000000000001F /* UserNotifications.framework */; };
+		D10000000000000000000029 /* PersonalAIOSWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = D2000000000000000000001A /* PersonalAIOSWatch.app */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		D1000000000000000000002A /* YimiFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2000000000000000000001C /* YimiFlowUITests.swift */; };
+		F10000000000000000000001 /* YimiDesign.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000001 /* YimiDesign.swift */; };
+		F10000000000000000000002 /* YimiConversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000002 /* YimiConversation.swift */; };
+		F10000000000000000000003 /* YimiRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000003 /* YimiRootView.swift */; };
+		CA0100000000000000000002 /* YimiCameraRequestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0200000000000000000002 /* YimiCameraRequestView.swift */; };
+		F10000000000000000000004 /* YimiHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000004 /* YimiHomeView.swift */; };
+		AD1800000000000000000003 /* YimiInternalMacPairingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD1800000000000000000004 /* YimiInternalMacPairingView.swift */; };
+		F10000000000000000000005 /* YimiChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000005 /* YimiChatView.swift */; };
+		F10000000000000000000006 /* YimiCallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000006 /* YimiCallView.swift */; };
+		F10000000000000000000007 /* YimiMemoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000007 /* YimiMemoryView.swift */; };
+		E41800000000000000000001 /* YimiPaymentVoiceprintView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E41800000000000000000002 /* YimiPaymentVoiceprintView.swift */; };
+		F10000000000000000000008 /* YimiVoiceprintView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000008 /* YimiVoiceprintView.swift */; };
+		A17C01000000000000000001 /* ARTCCallClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17C02000000000000000001 /* ARTCCallClient.swift */; };
+		A17C01000000000000000003 /* PCMRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17C02000000000000000003 /* PCMRing.swift */; };
+		A17C010000000000000000A1 /* VoiceAudioRouteTrace.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17C020000000000000000A1 /* VoiceAudioRouteTrace.swift */; };
+		A17C010000000000000000B1 /* VoiceCallInputHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17C020000000000000000B1 /* VoiceCallInputHealth.swift */; };
+		A17C01000000000000000004 /* PCMRingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17C02000000000000000004 /* PCMRingTests.swift */; };
+		A17C01000000000000000002 /* AliyunARTC in Frameworks */ = {isa = PBXBuildFile; productRef = A17C05000000000000000001 /* AliyunARTC */; };
+		16D9D00AA0864DC18527948F /* MoveSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F76844C7DA343588F870683 /* MoveSession.swift */; };
+		91FBC9A31F5B465CA7521250 /* MoveSessionSensors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C3AA7A328A946E7995C18B3 /* MoveSessionSensors.swift */; };
+		AB3100000000000000000001 /* YimiPaymentCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB3200000000000000000001 /* YimiPaymentCard.swift */; };
+		5C90B7D8CC3746218683F28E /* YimiOwnerOverrideSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB26E858956435291C7D4EA /* YimiOwnerOverrideSection.swift */; };
+		AB3100000000000000000002 /* YimiPaymentSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB3200000000000000000002 /* YimiPaymentSettingsView.swift */; };
+		AB3100000000000000000003 /* YimiAppLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB3200000000000000000003 /* YimiAppLock.swift */; };
+		A03708DC8FF640A29DD9E012 /* YimiOwnerOverrideModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5EF1A93E690401988A8A22D /* YimiOwnerOverrideModel.swift */; };
+		AB3100000000000000000004 /* YimiPaymentModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB3200000000000000000004 /* YimiPaymentModel.swift */; };
+		AB3100000000000000000005 /* AssistantPayment.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB3200000000000000000005 /* AssistantPayment.swift */; };
+		AB3100000000000000000006 /* AssistantPaymentKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB3200000000000000000006 /* AssistantPaymentKeys.swift */; };
+		AB3100000000000000000007 /* AssistantPaymentChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB3200000000000000000007 /* AssistantPaymentChannel.swift */; };
+		AB3100000000000000000008 /* AssistantPaymentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB3200000000000000000008 /* AssistantPaymentTests.swift */; };
+		AB3100000000000000000009 /* AssistantPaymentChannelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB3200000000000000000009 /* AssistantPaymentChannelTests.swift */; };
+		AB310000000000000000000A /* YimiPaymentFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB320000000000000000000A /* YimiPaymentFlowTests.swift */; };
+		AB310000000000000000000B /* YimiPaymentRenderingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB320000000000000000000B /* YimiPaymentRenderingTests.swift */; };
+		D91100000000000000000001 /* WatchIdentityMessages.swift in Sources */ = {isa = PBXBuildFile; fileRef = D92000000000000000000001 /* WatchIdentityMessages.swift */; };
+		D91100000000000000000002 /* WatchIdentityMessages.swift in Sources */ = {isa = PBXBuildFile; fileRef = D92000000000000000000001 /* WatchIdentityMessages.swift */; };
+		D91200000000000000000001 /* WatchYimiMessages.swift in Sources */ = {isa = PBXBuildFile; fileRef = D92000000000000000000002 /* WatchYimiMessages.swift */; };
+		D91200000000000000000002 /* WatchYimiMessages.swift in Sources */ = {isa = PBXBuildFile; fileRef = D92000000000000000000002 /* WatchYimiMessages.swift */; };
+		70F5707F12574E8B7A034D98 /* WatchRelay.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD309149B977453593D4824F /* WatchRelay.swift */; };
+		8E656DED4B50F7B71488EA1C /* WatchRideHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3937F4511277DBD041C9588 /* WatchRideHandler.swift */; };
+		A0639D461242CBEA3F2EB991 /* WatchIdentityHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1CBEEDFD064B217D71A183E /* WatchIdentityHandler.swift */; };
+		9F429D9B34DD55B1596F34F5 /* WatchLocalRequestLedger.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE8C715590F40D9824E9C073 /* WatchLocalRequestLedger.swift */; };
+		7E908D94FDE5703CEFBAA488 /* WatchCredentialClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73FE9EE77ACB422429F29B0A /* WatchCredentialClient.swift */; };
+		82455182C10518F890FE780E /* WatchCredentialLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62DD9344D08596A6A913442C /* WatchCredentialLifecycle.swift */; };
+		8E6B7C7A37D0AEC34247BB85 /* WatchRelayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DD8E30A61816B05D4C9AE67 /* WatchRelayTests.swift */; };
+		27E58DE4F9EB13D8C708E92B /* WatchCredentialTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 555F43D3662766D0F0B4849F /* WatchCredentialTests.swift */; };
+		918FE794EDE71CE54DCD8937 /* PhysicalCanaryPreworkoutObservationExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE9BE1A33373D13250DFD674 /* PhysicalCanaryPreworkoutObservationExporter.swift */; };
+		1A4DE593949F611DCE5B52FB /* WatchIdentityHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB4168A28C982823D60CF17E /* WatchIdentityHandler.swift */; };
+		38B68255A2F428A3E1BA213F /* WatchRideHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07628C88087D164CF2763306 /* WatchRideHandler.swift */; };
+		DC3E0A1441305091F05AF5E9 /* WatchTalkClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0CBBA33A05002E4CEDF34CE /* WatchTalkClient.swift */; };
+		247132404AB92304AB80362E /* WatchUtteranceRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F9DEDDFC5A521291D1D950 /* WatchUtteranceRecorder.swift */; };
+		33B15AC039A2A7A45DF83E1C /* WatchYimiHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80CBDBB3E7FFEE2B247D5E0 /* WatchYimiHandler.swift */; };
+		DB64B0ED1708F80AEF2D5548 /* WatchYimiStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 487EF656F58EF11AA20417CB /* WatchYimiStore.swift */; };
+		058CEF35ACDC69AE383D4FF0 /* YimiWatchCardViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6701BC8CC4CC1F2853DB81D2 /* YimiWatchCardViews.swift */; };
+		971B0CB93657C56B344F40AB /* YimiWatchHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8DB89864041BEC4F80104A6 /* YimiWatchHomeView.swift */; };
+		ADE7FEB91E9E48E342D89772 /* YimiWatchNotificationViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACC700A2CBD170F4FCB8D0EB /* YimiWatchNotificationViews.swift */; };
+		BDD46A5D62766026B4096BEB /* YimiWatchOnboardingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6B8E2CD5A82AE788C36CA3A /* YimiWatchOnboardingViews.swift */; };
+		52C13A63DB295465347869CE /* YimiWatchRideFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35DAF22E463F168D0E134073 /* YimiWatchRideFormatter.swift */; };
+		72062E64D96235E1BBC47F0B /* YimiWatchRideSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52D23EAEE38BC7DAB82CB80D /* YimiWatchRideSummaryView.swift */; };
+		9A19BEF4A3042520DB77B5F4 /* YimiWatchRideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A56548C4B567D7378BF9A251 /* YimiWatchRideView.swift */; };
+		4BB5D50F44F9E8AF7F12066A /* YimiWatchRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE7C2F23221C3B5F1D6B73D2 /* YimiWatchRootView.swift */; };
+		AF0E3CBC9C5A3B712DFE9B92 /* YimiWatchTalkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCDC6D75088B93832061E927 /* YimiWatchTalkView.swift */; };
+		D67464723212178D73C5022D /* WatchRecorderSegmenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FF37D54A9129B6DA93C669D /* WatchRecorderSegmenter.swift */; };
+		20C77C3571FE957C58C4CA11 /* WatchRidePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B185493D82A2E31C543DF5ED /* WatchRidePresentation.swift */; };
+		2BECDEB13EC8CA2194116E7D /* WatchStateReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4420FAA052476E092046043 /* WatchStateReducer.swift */; };
+		5FE46BC6F33DE9FE5A11E573 /* WatchTalkHTTP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 017030BC6C963E645EA52F74 /* WatchTalkHTTP.swift */; };
+		C7863B88ED4B3FE353A4B735 /* WatchTalkState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 570E3E3E5403BCBD62935FAE /* WatchTalkState.swift */; };
+		7AD7A949AA2F8B0633DE9BD0 /* YimiDesign.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000001 /* YimiDesign.swift */; };
+		0AA08171DBEC642671E7C8C0 /* WatchYimiStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F736160B36279A4E088E8654 /* WatchYimiStoreTests.swift */; };
+		FDA742836C8145A3BAE553B9 /* YimiAppearanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E956FF583DFD4CC59FB444CC /* YimiAppearanceView.swift */; };
+		359C03F942A14CD6AC7607A5 /* AssistantAppearanceState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B8DF339ECB3415CB7045D69 /* AssistantAppearanceState.swift */; };
+		3A62FA6DB8924C29A6D0A835 /* AssistantAppearanceImageUpload.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5AF0CFA11264085B547B7E8 /* AssistantAppearanceImageUpload.swift */; };
+		1ADFC2A9941A46B49A3CD20E /* WatchAppearanceRelay.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC3A306782034FF98B32F786 /* WatchAppearanceRelay.swift */; };
+		129EB197C9EE425182CF20DD /* YimiCallAvatarPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2048AE24318346C5BCA1452B /* YimiCallAvatarPresentation.swift */; };
+		CF62ABE73387463A88B92496 /* YimiCallWindowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0501E6FE8A574BF582A0850A /* YimiCallWindowLayout.swift */; };
+		87ED33E23CC54A688A32BE16 /* YimiWatchAppearanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F1C0B1AA19B4B5B8DE6741A /* YimiWatchAppearanceView.swift */; };
+		964531D6148340D0A9CAA8E5 /* YimiCallPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE359785CCCB46B7A339743C /* YimiCallPresentationTests.swift */; };
+		0C7BED866B454B0297B526E5 /* WatchAppearanceProjectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99FC8C7423D34ADFBBD12D87 /* WatchAppearanceProjectionTests.swift */; };
+		0EE9A8CB51674565B50E082B /* AssistantAppearanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59BBD1345765468D857CEFF9 /* AssistantAppearanceTests.swift */; };
+		91B932A1EE994592B5FE7B76 /* YimiAppearancePhoto.swift in Sources */ = {isa = PBXBuildFile; fileRef = D77F6E3F127649639277F6E1 /* YimiAppearancePhoto.swift */; };
+		AC7100000000000000000001 /* CallActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC7100000000000000000011 /* CallActivityController.swift */; };
+		AC7100000000000000000002 /* CallActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC7100000000000000000012 /* CallActivityAttributes.swift */; };
+		AC7100000000000000000003 /* CallActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC7100000000000000000012 /* CallActivityAttributes.swift */; };
+		AC7100000000000000000004 /* YimiCallActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC7100000000000000000013 /* YimiCallActivity.swift */; };
+		AC7100000000000000000005 /* AssistantVoiceStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC7100000000000000000015 /* AssistantVoiceStatus.swift */; };
+		AC7100000000000000000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB2000000000000000000001 /* Assets.xcassets */; };
+		AC7100000000000000000007 /* YimiCallActivity.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = AC7100000000000000000016 /* YimiCallActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		AC7100000000000000000008 /* AssistantCallPlaybackObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC7100000000000000000017 /* AssistantCallPlaybackObserver.swift */; };
+		AC2010000000000000000001 /* AssistantActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC2020000000000000000001 /* AssistantActivity.swift */; };
+		AC2010000000000000000002 /* YimiActivityCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC2020000000000000000002 /* YimiActivityCard.swift */; };
+		AC2010000000000000000003 /* AssistantActivityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC2020000000000000000003 /* AssistantActivityTests.swift */; };
+		AC2010000000000000000004 /* activity-update.fixtures.json in Resources */ = {isa = PBXBuildFile; fileRef = AC2020000000000000000004 /* activity-update.fixtures.json */; };
+		AC2010000000000000000005 /* activity-update.fixtures.json in Resources */ = {isa = PBXBuildFile; fileRef = AC2020000000000000000004 /* activity-update.fixtures.json */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A30000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A40000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A50000000000000000000001;
+			remoteInfo = HealthKitExporter;
+		};
+		E30000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A40000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A50000000000000000000001;
+			remoteInfo = HealthKitExporter;
+		};
+		E30000000000000000000002 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A40000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D50000000000000000000001;
+			remoteInfo = PersonalAIOSWatch;
+		};
+		E30000000000000000000003 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A40000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D50000000000000000000001;
+			remoteInfo = PersonalAIOSWatch;
+		};
+		AC7100000000000000000021 /* PBXContainerItemProxy */ = {isa = PBXContainerItemProxy; containerPortal = A40000000000000000000001 /* Project object */; proxyType = 1; remoteGlobalIDString = AC7100000000000000000030; remoteInfo = YimiCallActivity; };
+		E7A000000000000000000041 /* PBXContainerItemProxy */ = {isa = PBXContainerItemProxy; containerPortal = A40000000000000000000001 /* Project object */; proxyType = 1; remoteGlobalIDString = E7A000000000000000000030; remoteInfo = YimiWatchWidgets; };
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		D80000000000000000000001 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				D10000000000000000000029 /* PersonalAIOSWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AC7100000000000000000023 /* Embed App Extensions */ = {isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = ""; dstSubfolderSpec = 13; files = (AC7100000000000000000007 /* YimiCallActivity.appex in Embed App Extensions */, ); name = "Embed App Extensions"; runOnlyForDeploymentPostprocessing = 0; };
+		E7A000000000000000000021 /* Embed Foundation Extensions */ = {isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = ""; dstSubfolderSpec = 13; files = (E7A00000000000000000001C /* YimiWatchWidgets.appex in Embed Foundation Extensions */, ); name = "Embed Foundation Extensions"; runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		E7A000000000000000000001 /* WatchDeepLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchDeepLink.swift; sourceTree = "<group>"; };
+		E7A000000000000000000002 /* WatchWidgetSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWidgetSnapshot.swift; sourceTree = "<group>"; };
+		E7A000000000000000000003 /* WatchWidgetProjection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWidgetProjection.swift; sourceTree = "<group>"; };
+		E7A000000000000000000004 /* WatchRideFigures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRideFigures.swift; sourceTree = "<group>"; };
+		E7A000000000000000000005 /* WatchWidgetPublisher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWidgetPublisher.swift; sourceTree = "<group>"; };
+		E7A000000000000000000006 /* YimiWatchWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiWatchWidget.swift; sourceTree = "<group>"; };
+		E7A000000000000000000007 /* YimiWatchWidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiWatchWidgetViews.swift; sourceTree = "<group>"; };
+		E7A000000000000000000008 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		E7A000000000000000000009 /* YimiWatchWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = YimiWatchWidgets.entitlements; sourceTree = "<group>"; };
+		E7A00000000000000000000A /* YimiWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = YimiWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		E7A00000000000000000000B /* WatchRideFiguresTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRideFiguresTests.swift; sourceTree = "<group>"; };
+		F01120000000000000000003 /* AssistantWakeListeningTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantWakeListeningTests.swift; sourceTree = "<group>"; };
+		F01120000000000000000001 /* AssistantWakeListening.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantWakeListening.swift; sourceTree = "<group>"; };
+		BB2000000000000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		FA20000000000000000000D2 /* PlaceSensingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceSensingService.swift; sourceTree = "<group>"; };
+		FA20000000000000000000D1 /* PlaceUpload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceUpload.swift; sourceTree = "<group>"; };
+		FE2000000000000000000003 /* YimiConversationTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiConversationTimeline.swift; sourceTree = "<group>"; };
+		D62000000000000000000001 /* AssistantTerminalTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantTerminalTimeline.swift; sourceTree = "<group>"; };
+		FD2000000000000000000002 /* YimiContactsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiContactsView.swift; sourceTree = "<group>"; };
+		FD2000000000000000000001 /* AssistantContactsSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantContactsSync.swift; sourceTree = "<group>"; };
+		FC2000000000000000000000 /* AssistantContactsSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantContactsSource.swift; sourceTree = "<group>"; };
+		FB2000000000000000000001 /* AssistantHealthSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantHealthSync.swift; sourceTree = "<group>"; };
+		FB2000000000000000000000 /* AssistantHealthWire.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantHealthWire.swift; sourceTree = "<group>"; };
+		F20000000000000000000009 /* YimiHealthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiHealthView.swift; sourceTree = "<group>"; };
+		FC2000000000000000000002 /* AssistantCentralControlTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantCentralControlTests.swift; sourceTree = "<group>"; };
+		FC2000000000000000000003 /* formal-control-envelope.fixture.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Fixtures/CentralText/formal-control-envelope.fixture.json"; sourceTree = "<group>"; };
+		FC2000000000000000000001 /* Contracts */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Contracts; sourceTree = "<group>"; };
+		FC2000000000000000000010 /* Avatar */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Avatar; sourceTree = "<group>"; };
+		FA2000000000000000000002 /* AssistantCentralTextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantCentralTextTests.swift; sourceTree = "<group>"; };
+		FA2000000000000000000078 /* CentralVoiceTurnTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CentralVoiceTurnTests.swift; sourceTree = "<group>"; };
+		FA2000000000000000000003 /* formal-text-envelope.fixture.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Fixtures/CentralText/formal-text-envelope.fixture.json"; sourceTree = "<group>"; };
+		FA2000000000000000000004 /* automatic-text-envelope.fixture.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Fixtures/CentralText/automatic-text-envelope.fixture.json"; sourceTree = "<group>"; };
+		FA2000000000000000000005 /* formal-text-cancelled-envelope.fixture.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Fixtures/CentralText/formal-text-cancelled-envelope.fixture.json"; sourceTree = "<group>"; };
+		FA2000000000000000000001 /* AssistantCentralTextWire.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantCentralTextWire.swift; sourceTree = "<group>"; };
+		FA2000000000000000000077 /* AssistantVoiceTurn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantVoiceTurn.swift; sourceTree = "<group>"; };
+		FA20000000000000000000CB /* CallRingback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallRingback.swift; sourceTree = "<group>"; };
+		FA200000000000000000007A /* AssistantVoiceprint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantVoiceprint.swift; sourceTree = "<group>"; };
+		FA2000000000000000000079 /* RealtimeDevicePairing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeDevicePairing.swift; sourceTree = "<group>"; };
+		AD1800000000000000000002 /* RealtimeMacPairing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeMacPairing.swift; sourceTree = "<group>"; };
+		E20000000000000000000003 /* AssistantVideoPreviewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantVideoPreviewModel.swift; sourceTree = "<group>"; };
+		CA0200000000000000000001 /* AssistantCameraJPEG.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantCameraJPEG.swift; sourceTree = "<group>"; };
+		E20000000000000000000002 /* AssistantPhysicalCanary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantPhysicalCanary.swift; sourceTree = "<group>"; };
+		E20000000000000000000001 /* AssistantDebugLaunch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantDebugLaunch.swift; sourceTree = "<group>"; };
+		A20000000000000000000001 /* HealthKitExporterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitExporterApp.swift; sourceTree = "<group>"; };
+		A20000000000000000000002 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		A20000000000000000000003 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A20000000000000000000004 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		A20000000000000000000005 /* HealthTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthTypes.swift; sourceTree = "<group>"; };
+		A20000000000000000000006 /* Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence.swift; sourceTree = "<group>"; };
+		A20000000000000000000007 /* HealthQueryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthQueryService.swift; sourceTree = "<group>"; };
+		A20000000000000000000008 /* Networking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Networking.swift; sourceTree = "<group>"; };
+		A20000000000000000000009 /* SyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncCoordinator.swift; sourceTree = "<group>"; };
+		A2000000000000000000000A /* BackgroundSyncRegistrar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundSyncRegistrar.swift; sourceTree = "<group>"; };
+		A2000000000000000000000B /* ContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContractTests.swift; sourceTree = "<group>"; };
+		A2000000000000000000000C /* PersistenceSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceSyncTests.swift; sourceTree = "<group>"; };
+		A2000000000000000000000D /* RetryBackfillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetryBackfillTests.swift; sourceTree = "<group>"; };
+		A2000000000000000000000E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A2000000000000000000000F /* HealthKitExporter.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HealthKitExporter.entitlements; sourceTree = "<group>"; };
+		A20000000000000000000010 /* PersonalAIOSPhase0.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PersonalAIOSPhase0.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20000000000000000000011 /* HealthKitExporterTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HealthKitExporterTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20000000000000000000012 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		B20000000000000000000001 /* AssistantSessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantSessionCoordinator.swift; sourceTree = "<group>"; };
+		B20000000000000000000002 /* AssistantBootstrapProviding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantBootstrapProviding.swift; sourceTree = "<group>"; };
+		B20000000000000000000003 /* LiveKitSessionAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveKitSessionAdapter.swift; sourceTree = "<group>"; };
+		B20000000000000000000004 /* MediaPermissionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaPermissionCoordinator.swift; sourceTree = "<group>"; };
+		B20000000000000000000005 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
+		B20000000000000000000006 /* NetworkPathMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkPathMonitor.swift; sourceTree = "<group>"; };
+		B20000000000000000000007 /* AppleReceiptStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleReceiptStore.swift; sourceTree = "<group>"; };
+		B20000000000000000000008 /* AssistantViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantViewModel.swift; sourceTree = "<group>"; };
+		B20000000000000000000009 /* AssistantView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantView.swift; sourceTree = "<group>"; };
+		E41800000000000000000004 /* AssistantVoiceEnrollmentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantVoiceEnrollmentTests.swift; sourceTree = "<group>"; };
+		B2000000000000000000000A /* AssistantSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantSessionTests.swift; sourceTree = "<group>"; };
+		B2000000000000000000000B /* LiveKitSessionAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveKitSessionAdapterTests.swift; sourceTree = "<group>"; };
+		B2000000000000000000000C /* LocationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationServiceTests.swift; sourceTree = "<group>"; };
+		C20000000000000000000001 /* RealtimePublicControlModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimePublicControlModels.swift; sourceTree = "<group>"; };
+		C20000000000000000000002 /* RealtimePublicControlAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimePublicControlAdapter.swift; sourceTree = "<group>"; };
+		C20000000000000000000004 /* WatchAssistantPacket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchAssistantPacket.swift; sourceTree = "<group>"; };
+		C20000000000000000000008 /* RealtimePublicControlAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimePublicControlAdapterTests.swift; sourceTree = "<group>"; };
+		C2000000000000000000000A /* WatchConnectivityBridgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityBridgeTests.swift; sourceTree = "<group>"; };
+		C2000000000000000000000E /* bootstrap-request.valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "bootstrap-request.valid.json"; sourceTree = "<group>"; };
+		C2000000000000000000000F /* bootstrap-response.valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "bootstrap-response.valid.json"; sourceTree = "<group>"; };
+		C20000000000000000000010 /* credential-refresh.valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "credential-refresh.valid.json"; sourceTree = "<group>"; };
+		C20000000000000000000011 /* e2ee-key-resolve.valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "e2ee-key-resolve.valid.json"; sourceTree = "<group>"; };
+		C20000000000000000000012 /* handoff.valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = handoff.valid.json; sourceTree = "<group>"; };
+		C20000000000000000000013 /* media-stop.valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "media-stop.valid.json"; sourceTree = "<group>"; };
+		D20000000000000000000001 /* AssistantComposition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantComposition.swift; sourceTree = "<group>"; };
+		D20000000000000000000002 /* AssistantVideoPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantVideoPreview.swift; sourceTree = "<group>"; };
+		D20000000000000000000003 /* AssistantMediaLifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantMediaLifecycle.swift; sourceTree = "<group>"; };
+		D20000000000000000000004 /* AssistantNotificationCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantNotificationCenter.swift; sourceTree = "<group>"; };
+		D20000000000000000000005 /* AssistantResultStreaming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantResultStreaming.swift; sourceTree = "<group>"; };
+		D20000000000000000000006 /* AssistantLoopbackProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantLoopbackProvider.swift; sourceTree = "<group>"; };
+		D20000000000000000000007 /* AssistantLocalOperationDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantLocalOperationDatabase.swift; sourceTree = "<group>"; };
+		D20000000000000000000008 /* WatchConnectivityPhoneAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityPhoneAdapter.swift; sourceTree = "<group>"; };
+		D20000000000000000000009 /* WatchLocalEnvelope.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchLocalEnvelope.swift; sourceTree = "<group>"; };
+		D2000000000000000000000A /* AssistantMediaLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantMediaLifecycleTests.swift; sourceTree = "<group>"; };
+		D2000000000000000000000B /* AssistantNotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantNotificationTests.swift; sourceTree = "<group>"; };
+		D2000000000000000000000C /* AssistantResultStreamingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantResultStreamingTests.swift; sourceTree = "<group>"; };
+		D62000000000000000000002 /* AssistantTerminalTimelineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantTerminalTimelineTests.swift; sourceTree = "<group>"; };
+		D2000000000000000000000D /* AssistantLocalOperationDatabaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantLocalOperationDatabaseTests.swift; sourceTree = "<group>"; };
+		D2000000000000000000000E /* NetworkPathMonitorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkPathMonitorTests.swift; sourceTree = "<group>"; };
+		D2000000000000000000000F /* AssistantCompositionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantCompositionTests.swift; sourceTree = "<group>"; };
+		D20000000000000000000010 /* WatchConnectivityPhoneAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityPhoneAdapterTests.swift; sourceTree = "<group>"; };
+		D20000000000000000000011 /* PersonalAIOSWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalAIOSWatchApp.swift; sourceTree = "<group>"; };
+		D20000000000000000000012 /* WatchAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchAppDelegate.swift; sourceTree = "<group>"; };
+		D20000000000000000000013 /* WatchConnectivityAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityAdapter.swift; sourceTree = "<group>"; };
+		D20000000000000000000014 /* WatchWorkoutCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWorkoutCoordinator.swift; sourceTree = "<group>"; };
+		D20000000000000000000015 /* WatchNotificationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchNotificationCoordinator.swift; sourceTree = "<group>"; };
+		D20000000000000000000017 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		D20000000000000000000018 /* PersonalAIOSWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PersonalAIOSWatch.entitlements; sourceTree = "<group>"; };
+		D20000000000000000000019 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		D2000000000000000000001A /* PersonalAIOSWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PersonalAIOSWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D2000000000000000000001B /* PersonalAIOSWatchTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PersonalAIOSWatchTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D2000000000000000000001C /* YimiFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiFlowUITests.swift; sourceTree = "<group>"; };
+		D2000000000000000000001D /* HealthKitExporterUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HealthKitExporterUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D2000000000000000000001E /* WatchConnectivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WatchConnectivity.framework; path = System/Library/Frameworks/WatchConnectivity.framework; sourceTree = SDKROOT; };
+		D2000000000000000000001F /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
+		D20000000000000000000020 /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
+		D20000000000000000000021 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
+		D20000000000000000000022 /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
+		D20000000000000000000023 /* Network.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Network.framework; path = System/Library/Frameworks/Network.framework; sourceTree = SDKROOT; };
+		D20000000000000000000024 /* WatchConnectivityAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityAdapterTests.swift; sourceTree = "<group>"; };
+		D20000000000000000000025 /* WatchWorkoutCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWorkoutCoordinatorTests.swift; sourceTree = "<group>"; };
+		F20000000000000000000001 /* YimiDesign.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiDesign.swift; sourceTree = "<group>"; };
+		F20000000000000000000002 /* YimiConversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiConversation.swift; sourceTree = "<group>"; };
+		F20000000000000000000003 /* YimiRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiRootView.swift; sourceTree = "<group>"; };
+		CA0200000000000000000002 /* YimiCameraRequestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiCameraRequestView.swift; sourceTree = "<group>"; };
+		F20000000000000000000004 /* YimiHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiHomeView.swift; sourceTree = "<group>"; };
+		AD1800000000000000000004 /* YimiInternalMacPairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiInternalMacPairingView.swift; sourceTree = "<group>"; };
+		F20000000000000000000005 /* YimiChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiChatView.swift; sourceTree = "<group>"; };
+		F20000000000000000000006 /* YimiCallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiCallView.swift; sourceTree = "<group>"; };
+		F20000000000000000000007 /* YimiMemoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiMemoryView.swift; sourceTree = "<group>"; };
+		E41800000000000000000002 /* YimiPaymentVoiceprintView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiPaymentVoiceprintView.swift; sourceTree = "<group>"; };
+		F20000000000000000000008 /* YimiVoiceprintView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiVoiceprintView.swift; sourceTree = "<group>"; };
+		A17C02000000000000000003 /* PCMRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PCMRing.swift; sourceTree = "<group>"; };
+		A17C020000000000000000A1 /* VoiceAudioRouteTrace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceAudioRouteTrace.swift; sourceTree = "<group>"; };
+		A17C020000000000000000B1 /* VoiceCallInputHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCallInputHealth.swift; sourceTree = "<group>"; };
+		A17C02000000000000000004 /* PCMRingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PCMRingTests.swift; sourceTree = "<group>"; };
+		A17C02000000000000000001 /* ARTCCallClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARTCCallClient.swift; sourceTree = "<group>"; };
+		1F76844C7DA343588F870683 /* MoveSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoveSession.swift; sourceTree = "<group>"; };
+		1C3AA7A328A946E7995C18B3 /* MoveSessionSensors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoveSessionSensors.swift; sourceTree = "<group>"; };
+		AB3200000000000000000001 /* YimiPaymentCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiPaymentCard.swift; sourceTree = "<group>"; };
+		6DB26E858956435291C7D4EA /* YimiOwnerOverrideSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiOwnerOverrideSection.swift; sourceTree = "<group>"; };
+		AB3200000000000000000002 /* YimiPaymentSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiPaymentSettingsView.swift; sourceTree = "<group>"; };
+		AB3200000000000000000003 /* YimiAppLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiAppLock.swift; sourceTree = "<group>"; };
+		E5EF1A93E690401988A8A22D /* YimiOwnerOverrideModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Core/YimiOwnerOverrideModel.swift; sourceTree = "<group>"; };
+		AB3200000000000000000004 /* YimiPaymentModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiPaymentModel.swift; sourceTree = "<group>"; };
+		AB3200000000000000000005 /* AssistantPayment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantPayment.swift; sourceTree = "<group>"; };
+		AB3200000000000000000006 /* AssistantPaymentKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantPaymentKeys.swift; sourceTree = "<group>"; };
+		AB3200000000000000000007 /* AssistantPaymentChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantPaymentChannel.swift; sourceTree = "<group>"; };
+		AB3200000000000000000008 /* AssistantPaymentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantPaymentTests.swift; sourceTree = "<group>"; };
+		AB3200000000000000000009 /* AssistantPaymentChannelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantPaymentChannelTests.swift; sourceTree = "<group>"; };
+		AB320000000000000000000A /* YimiPaymentFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiPaymentFlowTests.swift; sourceTree = "<group>"; };
+		AB320000000000000000000B /* YimiPaymentRenderingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiPaymentRenderingTests.swift; sourceTree = "<group>"; };
+		D92000000000000000000001 /* WatchIdentityMessages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchIdentityMessages.swift; sourceTree = "<group>"; };
+		D92000000000000000000002 /* WatchYimiMessages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchYimiMessages.swift; sourceTree = "<group>"; };
+		AD309149B977453593D4824F /* WatchRelay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRelay.swift; sourceTree = "<group>"; };
+		D3937F4511277DBD041C9588 /* WatchRideHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRideHandler.swift; sourceTree = "<group>"; };
+		C1CBEEDFD064B217D71A183E /* WatchIdentityHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchIdentityHandler.swift; sourceTree = "<group>"; };
+		BE8C715590F40D9824E9C073 /* WatchLocalRequestLedger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchLocalRequestLedger.swift; sourceTree = "<group>"; };
+		73FE9EE77ACB422429F29B0A /* WatchCredentialClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchCredentialClient.swift; sourceTree = "<group>"; };
+		62DD9344D08596A6A913442C /* WatchCredentialLifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchCredentialLifecycle.swift; sourceTree = "<group>"; };
+		8DD8E30A61816B05D4C9AE67 /* WatchRelayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WatchRelayTests.swift"; sourceTree = "<group>"; };
+		555F43D3662766D0F0B4849F /* WatchCredentialTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WatchCredentialTests.swift"; sourceTree = "<group>"; };
+		AE9BE1A33373D13250DFD674 /* PhysicalCanaryPreworkoutObservationExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Diagnostics/PhysicalCanaryPreworkoutObservationExporter.swift"; sourceTree = "<group>"; };
+		CB4168A28C982823D60CF17E /* WatchIdentityHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchIdentityHandler.swift; sourceTree = "<group>"; };
+		07628C88087D164CF2763306 /* WatchRideHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRideHandler.swift; sourceTree = "<group>"; };
+		B0CBBA33A05002E4CEDF34CE /* WatchTalkClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchTalkClient.swift; sourceTree = "<group>"; };
+		53F9DEDDFC5A521291D1D950 /* WatchUtteranceRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchUtteranceRecorder.swift; sourceTree = "<group>"; };
+		C80CBDBB3E7FFEE2B247D5E0 /* WatchYimiHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchYimiHandler.swift; sourceTree = "<group>"; };
+		487EF656F58EF11AA20417CB /* WatchYimiStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchYimiStore.swift; sourceTree = "<group>"; };
+		6701BC8CC4CC1F2853DB81D2 /* YimiWatchCardViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiWatchCardViews.swift; sourceTree = "<group>"; };
+		A8DB89864041BEC4F80104A6 /* YimiWatchHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiWatchHomeView.swift; sourceTree = "<group>"; };
+		ACC700A2CBD170F4FCB8D0EB /* YimiWatchNotificationViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiWatchNotificationViews.swift; sourceTree = "<group>"; };
+		F6B8E2CD5A82AE788C36CA3A /* YimiWatchOnboardingViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiWatchOnboardingViews.swift; sourceTree = "<group>"; };
+		35DAF22E463F168D0E134073 /* YimiWatchRideFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiWatchRideFormatter.swift; sourceTree = "<group>"; };
+		52D23EAEE38BC7DAB82CB80D /* YimiWatchRideSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiWatchRideSummaryView.swift; sourceTree = "<group>"; };
+		A56548C4B567D7378BF9A251 /* YimiWatchRideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiWatchRideView.swift; sourceTree = "<group>"; };
+		BE7C2F23221C3B5F1D6B73D2 /* YimiWatchRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiWatchRootView.swift; sourceTree = "<group>"; };
+		BCDC6D75088B93832061E927 /* YimiWatchTalkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiWatchTalkView.swift; sourceTree = "<group>"; };
+		1FF37D54A9129B6DA93C669D /* WatchRecorderSegmenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRecorderSegmenter.swift; sourceTree = "<group>"; };
+		B185493D82A2E31C543DF5ED /* WatchRidePresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRidePresentation.swift; sourceTree = "<group>"; };
+		A4420FAA052476E092046043 /* WatchStateReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchStateReducer.swift; sourceTree = "<group>"; };
+		017030BC6C963E645EA52F74 /* WatchTalkHTTP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchTalkHTTP.swift; sourceTree = "<group>"; };
+		570E3E3E5403BCBD62935FAE /* WatchTalkState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchTalkState.swift; sourceTree = "<group>"; };
+		F736160B36279A4E088E8654 /* WatchYimiStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchYimiStoreTests.swift; sourceTree = "<group>"; };
+		E956FF583DFD4CC59FB444CC /* YimiAppearanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiAppearanceView.swift; sourceTree = "<group>"; };
+		7B8DF339ECB3415CB7045D69 /* AssistantAppearanceState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantAppearanceState.swift; sourceTree = "<group>"; };
+		B5AF0CFA11264085B547B7E8 /* AssistantAppearanceImageUpload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantAppearanceImageUpload.swift; sourceTree = "<group>"; };
+		AC3A306782034FF98B32F786 /* WatchAppearanceRelay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchAppearanceRelay.swift; sourceTree = "<group>"; };
+		2048AE24318346C5BCA1452B /* YimiCallAvatarPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiCallAvatarPresentation.swift; sourceTree = "<group>"; };
+		0501E6FE8A574BF582A0850A /* YimiCallWindowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiCallWindowLayout.swift; sourceTree = "<group>"; };
+		0F1C0B1AA19B4B5B8DE6741A /* YimiWatchAppearanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiWatchAppearanceView.swift; sourceTree = "<group>"; };
+		FE359785CCCB46B7A339743C /* YimiCallPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiCallPresentationTests.swift; sourceTree = "<group>"; };
+		99FC8C7423D34ADFBBD12D87 /* WatchAppearanceProjectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchAppearanceProjectionTests.swift; sourceTree = "<group>"; };
+		59BBD1345765468D857CEFF9 /* AssistantAppearanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantAppearanceTests.swift; sourceTree = "<group>"; };
+		D77F6E3F127649639277F6E1 /* YimiAppearancePhoto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiAppearancePhoto.swift; sourceTree = "<group>"; };
+		AC7100000000000000000011 /* CallActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallActivityController.swift; sourceTree = "<group>"; };
+		AC7100000000000000000012 /* CallActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallActivityAttributes.swift; sourceTree = "<group>"; };
+		AC7100000000000000000013 /* YimiCallActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiCallActivity.swift; sourceTree = "<group>"; };
+		AC7100000000000000000014 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		AC7100000000000000000015 /* AssistantVoiceStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantVoiceStatus.swift; sourceTree = "<group>"; };
+		AC7100000000000000000016 /* YimiCallActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = YimiCallActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		AC7100000000000000000017 /* AssistantCallPlaybackObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantCallPlaybackObserver.swift; sourceTree = "<group>"; };
+		AC2020000000000000000001 /* AssistantActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantActivity.swift; sourceTree = "<group>"; };
+		AC2020000000000000000002 /* YimiActivityCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiActivityCard.swift; sourceTree = "<group>"; };
+		AC2020000000000000000003 /* AssistantActivityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantActivityTests.swift; sourceTree = "<group>"; };
+		AC2020000000000000000004 /* activity-update.fixtures.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Tests/Fixtures/activity-update.fixtures.json; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A60000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B1000000000000000000000D /* LiveKit in Frameworks */,
+				F01110000000000000000002 /* VoiceWake in Frameworks */,
+				D1000000000000000000001F /* GRDB in Frameworks */,
+				A17C01000000000000000002 /* AliyunARTC in Frameworks */,
+				D10000000000000000000020 /* WatchConnectivity.framework in Frameworks */,
+				D10000000000000000000021 /* UserNotifications.framework in Frameworks */,
+				D10000000000000000000022 /* HealthKit.framework in Frameworks */,
+				D10000000000000000000023 /* AVFoundation.framework in Frameworks */,
+				D10000000000000000000024 /* CoreLocation.framework in Frameworks */,
+				D10000000000000000000025 /* Network.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A60000000000000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D70000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D10000000000000000000026 /* HealthKit.framework in Frameworks */,
+				D10000000000000000000027 /* WatchConnectivity.framework in Frameworks */,
+				D10000000000000000000028 /* UserNotifications.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D70000000000000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D70000000000000000000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AC7100000000000000000025 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		E7A000000000000000000023 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A28AABD5304457BC00775B4D /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				D2000000000000000000001E /* WatchConnectivity.framework */,
+				D2000000000000000000001F /* UserNotifications.framework */,
+				D20000000000000000000020 /* HealthKit.framework */,
+				D20000000000000000000021 /* AVFoundation.framework */,
+				D20000000000000000000022 /* CoreLocation.framework */,
+				D20000000000000000000023 /* Network.framework */,
+			);
+			name = "Recovered References";
+			sourceTree = "<group>";
+		};
+		A70000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				AC7100000000000000000020 /* CallActivity */,
+				6CC7AF9EBA9AAE1446799DB4 /* WatchCore */,
+				E7A000000000000000000050 /* WatchWidget */,
+				FC2000000000000000000001 /* Contracts */,
+				FC2000000000000000000010 /* Avatar */,
+				A70000000000000000000002 /* App */,
+				A70000000000000000000003 /* Core */,
+				A70000000000000000000004 /* Tests */,
+				A70000000000000000000005 /* Products */,
+				C30000000000000000000001 /* Shared */,
+				C30000000000000000000003 /* WatchTests */,
+				D30000000000000000000001 /* WatchApp */,
+				D30000000000000000000002 /* WatchShared */,
+				D30000000000000000000003 /* UITests */,
+				A28AABD5304457BC00775B4D /* Recovered References */,
+			);
+			sourceTree = "<group>";
+		};
+		A70000000000000000000002 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				AC2020000000000000000002 /* YimiActivityCard.swift */,
+				D77F6E3F127649639277F6E1 /* YimiAppearancePhoto.swift */,
+				E956FF583DFD4CC59FB444CC /* YimiAppearanceView.swift */,
+				AC7100000000000000000011 /* CallActivityController.swift */,
+				BB2000000000000000000001 /* Assets.xcassets */,
+				E5EF1A93E690401988A8A22D /* YimiOwnerOverrideModel.swift */,
+				AB3200000000000000000004 /* YimiPaymentModel.swift */,
+				AB3200000000000000000003 /* YimiAppLock.swift */,
+				6DB26E858956435291C7D4EA /* YimiOwnerOverrideSection.swift */,
+				AB3200000000000000000002 /* YimiPaymentSettingsView.swift */,
+				AB3200000000000000000001 /* YimiPaymentCard.swift */,
+				F20000000000000000000009 /* YimiHealthView.swift */,
+				FD2000000000000000000002 /* YimiContactsView.swift */,
+				A20000000000000000000001 /* HealthKitExporterApp.swift */,
+				A20000000000000000000002 /* AppModel.swift */,
+				A20000000000000000000003 /* ContentView.swift */,
+				D20000000000000000000001 /* AssistantComposition.swift */,
+				D20000000000000000000002 /* AssistantVideoPreview.swift */,
+				B20000000000000000000008 /* AssistantViewModel.swift */,
+				B20000000000000000000009 /* AssistantView.swift */,
+				F20000000000000000000007 /* YimiMemoryView.swift */,
+				F20000000000000000000008 /* YimiVoiceprintView.swift */,
+				E41800000000000000000002 /* YimiPaymentVoiceprintView.swift */,
+				F20000000000000000000006 /* YimiCallView.swift */,
+				F20000000000000000000005 /* YimiChatView.swift */,
+				F20000000000000000000004 /* YimiHomeView.swift */,
+				AD1800000000000000000004 /* YimiInternalMacPairingView.swift */,
+				F20000000000000000000003 /* YimiRootView.swift */,
+				CA0200000000000000000002 /* YimiCameraRequestView.swift */,
+				F20000000000000000000002 /* YimiConversation.swift */,
+				F20000000000000000000001 /* YimiDesign.swift */,
+				A2000000000000000000000E /* Info.plist */,
+				A2000000000000000000000F /* HealthKitExporter.entitlements */,
+				A20000000000000000000012 /* PrivacyInfo.xcprivacy */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		A70000000000000000000003 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				AC2020000000000000000001 /* AssistantActivity.swift */,
+				0501E6FE8A574BF582A0850A /* YimiCallWindowLayout.swift */,
+				2048AE24318346C5BCA1452B /* YimiCallAvatarPresentation.swift */,
+				AC3A306782034FF98B32F786 /* WatchAppearanceRelay.swift */,
+				B5AF0CFA11264085B547B7E8 /* AssistantAppearanceImageUpload.swift */,
+				7B8DF339ECB3415CB7045D69 /* AssistantAppearanceState.swift */,
+				AC7100000000000000000017 /* AssistantCallPlaybackObserver.swift */,
+				AC7100000000000000000015 /* AssistantVoiceStatus.swift */,
+				AB3200000000000000000007 /* AssistantPaymentChannel.swift */,
+				AB3200000000000000000006 /* AssistantPaymentKeys.swift */,
+				AB3200000000000000000005 /* AssistantPayment.swift */,
+				A20000000000000000000004 /* Models.swift */,
+				A20000000000000000000005 /* HealthTypes.swift */,
+				FD2000000000000000000001 /* AssistantContactsSync.swift */,
+				FC2000000000000000000000 /* AssistantContactsSource.swift */,
+				FB2000000000000000000001 /* AssistantHealthSync.swift */,
+				FB2000000000000000000000 /* AssistantHealthWire.swift */,
+				A20000000000000000000006 /* Persistence.swift */,
+				A20000000000000000000007 /* HealthQueryService.swift */,
+				A20000000000000000000008 /* Networking.swift */,
+				A20000000000000000000009 /* SyncCoordinator.swift */,
+				A2000000000000000000000A /* BackgroundSyncRegistrar.swift */,
+				B20000000000000000000001 /* AssistantSessionCoordinator.swift */,
+				F01120000000000000000001 /* AssistantWakeListening.swift */,
+				B20000000000000000000002 /* AssistantBootstrapProviding.swift */,
+				B20000000000000000000003 /* LiveKitSessionAdapter.swift */,
+				E20000000000000000000001 /* AssistantDebugLaunch.swift */,
+				E20000000000000000000003 /* AssistantVideoPreviewModel.swift */,
+				CA0200000000000000000001 /* AssistantCameraJPEG.swift */,
+				A17C02000000000000000001 /* ARTCCallClient.swift */,
+				A17C02000000000000000003 /* PCMRing.swift */,
+				A17C020000000000000000A1 /* VoiceAudioRouteTrace.swift */,
+				A17C020000000000000000B1 /* VoiceCallInputHealth.swift */,
+				E20000000000000000000002 /* AssistantPhysicalCanary.swift */,
+				B20000000000000000000004 /* MediaPermissionCoordinator.swift */,
+				B20000000000000000000005 /* LocationService.swift */,
+				1C3AA7A328A946E7995C18B3 /* MoveSessionSensors.swift */,
+				1F76844C7DA343588F870683 /* MoveSession.swift */,
+				B20000000000000000000006 /* NetworkPathMonitor.swift */,
+				B20000000000000000000007 /* AppleReceiptStore.swift */,
+				D20000000000000000000003 /* AssistantMediaLifecycle.swift */,
+				D20000000000000000000004 /* AssistantNotificationCenter.swift */,
+				FE2000000000000000000003 /* YimiConversationTimeline.swift */,
+				D62000000000000000000001 /* AssistantTerminalTimeline.swift */,
+				D20000000000000000000005 /* AssistantResultStreaming.swift */,
+				FA2000000000000000000001 /* AssistantCentralTextWire.swift */,
+				FA2000000000000000000077 /* AssistantVoiceTurn.swift */,
+				FA20000000000000000000D2 /* PlaceSensingService.swift */,
+				FA20000000000000000000D1 /* PlaceUpload.swift */,
+				FA20000000000000000000CB /* CallRingback.swift */,
+				FA200000000000000000007A /* AssistantVoiceprint.swift */,
+				FA2000000000000000000079 /* RealtimeDevicePairing.swift */,
+				AD1800000000000000000002 /* RealtimeMacPairing.swift */,
+				D20000000000000000000006 /* AssistantLoopbackProvider.swift */,
+				D20000000000000000000007 /* AssistantLocalOperationDatabase.swift */,
+				D20000000000000000000008 /* WatchConnectivityPhoneAdapter.swift */,
+				62DD9344D08596A6A913442C /* WatchCredentialLifecycle.swift */,
+				73FE9EE77ACB422429F29B0A /* WatchCredentialClient.swift */,
+				BE8C715590F40D9824E9C073 /* WatchLocalRequestLedger.swift */,
+				C1CBEEDFD064B217D71A183E /* WatchIdentityHandler.swift */,
+				D3937F4511277DBD041C9588 /* WatchRideHandler.swift */,
+				AD309149B977453593D4824F /* WatchRelay.swift */,
+				C20000000000000000000002 /* RealtimePublicControlAdapter.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		A70000000000000000000004 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				AC2020000000000000000004 /* activity-update.fixtures.json */,
+				AC2020000000000000000003 /* AssistantActivityTests.swift */,
+				59BBD1345765468D857CEFF9 /* AssistantAppearanceTests.swift */,
+				99FC8C7423D34ADFBBD12D87 /* WatchAppearanceProjectionTests.swift */,
+				FE359785CCCB46B7A339743C /* YimiCallPresentationTests.swift */,
+				AB320000000000000000000B /* YimiPaymentRenderingTests.swift */,
+				AB320000000000000000000A /* YimiPaymentFlowTests.swift */,
+				AB3200000000000000000009 /* AssistantPaymentChannelTests.swift */,
+				AB3200000000000000000008 /* AssistantPaymentTests.swift */,
+				FC2000000000000000000002 /* AssistantCentralControlTests.swift */,
+				FC2000000000000000000003 /* formal-control-envelope.fixture.json */,
+				A2000000000000000000000B /* ContractTests.swift */,
+				A2000000000000000000000C /* PersistenceSyncTests.swift */,
+				A2000000000000000000000D /* RetryBackfillTests.swift */,
+				B2000000000000000000000A /* AssistantSessionTests.swift */,
+				E41800000000000000000004 /* AssistantVoiceEnrollmentTests.swift */,
+				B2000000000000000000000B /* LiveKitSessionAdapterTests.swift */,
+				B2000000000000000000000C /* LocationServiceTests.swift */,
+				C20000000000000000000008 /* RealtimePublicControlAdapterTests.swift */,
+				FA2000000000000000000002 /* AssistantCentralTextTests.swift */,
+				F01120000000000000000003 /* AssistantWakeListeningTests.swift */,
+				A17C02000000000000000004 /* PCMRingTests.swift */,
+				FA2000000000000000000078 /* CentralVoiceTurnTests.swift */,
+				FA2000000000000000000003 /* formal-text-envelope.fixture.json */,
+				FA2000000000000000000004 /* automatic-text-envelope.fixture.json */,
+				FA2000000000000000000005 /* formal-text-cancelled-envelope.fixture.json */,
+				D2000000000000000000000A /* AssistantMediaLifecycleTests.swift */,
+				D2000000000000000000000B /* AssistantNotificationTests.swift */,
+				D2000000000000000000000C /* AssistantResultStreamingTests.swift */,
+				D62000000000000000000002 /* AssistantTerminalTimelineTests.swift */,
+				D2000000000000000000000D /* AssistantLocalOperationDatabaseTests.swift */,
+				D2000000000000000000000E /* NetworkPathMonitorTests.swift */,
+				D2000000000000000000000F /* AssistantCompositionTests.swift */,
+				D20000000000000000000010 /* WatchConnectivityPhoneAdapterTests.swift */,
+				AE9BE1A33373D13250DFD674 /* PhysicalCanaryPreworkoutObservationExporter.swift */,
+				555F43D3662766D0F0B4849F /* WatchCredentialTests.swift */,
+				8DD8E30A61816B05D4C9AE67 /* WatchRelayTests.swift */,
+				C30000000000000000000004 /* Fixtures/RealtimePublicControl */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		A70000000000000000000005 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AC7100000000000000000016 /* YimiCallActivity.appex */,
+				A20000000000000000000010 /* PersonalAIOSPhase0.app */,
+				A20000000000000000000011 /* HealthKitExporterTests.xctest */,
+				D2000000000000000000001A /* PersonalAIOSWatch.app */,
+				D2000000000000000000001B /* PersonalAIOSWatchTests.xctest */,
+				E7A00000000000000000000A /* YimiWatchWidgets.appex */,
+				D2000000000000000000001D /* HealthKitExporterUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		C30000000000000000000001 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				C20000000000000000000001 /* RealtimePublicControlModels.swift */,
+				C20000000000000000000004 /* WatchAssistantPacket.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		C30000000000000000000003 /* WatchTests */ = {
+			isa = PBXGroup;
+			children = (
+				F736160B36279A4E088E8654 /* WatchYimiStoreTests.swift */,
+				E7A00000000000000000000B /* WatchRideFiguresTests.swift */,
+				C2000000000000000000000A /* WatchConnectivityBridgeTests.swift */,
+				D20000000000000000000024 /* WatchConnectivityAdapterTests.swift */,
+				D20000000000000000000025 /* WatchWorkoutCoordinatorTests.swift */,
+			);
+			path = WatchTests;
+			sourceTree = "<group>";
+		};
+		C30000000000000000000004 /* Fixtures/RealtimePublicControl */ = {
+			isa = PBXGroup;
+			children = (
+				C2000000000000000000000E /* bootstrap-request.valid.json */,
+				C2000000000000000000000F /* bootstrap-response.valid.json */,
+				C20000000000000000000010 /* credential-refresh.valid.json */,
+				C20000000000000000000011 /* e2ee-key-resolve.valid.json */,
+				C20000000000000000000012 /* handoff.valid.json */,
+				C20000000000000000000013 /* media-stop.valid.json */,
+			);
+			path = Fixtures/RealtimePublicControl;
+			sourceTree = "<group>";
+		};
+		D30000000000000000000001 /* WatchApp */ = {
+			isa = PBXGroup;
+			children = (
+				0F1C0B1AA19B4B5B8DE6741A /* YimiWatchAppearanceView.swift */,
+				BCDC6D75088B93832061E927 /* YimiWatchTalkView.swift */,
+				BE7C2F23221C3B5F1D6B73D2 /* YimiWatchRootView.swift */,
+				A56548C4B567D7378BF9A251 /* YimiWatchRideView.swift */,
+				52D23EAEE38BC7DAB82CB80D /* YimiWatchRideSummaryView.swift */,
+				35DAF22E463F168D0E134073 /* YimiWatchRideFormatter.swift */,
+				F6B8E2CD5A82AE788C36CA3A /* YimiWatchOnboardingViews.swift */,
+				ACC700A2CBD170F4FCB8D0EB /* YimiWatchNotificationViews.swift */,
+				A8DB89864041BEC4F80104A6 /* YimiWatchHomeView.swift */,
+				6701BC8CC4CC1F2853DB81D2 /* YimiWatchCardViews.swift */,
+				487EF656F58EF11AA20417CB /* WatchYimiStore.swift */,
+				E7A000000000000000000004 /* WatchRideFigures.swift */,
+				E7A000000000000000000005 /* WatchWidgetPublisher.swift */,
+				C80CBDBB3E7FFEE2B247D5E0 /* WatchYimiHandler.swift */,
+				53F9DEDDFC5A521291D1D950 /* WatchUtteranceRecorder.swift */,
+				B0CBBA33A05002E4CEDF34CE /* WatchTalkClient.swift */,
+				07628C88087D164CF2763306 /* WatchRideHandler.swift */,
+				CB4168A28C982823D60CF17E /* WatchIdentityHandler.swift */,
+				D20000000000000000000011 /* PersonalAIOSWatchApp.swift */,
+				D20000000000000000000012 /* WatchAppDelegate.swift */,
+				D20000000000000000000013 /* WatchConnectivityAdapter.swift */,
+				D20000000000000000000014 /* WatchWorkoutCoordinator.swift */,
+				D20000000000000000000015 /* WatchNotificationCoordinator.swift */,
+				D20000000000000000000017 /* Info.plist */,
+				D20000000000000000000018 /* PersonalAIOSWatch.entitlements */,
+				D20000000000000000000019 /* Assets.xcassets */,
+			);
+			path = WatchApp;
+			sourceTree = "<group>";
+		};
+		D30000000000000000000002 /* WatchShared */ = {
+			isa = PBXGroup;
+			children = (
+				D20000000000000000000009 /* WatchLocalEnvelope.swift */,
+				D92000000000000000000002 /* WatchYimiMessages.swift */,
+				D92000000000000000000001 /* WatchIdentityMessages.swift */,
+			);
+			path = WatchShared;
+			sourceTree = "<group>";
+		};
+		D30000000000000000000003 /* UITests */ = {
+			isa = PBXGroup;
+			children = (
+				D2000000000000000000001C /* YimiFlowUITests.swift */,
+			);
+			path = UITests;
+			sourceTree = "<group>";
+		};
+		6CC7AF9EBA9AAE1446799DB4 /* WatchCore */ = {
+			isa = PBXGroup;
+			children = (
+				570E3E3E5403BCBD62935FAE /* WatchTalkState.swift */,
+				E7A000000000000000000001 /* WatchDeepLink.swift */,
+				E7A000000000000000000002 /* WatchWidgetSnapshot.swift */,
+				E7A000000000000000000003 /* WatchWidgetProjection.swift */,
+				017030BC6C963E645EA52F74 /* WatchTalkHTTP.swift */,
+				A4420FAA052476E092046043 /* WatchStateReducer.swift */,
+				B185493D82A2E31C543DF5ED /* WatchRidePresentation.swift */,
+				1FF37D54A9129B6DA93C669D /* WatchRecorderSegmenter.swift */,
+			);
+			path = WatchCore;
+			sourceTree = "<group>";
+		};
+		AC7100000000000000000020 /* CallActivity */ = {isa = PBXGroup; children = (AC7100000000000000000012 /* CallActivityAttributes.swift */, AC7100000000000000000013 /* YimiCallActivity.swift */, AC7100000000000000000014 /* Info.plist */, ); path = CallActivity; sourceTree = "<group>"; };
+		E7A000000000000000000050 /* WatchWidget */ = {isa = PBXGroup; children = (E7A000000000000000000006 /* YimiWatchWidget.swift */, E7A000000000000000000007 /* YimiWatchWidgetViews.swift */, E7A000000000000000000008 /* Info.plist */, E7A000000000000000000009 /* YimiWatchWidgets.entitlements */, ); path = WatchWidget; sourceTree = "<group>"; };
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A50000000000000000000001 /* HealthKitExporter */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A80000000000000000000002 /* Build configuration list for PBXNativeTarget "HealthKitExporter" */;
+			buildPhases = (
+				AC7100000000000000000023 /* Embed App Extensions */,
+				A90000000000000000000001 /* Sources */,
+				A60000000000000000000001 /* Frameworks */,
+				AA0000000000000000000001 /* Resources */,
+				D80000000000000000000001 /* Embed Watch Content */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AC7100000000000000000022 /* PBXTargetDependency */,
+				D60000000000000000000001 /* PBXTargetDependency */,
+			);
+			name = HealthKitExporter;
+			packageProductDependencies = (
+				B30000000000000000000001 /* LiveKit */,
+				E50000000000000000000001 /* GRDB */,
+				A17C05000000000000000001 /* AliyunARTC */,
+				F01150000000000000000001 /* VoiceWake */,
+			);
+			productName = HealthKitExporter;
+			productReference = A20000000000000000000010 /* PersonalAIOSPhase0.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A50000000000000000000002 /* HealthKitExporterTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A80000000000000000000003 /* Build configuration list for PBXNativeTarget "HealthKitExporterTests" */;
+			buildPhases = (
+				A90000000000000000000002 /* Sources */,
+				A60000000000000000000002 /* Frameworks */,
+				AA0000000000000000000002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AB0000000000000000000001 /* PBXTargetDependency */,
+			);
+			name = HealthKitExporterTests;
+			productName = HealthKitExporterTests;
+			productReference = A20000000000000000000011 /* HealthKitExporterTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		D50000000000000000000001 /* PersonalAIOSWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F80000000000000000000001 /* Build configuration list for PBXNativeTarget "PersonalAIOSWatch" */;
+			buildPhases = (
+				D90000000000000000000001 /* Sources */,
+				D70000000000000000000001 /* Frameworks */,
+				D80000000000000000000002 /* Resources */,
+				E7A000000000000000000021 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E7A000000000000000000042 /* PBXTargetDependency */,
+			);
+			name = PersonalAIOSWatch;
+			productName = PersonalAIOSWatch;
+			productReference = D2000000000000000000001A /* PersonalAIOSWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D50000000000000000000002 /* PersonalAIOSWatchTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F80000000000000000000002 /* Build configuration list for PBXNativeTarget "PersonalAIOSWatchTests" */;
+			buildPhases = (
+				D90000000000000000000002 /* Sources */,
+				D70000000000000000000002 /* Frameworks */,
+				D80000000000000000000003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D60000000000000000000002 /* PBXTargetDependency */,
+			);
+			name = PersonalAIOSWatchTests;
+			productName = PersonalAIOSWatchTests;
+			productReference = D2000000000000000000001B /* PersonalAIOSWatchTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		D50000000000000000000003 /* HealthKitExporterUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F80000000000000000000003 /* Build configuration list for PBXNativeTarget "HealthKitExporterUITests" */;
+			buildPhases = (
+				D90000000000000000000003 /* Sources */,
+				D70000000000000000000003 /* Frameworks */,
+				D80000000000000000000004 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D60000000000000000000003 /* PBXTargetDependency */,
+			);
+			name = HealthKitExporterUITests;
+			productName = HealthKitExporterUITests;
+			productReference = D2000000000000000000001D /* HealthKitExporterUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		AC7100000000000000000030 /* YimiCallActivity */ = {isa = PBXNativeTarget; buildConfigurationList = AC7100000000000000000031; buildPhases = (AC7100000000000000000024 /* Sources */, AC7100000000000000000025 /* Frameworks */, AC7100000000000000000026 /* Resources */, ); buildRules = (); dependencies = (); name = YimiCallActivity; productName = YimiCallActivity; productReference = AC7100000000000000000016 /* YimiCallActivity.appex */; productType = "com.apple.product-type.app-extension"; };
+		E7A000000000000000000030 /* YimiWatchWidgets */ = {isa = PBXNativeTarget; buildConfigurationList = E7A000000000000000000031; buildPhases = (E7A000000000000000000022 /* Sources */, E7A000000000000000000023 /* Frameworks */, E7A000000000000000000024 /* Resources */, ); buildRules = (); dependencies = (); name = YimiWatchWidgets; productName = YimiWatchWidgets; productReference = E7A00000000000000000000A /* YimiWatchWidgets.appex */; productType = "com.apple.product-type.app-extension"; };
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A40000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2660;
+				LastUpgradeCheck = 2660;
+				TargetAttributes = {
+					A50000000000000000000001 = {
+						CreatedOnToolsVersion = 26.6;
+						ProvisioningStyle = Automatic;
+					};
+					A50000000000000000000002 = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = A50000000000000000000001;
+					};
+					D50000000000000000000001 = {
+						CreatedOnToolsVersion = 26.6;
+						ProvisioningStyle = Automatic;
+					};
+					D50000000000000000000002 = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = D50000000000000000000001;
+					};
+					D50000000000000000000003 = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = A50000000000000000000001;
+					};
+				};
+			};
+			buildConfigurationList = A80000000000000000000001 /* Build configuration list for PBXProject "HealthKitExporter" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A70000000000000000000001;
+			packageReferences = (
+				F01140000000000000000001 /* XCLocalSwiftPackageReference "../../../../VoiceWake" */,
+				B40000000000000000000001 /* XCRemoteSwiftPackageReference "client-sdk-swift" */,
+				E40000000000000000000001 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
+				A17C04000000000000000001 /* XCLocalSwiftPackageReference "Vendor/AliyunARTC" */,
+			);
+			productRefGroup = A70000000000000000000005 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				AC7100000000000000000030 /* YimiCallActivity */,
+				E7A000000000000000000030 /* YimiWatchWidgets */,
+				A50000000000000000000001 /* HealthKitExporter */,
+				A50000000000000000000002 /* HealthKitExporterTests */,
+				D50000000000000000000001 /* PersonalAIOSWatch */,
+				D50000000000000000000002 /* PersonalAIOSWatchTests */,
+				D50000000000000000000003 /* HealthKitExporterUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		AA0000000000000000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB1000000000000000000001 /* Assets.xcassets in Resources */,
+				FC1000000000000000000001 /* Contracts in Resources */,
+				FC1000000000000000000010 /* Avatar in Resources */,
+				A1000000000000000000000E /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA0000000000000000000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AC2010000000000000000004 /* activity-update.fixtures.json in Resources */,
+				FC1000000000000000000003 /* formal-control-envelope.fixture.json in Resources */,
+				C1000000000000000000000B /* bootstrap-request.valid.json in Resources */,
+				C1000000000000000000000C /* bootstrap-response.valid.json in Resources */,
+				FA1000000000000000000003 /* formal-text-envelope.fixture.json in Resources */,
+				FA1000000000000000000004 /* automatic-text-envelope.fixture.json in Resources */,
+				FA1000000000000000000005 /* formal-text-cancelled-envelope.fixture.json in Resources */,
+				C1000000000000000000000D /* credential-refresh.valid.json in Resources */,
+				C1000000000000000000000E /* e2ee-key-resolve.valid.json in Resources */,
+				C1000000000000000000000F /* handoff.valid.json in Resources */,
+				C10000000000000000000010 /* media-stop.valid.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D80000000000000000000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D1000000000000000000001E /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D80000000000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D80000000000000000000004 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AC2010000000000000000005 /* activity-update.fixtures.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AC7100000000000000000026 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AC7100000000000000000006 /* Assets.xcassets in Resources */, ); runOnlyForDeploymentPostprocessing = 0; };
+		E7A000000000000000000024 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (E7A00000000000000000001B /* Assets.xcassets in Resources */, ); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A90000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AC2010000000000000000002 /* YimiActivityCard.swift in Sources */,
+				AC2010000000000000000001 /* AssistantActivity.swift in Sources */,
+				91B932A1EE994592B5FE7B76 /* YimiAppearancePhoto.swift in Sources */,
+				CF62ABE73387463A88B92496 /* YimiCallWindowLayout.swift in Sources */,
+				129EB197C9EE425182CF20DD /* YimiCallAvatarPresentation.swift in Sources */,
+				1ADFC2A9941A46B49A3CD20E /* WatchAppearanceRelay.swift in Sources */,
+				3A62FA6DB8924C29A6D0A835 /* AssistantAppearanceImageUpload.swift in Sources */,
+				359C03F942A14CD6AC7607A5 /* AssistantAppearanceState.swift in Sources */,
+				FDA742836C8145A3BAE553B9 /* YimiAppearanceView.swift in Sources */,
+				AC7100000000000000000008 /* AssistantCallPlaybackObserver.swift in Sources */,
+				AC7100000000000000000001 /* CallActivityController.swift in Sources */,
+				AC7100000000000000000002 /* CallActivityAttributes.swift in Sources */,
+				AC7100000000000000000005 /* AssistantVoiceStatus.swift in Sources */,
+				AB3100000000000000000007 /* AssistantPaymentChannel.swift in Sources */,
+				AB3100000000000000000006 /* AssistantPaymentKeys.swift in Sources */,
+				AB3100000000000000000005 /* AssistantPayment.swift in Sources */,
+				A03708DC8FF640A29DD9E012 /* YimiOwnerOverrideModel.swift in Sources */,
+				AB3100000000000000000004 /* YimiPaymentModel.swift in Sources */,
+				AB3100000000000000000003 /* YimiAppLock.swift in Sources */,
+				5C90B7D8CC3746218683F28E /* YimiOwnerOverrideSection.swift in Sources */,
+				AB3100000000000000000002 /* YimiPaymentSettingsView.swift in Sources */,
+				AB3100000000000000000001 /* YimiPaymentCard.swift in Sources */,
+				F10000000000000000000009 /* YimiHealthView.swift in Sources */,
+				A10000000000000000000001 /* HealthKitExporterApp.swift in Sources */,
+				A10000000000000000000002 /* AppModel.swift in Sources */,
+				A10000000000000000000003 /* ContentView.swift in Sources */,
+				A10000000000000000000004 /* Models.swift in Sources */,
+				A10000000000000000000005 /* HealthTypes.swift in Sources */,
+				FD1000000000000000000002 /* YimiContactsView.swift in Sources */,
+				FD1000000000000000000001 /* AssistantContactsSync.swift in Sources */,
+				FC1000000000000000000000 /* AssistantContactsSource.swift in Sources */,
+				FB1000000000000000000001 /* AssistantHealthSync.swift in Sources */,
+				FB1000000000000000000000 /* AssistantHealthWire.swift in Sources */,
+				A10000000000000000000006 /* Persistence.swift in Sources */,
+				A10000000000000000000007 /* HealthQueryService.swift in Sources */,
+				A10000000000000000000008 /* Networking.swift in Sources */,
+				A10000000000000000000009 /* SyncCoordinator.swift in Sources */,
+				A1000000000000000000000A /* BackgroundSyncRegistrar.swift in Sources */,
+				B10000000000000000000001 /* AssistantSessionCoordinator.swift in Sources */,
+				F01110000000000000000001 /* AssistantWakeListening.swift in Sources */,
+				B10000000000000000000002 /* AssistantBootstrapProviding.swift in Sources */,
+				B10000000000000000000003 /* LiveKitSessionAdapter.swift in Sources */,
+				E10000000000000000000001 /* AssistantDebugLaunch.swift in Sources */,
+				E10000000000000000000003 /* AssistantVideoPreviewModel.swift in Sources */,
+				CA0100000000000000000001 /* AssistantCameraJPEG.swift in Sources */,
+				A17C01000000000000000001 /* ARTCCallClient.swift in Sources */,
+				A17C01000000000000000003 /* PCMRing.swift in Sources */,
+				A17C010000000000000000A1 /* VoiceAudioRouteTrace.swift in Sources */,
+				A17C010000000000000000B1 /* VoiceCallInputHealth.swift in Sources */,
+				E10000000000000000000002 /* AssistantPhysicalCanary.swift in Sources */,
+				B10000000000000000000004 /* MediaPermissionCoordinator.swift in Sources */,
+				B10000000000000000000005 /* LocationService.swift in Sources */,
+				91FBC9A31F5B465CA7521250 /* MoveSessionSensors.swift in Sources */,
+				16D9D00AA0864DC18527948F /* MoveSession.swift in Sources */,
+				B10000000000000000000006 /* NetworkPathMonitor.swift in Sources */,
+				B10000000000000000000007 /* AppleReceiptStore.swift in Sources */,
+				B10000000000000000000008 /* AssistantViewModel.swift in Sources */,
+				B10000000000000000000009 /* AssistantView.swift in Sources */,
+				F10000000000000000000007 /* YimiMemoryView.swift in Sources */,
+				F10000000000000000000008 /* YimiVoiceprintView.swift in Sources */,
+				E41800000000000000000001 /* YimiPaymentVoiceprintView.swift in Sources */,
+				F10000000000000000000006 /* YimiCallView.swift in Sources */,
+				F10000000000000000000005 /* YimiChatView.swift in Sources */,
+				F10000000000000000000004 /* YimiHomeView.swift in Sources */,
+				AD1800000000000000000003 /* YimiInternalMacPairingView.swift in Sources */,
+				F10000000000000000000003 /* YimiRootView.swift in Sources */,
+				CA0100000000000000000002 /* YimiCameraRequestView.swift in Sources */,
+				F10000000000000000000002 /* YimiConversation.swift in Sources */,
+				F10000000000000000000001 /* YimiDesign.swift in Sources */,
+				C10000000000000000000001 /* RealtimePublicControlModels.swift in Sources */,
+				C10000000000000000000002 /* RealtimePublicControlAdapter.swift in Sources */,
+				C10000000000000000000004 /* WatchAssistantPacket.swift in Sources */,
+				D10000000000000000000001 /* AssistantComposition.swift in Sources */,
+				D10000000000000000000002 /* AssistantVideoPreview.swift in Sources */,
+				D10000000000000000000003 /* AssistantMediaLifecycle.swift in Sources */,
+				D10000000000000000000004 /* AssistantNotificationCenter.swift in Sources */,
+				FE1000000000000000000003 /* YimiConversationTimeline.swift in Sources */,
+				D61000000000000000000001 /* AssistantTerminalTimeline.swift in Sources */,
+				D10000000000000000000005 /* AssistantResultStreaming.swift in Sources */,
+				FA1000000000000000000001 /* AssistantCentralTextWire.swift in Sources */,
+				FA1000000000000000000077 /* AssistantVoiceTurn.swift in Sources */,
+				FA10000000000000000000D2 /* PlaceSensingService.swift in Sources */,
+				FA10000000000000000000D1 /* PlaceUpload.swift in Sources */,
+				FA10000000000000000000CB /* CallRingback.swift in Sources */,
+				FA100000000000000000007A /* AssistantVoiceprint.swift in Sources */,
+				FA1000000000000000000079 /* RealtimeDevicePairing.swift in Sources */,
+				AD1800000000000000000001 /* RealtimeMacPairing.swift in Sources */,
+				D10000000000000000000006 /* AssistantLoopbackProvider.swift in Sources */,
+				D10000000000000000000007 /* AssistantLocalOperationDatabase.swift in Sources */,
+				D10000000000000000000008 /* WatchConnectivityPhoneAdapter.swift in Sources */,
+				82455182C10518F890FE780E /* WatchCredentialLifecycle.swift in Sources */,
+				7E908D94FDE5703CEFBAA488 /* WatchCredentialClient.swift in Sources */,
+				9F429D9B34DD55B1596F34F5 /* WatchLocalRequestLedger.swift in Sources */,
+				A0639D461242CBEA3F2EB991 /* WatchIdentityHandler.swift in Sources */,
+				8E656DED4B50F7B71488EA1C /* WatchRideHandler.swift in Sources */,
+				70F5707F12574E8B7A034D98 /* WatchRelay.swift in Sources */,
+				D10000000000000000000009 /* WatchLocalEnvelope.swift in Sources */,
+				D91200000000000000000001 /* WatchYimiMessages.swift in Sources */,
+				D91100000000000000000001 /* WatchIdentityMessages.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A90000000000000000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AC2010000000000000000003 /* AssistantActivityTests.swift in Sources */,
+				0EE9A8CB51674565B50E082B /* AssistantAppearanceTests.swift in Sources */,
+				0C7BED866B454B0297B526E5 /* WatchAppearanceProjectionTests.swift in Sources */,
+				964531D6148340D0A9CAA8E5 /* YimiCallPresentationTests.swift in Sources */,
+				AB310000000000000000000B /* YimiPaymentRenderingTests.swift in Sources */,
+				AB310000000000000000000A /* YimiPaymentFlowTests.swift in Sources */,
+				AB3100000000000000000009 /* AssistantPaymentChannelTests.swift in Sources */,
+				AB3100000000000000000008 /* AssistantPaymentTests.swift in Sources */,
+				FC1000000000000000000002 /* AssistantCentralControlTests.swift in Sources */,
+				A1000000000000000000000B /* ContractTests.swift in Sources */,
+				A1000000000000000000000C /* PersistenceSyncTests.swift in Sources */,
+				A1000000000000000000000D /* RetryBackfillTests.swift in Sources */,
+				B1000000000000000000000A /* AssistantSessionTests.swift in Sources */,
+				E41800000000000000000003 /* AssistantVoiceEnrollmentTests.swift in Sources */,
+				B1000000000000000000000B /* LiveKitSessionAdapterTests.swift in Sources */,
+				B1000000000000000000000C /* LocationServiceTests.swift in Sources */,
+				C10000000000000000000008 /* RealtimePublicControlAdapterTests.swift in Sources */,
+				FA1000000000000000000002 /* AssistantCentralTextTests.swift in Sources */,
+				F01110000000000000000003 /* AssistantWakeListeningTests.swift in Sources */,
+				A17C01000000000000000004 /* PCMRingTests.swift in Sources */,
+				FA1000000000000000000078 /* CentralVoiceTurnTests.swift in Sources */,
+				D1000000000000000000000A /* AssistantMediaLifecycleTests.swift in Sources */,
+				D1000000000000000000000B /* AssistantNotificationTests.swift in Sources */,
+				D1000000000000000000000C /* AssistantResultStreamingTests.swift in Sources */,
+				D61000000000000000000002 /* AssistantTerminalTimelineTests.swift in Sources */,
+				D1000000000000000000000D /* AssistantLocalOperationDatabaseTests.swift in Sources */,
+				D1000000000000000000000E /* NetworkPathMonitorTests.swift in Sources */,
+				D1000000000000000000000F /* AssistantCompositionTests.swift in Sources */,
+				D10000000000000000000010 /* WatchConnectivityPhoneAdapterTests.swift in Sources */,
+				918FE794EDE71CE54DCD8937 /* PhysicalCanaryPreworkoutObservationExporter.swift in Sources */,
+				27E58DE4F9EB13D8C708E92B /* WatchCredentialTests.swift in Sources */,
+				8E6B7C7A37D0AEC34247BB85 /* WatchRelayTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D90000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				87ED33E23CC54A688A32BE16 /* YimiWatchAppearanceView.swift in Sources */,
+				E7A000000000000000000011 /* WatchDeepLink.swift in Sources */,
+				E7A000000000000000000012 /* WatchWidgetSnapshot.swift in Sources */,
+				E7A000000000000000000013 /* WatchWidgetProjection.swift in Sources */,
+				E7A000000000000000000014 /* WatchRideFigures.swift in Sources */,
+				E7A000000000000000000015 /* WatchWidgetPublisher.swift in Sources */,
+				7AD7A949AA2F8B0633DE9BD0 /* YimiDesign.swift in Sources */,
+				C7863B88ED4B3FE353A4B735 /* WatchTalkState.swift in Sources */,
+				5FE46BC6F33DE9FE5A11E573 /* WatchTalkHTTP.swift in Sources */,
+				2BECDEB13EC8CA2194116E7D /* WatchStateReducer.swift in Sources */,
+				20C77C3571FE957C58C4CA11 /* WatchRidePresentation.swift in Sources */,
+				D67464723212178D73C5022D /* WatchRecorderSegmenter.swift in Sources */,
+				AF0E3CBC9C5A3B712DFE9B92 /* YimiWatchTalkView.swift in Sources */,
+				4BB5D50F44F9E8AF7F12066A /* YimiWatchRootView.swift in Sources */,
+				9A19BEF4A3042520DB77B5F4 /* YimiWatchRideView.swift in Sources */,
+				72062E64D96235E1BBC47F0B /* YimiWatchRideSummaryView.swift in Sources */,
+				52C13A63DB295465347869CE /* YimiWatchRideFormatter.swift in Sources */,
+				BDD46A5D62766026B4096BEB /* YimiWatchOnboardingViews.swift in Sources */,
+				ADE7FEB91E9E48E342D89772 /* YimiWatchNotificationViews.swift in Sources */,
+				971B0CB93657C56B344F40AB /* YimiWatchHomeView.swift in Sources */,
+				058CEF35ACDC69AE383D4FF0 /* YimiWatchCardViews.swift in Sources */,
+				DB64B0ED1708F80AEF2D5548 /* WatchYimiStore.swift in Sources */,
+				33B15AC039A2A7A45DF83E1C /* WatchYimiHandler.swift in Sources */,
+				247132404AB92304AB80362E /* WatchUtteranceRecorder.swift in Sources */,
+				DC3E0A1441305091F05AF5E9 /* WatchTalkClient.swift in Sources */,
+				38B68255A2F428A3E1BA213F /* WatchRideHandler.swift in Sources */,
+				1A4DE593949F611DCE5B52FB /* WatchIdentityHandler.swift in Sources */,
+				D10000000000000000000011 /* WatchLocalEnvelope.swift in Sources */,
+				D91200000000000000000002 /* WatchYimiMessages.swift in Sources */,
+				D91100000000000000000002 /* WatchIdentityMessages.swift in Sources */,
+				D10000000000000000000012 /* WatchAssistantPacket.swift in Sources */,
+				D10000000000000000000013 /* PersonalAIOSWatchApp.swift in Sources */,
+				D10000000000000000000014 /* WatchAppDelegate.swift in Sources */,
+				D10000000000000000000015 /* WatchConnectivityAdapter.swift in Sources */,
+				D10000000000000000000016 /* WatchWorkoutCoordinator.swift in Sources */,
+				D10000000000000000000017 /* WatchNotificationCoordinator.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D90000000000000000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0AA08171DBEC642671E7C8C0 /* WatchYimiStoreTests.swift in Sources */,
+				E7A00000000000000000001D /* WatchRideFiguresTests.swift in Sources */,
+				D1000000000000000000001B /* WatchConnectivityAdapterTests.swift in Sources */,
+				D1000000000000000000001C /* WatchWorkoutCoordinatorTests.swift in Sources */,
+				D1000000000000000000001D /* WatchConnectivityBridgeTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D90000000000000000000003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D1000000000000000000002A /* YimiFlowUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AC7100000000000000000024 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AC7100000000000000000003 /* CallActivityAttributes.swift in Sources */, AC7100000000000000000004 /* YimiCallActivity.swift in Sources */, ); runOnlyForDeploymentPostprocessing = 0; };
+		E7A000000000000000000022 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (E7A000000000000000000016 /* YimiWatchWidget.swift in Sources */, E7A000000000000000000017 /* YimiWatchWidgetViews.swift in Sources */, E7A000000000000000000018 /* WatchWidgetSnapshot.swift in Sources */, E7A000000000000000000019 /* WatchDeepLink.swift in Sources */, E7A00000000000000000001A /* YimiDesign.swift in Sources */, ); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		AB0000000000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A50000000000000000000001 /* HealthKitExporter */;
+			targetProxy = A30000000000000000000001 /* PBXContainerItemProxy */;
+		};
+		D60000000000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D50000000000000000000001 /* PersonalAIOSWatch */;
+			targetProxy = E30000000000000000000002 /* PBXContainerItemProxy */;
+		};
+		D60000000000000000000002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D50000000000000000000001 /* PersonalAIOSWatch */;
+			targetProxy = E30000000000000000000003 /* PBXContainerItemProxy */;
+		};
+		D60000000000000000000003 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A50000000000000000000001 /* HealthKitExporter */;
+			targetProxy = E30000000000000000000001 /* PBXContainerItemProxy */;
+		};
+		AC7100000000000000000022 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = AC7100000000000000000030 /* YimiCallActivity */; targetProxy = AC7100000000000000000021 /* PBXContainerItemProxy */; };
+		E7A000000000000000000042 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = E7A000000000000000000030 /* YimiWatchWidgets */; targetProxy = E7A000000000000000000041 /* PBXContainerItemProxy */; };
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		AC0000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		AC0000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		AC0000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = App/HealthKitExporter.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = App/Info.plist;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.paios.personal.phase0;
+				PRODUCT_MODULE_NAME = HealthKitExporter;
+				PRODUCT_NAME = PersonalAIOSPhase0;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		AC0000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = App/HealthKitExporter.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = App/Info.plist;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.paios.personal.phase0;
+				PRODUCT_MODULE_NAME = HealthKitExporter;
+				PRODUCT_NAME = PersonalAIOSPhase0;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		AC0000000000000000000005 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.paios.personal.phase0.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PersonalAIOSPhase0.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PersonalAIOSPhase0";
+			};
+			name = Debug;
+		};
+		AC0000000000000000000006 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.paios.personal.phase0.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PersonalAIOSPhase0.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PersonalAIOSPhase0";
+			};
+			name = Release;
+		};
+		F70000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = WatchApp/PersonalAIOSWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WatchApp/Info.plist;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.paios.personal.phase0.watch;
+				PRODUCT_NAME = PersonalAIOSWatch;
+				SDKROOT = watchos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		F70000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = WatchApp/PersonalAIOSWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WatchApp/Info.plist;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.paios.personal.phase0.watch;
+				PRODUCT_NAME = PersonalAIOSWatch;
+				SDKROOT = watchos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		F70000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.paios.personal.phase0.watch.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PersonalAIOSWatch.app/PersonalAIOSWatch";
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		F70000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.paios.personal.phase0.watch.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PersonalAIOSWatch.app/PersonalAIOSWatch";
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		F70000000000000000000005 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.paios.personal.phase0.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = HealthKitExporter;
+			};
+			name = Debug;
+		};
+		F70000000000000000000006 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.paios.personal.phase0.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = HealthKitExporter;
+			};
+			name = Release;
+		};
+		AC7100000000000000000032 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = CallActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks", );
+				MARKETING_VERSION = 0.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.paios.personal.phase0.callactivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		AC7100000000000000000033 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = CallActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks", );
+				MARKETING_VERSION = 0.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.paios.personal.phase0.callactivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		E7A000000000000000000032 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = WatchWidget/YimiWatchWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WatchWidget/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks", );
+				MARKETING_VERSION = 0.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.paios.personal.phase0.watch.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		E7A000000000000000000033 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = WatchWidget/YimiWatchWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WatchWidget/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks", );
+				MARKETING_VERSION = 0.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.paios.personal.phase0.watch.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A80000000000000000000001 /* Build configuration list for PBXProject "HealthKitExporter" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AC0000000000000000000001 /* Debug */,
+				AC0000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A80000000000000000000002 /* Build configuration list for PBXNativeTarget "HealthKitExporter" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AC0000000000000000000003 /* Debug */,
+				AC0000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A80000000000000000000003 /* Build configuration list for PBXNativeTarget "HealthKitExporterTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AC0000000000000000000005 /* Debug */,
+				AC0000000000000000000006 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F80000000000000000000001 /* Build configuration list for PBXNativeTarget "PersonalAIOSWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F70000000000000000000001 /* Debug */,
+				F70000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F80000000000000000000002 /* Build configuration list for PBXNativeTarget "PersonalAIOSWatchTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F70000000000000000000003 /* Debug */,
+				F70000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F80000000000000000000003 /* Build configuration list for PBXNativeTarget "HealthKitExporterUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F70000000000000000000005 /* Debug */,
+				F70000000000000000000006 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AC7100000000000000000031 /* Build configuration list for PBXNativeTarget "YimiCallActivity" */ = {isa = XCConfigurationList; buildConfigurations = (AC7100000000000000000032 /* Debug */, AC7100000000000000000033 /* Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		E7A000000000000000000031 /* Build configuration list for PBXNativeTarget "YimiWatchWidgets" */ = {isa = XCConfigurationList; buildConfigurations = (E7A000000000000000000032 /* Debug */, E7A000000000000000000033 /* Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		B40000000000000000000001 /* XCRemoteSwiftPackageReference "client-sdk-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/livekit/client-sdk-swift.git";
+			requirement = {
+				kind = exactVersion;
+				version = 2.17.0;
+			};
+		};
+		E40000000000000000000001 /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/groue/GRDB.swift.git";
+			requirement = {
+				kind = exactVersion;
+				version = 7.11.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		F01140000000000000000001 /* XCLocalSwiftPackageReference "../../../../VoiceWake" */ = {isa = XCLocalSwiftPackageReference; relativePath = ../../../../VoiceWake; };
+		A17C04000000000000000001 /* XCLocalSwiftPackageReference "Vendor/AliyunARTC" */ = {isa = XCLocalSwiftPackageReference; relativePath = Vendor/AliyunARTC; };
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		F01150000000000000000001 /* VoiceWake */ = {isa = XCSwiftPackageProductDependency; package = F01140000000000000000001 /* XCLocalSwiftPackageReference "../../../../VoiceWake" */; productName = VoiceWake; };
+		B30000000000000000000001 /* LiveKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B40000000000000000000001 /* XCRemoteSwiftPackageReference "client-sdk-swift" */;
+			productName = LiveKit;
+		};
+		E50000000000000000000001 /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E40000000000000000000001 /* XCRemoteSwiftPackageReference "GRDB.swift" */;
+			productName = GRDB;
+		};
+		A17C05000000000000000001 /* AliyunARTC */ = {isa = XCSwiftPackageProductDependency; package = A17C04000000000000000001 /* XCLocalSwiftPackageReference "Vendor/AliyunARTC" */; productName = AliyunARTC; };
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = A40000000000000000000001 /* Project object */;
+}

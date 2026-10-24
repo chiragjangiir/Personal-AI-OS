@@ -1,0 +1,10 @@
+{
+  "name": "@paios/context-engine",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "node ../../phase0/gateway/node_modules/typescript/bin/tsc --project tsconfig.json --typeRoots ../../phase0/gateway/node_modules/@types",
+    "test": "node --test --experimental-strip-types ../../tests/context/activity-acceptance.test.ts"
+  }
+}

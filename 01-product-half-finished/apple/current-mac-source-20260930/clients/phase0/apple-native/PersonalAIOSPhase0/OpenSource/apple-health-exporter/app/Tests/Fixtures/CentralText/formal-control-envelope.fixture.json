@@ -1,0 +1,84 @@
+{
+  "cancelled": {
+    "operation": "control_receipt",
+    "session_id": "continuity",
+    "processed_event_id": "d:b692065ad7088662a4d83fc7357299c0acf7f456e1aee334da671dbc8094606f",
+    "control_id": "cancel-1",
+    "requested_operation": "cancel_run",
+    "receipt": {
+      "run_id": "synthetic-control-run",
+      "session_id": "continuity",
+      "conversation_session_id": "continuity",
+      "status": "running"
+    },
+    "schema_version": "paios.central.text-envelope.v1"
+  },
+  "reconciled": {
+    "operation": "control_receipt",
+    "session_id": "continuity",
+    "processed_event_id": "d:b692065ad7088662a4d83fc7357299c0acf7f456e1aee334da671dbc8094606f",
+    "control_id": "reconcile-1",
+    "requested_operation": "reconcile",
+    "receipt": {
+      "principal_id": "actual-owner",
+      "session_id": "continuity",
+      "processed_event_id": "d:b692065ad7088662a4d83fc7357299c0acf7f456e1aee334da671dbc8094606f",
+      "payload_sha256": "e0dc8c6a4dc17f09687f4b21b51fc7cfa3f2ea5f340afe88a24002bfea82b308",
+      "arrival_seq": 1,
+      "state": "running",
+      "idempotency_key": "paios:d1650c1a4752fa1ac322ae6a9411599c7a9cc5f28dd2cb06754f7383dea0c15a",
+      "created_at_ms": 1791167806514,
+      "deadline_ms": 1791167816514,
+      "policy_version": "control-test",
+      "attempt_count": 1,
+      "run_id": "synthetic-control-run"
+    },
+    "schema_version": "paios.central.text-envelope.v1"
+  },
+  "playback": {
+    "operation": "control_receipt",
+    "session_id": "continuity",
+    "processed_event_id": "d:b692065ad7088662a4d83fc7357299c0acf7f456e1aee334da671dbc8094606f",
+    "control_id": "playback-1",
+    "requested_operation": "cancel_playback",
+    "receipt": {
+      "receipt": {
+        "receipt_ref": "out-cancel:978fee12b447c9440d8c4db7268b8220e9ba27977ab5e4ea95c418b9e2ca3fb4",
+        "reply_epoch": 1,
+        "status": "interrupted"
+      },
+      "playback_status": "unknown"
+    },
+    "schema_version": "paios.central.text-envelope.v1"
+  },
+  "forged": {
+    "operation": "rejected",
+    "session_id": "continuity",
+    "request_operation": "cancel_run",
+    "control_id": "cancel-1",
+    "event_id": null,
+    "processed_event_id": "d:b692065ad7088662a4d83fc7357299c0acf7f456e1aee334da671dbc8094606f",
+    "error_code": "FORMAL_CONTROL_ARGUMENT_INVALID",
+    "schema_version": "paios.central.text-envelope.v1"
+  },
+  "other": {
+    "operation": "rejected",
+    "session_id": "continuity",
+    "request_operation": "cancel_run",
+    "control_id": "cancel-1",
+    "event_id": null,
+    "processed_event_id": "unowned-D",
+    "error_code": "FORMAL_TEXT_REQUEST_FAILED",
+    "schema_version": "paios.central.text-envelope.v1"
+  },
+  "old": {
+    "operation": "rejected",
+    "session_id": "continuity",
+    "request_operation": "cancel_playback",
+    "control_id": "cancel-1",
+    "event_id": null,
+    "processed_event_id": "d:b692065ad7088662a4d83fc7357299c0acf7f456e1aee334da671dbc8094606f",
+    "error_code": "OUTPUT_CANCEL_OLD_EPOCH",
+    "schema_version": "paios.central.text-envelope.v1"
+  }
+}

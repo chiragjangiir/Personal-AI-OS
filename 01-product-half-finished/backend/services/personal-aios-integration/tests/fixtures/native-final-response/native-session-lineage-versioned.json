@@ -1,0 +1,44 @@
+{
+  "run_id": "run_acc8cbf9fd134faeb9e217d9a326fe55",
+  "status": "completed",
+  "session_id": "20261002_124123_05ce2f",
+  "conversation_session_id": "admitted-parent",
+  "output": "controlled source callback, model calls zero",
+  "memory_receipt_source": {
+    "schema": "hermes.memory_source.v2",
+    "source": "l2",
+    "profile_home": "/tmp/pytest-of-user/pytest-0/test_native_worker_status0/hermes_test",
+    "run_id": "run_acc8cbf9fd134faeb9e217d9a326fe55",
+    "session_id": "admitted-parent",
+    "status": "complete",
+    "error": null,
+    "receipts": [
+      {
+        "receipt_ref": "memory-receipt:833b6d7ef76f444db6371ff927df1315",
+        "status": "committed",
+        "kind": "l2",
+        "summary": {
+          "schema": "hermes.memory_receipt.v1",
+          "receipt_ref": "memory-receipt:833b6d7ef76f444db6371ff927df1315",
+          "attempt_ref": "memory-attempt:a451bb0fb5d34898a32d02fa6897a639",
+          "profile_home": "/tmp/pytest-of-user/pytest-0/test_native_worker_status0/hermes_test",
+          "run_id": "run_acc8cbf9fd134faeb9e217d9a326fe55",
+          "session_id": "admitted-parent",
+          "tool_call_id": "real-worker-memory",
+          "operation": "add",
+          "target": "memory",
+          "status": "committed",
+          "created_at": 1790944883.771901,
+          "settled_at": 1790944883.773959,
+          "pending_id": null,
+          "predecessor_ref": null
+        }
+      }
+    ],
+    "unsettled_attempts": []
+  },
+  "approval_results": [],
+  "schema": "hermes.run.v2",
+  "shape_sha256": "f5ecab354c673aa7354730b9d1fa03ccedcc3d47fdb1ccd3b8383b89d4c749e8",
+  "profile_home": "/tmp/pytest-of-user/pytest-0/test_native_worker_status0/hermes_test"
+}

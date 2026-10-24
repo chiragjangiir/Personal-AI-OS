@@ -1,0 +1,337 @@
+{
+  "schema": "paios.central.automatic-text-fixture.v1",
+  "evidence": "actual POSIX OUT/control host/synthetic native/SDK packets; not live model/device",
+  "automatic_completion": {
+    "text": {
+      "input_submit": {
+        "operation": "submit",
+        "event_id": "auto-text",
+        "captured_at": "2026-10-01T00:00:00.000Z",
+        "text": "original automatic source"
+      },
+      "accepted": {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "accepted",
+        "event_id": "auto-text",
+        "processed_event_id": "d:0a25f4d9de45e7a8cdfc349b069f0b7c6e68535db53a5f023737e747ebb7d0e8",
+        "session_id": "continuity",
+        "admission": {
+          "state": "pending",
+          "run_id": null,
+          "idempotency_key": "paios:b80175065f9f888dca394499fbad457e933097b1c9910b3832e35b228a9a1312"
+        }
+      },
+      "header": {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "result_header",
+        "event_id": "auto-text",
+        "processed_event_id": "d:0a25f4d9de45e7a8cdfc349b069f0b7c6e68535db53a5f023737e747ebb7d0e8",
+        "session_id": "continuity",
+        "run_id": "auto-run",
+        "consumed_revision": 1,
+        "result_revision": 1,
+        "reply_id": "reply:052ab747b58c21bfb80958b9c7967f3b0a9bf63da3db2bb14b71cd40a1a1f003",
+        "reply_epoch": 1,
+        "reply_phase": "sealed",
+        "reply_mode": "text",
+        "run_status": "completed",
+        "reply_status": "complete",
+        "result_status": "completed",
+        "delivery_status": "unknown",
+        "output_plan": [
+          {
+            "device_type": "mac",
+            "output_modes": [
+              "text"
+            ],
+            "route_version": "route-1",
+            "target_device_id": "mac"
+          }
+        ],
+        "text_replay": "pending",
+        "text_chunk_count": 1,
+        "pending_text_chunk_count": 1,
+        "rendered_text_through_seq": 0,
+        "pending_voice_chunk_count": 0,
+        "voice_transport": "not_supported",
+        "voice_status": "none",
+        "voice_error": null,
+        "receipt_status": "unknown",
+        "receipt_error": "RUN_RECEIPTS_SOURCE_NOT_CONFIGURED",
+        "receipt_sources": [],
+        "receipt_refs": []
+      },
+      "text_chunks": [
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "text_chunk",
+          "session_id": "continuity",
+          "processed_event_id": "d:0a25f4d9de45e7a8cdfc349b069f0b7c6e68535db53a5f023737e747ebb7d0e8",
+          "chunk": {
+            "event_id": "auto-text",
+            "final": true,
+            "message_ref": "native-final:auto-run",
+            "output_id": "output:2128b8fb0ee829491e6d6d2f234aa43c83f8e1dee1e86abc70994f551c23b59e",
+            "reply_epoch": 1,
+            "reply_id": "reply:052ab747b58c21bfb80958b9c7967f3b0a9bf63da3db2bb14b71cd40a1a1f003",
+            "route_version": "route-1",
+            "run_id": "auto-run",
+            "seq": 1,
+            "target_device_id": "mac",
+            "text": "automatic 🔬文字"
+          }
+        }
+      ]
+    },
+    "none": {
+      "input_submit": {
+        "operation": "submit",
+        "event_id": "auto-none",
+        "captured_at": "2026-10-01T00:00:00.000Z",
+        "text": "original automatic source"
+      },
+      "accepted": {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "accepted",
+        "event_id": "auto-none",
+        "processed_event_id": "d:d02392e1565fad1b76c2aaa5f4274667d8be6d55e847e1acb67c196639f530c6",
+        "session_id": "continuity",
+        "admission": {
+          "state": "pending",
+          "run_id": null,
+          "idempotency_key": "paios:bfc4df1d0fb49c00d5eb890e6222edfe5aabdf3bb4be8f0352bcfc5fff016098"
+        }
+      },
+      "header": {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "result_header",
+        "event_id": "auto-none",
+        "processed_event_id": "d:d02392e1565fad1b76c2aaa5f4274667d8be6d55e847e1acb67c196639f530c6",
+        "session_id": "continuity",
+        "run_id": "auto-run",
+        "consumed_revision": 1,
+        "result_revision": 1,
+        "reply_id": null,
+        "reply_epoch": 1,
+        "reply_phase": "sealed",
+        "reply_mode": "none",
+        "run_status": "completed",
+        "reply_status": "none",
+        "result_status": "completed",
+        "delivery_status": "unknown",
+        "output_plan": [],
+        "text_replay": "pending",
+        "text_chunk_count": 0,
+        "pending_text_chunk_count": 0,
+        "rendered_text_through_seq": 0,
+        "pending_voice_chunk_count": 0,
+        "voice_transport": "not_supported",
+        "voice_status": "none",
+        "voice_error": null,
+        "receipt_status": "unknown",
+        "receipt_error": "RUN_RECEIPTS_SOURCE_NOT_CONFIGURED",
+        "receipt_sources": [],
+        "receipt_refs": []
+      },
+      "text_chunks": []
+    },
+    "failed": {
+      "input_submit": {
+        "operation": "submit",
+        "event_id": "auto-failed",
+        "captured_at": "2026-10-01T00:00:00.000Z",
+        "text": "original automatic source"
+      },
+      "accepted": {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "accepted",
+        "event_id": "auto-failed",
+        "processed_event_id": "d:0ce1c8775ce8fa640c0c0a95ceb068c423081be5960fae336c9dd3ef60cd12d8",
+        "session_id": "continuity",
+        "admission": {
+          "state": "pending",
+          "run_id": null,
+          "idempotency_key": "paios:ed627a2245d4e8543e06f8a5287a61094cac9e1c5d4211601572f7022d534bf9"
+        }
+      },
+      "header": {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "result_header",
+        "event_id": "auto-failed",
+        "processed_event_id": "d:0ce1c8775ce8fa640c0c0a95ceb068c423081be5960fae336c9dd3ef60cd12d8",
+        "session_id": "continuity",
+        "run_id": "auto-run",
+        "consumed_revision": 1,
+        "result_revision": 1,
+        "reply_id": "reply:052ab747b58c21bfb80958b9c7967f3b0a9bf63da3db2bb14b71cd40a1a1f003",
+        "reply_epoch": 1,
+        "reply_phase": "failed",
+        "reply_mode": "text",
+        "run_status": "failed",
+        "reply_status": "failed",
+        "result_status": "failed",
+        "delivery_status": "unknown",
+        "output_plan": [],
+        "text_replay": "pending",
+        "text_chunk_count": 0,
+        "pending_text_chunk_count": 0,
+        "rendered_text_through_seq": 0,
+        "pending_voice_chunk_count": 0,
+        "voice_transport": "not_supported",
+        "voice_status": "none",
+        "voice_error": null,
+        "receipt_status": "unknown",
+        "receipt_error": "RUN_RECEIPTS_SOURCE_NOT_CONFIGURED",
+        "receipt_sources": [],
+        "receipt_refs": []
+      },
+      "text_chunks": []
+    },
+    "receipt_failure": {
+      "input_submit": {
+        "operation": "submit",
+        "event_id": "auto-receipt-failure",
+        "captured_at": "2026-10-01T00:00:00.000Z",
+        "text": "original automatic source"
+      },
+      "accepted": {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "accepted",
+        "event_id": "auto-receipt-failure",
+        "processed_event_id": "d:ae33c60711d42083e301bbebfe84296ef7cf9581bf82cb584e707184832f5891",
+        "session_id": "continuity",
+        "admission": {
+          "state": "pending",
+          "run_id": null,
+          "idempotency_key": "paios:d0bfad01871339b3056ed2b7322d700c3aaf59e8f631672583d9e6528151d206"
+        }
+      },
+      "header": {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "result_header",
+        "event_id": "auto-receipt-failure",
+        "processed_event_id": "d:ae33c60711d42083e301bbebfe84296ef7cf9581bf82cb584e707184832f5891",
+        "session_id": "continuity",
+        "run_id": "auto-run",
+        "consumed_revision": 1,
+        "result_revision": 1,
+        "reply_id": "reply:052ab747b58c21bfb80958b9c7967f3b0a9bf63da3db2bb14b71cd40a1a1f003",
+        "reply_epoch": 1,
+        "reply_phase": "sealed",
+        "reply_mode": "text",
+        "run_status": "completed",
+        "reply_status": "complete",
+        "result_status": "failed",
+        "delivery_status": "unknown",
+        "output_plan": [
+          {
+            "device_type": "mac",
+            "output_modes": [
+              "text"
+            ],
+            "route_version": "route-1",
+            "target_device_id": "mac"
+          }
+        ],
+        "text_replay": "pending",
+        "text_chunk_count": 1,
+        "pending_text_chunk_count": 1,
+        "rendered_text_through_seq": 0,
+        "pending_voice_chunk_count": 0,
+        "voice_transport": "not_supported",
+        "voice_status": "none",
+        "voice_error": null,
+        "receipt_status": "unknown",
+        "receipt_error": "SOURCE_UNAVAILABLE",
+        "receipt_sources": [
+          {
+            "error": "SOURCE_UNAVAILABLE",
+            "source": "l3",
+            "status": "failed"
+          }
+        ],
+        "receipt_refs": []
+      },
+      "text_chunks": [
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "text_chunk",
+          "session_id": "continuity",
+          "processed_event_id": "d:ae33c60711d42083e301bbebfe84296ef7cf9581bf82cb584e707184832f5891",
+          "chunk": {
+            "event_id": "auto-receipt-failure",
+            "final": true,
+            "message_ref": "native-final:auto-run",
+            "output_id": "output:2128b8fb0ee829491e6d6d2f234aa43c83f8e1dee1e86abc70994f551c23b59e",
+            "reply_epoch": 1,
+            "reply_id": "reply:052ab747b58c21bfb80958b9c7967f3b0a9bf63da3db2bb14b71cd40a1a1f003",
+            "route_version": "route-1",
+            "run_id": "auto-run",
+            "seq": 1,
+            "target_device_id": "mac",
+            "text": "automatic 🔬文字"
+          }
+        }
+      ]
+    },
+    "instant": {
+      "input_submit": {
+        "operation": "submit",
+        "event_id": "auto-instant",
+        "captured_at": "2026-10-01T00:00:00.000Z",
+        "text": "original automatic source"
+      },
+      "accepted": {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "accepted",
+        "event_id": "auto-instant",
+        "processed_event_id": "d:4c256a7cd3cd13b25dd5c48efe66a925421a1290e988bc16560deb7be94769fc",
+        "session_id": "continuity",
+        "admission": {
+          "state": "pending",
+          "run_id": null,
+          "idempotency_key": "paios:a8c68baedd2c4bca35130c1db5b8b1bc0ed5f39489b70f9400fdf8cde96b7038"
+        }
+      },
+      "header": {
+        "schema_version": "paios.central.text-envelope.v1",
+        "operation": "result_header",
+        "event_id": "auto-instant",
+        "processed_event_id": "d:4c256a7cd3cd13b25dd5c48efe66a925421a1290e988bc16560deb7be94769fc",
+        "session_id": "continuity",
+        "run_id": "auto-run",
+        "consumed_revision": 1,
+        "result_revision": 1,
+        "reply_id": null,
+        "reply_epoch": 0,
+        "reply_phase": "failed",
+        "reply_mode": "none",
+        "run_status": "completed",
+        "reply_status": "failed",
+        "result_status": "failed",
+        "delivery_status": "unknown",
+        "output_plan": [],
+        "text_replay": "pending",
+        "text_chunk_count": 0,
+        "pending_text_chunk_count": 0,
+        "rendered_text_through_seq": 0,
+        "pending_voice_chunk_count": 0,
+        "voice_transport": "not_supported",
+        "voice_status": "none",
+        "voice_error": null,
+        "receipt_status": "unknown",
+        "receipt_error": "RUN_RECEIPTS_SOURCE_NOT_CONFIGURED",
+        "receipt_sources": [],
+        "receipt_refs": []
+      },
+      "text_chunks": []
+    }
+  },
+  "trusted_binding": {
+    "session_id": "continuity",
+    "device_id": "mac",
+    "connection_epoch": "1",
+    "expected_gateway_identity": "controlled-source-gateway",
+    "evidence": "controlled host fixture"
+  }
+}

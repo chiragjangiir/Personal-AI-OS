@@ -1,0 +1,21 @@
+# Use only with the staging profile and the frozen candidate source.
+services:
+  gateway-staging:
+    # A 2-vCPU staging host needs 1.9 CPUs for call regression; a 0.7-CPU cap
+    # causes identity_jobs backpressure.
+    cpus: 1.9
+    command:
+      - /bin/sh
+      - -c
+      - >-
+        node 01-product-half-finished/backend/phase0/gateway/tools/mac-product-provision.ts migrate --root /var/lib/paios --config /etc/paios/cloud.json
+        && exec node 01-product-half-finished/backend/phase0/gateway/src/rayneo-persistent-production-entrypoint.ts --execution-owner hermes_text --config /etc/paios/cloud.json
+    volumes:
+      - ${PAIOS_STAGING_REGRESSION_PRIVATE:?}:/stage-private
+  hermes-staging:
+    volumes:
+      - ${PAIOS_STAGING_REGRESSION_SOURCE:?}:/stage-kit:ro
+      - ${PAIOS_STAGING_REGRESSION_SOURCE:?}/regression-init.py:/etc/cont-init.d/04-staging-regression:ro
+      - ${PAIOS_STAGING_REGRESSION_SOURCE:?}/../../../integrations/hermes/personal_aios/watch.py:/opt/paios/integrations/hermes/personal_aios/watch.py:ro
+      - ${PAIOS_STAGING_REGRESSION_PRIVATE:?}:/stage-private
+      - owner-data-staging:/stage-owner:ro

@@ -1,0 +1,24 @@
+<resources>
+    <item name="activity_status" type="id" />
+    <item name="ambient_toggle" type="id" />
+    <item name="ambient_retry" type="id" />
+    <item name="ambient_status" type="id" />
+    <item name="privacy_toggle" type="id" />
+    <item name="record_toggle" type="id" />
+    <item name="call_open" type="id" />
+    <item name="avatar_toggle" type="id" />
+    <item name="camera_toggle" type="id" />
+    <item name="call_mute" type="id" />
+    <item name="call_hangup" type="id" />
+    <item name="consent_cancel" type="id" />
+    <item name="consent_enable" type="id" />
+    <item name="appearance_open" type="id" />
+    <item name="appearance_phone" type="id" />
+    <item name="call_conversation_status" type="id" />
+    <item name="call_thinking_status" type="id" />
+    <item name="call_conversation_menu" type="id" />
+    <item name="call_mode_chat" type="id" />
+    <item name="call_mode_thinking" type="id" />
+    <item name="call_thinking_retry" type="id" />
+    <item name="call_switch_to_chat" type="id" />
+</resources>

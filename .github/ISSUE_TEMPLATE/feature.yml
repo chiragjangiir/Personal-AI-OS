@@ -1,0 +1,34 @@
+name: Feature request / 功能建议
+description: Describe a useful user outcome and how to verify it / 描述需求与验收
+title: "[Feature] "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: "Personal-AI-OS lets people self-host their own personal assistant, Yimi (依米). Describe the user outcome, including what 0.0.1 cannot do today. / 请说明使用者要完成什么，以及当前缺口。"
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem / 用户问题
+      description: A concrete situation, current behavior and why it matters.
+    validations:
+      required: true
+  - type: textarea
+    id: change
+    attributes:
+      label: Proposed behavior and existing alternatives / 期望行为与现有替代方式
+      description: Identify affected modules and existing tools that could be reused.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance / 怎样算完成
+      description: An observable result, a small example and relevant failure behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: permissions
+    attributes:
+      label: Data and external effects / 数据与外部动作
+      description: Needed accounts, data and actions. Explain payment, first-send and voiceprint implications without including secrets.

@@ -1,0 +1,492 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-aios.invalid/hermes/native-run/shape.v1",
+  "title": "Source NativeRun primitive shapes. Eligibility, permission and coverage are native business facts.",
+  "$defs": {
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema": {
+          "const": "hermes.run.v2"
+        },
+        "shape_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "profile_home": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "conversation_session_id": {
+          "type": "string"
+        },
+        "memory_write": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "granted_toolsets": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "run_scope": {
+          "enum": [
+            "owner",
+            "owner_uncertain",
+            "guest",
+            "build"
+          ]
+        },
+        "turn_exit_reason": {
+          "type": "string"
+        },
+        "output": {},
+        "replayed": {
+          "type": "boolean"
+        },
+        "native_final_response": {},
+        "native_final_response_error": {},
+        "memory_receipt_source": {},
+        "native_memory_receipt_error": {},
+        "approval": {
+          "$ref": "#/$defs/approval"
+        },
+        "approval_results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/approval_result"
+          }
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "activity_events": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "updated_at": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "schema",
+        "shape_sha256",
+        "profile_home",
+        "run_id",
+        "status"
+      ]
+    },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema": {
+          "const": "hermes.final-response.v1"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "turn_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "message_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "phase": {
+          "const": "final_buffer"
+        },
+        "after_tool_call_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "after_tool_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "last_tool_message_id": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "previous_message_id": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "previous_message_role": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "schema",
+        "run_id",
+        "session_id",
+        "turn_id",
+        "message_id",
+        "sha256",
+        "phase",
+        "after_tool_call_id",
+        "after_tool_name",
+        "last_tool_message_id",
+        "previous_message_id",
+        "previous_message_role"
+      ]
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema": {
+          "const": "hermes.memory_receipt.v1"
+        },
+        "profile_home": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "receipt_ref": {
+          "type": "string"
+        },
+        "attempt_ref": {
+          "type": "string"
+        },
+        "tool_call_id": {
+          "type": "string"
+        },
+        "operation": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "number"
+        },
+        "settled_at": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "pending_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "predecessor_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "schema",
+        "profile_home",
+        "run_id",
+        "session_id",
+        "receipt_ref",
+        "attempt_ref",
+        "tool_call_id",
+        "operation",
+        "target",
+        "status",
+        "created_at",
+        "settled_at",
+        "pending_id",
+        "predecessor_ref"
+      ]
+    },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "l2"
+        },
+        "receipt_ref": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "summary": {
+          "$ref": "#/$defs/summary"
+        }
+      },
+      "required": [
+        "kind",
+        "receipt_ref",
+        "status",
+        "summary"
+      ]
+    },
+    "memory": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema": {
+          "const": "hermes.memory_source.v2"
+        },
+        "source": {
+          "const": "l2"
+        },
+        "profile_home": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "partial",
+            "failed"
+          ]
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "receipts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/receipt"
+          },
+          "maxItems": 256
+        },
+        "unsettled_attempts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/summary"
+          },
+          "maxItems": 256
+        }
+      },
+      "required": [
+        "schema",
+        "source",
+        "profile_home",
+        "run_id",
+        "session_id",
+        "status",
+        "error",
+        "receipts",
+        "unsettled_attempts"
+      ]
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "expires_at_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "request_id",
+        "question",
+        "expires_at_ms"
+      ]
+    },
+    "approval_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "expires_at_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "choice": {
+          "enum": [
+            "once",
+            "deny"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "resolved",
+            "timeout",
+            "interrupted",
+            "session_closed",
+            "notify_failed"
+          ]
+        },
+        "confirmation": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "confirmation_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "confirmed_by": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "confirmed_at": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "surface": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "device_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "device_type": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                }
+              },
+              "required": [
+                "device_id",
+                "device_type"
+              ]
+            }
+          },
+          "required": [
+            "confirmation_id",
+            "confirmed_by",
+            "surface",
+            "confirmed_at"
+          ]
+        }
+      },
+      "required": [
+        "request_id",
+        "question",
+        "expires_at_ms",
+        "choice",
+        "reason"
+      ]
+    }
+  },
+  "$ref": "#/$defs/run",
+  "x-paios-run-scope-tools": {
+    "care": [
+      "paios_open_reply",
+      "paios_health_query",
+      "paios_terminal_question",
+      "paios_call_offer"
+    ],
+    "guest": [
+      "web_search",
+      "web_extract",
+      "paios_open_reply"
+    ],
+    "owner_uncertain": [
+      "web_search",
+      "web_extract",
+      "paios_open_reply"
+    ],
+    "build": [
+      "paios_open_reply",
+      "terminal",
+      "process_manage",
+      "execute_code",
+      "read_file",
+      "write_file",
+      "patch",
+      "search_files",
+      "skills_list",
+      "skill_view",
+      "skill_manage",
+      "skills_hub",
+      "todo_list"
+    ]
+  }
+}

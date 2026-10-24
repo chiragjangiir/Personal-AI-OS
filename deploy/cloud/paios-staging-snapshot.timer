@@ -1,0 +1,11 @@
+[Unit]
+Description=Taiwan night production snapshot, retry busy calls before 06:00
+
+[Timer]
+OnCalendar=*-*-* 03,04,05:05:00 Asia/Taipei
+RandomizedDelaySec=300
+Persistent=false
+Unit=paios-staging-snapshot.service
+
+[Install]
+WantedBy=timers.target

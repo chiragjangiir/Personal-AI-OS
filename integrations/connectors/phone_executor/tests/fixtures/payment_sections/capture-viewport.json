@@ -1,0 +1,751 @@
+{
+  "provenance": "Exact reviewer XML/OCR and current/cached dimensions, plus native controls. Synthetic captures only.",
+  "cases": [
+    {
+      "name": "override_cached",
+      "reviewer_source": "override_cached-viewport-bridge.json",
+      "kind": "viewport",
+      "initial": {
+        "xml": "<hierarchy rotation=\"0\"><node text=\"\" content-desc=\"\" bounds=\"[0,0][1000,1400]\" class=\"android.view.ViewGroup\" resource-id=\"com.aliyun.tongyi:id/screen\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\"><node text=\"&#35746;&#21333;&#35814;&#24773;\" content-desc=\"\" bounds=\"[0,0][200,40]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35746;&#21333;&#21495;&#65306;order-A\" content-desc=\"\" bounds=\"[0,90][200,130]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#24635;&#35745; &#165;16.60\" content-desc=\"\" bounds=\"[0,180][200,220]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" content-desc=\"\" bounds=\"[0,270][200,310]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" content-desc=\"\" bounds=\"[0,360][200,400]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" content-desc=\"\" bounds=\"[0,450][200,490]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25968;&#37327;&#65306;1\" content-desc=\"\" bounds=\"[0,540][200,580]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#31435;&#21363;&#36141;&#20080;\" content-desc=\"\" bounds=\"[0,1100][200,1150]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /></node></hierarchy>",
+        "ocr": [
+          [
+            "订单详情",
+            0,
+            0,
+            200,
+            40
+          ],
+          [
+            "订单号：order-A",
+            0,
+            90,
+            200,
+            130
+          ],
+          [
+            "总计 ¥16.60",
+            0,
+            180,
+            200,
+            220
+          ],
+          [
+            "收款方：shop-A",
+            0,
+            270,
+            200,
+            310
+          ],
+          [
+            "商品名称：柠檬茶",
+            0,
+            360,
+            200,
+            400
+          ],
+          [
+            "规格：中杯",
+            0,
+            450,
+            200,
+            490
+          ],
+          [
+            "数量：1",
+            0,
+            540,
+            200,
+            580
+          ],
+          [
+            "立即购买",
+            0,
+            1100,
+            200,
+            1150
+          ]
+        ]
+      },
+      "after": {
+        "xml": "<hierarchy width=\"1000\" height=\"800\"><node text=\"\" content-desc=\"\" bounds=\"[0,900][1000,1600]\" class=\"android.view.ViewGroup\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\"><node text=\"&#25903;&#20184;&#32467;&#26524;\" content-desc=\"\" bounds=\"[0,900][240,935]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35746;&#21333;&#21495;&#65306;order-A\" content-desc=\"\" bounds=\"[0,960][240,995]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#24635;&#35745; &#165;16.60\" content-desc=\"\" bounds=\"[0,1020][240,1055]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" content-desc=\"\" bounds=\"[0,1080][240,1115]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" content-desc=\"\" bounds=\"[0,1140][240,1175]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" content-desc=\"\" bounds=\"[0,1200][240,1235]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25968;&#37327;&#65306;1\" content-desc=\"\" bounds=\"[0,1260][240,1295]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#24050;&#25903;&#20184;\" content-desc=\"\" bounds=\"[0,1320][240,1355]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /></node></hierarchy>",
+        "ocr": [
+          [
+            "订单号：order-A",
+            0,
+            960,
+            240,
+            995
+          ]
+        ]
+      },
+      "current_viewport": [
+        1000,
+        800
+      ],
+      "cached_viewport": [
+        1000,
+        1600
+      ]
+    },
+    {
+      "name": "override_fresh",
+      "reviewer_source": "override_fresh-viewport-bridge.json",
+      "kind": "viewport",
+      "initial": {
+        "xml": "<hierarchy rotation=\"0\"><node text=\"\" content-desc=\"\" bounds=\"[0,0][1000,1400]\" class=\"android.view.ViewGroup\" resource-id=\"com.aliyun.tongyi:id/screen\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\"><node text=\"&#35746;&#21333;&#35814;&#24773;\" content-desc=\"\" bounds=\"[0,0][200,40]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35746;&#21333;&#21495;&#65306;order-A\" content-desc=\"\" bounds=\"[0,90][200,130]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#24635;&#35745; &#165;16.60\" content-desc=\"\" bounds=\"[0,180][200,220]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" content-desc=\"\" bounds=\"[0,270][200,310]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" content-desc=\"\" bounds=\"[0,360][200,400]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" content-desc=\"\" bounds=\"[0,450][200,490]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25968;&#37327;&#65306;1\" content-desc=\"\" bounds=\"[0,540][200,580]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#31435;&#21363;&#36141;&#20080;\" content-desc=\"\" bounds=\"[0,1100][200,1150]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /></node></hierarchy>",
+        "ocr": [
+          [
+            "订单详情",
+            0,
+            0,
+            200,
+            40
+          ],
+          [
+            "订单号：order-A",
+            0,
+            90,
+            200,
+            130
+          ],
+          [
+            "总计 ¥16.60",
+            0,
+            180,
+            200,
+            220
+          ],
+          [
+            "收款方：shop-A",
+            0,
+            270,
+            200,
+            310
+          ],
+          [
+            "商品名称：柠檬茶",
+            0,
+            360,
+            200,
+            400
+          ],
+          [
+            "规格：中杯",
+            0,
+            450,
+            200,
+            490
+          ],
+          [
+            "数量：1",
+            0,
+            540,
+            200,
+            580
+          ],
+          [
+            "立即购买",
+            0,
+            1100,
+            200,
+            1150
+          ]
+        ]
+      },
+      "after": {
+        "xml": "<hierarchy width=\"1000\" height=\"800\"><node text=\"\" content-desc=\"\" bounds=\"[0,900][1000,1600]\" class=\"android.view.ViewGroup\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\"><node text=\"&#25903;&#20184;&#32467;&#26524;\" content-desc=\"\" bounds=\"[0,900][240,935]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35746;&#21333;&#21495;&#65306;order-A\" content-desc=\"\" bounds=\"[0,960][240,995]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#24635;&#35745; &#165;16.60\" content-desc=\"\" bounds=\"[0,1020][240,1055]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" content-desc=\"\" bounds=\"[0,1080][240,1115]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" content-desc=\"\" bounds=\"[0,1140][240,1175]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" content-desc=\"\" bounds=\"[0,1200][240,1235]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25968;&#37327;&#65306;1\" content-desc=\"\" bounds=\"[0,1260][240,1295]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#24050;&#25903;&#20184;\" content-desc=\"\" bounds=\"[0,1320][240,1355]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /></node></hierarchy>",
+        "ocr": [
+          [
+            "订单号：order-A",
+            0,
+            960,
+            240,
+            995
+          ]
+        ]
+      },
+      "current_viewport": [
+        1000,
+        800
+      ],
+      "cached_viewport": [
+        1000,
+        800
+      ]
+    },
+    {
+      "name": "rotation_cached",
+      "reviewer_source": "rotation_cached-viewport-bridge.json",
+      "kind": "viewport",
+      "initial": {
+        "xml": "<hierarchy rotation=\"0\"><node text=\"\" content-desc=\"\" bounds=\"[0,0][1000,1400]\" class=\"android.view.ViewGroup\" resource-id=\"com.aliyun.tongyi:id/screen\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\"><node text=\"&#35746;&#21333;&#35814;&#24773;\" content-desc=\"\" bounds=\"[0,0][200,40]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35746;&#21333;&#21495;&#65306;order-A\" content-desc=\"\" bounds=\"[0,90][200,130]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#24635;&#35745; &#165;16.60\" content-desc=\"\" bounds=\"[0,180][200,220]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" content-desc=\"\" bounds=\"[0,270][200,310]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" content-desc=\"\" bounds=\"[0,360][200,400]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" content-desc=\"\" bounds=\"[0,450][200,490]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25968;&#37327;&#65306;1\" content-desc=\"\" bounds=\"[0,540][200,580]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#31435;&#21363;&#36141;&#20080;\" content-desc=\"\" bounds=\"[0,1100][200,1150]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /></node></hierarchy>",
+        "ocr": [
+          [
+            "订单详情",
+            0,
+            0,
+            200,
+            40
+          ],
+          [
+            "订单号：order-A",
+            0,
+            90,
+            200,
+            130
+          ],
+          [
+            "总计 ¥16.60",
+            0,
+            180,
+            200,
+            220
+          ],
+          [
+            "收款方：shop-A",
+            0,
+            270,
+            200,
+            310
+          ],
+          [
+            "商品名称：柠檬茶",
+            0,
+            360,
+            200,
+            400
+          ],
+          [
+            "规格：中杯",
+            0,
+            450,
+            200,
+            490
+          ],
+          [
+            "数量：1",
+            0,
+            540,
+            200,
+            580
+          ],
+          [
+            "立即购买",
+            0,
+            1100,
+            200,
+            1150
+          ]
+        ]
+      },
+      "after": {
+        "xml": "<hierarchy width=\"1600\" height=\"1000\"><node text=\"\" content-desc=\"\" bounds=\"[0,1040][1000,1600]\" class=\"android.view.ViewGroup\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\"><node text=\"&#25903;&#20184;&#32467;&#26524;\" content-desc=\"\" bounds=\"[0,1040][240,1075]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35746;&#21333;&#21495;&#65306;order-A\" content-desc=\"\" bounds=\"[0,1100][240,1135]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#24635;&#35745; &#165;16.60\" content-desc=\"\" bounds=\"[0,1160][240,1195]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" content-desc=\"\" bounds=\"[0,1220][240,1255]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" content-desc=\"\" bounds=\"[0,1280][240,1315]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" content-desc=\"\" bounds=\"[0,1340][240,1375]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25968;&#37327;&#65306;1\" content-desc=\"\" bounds=\"[0,1400][240,1435]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#24050;&#25903;&#20184;\" content-desc=\"\" bounds=\"[0,1460][240,1495]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /></node></hierarchy>",
+        "ocr": [
+          [
+            "订单号：order-A",
+            0,
+            1100,
+            240,
+            1135
+          ]
+        ]
+      },
+      "current_viewport": [
+        1600,
+        1000
+      ],
+      "cached_viewport": [
+        1000,
+        1600
+      ]
+    },
+    {
+      "name": "rotation_fresh",
+      "reviewer_source": "rotation_fresh-viewport-bridge.json",
+      "kind": "viewport",
+      "initial": {
+        "xml": "<hierarchy rotation=\"0\"><node text=\"\" content-desc=\"\" bounds=\"[0,0][1000,1400]\" class=\"android.view.ViewGroup\" resource-id=\"com.aliyun.tongyi:id/screen\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\"><node text=\"&#35746;&#21333;&#35814;&#24773;\" content-desc=\"\" bounds=\"[0,0][200,40]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35746;&#21333;&#21495;&#65306;order-A\" content-desc=\"\" bounds=\"[0,90][200,130]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#24635;&#35745; &#165;16.60\" content-desc=\"\" bounds=\"[0,180][200,220]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" content-desc=\"\" bounds=\"[0,270][200,310]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" content-desc=\"\" bounds=\"[0,360][200,400]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" content-desc=\"\" bounds=\"[0,450][200,490]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25968;&#37327;&#65306;1\" content-desc=\"\" bounds=\"[0,540][200,580]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#31435;&#21363;&#36141;&#20080;\" content-desc=\"\" bounds=\"[0,1100][200,1150]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /></node></hierarchy>",
+        "ocr": [
+          [
+            "订单详情",
+            0,
+            0,
+            200,
+            40
+          ],
+          [
+            "订单号：order-A",
+            0,
+            90,
+            200,
+            130
+          ],
+          [
+            "总计 ¥16.60",
+            0,
+            180,
+            200,
+            220
+          ],
+          [
+            "收款方：shop-A",
+            0,
+            270,
+            200,
+            310
+          ],
+          [
+            "商品名称：柠檬茶",
+            0,
+            360,
+            200,
+            400
+          ],
+          [
+            "规格：中杯",
+            0,
+            450,
+            200,
+            490
+          ],
+          [
+            "数量：1",
+            0,
+            540,
+            200,
+            580
+          ],
+          [
+            "立即购买",
+            0,
+            1100,
+            200,
+            1150
+          ]
+        ]
+      },
+      "after": {
+        "xml": "<hierarchy width=\"1600\" height=\"1000\"><node text=\"\" content-desc=\"\" bounds=\"[0,1040][1000,1600]\" class=\"android.view.ViewGroup\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\"><node text=\"&#25903;&#20184;&#32467;&#26524;\" content-desc=\"\" bounds=\"[0,1040][240,1075]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35746;&#21333;&#21495;&#65306;order-A\" content-desc=\"\" bounds=\"[0,1100][240,1135]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#24635;&#35745; &#165;16.60\" content-desc=\"\" bounds=\"[0,1160][240,1195]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" content-desc=\"\" bounds=\"[0,1220][240,1255]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" content-desc=\"\" bounds=\"[0,1280][240,1315]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" content-desc=\"\" bounds=\"[0,1340][240,1375]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25968;&#37327;&#65306;1\" content-desc=\"\" bounds=\"[0,1400][240,1435]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#24050;&#25903;&#20184;\" content-desc=\"\" bounds=\"[0,1460][240,1495]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /></node></hierarchy>",
+        "ocr": [
+          [
+            "订单号：order-A",
+            0,
+            1100,
+            240,
+            1135
+          ]
+        ]
+      },
+      "current_viewport": [
+        1600,
+        1000
+      ],
+      "cached_viewport": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "name": "native_one_debit_paid",
+      "kind": "positive_direct",
+      "initial": {
+        "xml": "<hierarchy rotation=\"0\"><node text=\"\" content-desc=\"\" bounds=\"[0,0][1000,1400]\" class=\"android.view.ViewGroup\" resource-id=\"com.aliyun.tongyi:id/screen\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\"><node text=\"&#35746;&#21333;&#35814;&#24773;\" content-desc=\"\" bounds=\"[0,0][200,40]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35746;&#21333;&#21495;&#65306;order-A\" content-desc=\"\" bounds=\"[0,90][200,130]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#24635;&#35745; &#165;16.60\" content-desc=\"\" bounds=\"[0,180][200,220]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" content-desc=\"\" bounds=\"[0,270][200,310]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" content-desc=\"\" bounds=\"[0,360][200,400]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" content-desc=\"\" bounds=\"[0,450][200,490]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25968;&#37327;&#65306;1\" content-desc=\"\" bounds=\"[0,540][200,580]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#31435;&#21363;&#36141;&#20080;\" content-desc=\"\" bounds=\"[0,1100][200,1150]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /></node></hierarchy>",
+        "ocr": [
+          [
+            "订单详情",
+            0,
+            0,
+            200,
+            40
+          ],
+          [
+            "订单号：order-A",
+            0,
+            90,
+            200,
+            130
+          ],
+          [
+            "总计 ¥16.60",
+            0,
+            180,
+            200,
+            220
+          ],
+          [
+            "收款方：shop-A",
+            0,
+            270,
+            200,
+            310
+          ],
+          [
+            "商品名称：柠檬茶",
+            0,
+            360,
+            200,
+            400
+          ],
+          [
+            "规格：中杯",
+            0,
+            450,
+            200,
+            490
+          ],
+          [
+            "数量：1",
+            0,
+            540,
+            200,
+            580
+          ],
+          [
+            "立即购买",
+            0,
+            1100,
+            200,
+            1150
+          ]
+        ]
+      },
+      "after": {
+        "xml": "<hierarchy rotation=\"0\"><node text=\"\" content-desc=\"\" bounds=\"[0,0][1000,1400]\" class=\"android.view.ViewGroup\" resource-id=\"com.aliyun.tongyi:id/screen\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\"><node text=\"&#25903;&#20184;&#32467;&#26524;\" content-desc=\"\" bounds=\"[0,0][200,40]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35746;&#21333;&#21495;&#65306;order-A\" content-desc=\"\" bounds=\"[0,90][200,130]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#24635;&#35745; &#165;16.60\" content-desc=\"\" bounds=\"[0,180][200,220]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" content-desc=\"\" bounds=\"[0,270][200,310]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" content-desc=\"\" bounds=\"[0,360][200,400]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" content-desc=\"\" bounds=\"[0,450][200,490]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25968;&#37327;&#65306;1\" content-desc=\"\" bounds=\"[0,540][200,580]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#26410;&#25903;&#20184;\" content-desc=\"\" bounds=\"[0,810][200,850]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#30830;&#35748;&#20184;&#27454;\" content-desc=\"\" bounds=\"[0,1100][200,1150]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /></node></hierarchy>",
+        "ocr": [
+          [
+            "支付结果",
+            0,
+            0,
+            200,
+            40
+          ],
+          [
+            "订单号：order-A",
+            0,
+            90,
+            200,
+            130
+          ],
+          [
+            "总计 ¥16.60",
+            0,
+            180,
+            200,
+            220
+          ],
+          [
+            "收款方：shop-A",
+            0,
+            270,
+            200,
+            310
+          ],
+          [
+            "商品名称：柠檬茶",
+            0,
+            360,
+            200,
+            400
+          ],
+          [
+            "规格：中杯",
+            0,
+            450,
+            200,
+            490
+          ],
+          [
+            "数量：1",
+            0,
+            540,
+            200,
+            580
+          ],
+          [
+            "支付状态：未支付",
+            0,
+            810,
+            200,
+            850
+          ],
+          [
+            "确认付款",
+            0,
+            1100,
+            200,
+            1150
+          ]
+        ]
+      },
+      "paid": {
+        "xml": "<hierarchy rotation=\"0\"><node text=\"\" content-desc=\"\" bounds=\"[0,0][1000,1400]\" class=\"android.view.ViewGroup\" resource-id=\"com.aliyun.tongyi:id/screen\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\"><node text=\"&#25903;&#20184;&#32467;&#26524;\" content-desc=\"\" bounds=\"[0,0][200,40]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35746;&#21333;&#21495;&#65306;order-A\" content-desc=\"\" bounds=\"[0,90][200,130]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#24635;&#35745; &#165;16.60\" content-desc=\"\" bounds=\"[0,180][200,220]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" content-desc=\"\" bounds=\"[0,270][200,310]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" content-desc=\"\" bounds=\"[0,360][200,400]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" content-desc=\"\" bounds=\"[0,450][200,490]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25968;&#37327;&#65306;1\" content-desc=\"\" bounds=\"[0,540][200,580]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#24050;&#25903;&#20184;\" content-desc=\"\" bounds=\"[0,810][200,850]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#30830;&#35748;&#20184;&#27454;\" content-desc=\"\" bounds=\"[0,1100][200,1150]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /></node></hierarchy>",
+        "ocr": [
+          [
+            "支付结果",
+            0,
+            0,
+            200,
+            40
+          ],
+          [
+            "订单号：order-A",
+            0,
+            90,
+            200,
+            130
+          ],
+          [
+            "总计 ¥16.60",
+            0,
+            180,
+            200,
+            220
+          ],
+          [
+            "收款方：shop-A",
+            0,
+            270,
+            200,
+            310
+          ],
+          [
+            "商品名称：柠檬茶",
+            0,
+            360,
+            200,
+            400
+          ],
+          [
+            "规格：中杯",
+            0,
+            450,
+            200,
+            490
+          ],
+          [
+            "数量：1",
+            0,
+            540,
+            200,
+            580
+          ],
+          [
+            "支付状态：已支付",
+            0,
+            810,
+            200,
+            850
+          ],
+          [
+            "确认付款",
+            0,
+            1100,
+            200,
+            1150
+          ]
+        ]
+      }
+    },
+    {
+      "name": "native_forward_one_debit_paid",
+      "kind": "positive_forward",
+      "initial": {
+        "xml": "<hierarchy rotation=\"0\"><node text=\"\" content-desc=\"\" bounds=\"[0,0][1000,1400]\" class=\"android.view.ViewGroup\" resource-id=\"com.aliyun.tongyi:id/screen\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\"><node text=\"&#35746;&#21333;&#35814;&#24773;\" content-desc=\"\" bounds=\"[0,0][200,40]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35746;&#21333;&#21495;&#65306;order-A\" content-desc=\"\" bounds=\"[0,90][200,130]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#24635;&#35745; &#165;16.60\" content-desc=\"\" bounds=\"[0,180][200,220]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" content-desc=\"\" bounds=\"[0,270][200,310]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" content-desc=\"\" bounds=\"[0,360][200,400]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" content-desc=\"\" bounds=\"[0,450][200,490]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25968;&#37327;&#65306;1\" content-desc=\"\" bounds=\"[0,540][200,580]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#31435;&#21363;&#36141;&#20080;\" content-desc=\"\" bounds=\"[0,1100][200,1150]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /></node></hierarchy>",
+        "ocr": [
+          [
+            "订单详情",
+            0,
+            0,
+            200,
+            40
+          ],
+          [
+            "订单号：order-A",
+            0,
+            90,
+            200,
+            130
+          ],
+          [
+            "总计 ¥16.60",
+            0,
+            180,
+            200,
+            220
+          ],
+          [
+            "收款方：shop-A",
+            0,
+            270,
+            200,
+            310
+          ],
+          [
+            "商品名称：柠檬茶",
+            0,
+            360,
+            200,
+            400
+          ],
+          [
+            "规格：中杯",
+            0,
+            450,
+            200,
+            490
+          ],
+          [
+            "数量：1",
+            0,
+            540,
+            200,
+            580
+          ],
+          [
+            "立即购买",
+            0,
+            1100,
+            200,
+            1150
+          ]
+        ]
+      },
+      "after": {
+        "xml": "<hierarchy rotation=\"0\"><node text=\"\" content-desc=\"\" bounds=\"[0,0][1000,1400]\" class=\"android.view.ViewGroup\" resource-id=\"com.aliyun.tongyi:id/screen\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\"><node text=\"&#25903;&#20184;&#32467;&#26524;\" content-desc=\"\" bounds=\"[0,0][200,40]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35746;&#21333;&#21495;&#65306;order-A\" content-desc=\"\" bounds=\"[0,90][200,130]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#24635;&#35745; &#165;16.60\" content-desc=\"\" bounds=\"[0,180][200,220]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" content-desc=\"\" bounds=\"[0,270][200,310]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" content-desc=\"\" bounds=\"[0,360][200,400]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" content-desc=\"\" bounds=\"[0,450][200,490]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25968;&#37327;&#65306;1\" content-desc=\"\" bounds=\"[0,540][200,580]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#26410;&#25903;&#20184;\" content-desc=\"\" bounds=\"[0,810][200,850]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#30830;&#35748;&#20184;&#27454;\" content-desc=\"\" bounds=\"[0,1100][200,1150]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /></node></hierarchy>",
+        "ocr": [
+          [
+            "支付结果",
+            0,
+            0,
+            200,
+            40
+          ],
+          [
+            "订单号：order-A",
+            0,
+            90,
+            200,
+            130
+          ],
+          [
+            "总计 ¥16.60",
+            0,
+            180,
+            200,
+            220
+          ],
+          [
+            "收款方：shop-A",
+            0,
+            270,
+            200,
+            310
+          ],
+          [
+            "商品名称：柠檬茶",
+            0,
+            360,
+            200,
+            400
+          ],
+          [
+            "规格：中杯",
+            0,
+            450,
+            200,
+            490
+          ],
+          [
+            "数量：1",
+            0,
+            540,
+            200,
+            580
+          ],
+          [
+            "支付状态：未支付",
+            0,
+            810,
+            200,
+            850
+          ],
+          [
+            "确认付款",
+            0,
+            1100,
+            200,
+            1150
+          ]
+        ]
+      },
+      "paid": {
+        "xml": "<hierarchy rotation=\"0\"><node text=\"\" content-desc=\"\" bounds=\"[0,0][1000,1400]\" class=\"android.view.ViewGroup\" resource-id=\"com.aliyun.tongyi:id/screen\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\"><node text=\"&#25903;&#20184;&#32467;&#26524;\" content-desc=\"\" bounds=\"[0,0][200,40]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35746;&#21333;&#21495;&#65306;order-A\" content-desc=\"\" bounds=\"[0,90][200,130]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#24635;&#35745; &#165;16.60\" content-desc=\"\" bounds=\"[0,180][200,220]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25910;&#27454;&#26041;&#65306;shop-A\" content-desc=\"\" bounds=\"[0,270][200,310]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#21830;&#21697;&#21517;&#31216;&#65306;&#26592;&#27308;&#33590;\" content-desc=\"\" bounds=\"[0,360][200,400]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#35268;&#26684;&#65306;&#20013;&#26479;\" content-desc=\"\" bounds=\"[0,450][200,490]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25968;&#37327;&#65306;1\" content-desc=\"\" bounds=\"[0,540][200,580]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#25903;&#20184;&#29366;&#24577;&#65306;&#24050;&#25903;&#20184;\" content-desc=\"\" bounds=\"[0,810][200,850]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /><node text=\"&#30830;&#35748;&#20184;&#27454;\" content-desc=\"\" bounds=\"[0,1100][200,1150]\" class=\"android.widget.TextView\" resource-id=\"\" package=\"com.aliyun.tongyi\" enabled=\"true\" visible-to-user=\"true\" clickable=\"false\" /></node></hierarchy>",
+        "ocr": [
+          [
+            "支付结果",
+            0,
+            0,
+            200,
+            40
+          ],
+          [
+            "订单号：order-A",
+            0,
+            90,
+            200,
+            130
+          ],
+          [
+            "总计 ¥16.60",
+            0,
+            180,
+            200,
+            220
+          ],
+          [
+            "收款方：shop-A",
+            0,
+            270,
+            200,
+            310
+          ],
+          [
+            "商品名称：柠檬茶",
+            0,
+            360,
+            200,
+            400
+          ],
+          [
+            "规格：中杯",
+            0,
+            450,
+            200,
+            490
+          ],
+          [
+            "数量：1",
+            0,
+            540,
+            200,
+            580
+          ],
+          [
+            "支付状态：已支付",
+            0,
+            810,
+            200,
+            850
+          ],
+          [
+            "确认付款",
+            0,
+            1100,
+            200,
+            1150
+          ]
+        ]
+      }
+    }
+  ]
+}

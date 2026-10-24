@@ -1,0 +1,59 @@
+[
+  {
+    "package": "com.aliyun.tongyi",
+    "url": "https://imtt.dd.qq.com/16891/apk/14EBB275E54713659119EC5FF175C02A.apk",
+    "sha256": "9a241ce291f919fed72aab58633b90b1a116a7793b5b60cb26fd23046a3c8dfa",
+    "signer_sha256": "4f1f7b187407b39d50534118ab099f1e9bb0e3c0540ce9924e3da0fb966eaa98",
+    "version": "7.4.8.3059",
+    "source_page": "https://sj.qq.com/appdetail/com.aliyun.tongyi",
+    "version_code": 70408
+  },
+  {
+    "package": "com.taobao.taobao",
+    "url": "https://download.alicdn.com/wireless/taobao4android/latest/702757.apk",
+    "sha256": "388ef593027a5247fba4220820f161d0b62f216859fde33c20a8e4c0a14211de",
+    "signer_sha256": "c5e9bc4c5cc7a34482c627cb9a76b88e30b509d0da3ba54a66274200e19c2743",
+    "version": "10.66.40",
+    "source_page": "https://download.alicdn.com/wireless/taobao4android/latest/702757.apk",
+    "version_code": 863
+  },
+  {
+    "package": "com.eg.android.AlipayGphone",
+    "url": "https://tfs.alipayobjects.com/L1/71/100/and/alipay_wap_main_64.apk",
+    "sha256": "e016dff7347972f1878f3e1a4e166ee0e7ae18c419aeff22cdb1ca0b24991629",
+    "signer_sha256": "389b49f7832f53e9017923220aa85e14dfaa4886ecd7428818bf339543cf498a",
+    "version": "12.12.36.8000",
+    "source_page": "https://mobile.alipay.com/",
+    "version_code": 212370
+  },
+  {
+    "package": "com.xiaomi.smarthome",
+    "url": "https://fga1.market.xiaomi.com/download/AppStore/0fda035f0aaf8476fb20d5a4f5799fee205fba69f/com.xiaomi.smarthome.apk",
+    "sha256": "73335d3c17dff3e73097db7e2f86a373b7eb2c67611dc82749883ab2da3f0b6e",
+    "signer_sha256": "237ada9aca86c5d0b0a411af5d3a899545969705f3b9e36f8d8508f4dfbd444d",
+    "version": "11.7.709",
+    "source_page": "https://app.mi.com/details?id=com.xiaomi.smarthome",
+    "version_code": 110717091
+  },
+  {
+    "package": "com.mobilerun.portal",
+    "url": "https://github.com/droidrun/mobilerun-portal/releases/download/v0.7.25/com.mobilerun.portal-0.7.25.apk",
+    "sha256": "6dc9e8327fcaecf3ba0ad5054f19357d832fc923763fb6c9d1ab09f79e3d3297",
+    "signer_sha256": "f425a9af490803f5e10512c4cc47b9bedefa802b04ba8712a39a001efa033406",
+    "version": "0.7.25",
+    "source_page": "https://github.com/droidrun/mobilerun-portal/releases/tag/v0.7.25",
+    "transfer": "gzip",
+    "version_code": 539
+  },
+  {
+    "package": "io.appium.settings",
+    "url": "https://registry.npmjs.org/io.appium.settings/-/io.appium.settings-8.4.1.tgz",
+    "sha256": "9f80de249464b2c8ebde081ec194390af6d9cddc42d831e3f39b1efe90f9b4c1",
+    "signer_sha256": "3e420acd3d15b827bb2f14a94ecdd78077abe58ee48aae3c3c6d3adfdab37c24",
+    "archive_path": "package/apks/settings_apk-debug.apk",
+    "version": "8.4.1",
+    "source_page": "https://www.npmjs.com/package/io.appium.settings/v/8.4.1",
+    "version_code": 199,
+    "archive_sha256": "944540b4321298d51a9a13f10cbab242730d9144d29bd0be62daaacb383f1a1f"
+  }
+]

@@ -1,0 +1,1088 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://personal-ai-os.local/contracts/terminal-message.v1.json",
+  "version": 4,
+  "schema": "paios.central.text-envelope.v1",
+  "input_topic": "paios.central.text.v1",
+  "output_topic": "paios.central.sealed-text.v1",
+  "input_limit": 8192,
+  "output_limit": 12288,
+  "controls": [
+    "terminal_revoke",
+    "desktop_pause"
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+    },
+    "at": {
+      "type": "string",
+      "format": "paios-utc"
+    },
+    "confirmation_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "terminal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "device_id",
+        "device_class",
+        "paired_at",
+        "connected",
+        "self"
+      ],
+      "properties": {
+        "device_id": {
+          "$ref": "#/$defs/id"
+        },
+        "device_class": {
+          "enum": [
+            "iphone",
+            "glasses",
+            "mac"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f]+$"
+        },
+        "paired_at": {
+          "$ref": "#/$defs/at"
+        },
+        "connected": {
+          "type": "boolean"
+        },
+        "last_seen_at": {
+          "$ref": "#/$defs/at"
+        },
+        "self": {
+          "type": "boolean"
+        },
+        "paused": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "paused"
+            ],
+            "properties": {
+              "paused": {}
+            }
+          },
+          "then": {
+            "properties": {
+              "device_class": {
+                "const": "mac"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "timeline_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "seq",
+        "item_id",
+        "kind",
+        "via",
+        "text",
+        "at"
+      ],
+      "properties": {
+        "seq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "item_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "owner",
+            "yimi",
+            "notice"
+          ]
+        },
+        "via": {
+          "enum": [
+            "text",
+            "ptt",
+            "ambient",
+            "errand",
+            "proactive",
+            "queue"
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "at": {
+          "$ref": "#/$defs/at"
+        },
+        "source_class": {
+          "enum": [
+            "iphone",
+            "glasses",
+            "mac",
+            "watch"
+          ]
+        },
+        "part": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "parts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "attachments": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/$defs/timeline_attachment"
+          }
+        }
+      },
+      "dependencies": {
+        "part": [
+          "parts"
+        ],
+        "parts": [
+          "part"
+        ]
+      }
+    },
+    "confirmation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "confirmation_id",
+        "kind",
+        "expires_in_ms",
+        "answer_on"
+      ],
+      "properties": {
+        "confirmation_id": {
+          "$ref": "#/$defs/confirmation_id"
+        },
+        "kind": {
+          "enum": [
+            "native_approval",
+            "voice"
+          ]
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "expires_in_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "answer_on": {
+          "const": "phone"
+        }
+      }
+    },
+    "timeline_attachment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "kind",
+        "size"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "kind": {
+          "enum": [
+            "pdf",
+            "image",
+            "document",
+            "spreadsheet",
+            "presentation",
+            "text",
+            "archive",
+            "other"
+          ]
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "avatar_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "look_id",
+        "style",
+        "image_url",
+        "focus",
+        "updated_at"
+      ],
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "look_id": {
+          "$ref": "#/$defs/id"
+        },
+        "style": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "image_url": {
+          "type": "string",
+          "pattern": "^https://[^\\s]+$",
+          "maxLength": 2048
+        },
+        "focus": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "x",
+            "y"
+          ],
+          "properties": {
+            "x": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "y": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        },
+        "updated_at": {
+          "$ref": "#/$defs/at"
+        }
+      }
+    }
+  },
+  "inputs": {
+    "terminal_revoke": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "device_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "terminal_revoke"
+          },
+          "control_id": {
+            "$ref": "#/$defs/id"
+          },
+          "device_id": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      },
+      "error": "FORMAL_CONTROL_ARGUMENT_INVALID"
+    },
+    "desktop_pause": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "paused"
+        ],
+        "properties": {
+          "operation": {
+            "const": "desktop_pause"
+          },
+          "control_id": {
+            "$ref": "#/$defs/id"
+          },
+          "device_id": {
+            "$ref": "#/$defs/id"
+          },
+          "paused": {
+            "type": "boolean"
+          }
+        }
+      },
+      "error": "FORMAL_CONTROL_ARGUMENT_INVALID"
+    },
+    "timeline_sync": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "request_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "timeline_sync"
+          },
+          "request_id": {
+            "$ref": "#/$defs/id"
+          },
+          "after_seq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "before_seq": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "page_markers": {
+            "type": "boolean"
+          }
+        },
+        "not": {
+          "required": [
+            "after_seq",
+            "before_seq"
+          ],
+          "properties": {
+            "after_seq": {},
+            "before_seq": {}
+          }
+        }
+      },
+      "error": "FORMAL_CONTROL_ARGUMENT_INVALID"
+    },
+    "avatar_sync": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation"
+        ],
+        "properties": {
+          "operation": {
+            "const": "avatar_sync"
+          },
+          "request_id": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      },
+      "error": "FORMAL_CONTROL_ARGUMENT_INVALID"
+    },
+    "turns_sync": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "request_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "turns_sync"
+          },
+          "request_id": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      },
+      "error": "FORMAL_CONTROL_ARGUMENT_INVALID"
+    },
+    "avatar_loaded": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "profile_version"
+        ],
+        "properties": {
+          "operation": {
+            "const": "avatar_loaded"
+          },
+          "request_id": {
+            "$ref": "#/$defs/id"
+          },
+          "profile_version": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        }
+      },
+      "error": "FORMAL_CONTROL_ARGUMENT_INVALID"
+    }
+  },
+  "outputs": {
+    "terminals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "terminals"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "terminals"
+        },
+        "session_id": {
+          "$ref": "#/$defs/id"
+        },
+        "terminals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/terminal"
+          },
+          "maxItems": 16
+        }
+      }
+    },
+    "terminal_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "control_id",
+        "ok"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "terminal_receipt"
+        },
+        "session_id": {
+          "$ref": "#/$defs/id"
+        },
+        "control_id": {
+          "$ref": "#/$defs/id"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "error_code": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{0,99}$"
+        }
+      }
+    },
+    "timeline_items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "items",
+        "head_seq",
+        "has_more"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "timeline_items"
+        },
+        "session_id": {
+          "$ref": "#/$defs/id"
+        },
+        "request_id": {
+          "$ref": "#/$defs/id"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/timeline_item"
+          },
+          "maxItems": 100
+        },
+        "head_seq": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "has_more": {
+          "type": "boolean"
+        },
+        "page_end": {
+          "type": "boolean",
+          "description": "For page_markers requests, true only on the final frame of this requested page."
+        }
+      }
+    },
+    "confirmations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "items"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "confirmations"
+        },
+        "session_id": {
+          "$ref": "#/$defs/id"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/confirmation"
+          },
+          "maxItems": 16
+        }
+      }
+    },
+    "timeline_removed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "head_seq",
+        "seq",
+        "has_more"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "timeline_removed"
+        },
+        "session_id": {
+          "$ref": "#/$defs/id"
+        },
+        "request_id": {
+          "$ref": "#/$defs/id"
+        },
+        "head_seq": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "removed_seqs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "before_seq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "has_more": {
+          "type": "boolean"
+        },
+        "page_end": {
+          "type": "boolean",
+          "description": "For page_markers requests, true only on the final frame of this requested page."
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "removed_seqs"
+          ],
+          "properties": {
+            "removed_seqs": {}
+          }
+        },
+        {
+          "required": [
+            "before_seq"
+          ],
+          "properties": {
+            "before_seq": {}
+          }
+        }
+      ],
+      "description": "Apply this durable removal in sequence. Advance the catch-up cursor to seq; has_more describes the requested page."
+    },
+    "timeline_reset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "head_seq"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "timeline_reset"
+        },
+        "session_id": {
+          "$ref": "#/$defs/id"
+        },
+        "request_id": {
+          "$ref": "#/$defs/id"
+        },
+        "head_seq": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "description": "The cursor is older than retained removals. Drop all cached timeline items and request timeline_sync without a cursor."
+    },
+    "timeline_resync": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "head_seq"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "timeline_resync"
+        },
+        "session_id": {
+          "$ref": "#/$defs/id"
+        },
+        "request_id": {
+          "$ref": "#/$defs/id"
+        },
+        "head_seq": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "description": "Publication saturated. Finish the current item, then request timeline_sync from the last fully reassembled sequence."
+    },
+    "avatar_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "profile"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "avatar_state"
+        },
+        "session_id": {
+          "$ref": "#/$defs/id"
+        },
+        "request_id": {
+          "$ref": "#/$defs/id"
+        },
+        "profile": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/avatar_profile"
+            }
+          ]
+        },
+        "profile_version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "loaded_receipts": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "device_id",
+              "device_type",
+              "profile_version",
+              "loaded_at"
+            ],
+            "properties": {
+              "device_id": {
+                "$ref": "#/$defs/id"
+              },
+              "device_type": {
+                "enum": [
+                  "mac",
+                  "phone",
+                  "glasses",
+                  "watch"
+                ]
+              },
+              "profile_version": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "loaded_at": {
+                "$ref": "#/$defs/at"
+              }
+            }
+          }
+        }
+      }
+    },
+    "turns_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "foreground_replies",
+        "background_work_count"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "turns_state"
+        },
+        "session_id": {
+          "$ref": "#/$defs/id"
+        },
+        "request_id": {
+          "$ref": "#/$defs/id"
+        },
+        "foreground_replies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "call_id",
+              "turn"
+            ],
+            "properties": {
+              "call_id": {
+                "$ref": "#/$defs/id"
+              },
+              "turn": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "background_work_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  },
+  "examples": {
+    "inputs": {
+      "terminal_revoke": [
+        {
+          "operation": "terminal_revoke",
+          "control_id": "control-1",
+          "device_id": "mac-1"
+        }
+      ],
+      "desktop_pause": [
+        {
+          "operation": "desktop_pause",
+          "control_id": "control-2",
+          "paused": true
+        },
+        {
+          "operation": "desktop_pause",
+          "control_id": "control-3",
+          "device_id": "mac-1",
+          "paused": false
+        }
+      ],
+      "timeline_sync": [
+        {
+          "operation": "timeline_sync",
+          "request_id": "sync-1"
+        },
+        {
+          "operation": "timeline_sync",
+          "request_id": "sync-2",
+          "after_seq": 0,
+          "limit": 100
+        },
+        {
+          "operation": "timeline_sync",
+          "request_id": "sync-3",
+          "before_seq": 10
+        }
+      ],
+      "avatar_sync": [
+        {
+          "operation": "avatar_sync",
+          "request_id": "avatar-sync-1"
+        }
+      ],
+      "avatar_loaded": [
+        {
+          "operation": "avatar_loaded",
+          "profile_version": 2
+        }
+      ],
+      "turns_sync": [
+        {
+          "operation": "turns_sync",
+          "request_id": "sync-turns-1"
+        }
+      ]
+    },
+    "outputs": {
+      "terminals": [
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "terminals",
+          "session_id": "session-1",
+          "terminals": [
+            {
+              "device_id": "mac-1",
+              "device_class": "mac",
+              "label": "我的电脑",
+              "paired_at": "2026-10-14T12:00:00.000Z",
+              "connected": true,
+              "self": false,
+              "paused": false
+            }
+          ]
+        }
+      ],
+      "terminal_receipt": [
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "terminal_receipt",
+          "session_id": "session-1",
+          "control_id": "control-1",
+          "ok": true
+        },
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "terminal_receipt",
+          "session_id": "session-1",
+          "control_id": "control-1",
+          "ok": false,
+          "error_code": "TERMINAL_REVOKE_DENIED"
+        }
+      ],
+      "timeline_items": [
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "timeline_items",
+          "session_id": "session-1",
+          "request_id": "sync-1",
+          "items": [
+            {
+              "seq": 1,
+              "item_id": "me-event-1",
+              "kind": "owner",
+              "via": "text",
+              "text": "整理发票",
+              "at": "2026-10-14T12:00:00.000Z",
+              "source_class": "iphone",
+              "attachments": [
+                {
+                  "name": "发票.pdf",
+                  "kind": "pdf",
+                  "size": 1024
+                }
+              ]
+            }
+          ],
+          "head_seq": 1,
+          "has_more": false
+        },
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "timeline_items",
+          "session_id": "session-1",
+          "items": [
+            {
+              "seq": 2,
+              "item_id": "her-event-1",
+              "kind": "yimi",
+              "via": "text",
+              "text": "已整理",
+              "at": "2026-10-14T12:01:00.000Z",
+              "source_class": "mac",
+              "part": 1,
+              "parts": 2
+            }
+          ],
+          "head_seq": 2,
+          "has_more": true
+        }
+      ],
+      "confirmations": [
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "confirmations",
+          "session_id": "session-1",
+          "items": [
+            {
+              "confirmation_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "kind": "native_approval",
+              "text": "允许移到废纸篓吗？",
+              "expires_in_ms": 300000,
+              "answer_on": "phone"
+            },
+            {
+              "confirmation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "kind": "voice",
+              "expires_in_ms": 10000,
+              "answer_on": "phone"
+            }
+          ]
+        }
+      ],
+      "timeline_removed": [
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "timeline_removed",
+          "session_id": "session-1",
+          "head_seq": 3,
+          "seq": 3,
+          "removed_seqs": [
+            1,
+            2
+          ],
+          "has_more": false
+        }
+      ],
+      "timeline_reset": [
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "timeline_reset",
+          "session_id": "session-1",
+          "head_seq": 3
+        }
+      ],
+      "timeline_resync": [
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "timeline_resync",
+          "session_id": "session-1",
+          "head_seq": 3
+        }
+      ],
+      "avatar_state": [
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "avatar_state",
+          "session_id": "session-1",
+          "profile": null
+        },
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "avatar_state",
+          "session_id": "session-1",
+          "profile": {
+            "version": 1,
+            "look_id": "approved-look",
+            "style": "cartoon",
+            "image_url": "https://assets.example.test/approved-look.jpg",
+            "focus": {
+              "x": 0.5,
+              "y": 0.36
+            },
+            "updated_at": "2026-10-17T00:00:00.000Z"
+          }
+        }
+      ],
+      "turns_state": [
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "turns_state",
+          "session_id": "session-1",
+          "request_id": "sync-turns-1",
+          "foreground_replies": [
+            {
+              "call_id": "call-1",
+              "turn": 1
+            }
+          ],
+          "background_work_count": 2
+        },
+        {
+          "schema_version": "paios.central.text-envelope.v1",
+          "operation": "turns_state",
+          "session_id": "session-1",
+          "foreground_replies": [],
+          "background_work_count": 0
+        }
+      ]
+    }
+  }
+}

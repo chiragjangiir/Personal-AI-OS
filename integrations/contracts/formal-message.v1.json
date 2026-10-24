@@ -1,0 +1,6494 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$defs": {
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "latitude",
+        "longitude",
+        "accuracy_m",
+        "observed_at",
+        "datum"
+      ],
+      "properties": {
+        "latitude": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "longitude": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "accuracy_m": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "paios-utc"
+        },
+        "datum": {
+          "const": "wgs84"
+        },
+        "place": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target_device_id",
+        "device_type",
+        "output_modes",
+        "route_version"
+      ],
+      "properties": {
+        "target_device_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "device_type": {
+          "type": "string",
+          "enum": [
+            "phone",
+            "mac",
+            "watch",
+            "glasses"
+          ]
+        },
+        "output_modes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "text",
+              "voice"
+            ]
+          }
+        },
+        "route_version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        }
+      }
+    },
+    "admission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "run_id",
+        "idempotency_key"
+      ],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "submitting",
+            "accepted",
+            "running",
+            "reconcile_required",
+            "retryable",
+            "completed",
+            "cancelled",
+            "expired",
+            "failed"
+          ]
+        },
+        "run_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "idempotency_key": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "run_order": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "chunk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "output_id",
+        "reply_id",
+        "message_ref",
+        "run_id",
+        "event_id",
+        "target_device_id",
+        "route_version",
+        "reply_epoch",
+        "seq",
+        "text",
+        "final"
+      ],
+      "properties": {
+        "output_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "reply_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "message_ref": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "event_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "target_device_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "route_version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "reply_epoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "final": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "output_id",
+        "reply_id",
+        "target_device_id",
+        "route_version",
+        "reply_epoch",
+        "highest_contiguous_seq",
+        "status",
+        "observed_at"
+      ],
+      "properties": {
+        "output_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "reply_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "target_device_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "route_version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "reply_epoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "highest_contiguous_seq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "accepted",
+            "rendered",
+            "played"
+          ]
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "paios-utc"
+        }
+      }
+    },
+    "ack_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "output_id",
+        "reply_id",
+        "target_device_id",
+        "route_version",
+        "reply_epoch",
+        "highest_contiguous_seq",
+        "status",
+        "observed_at",
+        "receipt_ref"
+      ],
+      "properties": {
+        "output_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "reply_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "target_device_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "route_version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "reply_epoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "highest_contiguous_seq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "accepted",
+            "rendered",
+            "played"
+          ]
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "paios-utc"
+        },
+        "receipt_ref": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        }
+      }
+    },
+    "bootstrap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "execution_owner",
+        "expected_gateway_identity",
+        "input_topic",
+        "output_topic",
+        "max_packet_bytes"
+      ],
+      "properties": {
+        "schema": {
+          "const": "paios.central.text-transport.v1"
+        },
+        "execution_owner": {
+          "const": "hermes_text"
+        },
+        "expected_gateway_identity": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "input_topic": {
+          "const": "paios.central.text.v1"
+        },
+        "output_topic": {
+          "const": "paios.central.sealed-text.v1"
+        },
+        "voice_transport": {
+          "const": "wav_byte_stream_v1"
+        },
+        "call_rejoin_window_s": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483
+        },
+        "max_packet_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12288
+        }
+      }
+    },
+    "voice_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "operation_id"
+      ],
+      "properties": {
+        "operation": {
+          "enum": [
+            "voice_process",
+            "voice_candidates",
+            "voice_send",
+            "voice_close",
+            "voice_open",
+            "voice_commit"
+          ]
+        },
+        "operation_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "request": {
+          "type": "object"
+        },
+        "candidate_ref": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "candidate_revision": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "window_ref": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "selected_input_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "transcript_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "errand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "job_id",
+        "title",
+        "app",
+        "state",
+        "started_at",
+        "step",
+        "max_steps"
+      ],
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "pattern": "^job-[0-9a-f]{12}$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "app": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "state": {
+          "enum": [
+            "waiting",
+            "running",
+            "stopping"
+          ]
+        },
+        "started_at": {
+          "type": "string",
+          "format": "paios-utc"
+        },
+        "step": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "max_steps": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        }
+      }
+    },
+    "voiceprint_owner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enrolled",
+        "reenrollment_required",
+        "samples"
+      ],
+      "properties": {
+        "enrolled": {
+          "type": "boolean"
+        },
+        "reenrollment_required": {
+          "type": "boolean"
+        },
+        "samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "paios-utc"
+        },
+        "consistency_min": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        }
+      }
+    },
+    "health_workout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "dur"
+      ],
+      "properties": {
+        "type": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "dur": {
+          "type": "number",
+          "minimum": 0
+        },
+        "kcal": {
+          "type": "number",
+          "minimum": 0
+        },
+        "dist": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "health_sample": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "s",
+            "e",
+            "src",
+            "v"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            "s": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "e": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "src": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 15
+            },
+            "v": {
+              "type": "number"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "s",
+            "e",
+            "src",
+            "c"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            "s": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "e": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "src": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 15
+            },
+            "c": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "s",
+            "e",
+            "src",
+            "w"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            "s": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "e": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "src": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 15
+            },
+            "w": {
+              "$ref": "#/$defs/health_workout"
+            }
+          }
+        }
+      ]
+    },
+    "contact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "phones",
+        "relations"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "name": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 160
+        },
+        "phones": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "number",
+              "label"
+            ],
+            "properties": {
+              "number": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "label": {
+                "type": "string",
+                "minLength": 0,
+                "maxLength": 80
+              }
+            }
+          }
+        },
+        "relations": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "label",
+              "name"
+            ],
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              }
+            }
+          }
+        }
+      }
+    },
+    "camera_frame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "frame_id",
+        "captured_at",
+        "trigger",
+        "worn",
+        "private_paused"
+      ],
+      "properties": {
+        "frame_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "captured_at": {
+          "type": "string",
+          "format": "paios-utc"
+        },
+        "trigger": {
+          "enum": [
+            "interval",
+            "scene_change",
+            "user_request",
+            "head_dwell"
+          ]
+        },
+        "worn": {
+          "type": "boolean"
+        },
+        "private_paused": {
+          "type": "boolean"
+        }
+      }
+    },
+    "camera_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "interval_ms",
+        "triggers",
+        "private_paused"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "interval_ms": {
+          "type": "integer",
+          "minimum": 5000,
+          "maximum": 3600000
+        },
+        "triggers": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "interval",
+              "scene_change",
+              "user_request",
+              "head_dwell"
+            ]
+          }
+        },
+        "private_paused": {
+          "type": "boolean"
+        }
+      }
+    },
+    "care_safe_command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "control_id"
+      ],
+      "properties": {
+        "operation": {
+          "const": "care_safe"
+        },
+        "control_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        }
+      }
+    },
+    "errand_cancel_command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "job_id"
+      ],
+      "properties": {
+        "operation": {
+          "const": "errand_cancel"
+        },
+        "job_id": {
+          "type": "string",
+          "pattern": "^job-[0-9a-f]{12}$"
+        }
+      }
+    },
+    "wear_state_command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "control_id",
+        "worn"
+      ],
+      "properties": {
+        "operation": {
+          "const": "wear_state"
+        },
+        "control_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "worn": {
+          "type": "boolean"
+        },
+        "lock_cycle": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "card_answer_command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "card_id",
+        "kind",
+        "answer"
+      ],
+      "properties": {
+        "operation": {
+          "const": "card_answer"
+        },
+        "card_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "kind": {
+          "enum": [
+            "nod",
+            "shake",
+            "tap"
+          ]
+        },
+        "answer": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        }
+      }
+    },
+    "call_offer_answer_command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "offer_id",
+        "answer"
+      ],
+      "properties": {
+        "operation": {
+          "const": "call_offer_answer"
+        },
+        "offer_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "answer": {
+          "enum": [
+            "accept",
+            "decline"
+          ]
+        }
+      }
+    },
+    "terminal_option": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "lines"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "lines": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        },
+        "recommended": {
+          "type": "boolean"
+        }
+      }
+    },
+    "move_coordinate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lat",
+        "lng"
+      ],
+      "properties": {
+        "lat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "lng": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        }
+      }
+    },
+    "move_position": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lat",
+        "lng",
+        "accuracy_m",
+        "at"
+      ],
+      "properties": {
+        "lat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "lng": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "accuracy_m": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "course_deg": {
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMaximum": 360
+        },
+        "at": {
+          "type": "string",
+          "format": "paios-utc"
+        },
+        "altitude_m": {
+          "type": "number"
+        }
+      }
+    },
+    "ride_metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "avg_kmh",
+        "max_kmh",
+        "distance_m",
+        "moving_s",
+        "elapsed_s"
+      ],
+      "properties": {
+        "speed_kmh": {
+          "type": "number",
+          "minimum": 0
+        },
+        "speed_sample_at": {
+          "type": "string",
+          "format": "paios-utc"
+        },
+        "avg_kmh": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_kmh": {
+          "type": "number",
+          "minimum": 0
+        },
+        "distance_m": {
+          "type": "number",
+          "minimum": 0
+        },
+        "moving_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "elapsed_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "elev_gain_m": {
+          "type": "number",
+          "minimum": 0
+        },
+        "hr_bpm": {
+          "type": "number",
+          "minimum": 0
+        },
+        "hr_sample_at": {
+          "type": "string",
+          "format": "paios-utc"
+        },
+        "kcal": {
+          "type": "number",
+          "minimum": 0
+        },
+        "cadence_rpm": {
+          "type": "number",
+          "minimum": 0
+        },
+        "cadence_source": {
+          "enum": [
+            "sensor",
+            "pocket_estimate"
+          ]
+        }
+      }
+    },
+    "ride_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "started_at",
+        "ended_at",
+        "distance_m",
+        "moving_s",
+        "elapsed_s",
+        "avg_kmh",
+        "max_kmh"
+      ],
+      "properties": {
+        "distance_m": {
+          "type": "number",
+          "minimum": 0
+        },
+        "moving_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "elapsed_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "avg_kmh": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_kmh": {
+          "type": "number",
+          "minimum": 0
+        },
+        "elev_gain_m": {
+          "type": "number",
+          "minimum": 0
+        },
+        "kcal": {
+          "type": "number",
+          "minimum": 0
+        },
+        "hr_avg": {
+          "type": "number",
+          "minimum": 0
+        },
+        "hr_max": {
+          "type": "number",
+          "minimum": 0
+        },
+        "started_at": {
+          "type": "string",
+          "format": "paios-utc"
+        },
+        "ended_at": {
+          "type": "string",
+          "format": "paios-utc"
+        }
+      }
+    },
+    "nav_progress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nav_id",
+        "revision",
+        "step_index",
+        "maneuver",
+        "distance_to_maneuver_m",
+        "remaining_m",
+        "remaining_s",
+        "route_segment_index",
+        "segment_fraction"
+      ],
+      "properties": {
+        "nav_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "step_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maneuver": {
+          "enum": [
+            "left",
+            "right",
+            "slight_left",
+            "slight_right",
+            "sharp_left",
+            "sharp_right",
+            "straight",
+            "uturn",
+            "arrive",
+            "depart"
+          ]
+        },
+        "distance_to_maneuver_m": {
+          "type": "number",
+          "minimum": 0
+        },
+        "road": {
+          "type": "string",
+          "minLength": 1
+        },
+        "remaining_m": {
+          "type": "number",
+          "minimum": 0
+        },
+        "remaining_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "route_segment_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "segment_fraction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "nav_step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "index",
+        "maneuver",
+        "instruction",
+        "distance_m",
+        "duration_s",
+        "polyline",
+        "maneuver_location"
+      ],
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maneuver": {
+          "enum": [
+            "left",
+            "right",
+            "slight_left",
+            "slight_right",
+            "sharp_left",
+            "sharp_right",
+            "straight",
+            "uturn",
+            "arrive",
+            "depart"
+          ]
+        },
+        "instruction": {
+          "type": "string"
+        },
+        "road": {
+          "type": "string",
+          "minLength": 1
+        },
+        "distance_m": {
+          "type": "number",
+          "minimum": 0
+        },
+        "duration_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "polyline": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/move_coordinate"
+          }
+        },
+        "maneuver_location": {
+          "$ref": "#/$defs/move_coordinate"
+        }
+      }
+    },
+    "desktop_attachment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "grant_id",
+        "path",
+        "name",
+        "size",
+        "kind"
+      ],
+      "properties": {
+        "grant_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^/[^\\u0000]*$",
+          "maxLength": 1024
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "kind": {
+          "enum": [
+            "pdf",
+            "image",
+            "document",
+            "spreadsheet",
+            "presentation",
+            "text",
+            "archive",
+            "other"
+          ]
+        }
+      }
+    },
+    "voice_enrollment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "available",
+        "session_id",
+        "call_id",
+        "phase",
+        "clean_speech_ms",
+        "target_speech_ms",
+        "issue",
+        "can_use",
+        "source_device",
+        "updated_at",
+        "owner",
+        "recorded_ms"
+      ],
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "session_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "call_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "phase": {
+          "enum": [
+            "idle",
+            "collecting",
+            "paused",
+            "checked",
+            "committed",
+            "discarded"
+          ]
+        },
+        "clean_speech_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "target_speech_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "issue": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        },
+        "can_use": {
+          "type": "boolean"
+        },
+        "source_device": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "device_id",
+                "device_type"
+              ],
+              "properties": {
+                "device_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+                },
+                "device_type": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                }
+              }
+            }
+          ]
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "paios-utc"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "owner": {
+          "$ref": "#/$defs/voiceprint_owner"
+        },
+        "recorded_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "preview_audio_base64": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 10728,
+          "pattern": "^[A-Za-z0-9+/]+={0,2}$"
+        }
+      }
+    },
+    "activity_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "state",
+        "summary",
+        "started_at",
+        "elapsed_ms"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "kind": {
+          "enum": [
+            "subagent",
+            "errand",
+            "task"
+          ]
+        },
+        "state": {
+          "enum": [
+            "running",
+            "succeeded",
+            "failed",
+            "partial",
+            "cancelled"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 48,
+          "pattern": "^[^\\r\\n]*$"
+        },
+        "step_summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[^\\r\\n]*$"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "paios-utc"
+        },
+        "elapsed_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "paios-utc"
+        },
+        "failure_reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 96,
+          "pattern": "^[^\\r\\n]*$"
+        },
+        "progress": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "version",
+            "value",
+            "total"
+          ],
+          "properties": {
+            "version": {
+              "const": 1
+            },
+            "value": {
+              "type": "number",
+              "minimum": 0
+            },
+            "total": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "enum": [
+                  "failed",
+                  "partial"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "failure_reason"
+            ],
+            "properties": {
+              "failure_reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 96,
+                "pattern": "^[^\\r\\n]*$"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "activity_card": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "revision",
+        "state",
+        "summary",
+        "summary_source",
+        "started_at",
+        "observed_at",
+        "last_progress_at",
+        "elapsed_ms",
+        "counts",
+        "items",
+        "omitted_items"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "state": {
+          "enum": [
+            "running",
+            "succeeded",
+            "failed",
+            "partial",
+            "cancelled"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 48,
+          "pattern": "^[^\\r\\n]*$"
+        },
+        "step_summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[^\\r\\n]*$"
+        },
+        "summary_source": {
+          "enum": [
+            "agent_intent",
+            "subagent_goal",
+            "tool_status",
+            "generic"
+          ]
+        },
+        "started_at": {
+          "type": "string",
+          "format": "paios-utc"
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "paios-utc"
+        },
+        "last_progress_at": {
+          "type": "string",
+          "format": "paios-utc"
+        },
+        "elapsed_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "paios-utc"
+        },
+        "counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "total",
+            "running",
+            "succeeded",
+            "failed",
+            "cancelled"
+          ],
+          "properties": {
+            "total": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "running": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "succeeded": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "failed": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "cancelled": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "partial": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/activity_item"
+          }
+        },
+        "omitted_items": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "failure_reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 96,
+          "pattern": "^[^\\r\\n]*$"
+        },
+        "progress": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "version",
+            "value",
+            "total"
+          ],
+          "properties": {
+            "version": {
+              "const": 1
+            },
+            "value": {
+              "type": "number",
+              "minimum": 0
+            },
+            "total": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "enum": [
+                  "succeeded",
+                  "failed",
+                  "partial",
+                  "cancelled"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "completed_at"
+            ],
+            "properties": {
+              "completed_at": {
+                "type": "string",
+                "format": "paios-utc"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "enum": [
+                  "failed",
+                  "partial"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "failure_reason"
+            ],
+            "properties": {
+              "failure_reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 96,
+                "pattern": "^[^\\r\\n]*$"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "version": 1,
+  "schema": "paios.central.text-envelope.v1",
+  "input_topic": "paios.central.text.v1",
+  "output_topic": "paios.central.sealed-text.v1",
+  "input_limit": 8192,
+  "output_limit": 12288,
+  "controls": [
+    "cancel_run",
+    "cancel_playback",
+    "reconcile",
+    "retry_voice"
+  ],
+  "inputs": {
+    "submit": {
+      "error": "FORMAL_TEXT_SUBMIT_INVALID",
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "event_id",
+          "captured_at",
+          "text"
+        ],
+        "properties": {
+          "operation": {
+            "const": "submit"
+          },
+          "event_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "captured_at": {
+            "type": "string",
+            "format": "paios-utc"
+          },
+          "text": {
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/location"
+          },
+          "attachments": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "$ref": "#/$defs/desktop_attachment"
+            }
+          }
+        },
+        "allOf": [
+          {
+            "anyOf": [
+              {
+                "type": "object",
+                "required": [
+                  "text"
+                ],
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "attachments"
+                ],
+                "properties": {
+                  "attachments": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "$ref": "#/$defs/desktop_attachment"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "result": {
+      "error": "FORMAL_TEXT_RESULT_INVALID",
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "processed_event_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "result"
+          },
+          "processed_event_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "text_replay": {
+            "const": "sealed"
+          }
+        }
+      }
+    },
+    "ack": {
+      "error": "FORMAL_TEXT_ACK_CHANNEL_UNSUPPORTED",
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "processed_event_id",
+          "ack"
+        ],
+        "properties": {
+          "operation": {
+            "const": "ack"
+          },
+          "processed_event_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "ack": {
+            "$ref": "#/$defs/ack"
+          }
+        }
+      }
+    },
+    "cancel_run": {
+      "error": "FORMAL_CONTROL_ARGUMENT_INVALID",
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "processed_event_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "cancel_run"
+          },
+          "control_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "processed_event_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          }
+        }
+      }
+    },
+    "cancel_playback": {
+      "error": "FORMAL_CONTROL_ARGUMENT_INVALID",
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "processed_event_id",
+          "reply_epoch"
+        ],
+        "properties": {
+          "operation": {
+            "const": "cancel_playback"
+          },
+          "control_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "processed_event_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "reply_epoch": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        }
+      }
+    },
+    "reconcile": {
+      "error": "FORMAL_CONTROL_ARGUMENT_INVALID",
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "processed_event_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "reconcile"
+          },
+          "control_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "processed_event_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          }
+        }
+      }
+    },
+    "memory_proposals": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "processed_event_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "memory_proposals"
+          },
+          "control_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "processed_event_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          }
+        }
+      },
+      "error": "FORMAL_MEMORY_ARGUMENT_INVALID"
+    },
+    "memory_decide": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "command_id",
+          "payload_sha256",
+          "decision",
+          "processed_event_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "memory_decide"
+          },
+          "control_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "command_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "payload_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "reject"
+            ]
+          },
+          "processed_event_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          }
+        }
+      },
+      "error": "FORMAL_MEMORY_ARGUMENT_INVALID"
+    },
+    "retry_voice": {
+      "error": "FORMAL_CONTROL_ARGUMENT_INVALID",
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "processed_event_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "retry_voice"
+          },
+          "control_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "processed_event_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          }
+        }
+      }
+    },
+    "voice_process": {
+      "error": "FORMAL_VOICE_INPUT_INVALID",
+      "definition": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/voice_request"
+          },
+          {
+            "type": "object",
+            "required": [
+              "request"
+            ],
+            "properties": {
+              "operation": {
+                "const": "voice_process"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "voice_candidates": {
+      "error": "FORMAL_VOICE_INPUT_INVALID",
+      "definition": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/voice_request"
+          },
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "operation": {
+                "const": "voice_candidates"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "voice_send": {
+      "error": "FORMAL_VOICE_INPUT_INVALID",
+      "definition": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/voice_request"
+          },
+          {
+            "type": "object",
+            "required": [
+              "candidate_ref",
+              "candidate_revision",
+              "window_ref",
+              "selected_input_sha256",
+              "transcript_sha256"
+            ],
+            "properties": {
+              "operation": {
+                "const": "voice_send"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "voice_close": {
+      "error": "FORMAL_VOICE_INPUT_INVALID",
+      "definition": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/voice_request"
+          },
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "operation": {
+                "const": "voice_close"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "voice_open": {
+      "error": "FORMAL_VOICE_INPUT_INVALID",
+      "definition": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/voice_request"
+          },
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "operation": {
+                "const": "voice_open"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "voice_commit": {
+      "error": "FORMAL_VOICE_INPUT_INVALID",
+      "definition": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/voice_request"
+          },
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "operation": {
+                "const": "voice_commit"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "call_open": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "dependencies": {
+          "video": [
+            "video_revision"
+          ]
+        },
+        "required": [
+          "operation",
+          "call_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "call_open"
+          },
+          "call_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "location": {
+            "$ref": "#/$defs/location"
+          },
+          "wake_word": {
+            "type": "boolean"
+          },
+          "silence_timeout_ms": {
+            "enum": [
+              180000,
+              600000,
+              1800000,
+              0
+            ]
+          },
+          "video": {
+            "const": true
+          },
+          "video_revision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "enrollment_session_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "conversation_mode": {
+            "enum": [
+              "chat",
+              "thinking"
+            ]
+          }
+        }
+      },
+      "error": "FORMAL_CALL_INPUT_INVALID"
+    },
+    "call_close": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "call_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "call_close"
+          },
+          "call_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "reason": {
+            "enum": [
+              "button",
+              "idle",
+              "error",
+              "artc_join_failed",
+              "artc_frame_timeout",
+              "network"
+            ]
+          }
+        }
+      },
+      "error": "FORMAL_CALL_INPUT_INVALID"
+    },
+    "call_video": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "call_id",
+          "video",
+          "video_revision"
+        ],
+        "properties": {
+          "operation": {
+            "const": "call_video"
+          },
+          "call_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "video": {
+            "type": "boolean"
+          },
+          "video_revision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        }
+      },
+      "error": "FORMAL_CALL_INPUT_INVALID"
+    },
+    "location_update": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "location"
+        ],
+        "properties": {
+          "operation": {
+            "const": "location_update"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/location"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "cached_fix_age_ms": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "unavailable_reason": {
+            "enum": [
+              "sharing_off",
+              "permission_denied",
+              "permission_restricted",
+              "permission_not_determined",
+              "location_unknown",
+              "network",
+              "timeout",
+              "stale_fix",
+              "invalid_fix",
+              "background_when_in_use",
+              "reduced_accuracy",
+              "location_failed"
+            ]
+          }
+        }
+      },
+      "error": "FORMAL_LOCATION_INPUT_INVALID"
+    },
+    "errand_cancel": {
+      "definition": {
+        "$ref": "#/$defs/errand_cancel_command"
+      },
+      "error": "FORMAL_ERRAND_INPUT_INVALID"
+    },
+    "voiceprint_open": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "operation_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "voiceprint_open"
+          },
+          "operation_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          }
+        }
+      },
+      "error": "FORMAL_VOICEPRINT_INPUT_INVALID"
+    },
+    "voiceprint_commit": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "operation_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "voiceprint_commit"
+          },
+          "operation_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          }
+        }
+      },
+      "error": "FORMAL_VOICEPRINT_INPUT_INVALID"
+    },
+    "voiceprint_cancel": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "operation_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "voiceprint_cancel"
+          },
+          "operation_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          }
+        }
+      },
+      "error": "FORMAL_VOICEPRINT_INPUT_INVALID"
+    },
+    "voiceprint_enroll": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "sample_ids"
+        ],
+        "properties": {
+          "operation": {
+            "const": "voiceprint_enroll"
+          },
+          "control_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "sample_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20,
+            "items": {
+              "type": "string",
+              "pattern": "^vps-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            }
+          }
+        }
+      },
+      "error": "FORMAL_VOICEPRINT_INPUT_INVALID"
+    },
+    "voiceprint_forget": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "voiceprint_forget"
+          },
+          "control_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          }
+        }
+      },
+      "error": "FORMAL_VOICEPRINT_INPUT_INVALID"
+    },
+    "voiceprint_read": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "voiceprint_read"
+          },
+          "control_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          }
+        }
+      },
+      "error": "FORMAL_VOICEPRINT_INPUT_INVALID"
+    },
+    "voice_confirm": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "confirmation_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "voice_confirm"
+          },
+          "confirmation_id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "auth": {
+            "type": "string",
+            "enum": [
+              "face_id",
+              "touch_id"
+            ]
+          },
+          "choice": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "deny"
+            ]
+          }
+        }
+      },
+      "error": "FORMAL_VOICE_CONFIRM_INPUT_INVALID"
+    },
+    "health_batch": {
+      "error": "HEALTH_BATCH_INVALID",
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "metric",
+          "unit",
+          "tz",
+          "sources",
+          "samples",
+          "deleted"
+        ],
+        "properties": {
+          "operation": {
+            "const": "health_batch"
+          },
+          "control_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "metric": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "unit": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "tz": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "sources": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            }
+          },
+          "samples": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+              "$ref": "#/$defs/health_sample"
+            }
+          },
+          "deleted": {
+            "type": "array",
+            "maxItems": 128,
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            }
+          }
+        }
+      }
+    },
+    "contacts_batch": {
+      "error": "CONTACTS_BATCH_INVALID",
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "contacts",
+          "deleted"
+        ],
+        "properties": {
+          "operation": {
+            "const": "contacts_batch"
+          },
+          "control_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "contacts": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "$ref": "#/$defs/contact"
+            }
+          },
+          "deleted": {
+            "type": "array",
+            "maxItems": 128,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          }
+        }
+      }
+    },
+    "care_safe": {
+      "error": "FORMAL_CARE_SAFE_INPUT_INVALID",
+      "definition": {
+        "$ref": "#/$defs/care_safe_command"
+      }
+    },
+    "camera_private_pause": {
+      "error": "FORMAL_CAMERA_PRIVATE_PAUSE_INVALID",
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "private_paused"
+        ],
+        "properties": {
+          "operation": {
+            "const": "camera_private_pause"
+          },
+          "control_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "private_paused": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "camera_status": {
+      "error": "FORMAL_CAMERA_STATUS_INVALID",
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "status",
+          "error"
+        ],
+        "properties": {
+          "operation": {
+            "const": "camera_status"
+          },
+          "control_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "status": {
+            "enum": [
+              "available",
+              "paused",
+              "unavailable",
+              "error"
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "error"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "error": {
+                  "type": "string"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "error": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "wear_state": {
+      "error": "FORMAL_WEAR_STATE_INPUT_INVALID",
+      "definition": {
+        "$ref": "#/$defs/wear_state_command"
+      }
+    },
+    "card_answer": {
+      "error": "FORMAL_CARD_ANSWER_INPUT_INVALID",
+      "definition": {
+        "$ref": "#/$defs/card_answer_command"
+      }
+    },
+    "call_offer_answer": {
+      "error": "FORMAL_CALL_OFFER_ANSWER_INPUT_INVALID",
+      "definition": {
+        "$ref": "#/$defs/call_offer_answer_command"
+      }
+    },
+    "pay_closed": {
+      "error": "FORMAL_PAY_CLOSED_INPUT_INVALID",
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "at",
+          "outcome"
+        ],
+        "properties": {
+          "operation": {
+            "const": "pay_closed"
+          },
+          "at": {
+            "type": "string",
+            "format": "paios-utc"
+          },
+          "outcome": {
+            "const": "returned"
+          }
+        }
+      }
+    },
+    "ride_state": {
+      "definition": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "const": "ride_state"
+          },
+          "ride_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "enum": [
+              "started",
+              "ended"
+            ]
+          },
+          "at": {
+            "type": "string",
+            "format": "paios-utc"
+          },
+          "started_by": {
+            "enum": [
+              "phone",
+              "watch",
+              "glasses",
+              "voice"
+            ]
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "started_at": {
+                "type": "string",
+                "format": "paios-utc"
+              },
+              "ended_at": {
+                "type": "string",
+                "format": "paios-utc"
+              },
+              "distance_m": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000
+              },
+              "moving_s": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 31536000
+              },
+              "elapsed_s": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 31536000
+              },
+              "avg_kmh": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 300
+              },
+              "max_kmh": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 300
+              },
+              "elev_gain_m": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "kcal": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "hr_avg": {
+                "type": "number",
+                "minimum": 20,
+                "maximum": 260
+              },
+              "hr_max": {
+                "type": "number",
+                "minimum": 20,
+                "maximum": 260
+              }
+            },
+            "required": [
+              "started_at",
+              "ended_at",
+              "distance_m",
+              "moving_s",
+              "elapsed_s",
+              "avg_kmh",
+              "max_kmh"
+            ],
+            "additionalProperties": false
+          },
+          "lifecycle_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "operation",
+          "ride_id",
+          "state",
+          "at",
+          "started_by"
+        ],
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "properties": {
+              "state": {
+                "const": "started"
+              }
+            },
+            "not": {
+              "properties": {
+                "summary": {}
+              },
+              "required": [
+                "summary"
+              ]
+            }
+          },
+          {
+            "properties": {
+              "state": {
+                "const": "ended"
+              },
+              "summary": {}
+            },
+            "required": [
+              "summary"
+            ]
+          }
+        ]
+      },
+      "error": "FORMAL_RIDE_STATE_INPUT_INVALID"
+    },
+    "move_frame": {
+      "definition": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "const": "move_frame"
+          },
+          "ride_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nav_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "at": {
+            "type": "string",
+            "format": "paios-utc"
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "lng": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180
+              },
+              "accuracy_m": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100000
+              },
+              "course_deg": {
+                "type": "number",
+                "minimum": 0,
+                "exclusiveMaximum": 360
+              },
+              "at": {
+                "type": "string",
+                "format": "paios-utc"
+              },
+              "altitude_m": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "lat",
+              "lng",
+              "accuracy_m",
+              "at"
+            ],
+            "additionalProperties": false
+          },
+          "ride": {
+            "type": "object",
+            "properties": {
+              "speed_kmh": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 300
+              },
+              "speed_sample_at": {
+                "type": "string",
+                "format": "paios-utc"
+              },
+              "avg_kmh": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 300
+              },
+              "max_kmh": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 300
+              },
+              "distance_m": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000
+              },
+              "moving_s": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 31536000
+              },
+              "elapsed_s": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 31536000
+              },
+              "elev_gain_m": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "hr_bpm": {
+                "type": "number",
+                "minimum": 20,
+                "maximum": 260
+              },
+              "hr_sample_at": {
+                "type": "string",
+                "format": "paios-utc"
+              },
+              "kcal": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "cadence_rpm": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 300
+              },
+              "cadence_source": {
+                "enum": [
+                  "sensor",
+                  "pocket_estimate"
+                ]
+              }
+            },
+            "required": [
+              "avg_kmh",
+              "max_kmh",
+              "distance_m",
+              "moving_s",
+              "elapsed_s"
+            ],
+            "additionalProperties": false
+          },
+          "nav": {
+            "type": "object",
+            "properties": {
+              "nav_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "step_index": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "maneuver": {
+                "enum": [
+                  "left",
+                  "right",
+                  "slight_left",
+                  "slight_right",
+                  "sharp_left",
+                  "sharp_right",
+                  "straight",
+                  "uturn",
+                  "arrive",
+                  "depart"
+                ]
+              },
+              "distance_to_maneuver_m": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000
+              },
+              "road": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000
+              },
+              "remaining_m": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000
+              },
+              "remaining_s": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 31536000
+              },
+              "route_segment_index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "segment_fraction": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "nav_id",
+              "revision",
+              "step_index",
+              "maneuver",
+              "distance_to_maneuver_m",
+              "remaining_m",
+              "remaining_s",
+              "route_segment_index",
+              "segment_fraction"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "operation",
+          "seq",
+          "at"
+        ],
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "properties": {
+              "ride_id": {},
+              "ride": {}
+            },
+            "required": [
+              "ride_id",
+              "ride"
+            ]
+          },
+          {
+            "properties": {
+              "nav_id": {}
+            },
+            "required": [
+              "nav_id"
+            ]
+          }
+        ]
+      },
+      "error": "FORMAL_MOVE_FRAME_INPUT_INVALID"
+    },
+    "nav_state": {
+      "definition": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "const": "nav_state"
+          },
+          "nav_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "enum": [
+              "arrived",
+              "cancelled",
+              "off_route"
+            ]
+          },
+          "at": {
+            "type": "string",
+            "format": "paios-utc"
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "lng": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180
+              }
+            },
+            "required": [
+              "lat",
+              "lng"
+            ],
+            "additionalProperties": false
+          },
+          "lifecycle_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "operation",
+          "nav_id",
+          "state",
+          "at"
+        ],
+        "additionalProperties": false
+      },
+      "error": "FORMAL_NAV_STATE_INPUT_INVALID"
+    },
+    "ride_control": {
+      "definition": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "const": "ride_control"
+          },
+          "action": {
+            "enum": [
+              "start",
+              "stop"
+            ]
+          }
+        },
+        "required": [
+          "operation",
+          "action"
+        ],
+        "additionalProperties": false
+      },
+      "error": "FORMAL_RIDE_CONTROL_INPUT_INVALID"
+    },
+    "nav_control": {
+      "definition": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "const": "nav_control"
+          },
+          "action": {
+            "enum": [
+              "stop",
+              "switch"
+            ]
+          }
+        },
+        "required": [
+          "operation",
+          "action"
+        ],
+        "additionalProperties": false
+      },
+      "error": "FORMAL_NAV_CONTROL_INPUT_INVALID"
+    },
+    "call_pcm": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "operation",
+          "session_id",
+          "call_id",
+          "seq",
+          "captured_at_ms",
+          "sample_rate",
+          "pcm_s16le_base64"
+        ],
+        "properties": {
+          "schema_version": {
+            "const": "paios.central.text-envelope.v1"
+          },
+          "operation": {
+            "const": "call_pcm"
+          },
+          "session_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "call_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "captured_at_ms": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 8640000000000000
+          },
+          "sample_rate": {
+            "const": 16000
+          },
+          "pcm_s16le_base64": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 4268,
+            "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
+          }
+        }
+      },
+      "error": "CALL_PCM_INVALID"
+    },
+    "voice_enrollment_control": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "action"
+        ],
+        "properties": {
+          "operation": {
+            "const": "voice_enrollment_control"
+          },
+          "control_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "action": {
+            "enum": [
+              "status",
+              "start",
+              "pause",
+              "resume",
+              "stop",
+              "check",
+              "commit",
+              "discard",
+              "preview"
+            ]
+          },
+          "enrollment_session_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "call_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          }
+        }
+      },
+      "error": "FORMAL_VOICE_ENROLLMENT_INPUT_INVALID"
+    },
+    "voice_trust_window_open": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "source_device_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "voice_trust_window_open"
+          },
+          "control_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "source_device_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          }
+        }
+      },
+      "error": "FORMAL_VOICE_TRUST_WINDOW_INPUT_INVALID"
+    },
+    "call_set_conversation_mode": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "call_id",
+          "control_id",
+          "conversation_mode"
+        ],
+        "properties": {
+          "operation": {
+            "const": "call_set_conversation_mode"
+          },
+          "call_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "control_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "conversation_mode": {
+            "enum": [
+              "chat",
+              "thinking"
+            ]
+          }
+        }
+      },
+      "error": "FORMAL_CALL_INPUT_INVALID"
+    },
+    "call_retry": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "call_id",
+          "control_id",
+          "processed_event_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "call_retry"
+          },
+          "call_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "control_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          },
+          "processed_event_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+          }
+        }
+      },
+      "error": "FORMAL_CALL_INPUT_INVALID"
+    },
+    "camera_capture_failed": {
+      "error": "FORMAL_CAMERA_FAILURE_INVALID",
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "frame_id",
+          "error_code"
+        ],
+        "properties": {
+          "operation": {
+            "const": "camera_capture_failed"
+          },
+          "frame_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "error_code": {
+            "enum": [
+              "CAMERA_APP_INACTIVE",
+              "CAMERA_CAPTURE_UNAVAILABLE",
+              "CAMERA_CAPTURE_FAILED",
+              "CAMERA_CAPTURE_CANCELLED",
+              "CAMERA_REQUEST_TIMEOUT",
+              "CAMERA_REQUEST_BUSY"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "outputs": {
+    "ready": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "ready"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        }
+      }
+    },
+    "pay_open": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "at"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "pay_open"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "at": {
+          "type": "string",
+          "format": "paios-utc"
+        }
+      }
+    },
+    "accepted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "event_id",
+        "processed_event_id",
+        "session_id",
+        "admission"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "accepted"
+        },
+        "event_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "processed_event_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "admission": {
+          "$ref": "#/$defs/admission"
+        }
+      }
+    },
+    "result_header": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "event_id",
+        "processed_event_id",
+        "session_id",
+        "run_id",
+        "consumed_revision",
+        "result_revision",
+        "reply_id",
+        "reply_epoch",
+        "reply_phase",
+        "reply_mode",
+        "run_status",
+        "reply_status",
+        "result_status",
+        "delivery_status",
+        "output_plan",
+        "text_replay",
+        "text_chunk_count",
+        "rendered_text_through_seq",
+        "pending_text_chunk_count",
+        "pending_voice_chunk_count",
+        "voice_transport",
+        "voice_status",
+        "receipt_status",
+        "voice_error",
+        "receipt_error",
+        "receipt_sources",
+        "receipt_refs"
+      ],
+      "properties": {
+        "failure_notice": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "result_header"
+        },
+        "event_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "processed_event_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "consumed_revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "result_revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "reply_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reply_epoch": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "reply_phase": {
+          "type": "string",
+          "enum": [
+            "sealed",
+            "interrupted",
+            "failed"
+          ]
+        },
+        "reply_mode": {
+          "type": "string",
+          "enum": [
+            "none",
+            "text",
+            "voice",
+            "text_and_voice"
+          ]
+        },
+        "run_status": {
+          "type": "string"
+        },
+        "reply_status": {
+          "type": "string"
+        },
+        "result_status": {
+          "type": "string"
+        },
+        "delivery_status": {
+          "type": "string"
+        },
+        "output_plan": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/target"
+          }
+        },
+        "text_replay": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "sealed"
+          ]
+        },
+        "text_chunk_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "rendered_text_through_seq": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "pending_text_chunk_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "pending_voice_chunk_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "voice_transport": {
+          "enum": [
+            "not_supported",
+            "wav_byte_stream_v1"
+          ]
+        },
+        "voice_status": {
+          "type": "string"
+        },
+        "receipt_status": {
+          "type": "string"
+        },
+        "voice_error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "receipt_error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "receipt_sources": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "receipt_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "private": {
+          "const": "payment",
+          "$comment": "Trusted server payment provenance; redact locked/background notifications, retain speech and unlocked text."
+        }
+      }
+    },
+    "text_chunk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "processed_event_id",
+        "chunk"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "text_chunk"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "processed_event_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "chunk": {
+          "$ref": "#/$defs/chunk"
+        },
+        "private": {
+          "const": "payment",
+          "$comment": "Trusted server payment provenance; redact locked/background notifications, retain speech and unlocked text."
+        }
+      }
+    },
+    "ack_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "processed_event_id",
+        "receipt"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "ack_receipt"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "processed_event_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "receipt": {
+          "$ref": "#/$defs/ack_receipt"
+        }
+      }
+    },
+    "control_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "control_id",
+        "requested_operation",
+        "receipt"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "control_receipt"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "processed_event_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "control_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "requested_operation": {
+          "type": "string",
+          "enum": [
+            "cancel_run",
+            "cancel_playback",
+            "reconcile",
+            "retry_voice",
+            "call_set_conversation_mode",
+            "call_retry"
+          ]
+        },
+        "receipt": {
+          "type": "object",
+          "properties": {
+            "playback_status": {
+              "type": "string"
+            },
+            "receipt": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string"
+                },
+                "reply_epoch": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "receipt_ref": {
+                  "type": "string"
+                }
+              }
+            },
+            "state": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "voice_status": {
+              "type": "string"
+            },
+            "voice_error": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "reply_epoch": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "conversation_mode": {
+              "enum": [
+                "chat",
+                "thinking"
+              ]
+            }
+          }
+        },
+        "call_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "call_id"
+          ],
+          "properties": {
+            "call_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            "requested_operation": {
+              "const": "call_set_conversation_mode"
+            },
+            "receipt": {
+              "type": "object",
+              "required": [
+                "conversation_mode"
+              ],
+              "properties": {
+                "conversation_mode": {
+                  "enum": [
+                    "chat",
+                    "thinking"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "required": [
+            "processed_event_id"
+          ],
+          "properties": {
+            "processed_event_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            "requested_operation": {
+              "enum": [
+                "cancel_run",
+                "cancel_playback",
+                "reconcile",
+                "retry_voice",
+                "call_retry"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "rejected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "request_operation",
+        "control_id",
+        "event_id",
+        "processed_event_id",
+        "error_code"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "rejected"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "request_operation": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "control_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "event_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "processed_event_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "frame_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "error_code": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        }
+      }
+    },
+    "memory_proposals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "control_id",
+        "proposals",
+        "processed_event_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "memory_proposals"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "control_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "proposals": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "object"
+          }
+        },
+        "processed_event_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        }
+      }
+    },
+    "memory_decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "control_id",
+        "outcome"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "memory_decision"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "control_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "outcome": {
+          "type": "object"
+        }
+      }
+    },
+    "voice_chunk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "processed_event_id",
+        "chunk",
+        "event_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "voice_chunk"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "processed_event_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "chunk": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "output_id",
+            "reply_id",
+            "reply_epoch",
+            "target_device_id",
+            "route_version",
+            "seq",
+            "codec",
+            "sample_rate",
+            "channels",
+            "audio",
+            "text_range",
+            "final"
+          ],
+          "properties": {
+            "output_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            "reply_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            "target_device_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            "route_version": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            "reply_epoch": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "seq": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "final": {
+              "type": "boolean"
+            },
+            "codec": {
+              "const": "pcm_s16le"
+            },
+            "sample_rate": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 192000
+            },
+            "channels": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2
+            },
+            "audio": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "ref",
+                "sha256",
+                "mime",
+                "bytes",
+                "duration_ms"
+              ],
+              "properties": {
+                "ref": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "mime": {
+                  "const": "audio/wav"
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 44,
+                  "maximum": 33554432
+                },
+                "duration_ms": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                }
+              }
+            },
+            "text_range": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "start",
+                "end"
+              ],
+              "properties": {
+                "start": {
+                  "const": 0
+                },
+                "end": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 262144
+                }
+              }
+            }
+          }
+        },
+        "event_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "private": {
+          "const": "payment",
+          "$comment": "Trusted server payment provenance; redact locked/background notifications, retain speech and unlocked text."
+        }
+      }
+    },
+    "voice_status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "operation_id",
+        "source_status"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "voice_status"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "operation_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "source_status": {
+          "enum": [
+            "recording",
+            "pending",
+            "candidates",
+            "confirmation_recorded",
+            "cancel_requested",
+            "unknown"
+          ]
+        },
+        "error_code": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+        },
+        "candidates": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "candidate_ref",
+              "candidate_revision",
+              "window_ref",
+              "selected_input_sha256",
+              "authorization",
+              "kind"
+            ],
+            "properties": {
+              "candidate_ref": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+              },
+              "candidate_revision": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "window_ref": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+              },
+              "selected_input_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "authorization": {
+                "const": "unknown"
+              },
+              "kind": {
+                "enum": [
+                  "partial",
+                  "transcript",
+                  "tool"
+                ]
+              },
+              "preview": {
+                "type": "string"
+              },
+              "transcript": {
+                "type": "string"
+              },
+              "transcript_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        },
+        "event_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        }
+      }
+    },
+    "call_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "dependencies": {
+        "video": [
+          "video_revision"
+        ],
+        "media": [
+          "video_revision"
+        ]
+      },
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "call_id",
+        "state"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "call_state"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "call_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "state": {
+          "enum": [
+            "opening",
+            "connecting",
+            "live",
+            "closing",
+            "closed",
+            "failed"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "button",
+            "goodbye",
+            "false_wake",
+            "idle",
+            "error",
+            "force_hangup",
+            "max_duration",
+            "disconnected",
+            "ws_closed",
+            "artc_join_failed",
+            "artc_frame_timeout",
+            "network"
+          ]
+        },
+        "error_code": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+        },
+        "mode": {
+          "enum": [
+            "manual",
+            "ambient"
+          ]
+        },
+        "video": {
+          "type": "boolean"
+        },
+        "video_revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "rejoin_deadline": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+        },
+        "media": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "provider",
+            "app_id",
+            "channel_id",
+            "user_id",
+            "token",
+            "token_expire_at"
+          ],
+          "properties": {
+            "provider": {
+              "const": "artc"
+            },
+            "app_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "channel_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "user_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "token": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 8192
+            },
+            "token_expire_at": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,19}$"
+            },
+            "audio_input": {
+              "type": "string",
+              "enum": [
+                "gateway"
+              ]
+            }
+          }
+        },
+        "conversation_mode": {
+          "enum": [
+            "chat",
+            "thinking"
+          ]
+        },
+        "processed_event_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "thinking_status": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "text"
+          ],
+          "properties": {
+            "state": {
+              "enum": [
+                "waiting",
+                "slow",
+                "failed",
+                "interrupted",
+                "readout_mismatch"
+              ]
+            },
+            "text": {
+              "type": "string",
+              "maxLength": 4000
+            },
+            "actions": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "enum": [
+                  "retry",
+                  "switch_to_chat"
+                ]
+              }
+            }
+          }
+        },
+        "readout_fidelity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "message_id",
+            "sentence_index",
+            "response_id",
+            "source_text",
+            "transcript_text",
+            "notice"
+          ],
+          "properties": {
+            "message_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            "sentence_index": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "response_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            "source_text": {
+              "type": "string",
+              "maxLength": 4000
+            },
+            "transcript_text": {
+              "type": "string",
+              "maxLength": 4000
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 4000
+            }
+          }
+        }
+      }
+    },
+    "call_transcript": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "call_id",
+        "turn",
+        "role",
+        "text",
+        "final"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "call_transcript"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "call_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "turn": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "role": {
+          "enum": [
+            "user",
+            "assistant",
+            "main_agent"
+          ]
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "final": {
+          "type": "boolean"
+        },
+        "interrupted": {
+          "type": "boolean"
+        },
+        "private": {
+          "const": "payment",
+          "$comment": "Trusted server payment provenance; redact locked/background notifications, retain speech and unlocked text."
+        },
+        "message_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        }
+      }
+    },
+    "errand_progress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "errands"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "errand_progress"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "errands": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/errand"
+          }
+        }
+      }
+    },
+    "voiceprint_sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "operation_id",
+        "status"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "voiceprint_sample"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "operation_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "status": {
+          "enum": [
+            "recording",
+            "measured",
+            "cancelled",
+            "failed"
+          ]
+        },
+        "sample_id": {
+          "type": "string",
+          "pattern": "^vps-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "speech_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 600000
+        },
+        "quality": {
+          "enum": [
+            "ok",
+            "too_short",
+            "no_speech",
+            "low_snr",
+            "clipped",
+            "multiple_speakers"
+          ]
+        },
+        "samples": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "sample_id",
+              "speech_ms",
+              "weight"
+            ],
+            "properties": {
+              "sample_id": {
+                "type": "string",
+                "pattern": "^vps-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              },
+              "speech_ms": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3000
+              },
+              "weight": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        },
+        "error_code": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+        }
+      }
+    },
+    "voiceprint_owner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "control_id",
+        "owner"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "voiceprint_owner"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "control_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "owner": {
+          "$ref": "#/$defs/voiceprint_owner"
+        },
+        "enrollment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "enrolled",
+                "inconsistent"
+              ]
+            },
+            "samples": {
+              "type": "array",
+              "maxItems": 20,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "sample_id",
+                  "consistency",
+                  "ok"
+                ],
+                "properties": {
+                  "sample_id": {
+                    "type": "string",
+                    "pattern": "^vps-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                  },
+                  "consistency": {
+                    "type": "number",
+                    "minimum": -1,
+                    "maximum": 1
+                  },
+                  "ok": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "voice_devices": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "device_id",
+              "device_type"
+            ],
+            "properties": {
+              "device_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+              },
+              "device_type": {
+                "type": "string",
+                "enum": [
+                  "phone",
+                  "glasses",
+                  "mac",
+                  "watch"
+                ]
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 100
+              }
+            }
+          }
+        },
+        "active_voice_device_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        }
+      }
+    },
+    "voice_confirmations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "confirmations"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "voice_confirmations"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "confirmations": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "confirmation_id",
+              "event_id",
+              "expires_in_ms"
+            ],
+            "properties": {
+              "confirmation_id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "event_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+              },
+              "expires_in_ms": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 3600000
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "kind": {
+                "const": "native_approval"
+              },
+              "purpose": {
+                "enum": [
+                  "trust_window",
+                  "call"
+                ]
+              },
+              "source_device_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+              },
+              "source_device_type": {
+                "type": "string",
+                "enum": [
+                  "phone",
+                  "glasses",
+                  "mac",
+                  "watch"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "ambient_reply": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "processed_event_id",
+        "heard",
+        "text"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "ambient_reply"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "processed_event_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "heard": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "reminder_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "private": {
+          "const": "payment",
+          "$comment": "Trusted server payment provenance; redact locked/background notifications, retain speech and unlocked text."
+        }
+      }
+    },
+    "health_ack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "schema_version",
+        "session_id",
+        "control_id",
+        "stored",
+        "deleted"
+      ],
+      "properties": {
+        "operation": {
+          "const": "health_ack"
+        },
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "control_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "stored": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 64
+        },
+        "deleted": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        }
+      }
+    },
+    "contacts_ack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "schema_version",
+        "session_id",
+        "control_id",
+        "stored",
+        "deleted"
+      ],
+      "properties": {
+        "operation": {
+          "const": "contacts_ack"
+        },
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "control_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "stored": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16
+        },
+        "deleted": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        }
+      }
+    },
+    "call_playback_reset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "call_id"
+      ],
+      "allOf": [
+        {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "target"
+              ],
+              "properties": {
+                "target": {
+                  "const": "avatar"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "track_sid"
+              ],
+              "properties": {
+                "track_sid": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "call_playback_reset"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "call_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "target": {
+          "const": "avatar"
+        },
+        "track_sid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "care_checkin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "care_id",
+        "text"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "care_checkin"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "care_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        }
+      }
+    },
+    "care_safe_ack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "control_id",
+        "cancelled"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "care_safe_ack"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "control_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "cancelled": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "reminders_sync": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "sync_id",
+        "part",
+        "final",
+        "reminders"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "reminders_sync"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "reminders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "text",
+              "fire_at"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1
+              },
+              "fire_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        },
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "sync_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "part": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "final": {
+          "type": "boolean"
+        }
+      }
+    },
+    "camera_ack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "frame_id",
+        "status"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "camera_ack"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "frame_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "status": {
+          "type": "string"
+        }
+      }
+    },
+    "camera_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "control_id",
+        "policy"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "camera_policy"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "control_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "policy": {
+          "$ref": "#/$defs/camera_policy"
+        }
+      }
+    },
+    "gesture_card": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "card_id",
+        "expires_at",
+        "options"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "gesture_card"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "card_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "paios-utc"
+        },
+        "question": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "intent": {
+          "const": "ride"
+        },
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/terminal_option"
+          }
+        }
+      }
+    },
+    "wear_state_ack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "control_id",
+        "worn",
+        "owner_verified"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "wear_state_ack"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "control_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "worn": {
+          "type": "boolean"
+        },
+        "owner_verified": {
+          "type": "boolean"
+        }
+      }
+    },
+    "call_offer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "offer_id",
+        "call_id",
+        "text",
+        "expires_at"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "call_offer"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "offer_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "call_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "paios-utc"
+        }
+      }
+    },
+    "display_card": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "card_id",
+        "title",
+        "lines",
+        "priority",
+        "lifetime_ms"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "display_card"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "card_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "lines": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "maxLength": 4000
+          }
+        },
+        "priority": {
+          "enum": [
+            "normal",
+            "high"
+          ]
+        },
+        "lifetime_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 120000
+        },
+        "caption": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "role",
+            "turn"
+          ],
+          "properties": {
+            "role": {
+              "enum": [
+                "user",
+                "assistant",
+                "main_agent"
+              ]
+            },
+            "turn": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "delivery": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "processed_event_id",
+            "output_id",
+            "reply_id",
+            "reply_epoch",
+            "target_device_id",
+            "route_version",
+            "seq",
+            "final"
+          ],
+          "properties": {
+            "processed_event_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            "output_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            "reply_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            "reply_epoch": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "target_device_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            "route_version": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            "seq": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "final": {
+              "type": "boolean"
+            }
+          }
+        },
+        "progress": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "current",
+            "total"
+          ],
+          "properties": {
+            "current": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 8000
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8000
+            }
+          }
+        },
+        "actions": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "label",
+              "command"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "command": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/care_safe_command"
+                  },
+                  {
+                    "$ref": "#/$defs/errand_cancel_command"
+                  },
+                  {
+                    "$ref": "#/$defs/card_answer_command"
+                  },
+                  {
+                    "$ref": "#/$defs/call_offer_answer_command"
+                  }
+                ]
+              },
+              "lines": {
+                "type": "array",
+                "maxItems": 3,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            }
+          }
+        },
+        "private": {
+          "const": "payment",
+          "$comment": "Trusted server payment provenance; redact locked/background notifications, retain speech and unlocked text."
+        }
+      }
+    },
+    "location_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "request_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "location_request"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        }
+      }
+    },
+    "voice_confirmation_decided": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "confirmation_id",
+        "choice"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "voice_confirmation_decided"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "confirmation_id": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "choice": {
+          "type": "string",
+          "enum": [
+            "approve",
+            "deny"
+          ]
+        }
+      }
+    },
+    "move_hud": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "operation": {
+          "const": "move_hud"
+        },
+        "kind": {
+          "enum": [
+            "ride",
+            "ride_nav",
+            "walk_nav"
+          ]
+        },
+        "at": {
+          "type": "string",
+          "format": "paios-utc"
+        },
+        "ride": {
+          "type": "object",
+          "properties": {
+            "speed_kmh": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 300
+            },
+            "speed_sample_at": {
+              "type": "string",
+              "format": "paios-utc"
+            },
+            "avg_kmh": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 300
+            },
+            "max_kmh": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 300
+            },
+            "distance_m": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1000000000
+            },
+            "moving_s": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 31536000
+            },
+            "elapsed_s": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 31536000
+            },
+            "elev_gain_m": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "hr_bpm": {
+              "type": "number",
+              "minimum": 20,
+              "maximum": 260
+            },
+            "hr_sample_at": {
+              "type": "string",
+              "format": "paios-utc"
+            },
+            "kcal": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "cadence_rpm": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 300
+            },
+            "cadence_source": {
+              "enum": [
+                "sensor",
+                "pocket_estimate"
+              ]
+            },
+            "hr_zone": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5
+            },
+            "hr_alert": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "avg_kmh",
+            "max_kmh",
+            "distance_m",
+            "moving_s",
+            "elapsed_s",
+            "hr_alert"
+          ],
+          "additionalProperties": false
+        },
+        "nav": {
+          "type": "object",
+          "properties": {
+            "nav_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "step_index": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "maneuver": {
+              "enum": [
+                "left",
+                "right",
+                "slight_left",
+                "slight_right",
+                "sharp_left",
+                "sharp_right",
+                "straight",
+                "uturn",
+                "arrive",
+                "depart"
+              ]
+            },
+            "distance_to_maneuver_m": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1000000000
+            },
+            "road": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "remaining_m": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1000000000
+            },
+            "remaining_s": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 31536000
+            },
+            "route_segment_index": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "segment_fraction": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "maneuver_location": {
+              "$ref": "#/$defs/move_coordinate"
+            }
+          },
+          "required": [
+            "nav_id",
+            "revision",
+            "step_index",
+            "maneuver",
+            "distance_to_maneuver_m",
+            "remaining_m",
+            "remaining_s",
+            "route_segment_index",
+            "segment_fraction",
+            "maneuver_location"
+          ],
+          "additionalProperties": false
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "coordinate_system": {
+          "const": "wgs84"
+        },
+        "position": {
+          "$ref": "#/$defs/move_position"
+        }
+      },
+      "required": [
+        "schema_version",
+        "session_id",
+        "operation",
+        "kind",
+        "at",
+        "seq",
+        "coordinate_system"
+      ],
+      "additionalProperties": false
+    },
+    "move_say": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "operation": {
+          "const": "move_say"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "kind": {
+          "enum": [
+            "nav_prompt",
+            "hr_alert",
+            "yimi"
+          ]
+        },
+        "at": {
+          "type": "string",
+          "format": "paios-utc"
+        }
+      },
+      "required": [
+        "schema_version",
+        "session_id",
+        "operation",
+        "text",
+        "kind",
+        "at"
+      ],
+      "additionalProperties": false
+    },
+    "ride_summary": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "operation": {
+          "const": "ride_summary"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "paios-utc"
+        },
+        "ended_at": {
+          "type": "string",
+          "format": "paios-utc"
+        },
+        "distance_m": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000000
+        },
+        "moving_s": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 31536000
+        },
+        "elapsed_s": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 31536000
+        },
+        "avg_kmh": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 300
+        },
+        "max_kmh": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 300
+        },
+        "elev_gain_m": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "kcal": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "hr_avg": {
+          "type": "number",
+          "minimum": 20,
+          "maximum": 260
+        },
+        "hr_max": {
+          "type": "number",
+          "minimum": 20,
+          "maximum": 260
+        },
+        "ride_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "schema_version",
+        "session_id",
+        "operation",
+        "started_at",
+        "ended_at",
+        "distance_m",
+        "moving_s",
+        "elapsed_s",
+        "avg_kmh",
+        "max_kmh",
+        "ride_id"
+      ],
+      "additionalProperties": false
+    },
+    "ride_control": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "operation": {
+          "const": "ride_control"
+        },
+        "action": {
+          "enum": [
+            "start",
+            "stop"
+          ]
+        },
+        "requested_by": {
+          "enum": [
+            "glasses",
+            "voice"
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "session_id",
+        "operation",
+        "action",
+        "requested_by"
+      ],
+      "additionalProperties": false
+    },
+    "nav_control": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "operation": {
+          "const": "nav_control"
+        },
+        "nav_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "action": {
+          "const": "stop"
+        }
+      },
+      "required": [
+        "schema_version",
+        "session_id",
+        "operation",
+        "nav_id",
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    "nav_route": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "operation": {
+          "const": "nav_route"
+        },
+        "nav_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "mode": {
+          "enum": [
+            "bicycling",
+            "walking"
+          ]
+        },
+        "destination": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "lat": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            },
+            "lng": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            }
+          },
+          "required": [
+            "name",
+            "lat",
+            "lng"
+          ],
+          "additionalProperties": false
+        },
+        "total_m": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000000
+        },
+        "total_s": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 31536000
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2000,
+          "items": {
+            "type": "object",
+            "properties": {
+              "index": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "maneuver": {
+                "enum": [
+                  "left",
+                  "right",
+                  "slight_left",
+                  "slight_right",
+                  "sharp_left",
+                  "sharp_right",
+                  "straight",
+                  "uturn",
+                  "arrive",
+                  "depart"
+                ]
+              },
+              "instruction": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000
+              },
+              "road": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000
+              },
+              "distance_m": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000
+              },
+              "duration_s": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 31536000
+              },
+              "polyline": {
+                "type": "array",
+                "maxItems": 40000,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "lat": {
+                      "type": "number",
+                      "minimum": -90,
+                      "maximum": 90
+                    },
+                    "lng": {
+                      "type": "number",
+                      "minimum": -180,
+                      "maximum": 180
+                    }
+                  },
+                  "required": [
+                    "lat",
+                    "lng"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "maneuver_location": {
+                "$ref": "#/$defs/move_coordinate"
+              }
+            },
+            "required": [
+              "index",
+              "maneuver",
+              "instruction",
+              "distance_m",
+              "duration_s",
+              "polyline",
+              "maneuver_location"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "coordinate_system": {
+          "const": "wgs84"
+        },
+        "overview": {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": 1
+            },
+            "selected": {
+              "enum": [
+                0,
+                1
+              ]
+            },
+            "alternatives": {
+              "type": "array",
+              "minItems": 0,
+              "maxItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "total_m": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000000000
+                  },
+                  "total_s": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 31536000
+                  },
+                  "polyline": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 10000,
+                    "items": {
+                      "$ref": "#/$defs/move_coordinate"
+                    }
+                  }
+                },
+                "required": [
+                  "total_m",
+                  "total_s",
+                  "polyline"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "show": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "version",
+            "selected",
+            "alternatives",
+            "show"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "session_id",
+        "operation",
+        "nav_id",
+        "revision",
+        "mode",
+        "destination",
+        "total_m",
+        "total_s",
+        "steps",
+        "coordinate_system"
+      ],
+      "additionalProperties": false
+    },
+    "ride_feedback": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "operation": {
+          "const": "ride_feedback"
+        },
+        "ride_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "at": {
+          "type": "string",
+          "format": "paios-utc"
+        },
+        "hr_zone": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5
+        },
+        "text": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "max_hr_bpm": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 20,
+          "maximum": 260
+        }
+      },
+      "required": [
+        "schema_version",
+        "session_id",
+        "operation",
+        "ride_id",
+        "at",
+        "hr_zone",
+        "text",
+        "max_hr_bpm"
+      ],
+      "additionalProperties": false
+    },
+    "voice_enrollment_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "enrollment"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "voice_enrollment_state"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "control_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "enrollment": {
+          "$ref": "#/$defs/voice_enrollment"
+        }
+      }
+    },
+    "voice_trust_window_opened": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "control_id",
+        "confirmation_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "voice_trust_window_opened"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "control_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "confirmation_id": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "move_ack": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "operation": {
+          "const": "move_ack"
+        },
+        "lifecycle_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "schema_version",
+        "session_id",
+        "operation",
+        "lifecycle_id"
+      ],
+      "additionalProperties": false
+    },
+    "camera_capture_once": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "session_id",
+        "frame_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        },
+        "operation": {
+          "const": "camera_capture_once"
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "frame_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "camera": {
+          "enum": [
+            "back",
+            "front"
+          ]
+        },
+        "expires_at_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "activity_update": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "session_id",
+        "processed_event_id",
+        "card"
+      ],
+      "properties": {
+        "operation": {
+          "const": "activity_update"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "processed_event_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+        },
+        "card": {
+          "$ref": "#/$defs/activity_card"
+        }
+      }
+    }
+  },
+  "voice_topic": "paios.central.voice.v1",
+  "voice_transport": "wav_byte_stream_v1",
+  "$id": "https://personal-ai-os.local/contracts/formal-message.v1.json",
+  "camera_topic": "paios.assistant.camera.v1",
+  "extensions": [
+    {
+      "contract": "payment-message.v1.json",
+      "version": 1,
+      "sha256": "02468dc5412c932565d76ebe26fcb9e0f68b165ce178f0af24e657883f07de70"
+    },
+    {
+      "contract": "terminal-message.v1.json",
+      "version": 4,
+      "sha256": "ae9073704e8bd78d57daea7d1965b2afa2525a27eee71fa688e616abfc4ce081"
+    },
+    {
+      "contract": "owner-override-message.v1.json",
+      "version": 1,
+      "sha256": "ac6c5f332b1bbf95f9227b7abe243ab4a50533dbe9313ff4728b4277f293c7dd"
+    },
+    {
+      "contract": "call-avatar.v1.json",
+      "version": 1,
+      "sha256": "8018b708aa50480dead55ed770f0fd7f51df4e9bf20d8a63ada69c87fa15ea11"
+    },
+    {
+      "contract": "appearance-message.v1.json",
+      "version": 2,
+      "sha256": "ae6c1ad3df5f58dd37cba218b3355b1e6906078607cbd862c890e91681aa2649"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <permission android:name="com.personalaios.glasses.permission.DEBUG_PROBE" android:protectionLevel="signature" />
+    <application>
+        <service android:name=".ProbeService" android:exported="true" android:permission="com.personalaios.glasses.permission.DEBUG_PROBE" android:foregroundServiceType="microphone|camera" />
+    </application>
+</manifest>

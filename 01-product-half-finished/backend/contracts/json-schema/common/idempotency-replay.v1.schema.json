@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-ai-os.local/contracts/common/idempotency-replay.v1.schema.json",
+  "title": "CanonicalIdempotencyReplay",
+  "$comment": "schema_version=1.0.0",
+  "not": {},
+  "$defs": {
+    "IdempotencyProfileDefinition": {
+      "type": "object",
+      "required": [
+        "profile_id",
+        "profile_version",
+        "hash_algorithm",
+        "request_schema_id",
+        "request_schema_version",
+        "request_schema_sha256",
+        "intent_root_pointer"
+      ],
+      "properties": {
+        "profile_id": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://[^\\s]+$"
+        },
+        "profile_version": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/StrictSemVer"
+        },
+        "hash_algorithm": { "const": "sha256_rfc8785_jcs" },
+        "request_schema_id": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://[^\\s]+$"
+        },
+        "request_schema_version": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/StrictSemVer"
+        },
+        "request_schema_sha256": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+        },
+        "intent_root_pointer": {
+          "type": "string",
+          "pattern": "^(?:|(?:/(?:[^~/*]|~[01])*)+)$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "IdempotencyContext": {
+      "type": "object",
+      "required": [
+        "idempotency_scope",
+        "idempotency_key",
+        "idempotency_profile_id",
+        "idempotency_profile_version",
+        "idempotency_profile_sha256",
+        "idempotency_request_sha256"
+      ],
+      "properties": {
+        "idempotency_scope": {
+          "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/IdempotencyScope"
+        },
+        "idempotency_key": {
+          "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/IdempotencyKey"
+        },
+        "idempotency_profile_id": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://[^\\s]+$"
+        },
+        "idempotency_profile_version": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/StrictSemVer"
+        },
+        "idempotency_profile_sha256": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+        },
+        "idempotency_request_sha256": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

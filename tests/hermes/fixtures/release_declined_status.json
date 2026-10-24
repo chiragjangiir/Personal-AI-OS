@@ -1,0 +1,36 @@
+[
+  {
+    "case": "guard-no",
+    "request_id": "5e65c8e3bf69",
+    "source_result": {
+      "state": "refused",
+      "reason": "OWNER_DECLINED_BASELINE_CHANGE",
+      "finished_at": "2026-10-22T19:46:52.275590+00:00",
+      "base": "631e8df45ad1346b88710d31c11a4d155669541d",
+      "commit": "cdfbcf59026c154a1cfe85ccabf271bfe25ee309"
+    },
+    "projected_status": {
+      "state": "awaiting_owner",
+      "updated_at": "2026-10-22T19:43:19.681186+00:00",
+      "base": "631e8df45ad1346b88710d31c11a4d155669541d",
+      "commit": "cdfbcf59026c154a1cfe85ccabf271bfe25ee309"
+    }
+  },
+  {
+    "case": "principle-no",
+    "request_id": "839c3a6d7e1b",
+    "source_result": {
+      "state": "refused",
+      "reason": "OWNER_DECLINED_BASELINE_CHANGE",
+      "finished_at": "2026-10-22T19:46:52.556664+00:00",
+      "base": "631e8df45ad1346b88710d31c11a4d155669541d",
+      "commit": "a6a67bda7144864023c756a7ebc9fedeac19f554"
+    },
+    "projected_status": {
+      "state": "awaiting_owner",
+      "updated_at": "2026-10-22T19:43:19.687999+00:00",
+      "base": "631e8df45ad1346b88710d31c11a4d155669541d",
+      "commit": "a6a67bda7144864023c756a7ebc9fedeac19f554"
+    }
+  }
+]

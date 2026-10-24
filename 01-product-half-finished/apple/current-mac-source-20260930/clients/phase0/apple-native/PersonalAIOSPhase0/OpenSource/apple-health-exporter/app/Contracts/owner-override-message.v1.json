@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"},
+    "owner_override": {
+      "type": "object", "additionalProperties": false,
+      "required": ["available", "enabled", "expires_at", "enabled_by_device", "remaining_s"],
+      "properties": {
+        "available": {"type": "boolean"},
+        "enabled": {"type": "boolean"},
+        "expires_at": {"anyOf": [{"type": "string", "format": "paios-utc"}, {"type": "null"}]},
+        "enabled_by_device": {"anyOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+        "remaining_s": {"anyOf": [{"type": "integer", "minimum": 0, "maximum": 9007199254740991}, {"type": "null"}]}
+      }
+    }
+  },
+  "inputs": {
+    "owner_override_status": {
+      "error": "OWNER_OVERRIDE_INPUT_INVALID",
+      "definition": {
+        "type": "object", "additionalProperties": false,
+        "required": ["operation", "control_id"],
+        "properties": {"operation": {"const": "owner_override_status"}, "control_id": {"$ref": "#/$defs/id"}}
+      }
+    },
+    "owner_override_enable": {
+      "error": "OWNER_OVERRIDE_INPUT_INVALID",
+      "definition": {
+        "type": "object", "additionalProperties": false,
+        "required": ["operation", "control_id", "passphrase"],
+        "properties": {
+          "operation": {"const": "owner_override_enable"},
+          "control_id": {"$ref": "#/$defs/id"},
+          "passphrase": {"type": "string", "minLength": 1, "maxLength": 1024}
+        }
+      }
+    },
+    "owner_override_disable": {
+      "error": "OWNER_OVERRIDE_INPUT_INVALID",
+      "definition": {
+        "type": "object", "additionalProperties": false,
+        "required": ["operation", "control_id"],
+        "properties": {"operation": {"const": "owner_override_disable"}, "control_id": {"$ref": "#/$defs/id"}}
+      }
+    }
+  },
+  "outputs": {
+    "owner_override_status": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "operation", "session_id", "owner_override"],
+      "properties": {
+        "schema_version": {"const": "paios.central.text-envelope.v1"},
+        "operation": {"const": "owner_override_status"},
+        "session_id": {"$ref": "#/$defs/id"},
+        "control_id": {"$ref": "#/$defs/id"},
+        "owner_override": {"$ref": "#/$defs/owner_override"},
+        "error_code": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,127}$"}
+      }
+    }
+  }
+}

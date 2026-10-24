@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-ai-os.local/contracts/realtime/realtime-watch-binding-read-response.v1.schema.json",
+  "type": "object",
+  "required": ["operation", "pair_state", "binding"],
+  "additionalProperties": false,
+  "properties": {
+    "operation": {"const": "watch_binding"},
+    "pair_state": {
+      "type": "object",
+      "required": ["pair_version", "status", "requires_rebind"],
+      "additionalProperties": false,
+      "properties": {
+        "pair_version": {"type": "string", "pattern": "^(0|[1-9][0-9]{0,37})$"},
+        "status": {"enum": ["absent", "active", "revoked"]},
+        "requires_rebind": {"type": "boolean"}
+      }
+    },
+    "binding": {"anyOf": [
+      {"type": "null"},
+      {"$ref": "https://personal-ai-os.local/contracts/realtime/realtime-watch-binding-response.v1.schema.json#/properties/binding"}
+    ]}
+  }
+}

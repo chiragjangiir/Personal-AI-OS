@@ -1,0 +1,126 @@
+{
+  "schema": "synthetic.watch-run-control.fixture.v1",
+  "evidence": "controlled native ports; actual source producer/Room/ING/admission contracts; no hardware/model",
+  "trusted_binding": {
+    "session_id": "continuity",
+    "device_id": "01900000-0000-7000-8000-000000000001",
+    "connection_epoch": "1",
+    "expected_gateway_identity": "controlled-source-gateway"
+  },
+  "wire": {
+    "connection": {
+      "epoch": 0,
+      "id": "rm_01",
+      "state": "connected"
+    },
+    "event_id": "01a0f4c2-c400-7202-8202-020202020202",
+    "event_type": "paios.phase0.demo.workout.metric",
+    "expires_at": "2026-10-01T01:00:00.000Z",
+    "idempotency_key": "watch-workout:01900000-0000-7000-8000-000000000002:workout_probe:1",
+    "occurred_at": "2026-10-01T00:00:00.000Z",
+    "origin": {
+      "client_instance_id": "01900000-0000-7000-8000-000000000003",
+      "device_class": "apple_watch",
+      "device_id": "01900000-0000-7000-8000-000000000002",
+      "relay": {
+        "device_class": "iphone",
+        "device_id": "01900000-0000-7000-8000-000000000001",
+        "transport": "watch_connectivity"
+      }
+    },
+    "payload": {
+      "metrics": [
+        {
+          "name": "heart_rate",
+          "unit": "bpm",
+          "value": 72
+        },
+        {
+          "name": "elapsed_time",
+          "unit": "s",
+          "value": 30
+        }
+      ],
+      "observed_at": "2026-10-01T00:00:00.000Z",
+      "workout_id": "workout_probe",
+      "workout_kind": "cycling"
+    },
+    "schema_version": "phase0-demo/0.4",
+    "sequence": {
+      "number": 1,
+      "stream_id": "watch_workout"
+    },
+    "session_id": "room",
+    "trace_id": "01a0f4c2-c400-7101-8101-010101010101"
+  },
+  "accepted": [
+    {
+      "operation": "accepted",
+      "event_id": "watch:4f4777d3faaf3b91d6b944b4b97701f568bae62d757b58a06874f220447d99e4",
+      "processed_event_id": "d:f4a6f78b5b2931e43dc58633124c276bcfd65b6bd61ade4b12ffd236a9ae569f",
+      "session_id": "continuity",
+      "admission": {
+        "state": "pending",
+        "run_id": null,
+        "idempotency_key": "paios:f85135950c519bb9c665cec0da8e794d35588fd15c69a4be8cf24ba3e406ce6b"
+      },
+      "schema_version": "paios.central.text-envelope.v1"
+    },
+    {
+      "operation": "accepted",
+      "event_id": "watch:4f4777d3faaf3b91d6b944b4b97701f568bae62d757b58a06874f220447d99e4",
+      "processed_event_id": "d:f4a6f78b5b2931e43dc58633124c276bcfd65b6bd61ade4b12ffd236a9ae569f",
+      "session_id": "continuity",
+      "admission": {
+        "state": "submitting",
+        "run_id": null,
+        "idempotency_key": "paios:f85135950c519bb9c665cec0da8e794d35588fd15c69a4be8cf24ba3e406ce6b"
+      },
+      "schema_version": "paios.central.text-envelope.v1"
+    },
+    {
+      "operation": "accepted",
+      "event_id": "watch:4f4777d3faaf3b91d6b944b4b97701f568bae62d757b58a06874f220447d99e4",
+      "processed_event_id": "d:f4a6f78b5b2931e43dc58633124c276bcfd65b6bd61ade4b12ffd236a9ae569f",
+      "session_id": "continuity",
+      "admission": {
+        "run_order": 2,
+        "state": "running",
+        "run_id": "controlled-watch-1",
+        "idempotency_key": "paios:f85135950c519bb9c665cec0da8e794d35588fd15c69a4be8cf24ba3e406ce6b"
+      },
+      "schema_version": "paios.central.text-envelope.v1"
+    },
+    {
+      "operation": "accepted",
+      "event_id": "watch:4f4777d3faaf3b91d6b944b4b97701f568bae62d757b58a06874f220447d99e4",
+      "processed_event_id": "d:f4a6f78b5b2931e43dc58633124c276bcfd65b6bd61ade4b12ffd236a9ae569f",
+      "session_id": "continuity",
+      "admission": {
+        "run_order": 2,
+        "state": "cancelled",
+        "run_id": "controlled-watch-1",
+        "idempotency_key": "paios:f85135950c519bb9c665cec0da8e794d35588fd15c69a4be8cf24ba3e406ce6b"
+      },
+      "schema_version": "paios.central.text-envelope.v1"
+    },
+    {
+      "operation": "accepted",
+      "event_id": "watch:4f4777d3faaf3b91d6b944b4b97701f568bae62d757b58a06874f220447d99e4",
+      "processed_event_id": "d:f4a6f78b5b2931e43dc58633124c276bcfd65b6bd61ade4b12ffd236a9ae569f",
+      "session_id": "continuity",
+      "admission": {
+        "run_order": 2,
+        "state": "cancelled",
+        "run_id": "controlled-watch-1",
+        "idempotency_key": "paios:f85135950c519bb9c665cec0da8e794d35588fd15c69a4be8cf24ba3e406ce6b"
+      },
+      "schema_version": "paios.central.text-envelope.v1"
+    }
+  ],
+  "control_input": {
+    "control_id": "explicit-phone-control",
+    "operation": "cancel_run",
+    "processed_event_id": "d:f4a6f78b5b2931e43dc58633124c276bcfd65b6bd61ade4b12ffd236a9ae569f"
+  }
+}

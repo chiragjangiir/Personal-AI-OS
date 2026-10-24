@@ -1,0 +1,279 @@
+[
+  {
+    "name": "read_text_file",
+    "before": "a\r\nb\r\nc\n",
+    "args": {},
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "a\r\nb\r\nc\n"
+        }
+      ],
+      "structuredContent": {
+        "content": "a\r\nb\r\nc\n"
+      }
+    },
+    "after": "a\r\nb\r\nc\n"
+  },
+  {
+    "name": "read_text_file",
+    "before": "a\r\nb\r\nc\n",
+    "args": {
+      "head": 2
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "a\r\nb\r"
+        }
+      ],
+      "structuredContent": {
+        "content": "a\r\nb\r"
+      }
+    },
+    "after": "a\r\nb\r\nc\n"
+  },
+  {
+    "name": "read_text_file",
+    "before": "a\r\nb\r\nc\n",
+    "args": {
+      "tail": 2
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "c\n"
+        }
+      ],
+      "structuredContent": {
+        "content": "c\n"
+      }
+    },
+    "after": "a\r\nb\r\nc\n"
+  },
+  {
+    "name": "read_text_file",
+    "before": "a\nb\n",
+    "args": {
+      "tail": 0.5
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "a\nb\n"
+        }
+      ],
+      "structuredContent": {
+        "content": "a\nb\n"
+      }
+    },
+    "after": "a\nb\n"
+  },
+  {
+    "name": "read_text_file",
+    "before": "a\nb\n",
+    "args": {
+      "head": -2
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": ""
+        }
+      ],
+      "structuredContent": {
+        "content": ""
+      }
+    },
+    "after": "a\nb\n"
+  },
+  {
+    "name": "read_text_file",
+    "before": "a\nb",
+    "args": {
+      "head": 1,
+      "tail": 1
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Cannot specify both head and tail parameters simultaneously"
+        }
+      ],
+      "isError": true
+    },
+    "after": "a\nb"
+  },
+  {
+    "name": "write_file",
+    "before": "old\n",
+    "args": {
+      "content": "新\n"
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Successfully wrote to $PATH"
+        }
+      ],
+      "structuredContent": {
+        "content": "Successfully wrote to $PATH"
+      }
+    },
+    "after": "新\n"
+  },
+  {
+    "name": "edit_file",
+    "before": "  one\r\n  two\r\n",
+    "args": {
+      "edits": [
+        {
+          "oldText": "one\n two",
+          "newText": "three\n four"
+        }
+      ]
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "```diff\nIndex: $PATH\n===================================================================\n--- $PATH\toriginal\n+++ $PATH\tmodified\n@@ -1,2 +1,2 @@\n-  one\n-  two\n+  three\n+  four\n```\n\n"
+        }
+      ],
+      "structuredContent": {
+        "content": "```diff\nIndex: $PATH\n===================================================================\n--- $PATH\toriginal\n+++ $PATH\tmodified\n@@ -1,2 +1,2 @@\n-  one\n-  two\n+  three\n+  four\n```\n\n"
+      }
+    },
+    "after": "  three\n  four\n"
+  },
+  {
+    "name": "edit_file",
+    "before": "a a\n",
+    "args": {
+      "edits": [
+        {
+          "oldText": "a",
+          "newText": "b"
+        }
+      ],
+      "dryRun": true
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "```diff\nIndex: $PATH\n===================================================================\n--- $PATH\toriginal\n+++ $PATH\tmodified\n@@ -1,1 +1,1 @@\n-a a\n+b a\n```\n\n"
+        }
+      ],
+      "structuredContent": {
+        "content": "```diff\nIndex: $PATH\n===================================================================\n--- $PATH\toriginal\n+++ $PATH\tmodified\n@@ -1,1 +1,1 @@\n-a a\n+b a\n```\n\n"
+      }
+    },
+    "after": "a a\n"
+  },
+  {
+    "name": "edit_file",
+    "before": "a\n",
+    "args": {
+      "edits": [
+        {
+          "oldText": "missing",
+          "newText": "x"
+        }
+      ]
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Could not find exact match for edit:\nmissing"
+        }
+      ],
+      "isError": true
+    },
+    "after": "a\n"
+  },
+  {
+    "name": "edit_file",
+    "before": "a\n",
+    "args": {
+      "edits": [
+        {
+          "oldText": "a",
+          "newText": "```"
+        }
+      ]
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "````diff\nIndex: $PATH\n===================================================================\n--- $PATH\toriginal\n+++ $PATH\tmodified\n@@ -1,1 +1,1 @@\n-a\n+```\n````\n\n"
+        }
+      ],
+      "structuredContent": {
+        "content": "````diff\nIndex: $PATH\n===================================================================\n--- $PATH\toriginal\n+++ $PATH\tmodified\n@@ -1,1 +1,1 @@\n-a\n+```\n````\n\n"
+      }
+    },
+    "after": "```\n"
+  },
+  {
+    "name": "edit_file",
+    "before": "a",
+    "args": {
+      "edits": [
+        {
+          "oldText": "a",
+          "newText": "b"
+        }
+      ]
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "```diff\nIndex: $PATH\n===================================================================\n--- $PATH\toriginal\n+++ $PATH\tmodified\n@@ -1,1 +1,1 @@\n-a\n\\ No newline at end of file\n+b\n\\ No newline at end of file\n```\n\n"
+        }
+      ],
+      "structuredContent": {
+        "content": "```diff\nIndex: $PATH\n===================================================================\n--- $PATH\toriginal\n+++ $PATH\tmodified\n@@ -1,1 +1,1 @@\n-a\n\\ No newline at end of file\n+b\n\\ No newline at end of file\n```\n\n"
+      }
+    },
+    "after": "b"
+  },
+  {
+    "name": "edit_file",
+    "before": "a\nb\n",
+    "args": {
+      "edits": [
+        {
+          "oldText": "a",
+          "newText": "c"
+        },
+        {
+          "oldText": "c",
+          "newText": "d"
+        }
+      ]
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "```diff\nIndex: $PATH\n===================================================================\n--- $PATH\toriginal\n+++ $PATH\tmodified\n@@ -1,2 +1,2 @@\n-a\n+d\n b\n```\n\n"
+        }
+      ],
+      "structuredContent": {
+        "content": "```diff\nIndex: $PATH\n===================================================================\n--- $PATH\toriginal\n+++ $PATH\tmodified\n@@ -1,2 +1,2 @@\n-a\n+d\n b\n```\n\n"
+      }
+    },
+    "after": "d\nb\n"
+  }
+]

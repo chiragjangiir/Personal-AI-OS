@@ -1,0 +1,825 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-ai-os.invalid/schemas/phase0-demo/0.2/session-event.schema.json",
+  "title": "Personal AI OS Phase 0 Demo Session Event",
+  "description": "NON_CANONICAL / EPHEMERAL / PHASE0_ONLY; valid only for P0-01 through P0-05.",
+  "$comment": "This schema MUST NOT be promoted into Phase 1 canonical contracts.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_type",
+    "event_id",
+    "session_id",
+    "trace_id",
+    "occurred_at",
+    "expires_at",
+    "origin",
+    "connection",
+    "sequence",
+    "idempotency_key",
+    "payload"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "phase0-demo/0.2"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "paios.phase0.demo.session.started",
+        "paios.phase0.demo.session.ended",
+        "paios.phase0.demo.session.cleanup.completed",
+        "paios.phase0.demo.device.status",
+        "paios.phase0.demo.device.telemetry",
+        "paios.phase0.demo.capture.status",
+        "paios.phase0.demo.transcript.final",
+        "paios.phase0.demo.location.observed",
+        "paios.phase0.demo.workout.metric",
+        "paios.phase0.demo.confirmation.requested",
+        "paios.phase0.demo.confirmation.responded",
+        "paios.phase0.demo.media.referenced",
+        "paios.phase0.demo.model.requested",
+        "paios.phase0.demo.model.result",
+        "paios.phase0.demo.delivery.requested",
+        "paios.phase0.demo.delivery.acknowledged",
+        "paios.phase0.demo.handoff.requested",
+        "paios.phase0.demo.handoff.completed",
+        "paios.phase0.demo.connection.reconnected"
+      ]
+    },
+    "event_id": {
+      "$ref": "#/$defs/uuid"
+    },
+    "session_id": {
+      "$ref": "#/$defs/scopedId"
+    },
+    "trace_id": {
+      "$ref": "#/$defs/uuid"
+    },
+    "occurred_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "expires_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "origin": {
+      "$ref": "#/$defs/origin"
+    },
+    "connection": {
+      "$ref": "#/$defs/connection"
+    },
+    "sequence": {
+      "$ref": "#/$defs/sequence"
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "event_type": { "const": "paios.phase0.demo.session.started" },
+            "payload": { "$ref": "#/$defs/sessionStarted" }
+          }
+        },
+        {
+          "properties": {
+            "event_type": { "const": "paios.phase0.demo.session.ended" },
+            "payload": { "$ref": "#/$defs/sessionEnded" }
+          }
+        },
+        {
+          "properties": {
+            "event_type": { "const": "paios.phase0.demo.session.cleanup.completed" },
+            "payload": { "$ref": "#/$defs/cleanupCompleted" }
+          }
+        },
+        {
+          "properties": {
+            "event_type": { "const": "paios.phase0.demo.device.status" },
+            "payload": { "$ref": "#/$defs/deviceStatus" }
+          }
+        },
+        {
+          "properties": {
+            "event_type": { "const": "paios.phase0.demo.device.telemetry" },
+            "payload": { "$ref": "#/$defs/deviceTelemetry" }
+          }
+        },
+        {
+          "properties": {
+            "event_type": { "const": "paios.phase0.demo.capture.status" },
+            "payload": { "$ref": "#/$defs/captureStatus" }
+          }
+        },
+        {
+          "properties": {
+            "event_type": { "const": "paios.phase0.demo.transcript.final" },
+            "payload": { "$ref": "#/$defs/transcriptFinal" }
+          }
+        },
+        {
+          "properties": {
+            "event_type": { "const": "paios.phase0.demo.location.observed" },
+            "payload": { "$ref": "#/$defs/locationObserved" }
+          }
+        },
+        {
+          "properties": {
+            "event_type": { "const": "paios.phase0.demo.workout.metric" },
+            "payload": { "$ref": "#/$defs/workoutMetric" }
+          }
+        },
+        {
+          "properties": {
+            "event_type": { "const": "paios.phase0.demo.confirmation.requested" },
+            "payload": { "$ref": "#/$defs/confirmationRequested" }
+          }
+        },
+        {
+          "properties": {
+            "event_type": { "const": "paios.phase0.demo.confirmation.responded" },
+            "payload": { "$ref": "#/$defs/confirmationResponded" }
+          }
+        },
+        {
+          "properties": {
+            "event_type": { "const": "paios.phase0.demo.media.referenced" },
+            "payload": { "$ref": "#/$defs/mediaReferenced" }
+          }
+        },
+        {
+          "properties": {
+            "event_type": { "const": "paios.phase0.demo.model.requested" },
+            "payload": { "$ref": "#/$defs/modelRequested" }
+          }
+        },
+        {
+          "properties": {
+            "event_type": { "const": "paios.phase0.demo.model.result" },
+            "payload": { "$ref": "#/$defs/modelResult" }
+          }
+        },
+        {
+          "properties": {
+            "event_type": { "const": "paios.phase0.demo.delivery.requested" },
+            "payload": { "$ref": "#/$defs/deliveryRequested" }
+          }
+        },
+        {
+          "properties": {
+            "event_type": { "const": "paios.phase0.demo.delivery.acknowledged" },
+            "payload": { "$ref": "#/$defs/deliveryAcknowledged" }
+          }
+        },
+        {
+          "properties": {
+            "event_type": { "const": "paios.phase0.demo.handoff.requested" },
+            "payload": { "$ref": "#/$defs/handoffRequested" }
+          }
+        },
+        {
+          "properties": {
+            "event_type": { "const": "paios.phase0.demo.handoff.completed" },
+            "payload": { "$ref": "#/$defs/handoffCompleted" }
+          }
+        },
+        {
+          "properties": {
+            "event_type": { "const": "paios.phase0.demo.connection.reconnected" },
+            "connection": {
+              "properties": {
+                "state": { "const": "reconnected" }
+              }
+            },
+            "payload": { "$ref": "#/$defs/connectionReconnected" }
+          }
+        }
+      ]
+    }
+  ],
+  "unevaluatedProperties": false,
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "scopedId": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 64,
+      "pattern": "^[a-z][a-z0-9_-]*$"
+    },
+    "origin": {
+      "type": "object",
+      "required": ["device_id", "device_class", "client_instance_id"],
+      "properties": {
+        "device_id": { "$ref": "#/$defs/scopedId" },
+        "device_class": {
+          "type": "string",
+          "enum": ["windows_gateway", "iphone", "apple_watch", "rayneo", "web_mobile"]
+        },
+        "client_instance_id": { "$ref": "#/$defs/scopedId" },
+        "relay": {
+          "type": "object",
+          "required": ["relay_device_id", "relay_device_class", "transport"],
+          "properties": {
+            "relay_device_id": { "$ref": "#/$defs/scopedId" },
+            "relay_device_class": { "const": "iphone" },
+            "transport": { "const": "watch_connectivity" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "device_class": { "const": "apple_watch" } },
+            "required": ["device_class"]
+          },
+          "then": { "required": ["relay"] },
+          "else": { "not": { "required": ["relay"] } }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "connection": {
+      "type": "object",
+      "description": "Cross-event rules require every reconnect id to be new and resumed_from_connection_id to name the immediately current prior id.",
+      "required": ["id", "epoch", "state"],
+      "properties": {
+        "id": { "$ref": "#/$defs/scopedId" },
+        "epoch": { "type": "integer", "minimum": 0 },
+        "state": { "type": "string", "enum": ["connected", "reconnected", "disconnected"] },
+        "resumed_from_connection_id": { "$ref": "#/$defs/scopedId" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "state": { "const": "reconnected" } },
+            "required": ["state"]
+          },
+          "then": {
+            "required": ["resumed_from_connection_id"],
+            "properties": { "epoch": { "minimum": 1 } }
+          },
+          "else": { "not": { "required": ["resumed_from_connection_id"] } }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "sequence": {
+      "type": "object",
+      "required": ["stream_id", "number"],
+      "properties": {
+        "stream_id": { "$ref": "#/$defs/scopedId" },
+        "number": { "type": "integer", "minimum": 1 },
+        "previous_event_id": { "$ref": "#/$defs/uuid" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "number": { "minimum": 2 } },
+            "required": ["number"]
+          },
+          "then": { "required": ["previous_event_id"] },
+          "else": { "not": { "required": ["previous_event_id"] } }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "credentialLease": {
+      "type": "object",
+      "required": ["credential_id", "expires_at", "scopes"],
+      "properties": {
+        "credential_id": { "$ref": "#/$defs/scopedId" },
+        "expires_at": { "$ref": "#/$defs/timestamp" },
+        "scopes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["room_join", "publish_audio", "publish_video", "publish_data", "subscribe"]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "mediaRef": {
+      "type": "object",
+      "required": ["media_id", "kind", "transport", "locator", "mime_type", "capture_mode", "expires_at"],
+      "properties": {
+        "media_id": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 67,
+          "pattern": "^(?:[a-z][a-z0-9_-]*|TR_[A-Za-z0-9_-]{3,64})$"
+        },
+        "kind": { "type": "string", "enum": ["audio", "image", "video"] },
+        "transport": { "type": "string", "enum": ["livekit_track", "ephemeral_object"] },
+        "locator": {
+          "type": "string",
+          "description": "Semantic validation scans the raw value and one strict percent-decoded form for JWT or signed-credential material.",
+          "minLength": 12,
+          "maxLength": 256,
+          "pattern": "^(?:livekit://[a-z][a-z0-9_-]{2,63}/[a-z][a-z0-9_-]{2,63}/TR_[A-Za-z0-9_-]{3,64}|ephemeral://[A-Za-z0-9._~:/-]+)$"
+        },
+        "mime_type": {
+          "type": "string",
+          "enum": ["audio/opus", "audio/wav", "image/jpeg", "image/png", "video/H264", "video/VP8"]
+        },
+        "byte_length": { "type": "integer", "minimum": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "capture_mode": {
+          "type": "string",
+          "enum": ["microphone", "user_triggered_frame", "periodic_frame", "low_fps_visual_stream", "generated"]
+        },
+        "expires_at": { "$ref": "#/$defs/timestamp" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "transport": { "const": "livekit_track" } }, "required": ["transport"] },
+          "then": {
+            "properties": {
+              "media_id": { "pattern": "^TR_[A-Za-z0-9_-]{3,64}$" },
+              "locator": { "pattern": "^livekit://[a-z][a-z0-9_-]{2,63}/[a-z][a-z0-9_-]{2,63}/TR_[A-Za-z0-9_-]{3,64}$" }
+            }
+          },
+          "else": {
+            "required": ["byte_length", "sha256"],
+            "properties": {
+              "media_id": { "pattern": "^[a-z][a-z0-9_-]*$" },
+              "locator": { "pattern": "^ephemeral://" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "audio" } }, "required": ["kind"] },
+          "then": { "properties": { "mime_type": { "enum": ["audio/opus", "audio/wav"] } } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "image" } }, "required": ["kind"] },
+          "then": { "properties": { "mime_type": { "enum": ["image/jpeg", "image/png"] } } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "video" } }, "required": ["kind"] },
+          "then": { "properties": { "mime_type": { "enum": ["video/H264", "video/VP8"] } } }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "workoutMetricItem": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["name", "value", "unit"],
+          "properties": {
+            "name": { "const": "heart_rate" },
+            "value": { "type": "number", "minimum": 20, "maximum": 260 },
+            "unit": { "const": "bpm" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["name", "value", "unit"],
+          "properties": {
+            "name": { "const": "active_energy" },
+            "value": { "type": "number", "minimum": 0 },
+            "unit": { "const": "kcal" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["name", "value", "unit"],
+          "properties": {
+            "name": { "const": "distance" },
+            "value": { "type": "number", "minimum": 0 },
+            "unit": { "const": "m" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["name", "value", "unit"],
+          "properties": {
+            "name": { "const": "elapsed_time" },
+            "value": { "type": "number", "minimum": 0 },
+            "unit": { "const": "s" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["name", "value", "unit"],
+          "properties": {
+            "name": { "const": "cadence" },
+            "value": { "type": "number", "minimum": 0, "maximum": 300 },
+            "unit": { "const": "spm" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "telemetryMetricItem": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["name", "value", "unit"],
+          "properties": {
+            "name": { "const": "battery" },
+            "value": { "type": "number", "minimum": 0, "maximum": 100 },
+            "unit": { "const": "percent" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["name", "value", "unit"],
+          "properties": {
+            "name": { "const": "temperature" },
+            "value": { "type": "number", "minimum": -50, "maximum": 150 },
+            "unit": { "const": "celsius" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["name", "value", "unit"],
+          "properties": {
+            "name": { "const": "frame_rate" },
+            "value": { "type": "number", "minimum": 0, "maximum": 120 },
+            "unit": { "const": "fps" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["name", "value", "unit"],
+          "properties": {
+            "name": { "const": "network_rtt" },
+            "value": { "type": "number", "minimum": 0 },
+            "unit": { "const": "ms" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["name", "value", "unit"],
+          "properties": {
+            "name": { "const": "packet_loss" },
+            "value": { "type": "number", "minimum": 0, "maximum": 100 },
+            "unit": { "const": "percent" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "modelOutput": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["modality", "text"],
+          "properties": {
+            "modality": { "const": "text" },
+            "text": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "language": { "type": "string", "minLength": 2, "maxLength": 16 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["modality", "media_ref"],
+          "properties": {
+            "modality": { "const": "audio" },
+            "media_ref": { "$ref": "#/$defs/mediaRef" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["modality", "card"],
+          "properties": {
+            "modality": { "const": "ar_card" },
+            "card": {
+              "type": "object",
+              "required": ["card_id", "title"],
+              "properties": {
+                "card_id": { "$ref": "#/$defs/scopedId" },
+                "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+                "body": { "type": "string", "maxLength": 1024 }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "sessionStarted": {
+      "type": "object",
+      "required": ["active_device_id", "active_device_lease_version", "session_expires_at", "cleanup_deadline_at", "credential_lease"],
+      "properties": {
+        "active_device_id": { "$ref": "#/$defs/scopedId" },
+        "active_device_lease_version": { "type": "integer", "const": 1 },
+        "session_expires_at": { "$ref": "#/$defs/timestamp" },
+        "cleanup_deadline_at": { "$ref": "#/$defs/timestamp" },
+        "credential_lease": { "$ref": "#/$defs/credentialLease" }
+      },
+      "additionalProperties": false
+    },
+    "sessionEnded": {
+      "type": "object",
+      "required": ["reason", "ended_at", "cleanup_deadline_at"],
+      "properties": {
+        "reason": { "type": "string", "enum": ["user_stop", "timeout", "gate_complete", "error"] },
+        "ended_at": { "$ref": "#/$defs/timestamp" },
+        "cleanup_deadline_at": { "$ref": "#/$defs/timestamp" }
+      },
+      "additionalProperties": false
+    },
+    "cleanupCompleted": {
+      "type": "object",
+      "required": ["status", "completed_at", "removed"],
+      "properties": {
+        "status": { "const": "complete" },
+        "completed_at": { "$ref": "#/$defs/timestamp" },
+        "removed": {
+          "type": "object",
+          "required": ["events", "media_objects", "session_rows", "model_cache_entries"],
+          "properties": {
+            "events": { "type": "integer", "minimum": 0 },
+            "media_objects": { "type": "integer", "minimum": 0 },
+            "session_rows": { "type": "integer", "minimum": 0 },
+            "model_cache_entries": { "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "deviceStatus": {
+      "type": "object",
+      "required": ["device_id", "status", "transport", "capabilities", "observed_at"],
+      "properties": {
+        "device_id": { "$ref": "#/$defs/scopedId" },
+        "status": { "type": "string", "enum": ["online", "offline", "blocked"] },
+        "transport": { "type": "string", "enum": ["livekit", "watch_connectivity"] },
+        "capabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["audio_input", "audio_output", "location", "workout", "confirmation", "camera", "ar_output", "text_output"]
+          }
+        },
+        "observed_at": { "$ref": "#/$defs/timestamp" }
+      },
+      "additionalProperties": false
+    },
+    "deviceTelemetry": {
+      "type": "object",
+      "required": ["device_id", "observed_at", "metrics"],
+      "properties": {
+        "device_id": { "$ref": "#/$defs/scopedId" },
+        "observed_at": { "$ref": "#/$defs/timestamp" },
+        "metrics": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": { "$ref": "#/$defs/telemetryMetricItem" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "captureStatus": {
+      "type": "object",
+      "description": "A stopped capture stream is terminal; a later capture start requires a new sequence.stream_id.",
+      "required": ["device_id", "capture_kind", "status", "explicit_user_action", "indicator_visible", "observed_at"],
+      "properties": {
+        "device_id": { "$ref": "#/$defs/scopedId" },
+        "capture_kind": { "type": "string", "enum": ["audio", "location", "workout", "camera"] },
+        "status": { "type": "string", "enum": ["started", "paused", "stopped"] },
+        "explicit_user_action": { "const": true },
+        "indicator_visible": { "const": true },
+        "observed_at": { "$ref": "#/$defs/timestamp" }
+      },
+      "additionalProperties": false
+    },
+    "transcriptFinal": {
+      "type": "object",
+      "required": ["text", "language", "is_final", "source_media_id"],
+      "properties": {
+        "text": { "type": "string", "minLength": 1, "maxLength": 8192 },
+        "language": { "type": "string", "minLength": 2, "maxLength": 16 },
+        "is_final": { "const": true },
+        "source_media_id": { "$ref": "#/$defs/scopedId" }
+      },
+      "additionalProperties": false
+    },
+    "locationObserved": {
+      "type": "object",
+      "required": ["latitude", "longitude", "accuracy_m", "activity", "observed_at", "authorization_mode"],
+      "properties": {
+        "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
+        "longitude": { "type": "number", "minimum": -180, "maximum": 180 },
+        "accuracy_m": { "type": "number", "minimum": 0, "maximum": 100000 },
+        "activity": { "type": "string", "enum": ["unknown", "stationary", "walking", "running", "cycling", "automotive"] },
+        "observed_at": { "$ref": "#/$defs/timestamp" },
+        "authorization_mode": { "type": "string", "enum": ["foreground", "significant_change", "user_selected"] }
+      },
+      "additionalProperties": false
+    },
+    "workoutMetric": {
+      "type": "object",
+      "required": ["workout_id", "workout_kind", "observed_at", "metrics"],
+      "properties": {
+        "workout_id": { "$ref": "#/$defs/scopedId" },
+        "workout_kind": { "type": "string", "enum": ["running", "walking", "cycling", "other"] },
+        "observed_at": { "$ref": "#/$defs/timestamp" },
+        "metrics": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": { "$ref": "#/$defs/workoutMetricItem" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "confirmationRequested": {
+      "type": "object",
+      "required": ["confirmation_id", "target_device_id", "prompt", "choices", "expires_at"],
+      "properties": {
+        "confirmation_id": { "$ref": "#/$defs/scopedId" },
+        "target_device_id": { "$ref": "#/$defs/scopedId" },
+        "prompt": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "choices": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 32 }
+        },
+        "expires_at": { "$ref": "#/$defs/timestamp" }
+      },
+      "additionalProperties": false
+    },
+    "confirmationResponded": {
+      "type": "object",
+      "required": ["confirmation_id", "request_event_id", "choice", "responded_at"],
+      "properties": {
+        "confirmation_id": { "$ref": "#/$defs/scopedId" },
+        "request_event_id": { "$ref": "#/$defs/uuid" },
+        "choice": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "responded_at": { "$ref": "#/$defs/timestamp" }
+      },
+      "additionalProperties": false
+    },
+    "mediaReferenced": {
+      "type": "object",
+      "required": ["media_ref", "explicit_capture"],
+      "properties": {
+        "media_ref": { "$ref": "#/$defs/mediaRef" },
+        "explicit_capture": { "const": true }
+      },
+      "additionalProperties": false
+    },
+    "modelRequested": {
+      "type": "object",
+      "required": ["input_event_ids", "requested_outputs"],
+      "properties": {
+        "input_event_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/uuid" }
+        },
+        "requested_outputs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "enum": ["text", "audio", "ar_card"] }
+        }
+      },
+      "additionalProperties": false
+    },
+    "modelResult": {
+      "type": "object",
+      "required": ["request_event_id", "result_id", "status", "provider", "model", "latency_ms", "non_authoritative"],
+      "properties": {
+        "request_event_id": { "$ref": "#/$defs/uuid" },
+        "result_id": { "$ref": "#/$defs/scopedId" },
+        "status": { "type": "string", "enum": ["success", "failure"] },
+        "provider": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "model": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "latency_ms": { "type": "integer", "minimum": 0 },
+        "non_authoritative": { "const": true },
+        "outputs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "items": { "$ref": "#/$defs/modelOutput" }
+        },
+        "error": {
+          "type": "object",
+          "description": "Diagnostic only. Raw and once-percent-decoded values must not carry JWTs, provider keys, bearer material, or signed URLs; invalid or nested percent encoding is rejected.",
+          "required": ["code", "message", "retryable"],
+          "properties": {
+            "code": { "type": "string", "minLength": 1, "maxLength": 80 },
+            "message": { "type": "string", "minLength": 1, "maxLength": 512 },
+            "retryable": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "success" } }, "required": ["status"] },
+          "then": { "required": ["outputs"], "not": { "required": ["error"] } },
+          "else": { "required": ["error"], "not": { "required": ["outputs"] } }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "deliveryRequested": {
+      "type": "object",
+      "required": ["result_event_id", "target_device_id", "channel", "active_device_lease_version", "suppress_other_devices"],
+      "properties": {
+        "result_event_id": { "$ref": "#/$defs/uuid" },
+        "target_device_id": { "$ref": "#/$defs/scopedId" },
+        "channel": { "type": "string", "enum": ["dashboard", "text", "audio", "ar"] },
+        "active_device_lease_version": { "type": "integer", "minimum": 1 },
+        "suppress_other_devices": { "const": true }
+      },
+      "additionalProperties": false
+    },
+    "deliveryAcknowledged": {
+      "type": "object",
+      "required": ["delivery_event_id", "target_device_id", "active_device_lease_version", "disposition", "acknowledged_at"],
+      "properties": {
+        "delivery_event_id": { "$ref": "#/$defs/uuid" },
+        "target_device_id": { "$ref": "#/$defs/scopedId" },
+        "active_device_lease_version": { "type": "integer", "minimum": 1 },
+        "disposition": { "type": "string", "enum": ["rendered", "played", "failed", "ignored_stale_lease"] },
+        "acknowledged_at": { "$ref": "#/$defs/timestamp" }
+      },
+      "additionalProperties": false
+    },
+    "handoffRequested": {
+      "type": "object",
+      "required": ["handoff_id", "from_device_id", "to_device_id", "expected_active_device_lease_version", "reason"],
+      "properties": {
+        "handoff_id": { "$ref": "#/$defs/scopedId" },
+        "from_device_id": { "$ref": "#/$defs/scopedId" },
+        "to_device_id": { "$ref": "#/$defs/scopedId" },
+        "expected_active_device_lease_version": { "type": "integer", "minimum": 1 },
+        "reason": { "type": "string", "enum": ["user_selected", "device_unavailable", "demo_step"] }
+      },
+      "additionalProperties": false
+    },
+    "handoffCompleted": {
+      "type": "object",
+      "description": "The referenced request is single-consume and completion is a compare-and-swap against the current device and expected lease.",
+      "required": ["handoff_id", "request_event_id", "from_device_id", "to_device_id", "active_device_id", "active_device_lease_version", "old_device_output_suppressed", "completed_at"],
+      "properties": {
+        "handoff_id": { "$ref": "#/$defs/scopedId" },
+        "request_event_id": { "$ref": "#/$defs/uuid" },
+        "from_device_id": { "$ref": "#/$defs/scopedId" },
+        "to_device_id": { "$ref": "#/$defs/scopedId" },
+        "active_device_id": { "$ref": "#/$defs/scopedId" },
+        "active_device_lease_version": { "type": "integer", "minimum": 2 },
+        "old_device_output_suppressed": { "const": true },
+        "completed_at": { "$ref": "#/$defs/timestamp" }
+      },
+      "additionalProperties": false
+    },
+    "connectionReconnected": {
+      "type": "object",
+      "required": ["previous_connection_id", "new_connection_id", "resume_stream_id", "last_acked_sequence", "replay_from_sequence", "outage_ms"],
+      "properties": {
+        "previous_connection_id": { "$ref": "#/$defs/scopedId" },
+        "new_connection_id": { "$ref": "#/$defs/scopedId" },
+        "resume_stream_id": { "$ref": "#/$defs/scopedId" },
+        "last_acked_sequence": { "type": "integer", "minimum": 0 },
+        "replay_from_sequence": { "type": "integer", "minimum": 1 },
+        "outage_ms": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  }
+}

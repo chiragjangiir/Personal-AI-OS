@@ -1,0 +1,257 @@
+{
+  "fixture_version": "phase0-demo/0.1",
+  "description": "Negative compatibility cases. Each case clones source_event_id from valid-events.json, applies JSON-Pointer mutations, and must be rejected with expected_code.",
+  "schema_cases": [
+    {
+      "name": "wrong_schema_version",
+      "source_event_id": "00000000-0000-4000-8000-000000000001",
+      "mutations": [
+        { "op": "replace", "path": "/schema_version", "value": "phase0-demo/0.2" }
+      ],
+      "expected_code": "SCHEMA_INVALID"
+    },
+    {
+      "name": "unknown_event_namespace",
+      "source_event_id": "00000000-0000-4000-8000-000000000002",
+      "mutations": [
+        { "op": "replace", "path": "/event_type", "value": "paios.phase1.device.status" }
+      ],
+      "expected_code": "SCHEMA_INVALID"
+    },
+    {
+      "name": "watch_missing_iphone_relay",
+      "source_event_id": "00000000-0000-4000-8000-000000000006",
+      "mutations": [
+        { "op": "remove", "path": "/origin/relay" }
+      ],
+      "expected_code": "SCHEMA_INVALID"
+    },
+    {
+      "name": "secret_embedded_in_event",
+      "source_event_id": "00000000-0000-4000-8000-000000000001",
+      "mutations": [
+        { "op": "add", "path": "/payload/access_token", "value": "forbidden-secret-value" }
+      ],
+      "expected_code": "SCHEMA_INVALID"
+    },
+    {
+      "name": "interim_transcript_claimed_as_final",
+      "source_event_id": "00000000-0000-4000-8000-000000000004",
+      "mutations": [
+        { "op": "replace", "path": "/payload/is_final", "value": false }
+      ],
+      "expected_code": "SCHEMA_INVALID"
+    },
+    {
+      "name": "raw_media_bytes_embedded",
+      "source_event_id": "00000000-0000-4000-8000-000000000009",
+      "mutations": [
+        { "op": "add", "path": "/payload/media_ref/raw_bytes", "value": "base64-is-forbidden" }
+      ],
+      "expected_code": "SCHEMA_INVALID"
+    },
+    {
+      "name": "model_result_marked_authoritative",
+      "source_event_id": "00000000-0000-4000-8000-000000000012",
+      "mutations": [
+        { "op": "replace", "path": "/payload/non_authoritative", "value": false }
+      ],
+      "expected_code": "SCHEMA_INVALID"
+    },
+    {
+      "name": "handoff_does_not_suppress_old_output",
+      "source_event_id": "00000000-0000-4000-8000-000000000014",
+      "mutations": [
+        { "op": "replace", "path": "/payload/old_device_output_suppressed", "value": false }
+      ],
+      "expected_code": "SCHEMA_INVALID"
+    },
+    {
+      "name": "delivery_broadcast_enabled",
+      "source_event_id": "00000000-0000-4000-8000-000000000015",
+      "mutations": [
+        { "op": "replace", "path": "/payload/suppress_other_devices", "value": false }
+      ],
+      "expected_code": "SCHEMA_INVALID"
+    },
+    {
+      "name": "reconnect_event_without_reconnected_state",
+      "source_event_id": "00000000-0000-4000-8000-000000000017",
+      "mutations": [
+        { "op": "replace", "path": "/connection/state", "value": "connected" }
+      ],
+      "expected_code": "SCHEMA_INVALID"
+    },
+    {
+      "name": "unknown_envelope_field",
+      "source_event_id": "00000000-0000-4000-8000-000000000002",
+      "mutations": [
+        { "op": "add", "path": "/canonical", "value": true }
+      ],
+      "expected_code": "SCHEMA_INVALID"
+    },
+    {
+      "name": "telemetry_name_unit_mismatch",
+      "source_event_id": "00000000-0000-4000-8000-000000000010",
+      "mutations": [
+        { "op": "replace", "path": "/payload/metrics/0/unit", "value": "celsius" }
+      ],
+      "expected_code": "SCHEMA_INVALID"
+    }
+  ],
+  "semantic_cases": [
+    {
+      "name": "event_ttl_over_24_hours",
+      "source_event_id": "00000000-0000-4000-8000-000000000002",
+      "mutations": [
+        { "op": "replace", "path": "/expires_at", "value": "2026-07-22T09:00:03Z" }
+      ],
+      "expected_code": "EVENT_TTL_EXCEEDED"
+    },
+    {
+      "name": "watch_relay_is_same_physical_device",
+      "source_event_id": "00000000-0000-4000-8000-000000000006",
+      "mutations": [
+        { "op": "replace", "path": "/origin/relay/relay_device_id", "value": "watch_01" }
+      ],
+      "expected_code": "WATCH_RELAY_SELF_REFERENCE"
+    },
+    {
+      "name": "media_outlives_envelope",
+      "source_event_id": "00000000-0000-4000-8000-000000000009",
+      "mutations": [
+        { "op": "replace", "path": "/payload/media_ref/expires_at", "value": "2026-07-21T10:05:01Z" }
+      ],
+      "expected_code": "MEDIA_EXPIRES_AFTER_EVENT"
+    },
+    {
+      "name": "credential_lease_over_15_minutes",
+      "source_event_id": "00000000-0000-4000-8000-000000000001",
+      "mutations": [
+        { "op": "replace", "path": "/payload/credential_lease/expires_at", "value": "2026-07-21T09:15:01Z" }
+      ],
+      "expected_code": "CREDENTIAL_TTL_EXCEEDED"
+    },
+    {
+      "name": "confirmation_over_5_minutes",
+      "source_event_id": "00000000-0000-4000-8000-000000000007",
+      "mutations": [
+        { "op": "replace", "path": "/payload/expires_at", "value": "2026-07-21T09:06:06Z" }
+      ],
+      "expected_code": "CONFIRMATION_TTL_EXCEEDED"
+    },
+    {
+      "name": "reconnect_payload_connection_mismatch",
+      "source_event_id": "00000000-0000-4000-8000-000000000017",
+      "mutations": [
+        { "op": "replace", "path": "/payload/new_connection_id", "value": "iphone_conn_03" }
+      ],
+      "expected_code": "RECONNECT_CONNECTION_MISMATCH"
+    },
+    {
+      "name": "handoff_active_device_mismatch",
+      "source_event_id": "00000000-0000-4000-8000-000000000014",
+      "mutations": [
+        { "op": "replace", "path": "/payload/active_device_id", "value": "iphone_01" }
+      ],
+      "expected_code": "HANDOFF_ACTIVE_DEVICE_MISMATCH"
+    },
+    {
+      "name": "handoff_skips_lease_version",
+      "source_event_id": "00000000-0000-4000-8000-000000000014",
+      "mutations": [
+        { "op": "replace", "path": "/payload/active_device_lease_version", "value": 3 }
+      ],
+      "expected_code": "HANDOFF_LEASE_NOT_INCREMENTED"
+    },
+    {
+      "name": "cleanup_completed_after_deadline",
+      "source_event_id": "00000000-0000-4000-8000-000000000019",
+      "mutations": [
+        { "op": "replace", "path": "/occurred_at", "value": "2026-07-21T09:26:00Z" },
+        { "op": "replace", "path": "/expires_at", "value": "2026-07-21T10:26:00Z" },
+        { "op": "replace", "path": "/payload/completed_at", "value": "2026-07-21T09:26:00Z" }
+      ],
+      "expected_code": "CLEANUP_DEADLINE_MISSED"
+    }
+  ],
+  "semantic_pair_cases": [
+    {
+      "name": "same_idempotency_key_different_payload",
+      "source_event_id": "00000000-0000-4000-8000-000000000005",
+      "second_mutations": [
+        { "op": "replace", "path": "/event_id", "value": "20000000-0000-4000-8000-000000000001" },
+        { "op": "replace", "path": "/payload/latitude", "value": 31.2305 }
+      ],
+      "expected_code": "IDEMPOTENCY_CONFLICT"
+    },
+    {
+      "name": "logical_stream_sequence_regression",
+      "source_event_id": "00000000-0000-4000-8000-000000000004",
+      "second_mutations": [
+        { "op": "replace", "path": "/event_id", "value": "20000000-0000-4000-8000-000000000002" },
+        { "op": "replace", "path": "/occurred_at", "value": "2026-07-21T09:00:13Z" },
+        { "op": "replace", "path": "/idempotency_key", "value": "iphone-transcript-002" },
+        { "op": "replace", "path": "/payload/text", "value": "第二条最终文本。" }
+      ],
+      "expected_code": "SEQUENCE_NOT_INCREASING"
+    }
+  ],
+  "t14_hostile_regressions": [
+    { "name": "DEVICE_PAYLOAD_ORIGIN_ID_MISMATCH", "expected_code": "ORIGIN_PAYLOAD_DEVICE_MISMATCH", "enforcement": "semantic" },
+    { "name": "CONFIRMATION_ID_MISMATCH", "expected_code": "CONFIRMATION_ID_MISMATCH", "enforcement": "semantic" },
+    { "name": "CONFIRMATION_WRONG_RESPONDER", "expected_code": "CONFIRMATION_WRONG_RESPONDER", "enforcement": "semantic" },
+    { "name": "RETRY_TRACE_ID_DRIFT", "expected_code": "IDEMPOTENCY_CONFLICT", "enforcement": "semantic" },
+    { "name": "WATCH_RETRY_RELAY_IDENTITY_DRIFT", "expected_code": "IDEMPOTENCY_CONFLICT", "enforcement": "semantic" },
+    { "name": "MODEL_RESULT_CROSS_SESSION_REFERENCE", "expected_code": "MODEL_RESULT_CROSS_SESSION_REFERENCE", "enforcement": "semantic" },
+    { "name": "MODEL_UNREQUESTED_OUTPUT_MODALITIES", "expected_code": "MODEL_UNREQUESTED_OUTPUT_MODALITIES", "enforcement": "semantic" },
+    { "name": "EPHEMERAL_MEDIA_WITHOUT_HASH_OR_LENGTH", "expected_code": "EPHEMERAL_MEDIA_INTEGRITY_MISSING", "enforcement": "schema_and_semantic" },
+    { "name": "MEDIA_KIND_MIME_MISMATCH", "expected_code": "MEDIA_KIND_MIME_MISMATCH", "enforcement": "schema_and_semantic" },
+    { "name": "MEDIA_OVER_60M_AFTER_SESSION_END", "expected_code": "MEDIA_OVER_60M_AFTER_SESSION_END", "enforcement": "semantic" },
+    { "name": "TRANSCRIPT_AFTER_CAPTURE_STOP", "expected_code": "CAPTURE_OUTPUT_AFTER_STOP", "enforcement": "semantic" },
+    { "name": "EVENT_AFTER_CLEANUP_COMPLETED", "expected_code": "EVENT_AFTER_CLEANUP", "enforcement": "semantic" },
+    { "name": "FALSE_ZERO_CLEANUP_RECEIPT", "expected_code": "FALSE_ZERO_CLEANUP_RECEIPT", "enforcement": "semantic" },
+    { "name": "RECONNECT_EPOCH_SKIP", "expected_code": "RECONNECT_EPOCH_NOT_INCREMENTED", "enforcement": "semantic" },
+    { "name": "RECONNECT_ACK_SEQUENCE_FABRICATION", "expected_code": "RECONNECT_ACK_SEQUENCE_FABRICATION", "enforcement": "semantic" },
+    { "name": "DUAL_HANDOFF_SAME_EXPECTED_LEASE", "expected_code": "DUAL_HANDOFF_SAME_EXPECTED_LEASE", "enforcement": "semantic" },
+    { "name": "STALE_OLD_DEVICE_ACK_RENDERED", "expected_code": "STALE_OLD_DEVICE_ACK_RENDERED", "enforcement": "semantic" },
+    { "name": "SECRET_VALUE_IN_MODEL_ERROR", "expected_code": "CREDENTIAL_VALUE_EMBEDDED", "enforcement": "semantic" },
+    { "name": "HANDOFF_FROM_EQUALS_TO", "expected_code": "HANDOFF_FROM_EQUALS_TO", "enforcement": "semantic" },
+    { "name": "DUPLICATE_SESSION_START_RESETS_LEASE", "expected_code": "DUPLICATE_SESSION_START", "enforcement": "semantic" },
+    { "name": "END_AND_CLEANUP_WITHOUT_START", "expected_code": "SESSION_NOT_STARTED", "enforcement": "semantic" }
+  ],
+  "t14_revise_regressions": [
+    { "name": "CREDENTIAL_VALUE_CHANNEL_OPEN_NAKED_JWT_ERROR", "expected_code": "CREDENTIAL_VALUE_EMBEDDED" },
+    { "name": "CREDENTIAL_VALUE_CHANNEL_OPEN_GITHUB_TOKEN_ERROR", "expected_code": "CREDENTIAL_VALUE_EMBEDDED" },
+    { "name": "CREDENTIAL_VALUE_CHANNEL_OPEN_AWS_ACCESS_KEY_ERROR", "expected_code": "CREDENTIAL_VALUE_EMBEDDED" },
+    { "name": "CREDENTIAL_VALUE_CHANNEL_OPEN_SIGNED_URL_ERROR", "expected_code": "CREDENTIAL_VALUE_EMBEDDED" },
+    { "name": "CREDENTIAL_VALUE_CHANNEL_OPEN_JWT_MEDIA_LOCATOR", "expected_code": "CREDENTIAL_VALUE_EMBEDDED" },
+    { "name": "CREDENTIAL_VALUE_CHANNEL_OPEN_SIGNED_MEDIA_LOCATOR", "expected_code": "CREDENTIAL_VALUE_EMBEDDED" },
+    { "name": "HANDOFF_COMPLETION_CAS_ROLLBACK", "expected_code": "HANDOFF_COMPLETION_CAS_ROLLBACK" },
+    { "name": "HANDOFF_REQUEST_SINGLE_CONSUME", "expected_code": "HANDOFF_REQUEST_ALREADY_CONSUMED" },
+    { "name": "HANDOFF_LEASE_MONOTONIC", "expected_code": "HANDOFF_LEASE_NOT_MONOTONIC" },
+    { "name": "HANDOFF_STALE_DELIVERY_ACK_AFTER_ROLLBACK", "expected_code": "STALE_OLD_DEVICE_ACK_RENDERED" },
+    { "name": "RECONNECT_IDENTITY_REUSE", "expected_code": "RECONNECT_IDENTITY_REUSE" },
+    { "name": "RECONNECT_WRONG_CURRENT_CHAIN", "expected_code": "RECONNECT_PREVIOUS_CONNECTION_MISMATCH" },
+    { "name": "CAPTURE_SAME_STREAM_RESTART_AFTER_STOP", "expected_code": "CAPTURE_STREAM_RESTART_AFTER_STOP" },
+    { "name": "CLEANUP_OLD_EVENT_EXACT_RETRY_TERMINAL", "expected_code": "EVENT_AFTER_CLEANUP" },
+    { "name": "CLEANUP_COMPLETED_BEFORE_SESSION_END", "expected_code": "CLEANUP_COMPLETED_BEFORE_SESSION_END" }
+  ],
+  "t14_revise_controls": [
+    { "name": "CAPTURE_NEW_STREAM_AFTER_STOP", "expected_errors": [] },
+    { "name": "CLEANUP_RECEIPT_EXACT_RETRY", "expected_errors": [] }
+  ],
+  "t14_credential_final_regressions": [
+    { "name": "JWT_SHORT_PAYLOAD_MODEL_ERROR", "expected_code": "CREDENTIAL_VALUE_EMBEDDED" },
+    { "name": "JWT_SHORT_PAYLOAD_LIVEKIT_LOCATOR", "expected_code": "CREDENTIAL_VALUE_EMBEDDED" },
+    { "name": "JWT_PERCENT_ENCODED_DOTS", "expected_code": "CREDENTIAL_VALUE_EMBEDDED" },
+    { "name": "SIGNED_URL_PERCENT_ENCODED_KEY", "expected_code": "CREDENTIAL_VALUE_EMBEDDED" },
+    { "name": "SIGNED_URL_PATH_STYLE", "expected_code": "CREDENTIAL_VALUE_EMBEDDED" },
+    { "name": "MIXED_CASE_PERCENT_ENCODING", "expected_code": "CREDENTIAL_VALUE_EMBEDDED" },
+    { "name": "DOUBLE_PERCENT_ENCODING", "expected_code": "CREDENTIAL_VALUE_ENCODING_INVALID" },
+    { "name": "INVALID_PERCENT_ENCODING", "expected_code": "CREDENTIAL_VALUE_ENCODING_INVALID" }
+  ],
+  "t14_credential_final_controls": [
+    { "name": "ORDINARY_LIVEKIT_LOCATOR", "expected_errors": [] }
+  ]
+}

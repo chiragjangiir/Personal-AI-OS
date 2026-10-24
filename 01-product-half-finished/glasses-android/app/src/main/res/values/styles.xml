@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="optical_canvas">#000000</color>
+    <color name="optical_accent">#5B86FF</color>
+    <color name="optical_text">#ECEFF6</color>
+    <color name="optical_secondary">#A6AEC0</color>
+    <color name="optical_hint">#8790A4</color>
+    <color name="optical_ok">#3FCB84</color>
+    <color name="optical_danger">#FF6B70</color>
+    <style name="Theme.Glasses" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowSplashScreenBackground">@color/yim_splash_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_yim</item>
+        <item name="android:windowBackground">@color/optical_canvas</item>
+        <item name="android:statusBarColor">@color/optical_canvas</item>
+        <item name="android:navigationBarColor">@color/optical_canvas</item>
+        <item name="android:fontFamily">sans</item>
+        <item name="colorAccent">@color/optical_accent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

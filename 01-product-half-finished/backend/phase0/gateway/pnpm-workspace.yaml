@@ -1,0 +1,3 @@
+overrides:
+  'livekit-server-sdk@2.13.3>@livekit/protocol': '1.45.1'
+  'ajv@8.20.0>fast-uri': '3.1.3'

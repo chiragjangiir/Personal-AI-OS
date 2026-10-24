@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-ai-os.local/contracts/common/governance-context.v1.schema.json",
+  "title": "CanonicalGovernanceContext",
+  "$comment": "schema_version=1.0.0",
+  "not": {},
+  "$defs": {
+    "PurposeScope": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
+    },
+    "PolicyDecisionDisposition": {
+      "type": "string",
+      "enum": ["permit", "deny", "abstain"],
+      "not": {
+        "$ref": "https://personal-ai-os.local/contracts/common/classification.v1.schema.json#/$defs/DeliveryUrgencyClass"
+      }
+    },
+    "AuditReference": {
+      "type": "object",
+      "required": [
+        "ref_type",
+        "ref_id",
+        "object_version",
+        "canonical_payload_sha256"
+      ],
+      "properties": {
+        "ref_type": { "const": "AuditRecord" },
+        "ref_id": {
+          "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/AuditRecordId"
+        },
+        "object_version": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        },
+        "canonical_payload_sha256": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

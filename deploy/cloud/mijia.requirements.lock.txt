@@ -1,0 +1,5 @@
+# Dependencies not listed here reuse the frozen Hermes environment.
+mijiaAPI==5.0.0 --hash=sha256:31792ead21e8d641cbe3126ed197aa00252eb8f1b680f3873029646bf6c7c8b3
+qrcode==8.2 --hash=sha256:16e64e0716c14960108e85d853062c9e8bba5ca8252c0b4d0231b9df4060ff4f
+pycryptodome==3.23.0 ; sys_platform == "darwin" --hash=sha256:187058ab80b3281b1de11c2e6842a357a1f71b42cb1e15bce373f3d238135c27
+tzlocal==5.3.1 --hash=sha256:eb1a66c3ef5847adf7a834f1be0800581b683b5608e74f86ecbcef8ab91bb85d

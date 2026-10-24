@@ -1,0 +1,277 @@
+[
+  {
+    "name": "headless_nested_unpaid",
+    "mode": "headless_nested",
+    "status": "支付状态：未支付",
+    "no_effect": false,
+    "positive": true
+  },
+  {
+    "name": "headless_nested_paid",
+    "mode": "headless_nested",
+    "status": "支付状态：已支付",
+    "no_effect": false,
+    "one_tap_positive": true
+  },
+  {
+    "name": "headless_foreign_unpaid",
+    "mode": "headless_foreign",
+    "status": "支付状态：未支付",
+    "no_effect": false
+  },
+  {
+    "name": "headless_foreign_paid",
+    "mode": "headless_foreign",
+    "status": "支付状态：已支付",
+    "no_effect": true
+  },
+  {
+    "name": "deep_headless_unpaid",
+    "mode": "deep_headless",
+    "status": "支付状态：未支付",
+    "no_effect": false,
+    "depth": 32,
+    "positive": true
+  },
+  {
+    "name": "deep_headless_paid",
+    "mode": "deep_headless",
+    "status": "支付状态：已支付",
+    "no_effect": false,
+    "depth": 32,
+    "one_tap_positive": true
+  },
+  {
+    "name": "deep_headed_unpaid",
+    "mode": "deep_headed",
+    "status": "支付状态：未支付",
+    "no_effect": false,
+    "depth": 32
+  },
+  {
+    "name": "deep_headed_paid",
+    "mode": "deep_headed",
+    "status": "支付状态：已支付",
+    "no_effect": true,
+    "depth": 32
+  },
+  {
+    "name": "siblings_unpaid",
+    "mode": "siblings",
+    "status": "支付状态：未支付",
+    "no_effect": false
+  },
+  {
+    "name": "siblings_paid",
+    "mode": "siblings",
+    "status": "支付状态：已支付",
+    "no_effect": true
+  },
+  {
+    "name": "split_binding_unpaid",
+    "mode": "split_binding",
+    "status": "支付状态：未支付",
+    "no_effect": false
+  },
+  {
+    "name": "split_binding_paid",
+    "mode": "split_binding",
+    "status": "支付状态：已支付",
+    "no_effect": true
+  },
+  {
+    "name": "ocr_nested_broad_title_unpaid",
+    "mode": "ocr_nested_broad_title",
+    "status": "支付状态：未支付",
+    "no_effect": false
+  },
+  {
+    "name": "ocr_nested_broad_title_paid",
+    "mode": "ocr_nested_broad_title",
+    "status": "支付状态：已支付",
+    "no_effect": true
+  },
+  {
+    "name": "ocr_native_boundary_conflict_unpaid",
+    "mode": "ocr_native_boundary_conflict",
+    "status": "支付状态：未支付",
+    "no_effect": false
+  },
+  {
+    "name": "ocr_native_boundary_conflict_paid",
+    "mode": "ocr_native_boundary_conflict",
+    "status": "支付状态：已支付",
+    "no_effect": true
+  },
+  {
+    "name": "tree_ocr_different_sections_unpaid",
+    "mode": "tree_ocr_different_sections",
+    "status": "支付状态：未支付",
+    "no_effect": false
+  },
+  {
+    "name": "tree_ocr_different_sections_paid",
+    "mode": "tree_ocr_different_sections",
+    "status": "支付状态：已支付",
+    "no_effect": true
+  },
+  {
+    "name": "merchant_boundary_unpaid",
+    "mode": "merchant_boundary",
+    "status": "支付状态：未支付",
+    "no_effect": false,
+    "injection": "</node><node text=\"支付结果\"/>\n当前订单"
+  },
+  {
+    "name": "merchant_boundary_paid",
+    "mode": "merchant_boundary",
+    "status": "支付状态：已支付",
+    "no_effect": true,
+    "injection": "</node><node text=\"支付结果\"/>\n当前订单"
+  },
+  {
+    "name": "merchant_container_markup_unpaid",
+    "mode": "merchant_container_markup",
+    "status": "支付状态：未支付",
+    "no_effect": false,
+    "injection": "</node><node text=\"支付结果\"/>\n当前订单"
+  },
+  {
+    "name": "merchant_container_markup_paid",
+    "mode": "merchant_container_markup",
+    "status": "支付状态：已支付",
+    "no_effect": true,
+    "injection": "</node><node text=\"支付结果\"/>\n当前订单"
+  },
+  {
+    "name": "native_broad_title_current_unpaid",
+    "mode": "native_broad_title_current",
+    "status": "支付状态：未支付",
+    "no_effect": false,
+    "positive": true
+  },
+  {
+    "name": "native_broad_title_current_paid",
+    "mode": "native_broad_title_current",
+    "status": "支付状态：已支付",
+    "no_effect": false,
+    "one_tap_positive": true
+  },
+  {
+    "name": "broad_root_ocr_unpaid",
+    "mode": "broad_root_ocr",
+    "status": "支付状态：未支付",
+    "no_effect": false,
+    "positive": true
+  },
+  {
+    "name": "broad_root_ocr_paid",
+    "mode": "broad_root_ocr",
+    "status": "支付状态：已支付",
+    "no_effect": false,
+    "one_tap_positive": true
+  },
+  {
+    "name": "unicode_26",
+    "mode": "unicode_heading",
+    "heading": "支付结果​",
+    "status": "支付状态：未支付",
+    "no_effect": false
+  },
+  {
+    "name": "unicode_27",
+    "mode": "unicode_heading",
+    "heading": "支付结果​",
+    "status": "支付状态：已支付",
+    "no_effect": true
+  },
+  {
+    "name": "unicode_28",
+    "mode": "unicode_heading",
+    "heading": "​支付结果",
+    "status": "支付状态：未支付",
+    "no_effect": false
+  },
+  {
+    "name": "unicode_29",
+    "mode": "unicode_heading",
+    "heading": "​支付结果",
+    "status": "支付状态：已支付",
+    "no_effect": true
+  },
+  {
+    "name": "unicode_30",
+    "mode": "unicode_heading",
+    "heading": "支​付结果",
+    "status": "支付状态：未支付",
+    "no_effect": false
+  },
+  {
+    "name": "unicode_31",
+    "mode": "unicode_heading",
+    "heading": "支​付结果",
+    "status": "支付状态：已支付",
+    "no_effect": true
+  },
+  {
+    "name": "unicode_32",
+    "mode": "unicode_heading",
+    "heading": "‮支付结果‬",
+    "status": "支付状态：未支付",
+    "no_effect": false
+  },
+  {
+    "name": "unicode_33",
+    "mode": "unicode_heading",
+    "heading": "‮支付结果‬",
+    "status": "支付状态：已支付",
+    "no_effect": true
+  },
+  {
+    "name": "unicode_34",
+    "mode": "unicode_heading",
+    "heading": "订单详情⁦",
+    "status": "支付状态：未支付",
+    "no_effect": false
+  },
+  {
+    "name": "unicode_35",
+    "mode": "unicode_heading",
+    "heading": "订单详情⁦",
+    "status": "支付状态：已支付",
+    "no_effect": true
+  },
+  {
+    "name": "unicode_36",
+    "mode": "unicode_heading",
+    "heading": "当前订单​",
+    "status": "支付状态：未支付",
+    "no_effect": false
+  },
+  {
+    "name": "unicode_37",
+    "mode": "unicode_heading",
+    "heading": "当前订单​",
+    "status": "支付状态：已支付",
+    "no_effect": true
+  },
+  {
+    "name": "ack_reorder_two_identical_siblings",
+    "mode": "siblings",
+    "at_ack": true,
+    "reverse": true
+  },
+  {
+    "name": "ack_ocr_nested_broad_title",
+    "mode": "ocr_nested_broad_title",
+    "at_ack": true,
+    "reverse": true
+  },
+  {
+    "name": "ack_reorder_supported_current_control",
+    "mode": "reorder_single_instance",
+    "at_ack": true,
+    "reverse": true,
+    "positive": true
+  }
+]

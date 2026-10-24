@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Yim brand V1 (generated; do not hand-edit geometry) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M71.321 44 A20 20 0 1 1 64 36.679 L62.375 39.495 A16.749 16.749 0 1 0 68.505 45.625 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M43.941 43.898 L54 56.279 L64.059 43.898 L61.536 41.848 L54 51.123 L46.464 41.848 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M52.375 52.076 L52.375 65.49 L55.625 65.49 L55.625 52.076 Z" />
+    <path
+        android:fillColor="#FF5CE1FF"
+        android:pathData="M51.597 53.701 A2.403 2.403 0 1 0 56.403 53.701 A2.403 2.403 0 1 0 51.597 53.701 Z" />
+    <path
+        android:fillColor="#FF5CE1FF"
+        android:pathData="M63.883 41.007 A3.11 3.11 0 1 0 70.102 41.007 A3.11 3.11 0 1 0 63.883 41.007 Z" />
+</vector>

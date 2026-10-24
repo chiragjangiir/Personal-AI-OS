@@ -1,0 +1,425 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-ai-os.local/contracts/common/outcome-error.v1.schema.json",
+  "title": "CanonicalOutcomeAndError",
+  "$comment": "schema_version=1.0.0",
+  "not": {},
+  "$defs": {
+    "OutcomeClass": {
+      "type": "string",
+      "enum": [
+        "pre_claim_rejection",
+        "rollback_no_commit",
+        "committed_rejection",
+        "committed_success",
+        "indeterminate"
+      ]
+    },
+    "ResolutionMode": {
+      "type": "string",
+      "enum": [
+        "direct",
+        "reconciled_no_effect",
+        "reconciled_effect_confirmed"
+      ]
+    },
+    "ErrorFamily": {
+      "type": "string",
+      "enum": [
+        "validation",
+        "authn",
+        "authz",
+        "policy",
+        "state",
+        "conflict",
+        "dependency",
+        "provider",
+        "tool",
+        "storage",
+        "security",
+        "privacy",
+        "deletion",
+        "replay",
+        "risk"
+      ]
+    },
+    "ErrorCode": {
+      "type": "string",
+      "pattern": "^(?:validation|authn|authz|policy|state|conflict|dependency|provider|tool|storage|security|privacy|deletion|replay|risk)\\.[a-z0-9_]+$"
+    },
+    "RetryClass": {
+      "type": "string",
+      "enum": [
+        "never",
+        "immediate",
+        "backoff",
+        "after_user_action",
+        "after_policy_change",
+        "after_dependency_recovery"
+      ]
+    },
+    "CanonicalError": {
+      "type": "object",
+      "required": [
+        "error_family",
+        "error_code",
+        "retry_class",
+        "trace_id",
+        "occurred_at"
+      ],
+      "properties": {
+        "error_family": {
+          "$ref": "#/$defs/ErrorFamily"
+        },
+        "error_code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "retry_class": {
+          "$ref": "#/$defs/RetryClass"
+        },
+        "trace_id": {
+          "$ref": "https://personal-ai-os.local/contracts/common/id-types.v1.schema.json#/$defs/TraceId"
+        },
+        "occurred_at": {
+          "$ref": "https://personal-ai-os.local/contracts/common/temporal-ordering.v1.schema.json#/$defs/SystemTime"
+        },
+        "audit_ref": {
+          "$ref": "https://personal-ai-os.local/contracts/common/governance-context.v1.schema.json#/$defs/AuditReference"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "error_family": {
+              "const": "validation"
+            },
+            "error_code": {
+              "pattern": "^validation\\.[a-z0-9_]+$"
+            }
+          }
+        },
+        {
+          "properties": {
+            "error_family": {
+              "const": "authn"
+            },
+            "error_code": {
+              "pattern": "^authn\\.[a-z0-9_]+$"
+            }
+          }
+        },
+        {
+          "properties": {
+            "error_family": {
+              "const": "authz"
+            },
+            "error_code": {
+              "pattern": "^authz\\.[a-z0-9_]+$"
+            }
+          }
+        },
+        {
+          "properties": {
+            "error_family": {
+              "const": "policy"
+            },
+            "error_code": {
+              "pattern": "^policy\\.[a-z0-9_]+$"
+            }
+          }
+        },
+        {
+          "properties": {
+            "error_family": {
+              "const": "state"
+            },
+            "error_code": {
+              "pattern": "^state\\.[a-z0-9_]+$"
+            }
+          }
+        },
+        {
+          "properties": {
+            "error_family": {
+              "const": "conflict"
+            },
+            "error_code": {
+              "pattern": "^conflict\\.[a-z0-9_]+$"
+            }
+          }
+        },
+        {
+          "properties": {
+            "error_family": {
+              "const": "dependency"
+            },
+            "error_code": {
+              "pattern": "^dependency\\.[a-z0-9_]+$"
+            }
+          }
+        },
+        {
+          "properties": {
+            "error_family": {
+              "const": "provider"
+            },
+            "error_code": {
+              "pattern": "^provider\\.[a-z0-9_]+$"
+            }
+          }
+        },
+        {
+          "properties": {
+            "error_family": {
+              "const": "tool"
+            },
+            "error_code": {
+              "pattern": "^tool\\.[a-z0-9_]+$"
+            }
+          }
+        },
+        {
+          "properties": {
+            "error_family": {
+              "const": "storage"
+            },
+            "error_code": {
+              "pattern": "^storage\\.[a-z0-9_]+$"
+            }
+          }
+        },
+        {
+          "properties": {
+            "error_family": {
+              "const": "security"
+            },
+            "error_code": {
+              "pattern": "^security\\.[a-z0-9_]+$"
+            }
+          }
+        },
+        {
+          "properties": {
+            "error_family": {
+              "const": "privacy"
+            },
+            "error_code": {
+              "pattern": "^privacy\\.[a-z0-9_]+$"
+            }
+          }
+        },
+        {
+          "properties": {
+            "error_family": {
+              "const": "deletion"
+            },
+            "error_code": {
+              "pattern": "^deletion\\.[a-z0-9_]+$"
+            }
+          }
+        },
+        {
+          "properties": {
+            "error_family": {
+              "const": "replay"
+            },
+            "error_code": {
+              "pattern": "^replay\\.[a-z0-9_]+$"
+            }
+          }
+        },
+        {
+          "properties": {
+            "error_family": {
+              "const": "risk"
+            },
+            "error_code": {
+              "pattern": "^risk\\.[a-z0-9_]+$"
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "RecordedResultReference": {
+      "type": "object",
+      "required": [
+        "idempotency_context",
+        "fencing_epoch",
+        "outcome_class",
+        "result_schema_id",
+        "result_schema_version",
+        "result_schema_sha256",
+        "result_payload_sha256"
+      ],
+      "properties": {
+        "idempotency_context": {
+          "$ref": "https://personal-ai-os.local/contracts/common/idempotency-replay.v1.schema.json#/$defs/IdempotencyContext"
+        },
+        "fencing_epoch": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,37}$"
+        },
+        "outcome_class": {
+          "type": "string",
+          "enum": [
+            "committed_rejection",
+            "committed_success"
+          ]
+        },
+        "result_schema_id": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://[^\\s]+$"
+        },
+        "result_schema_version": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/StrictSemVer"
+        },
+        "result_schema_sha256": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+        },
+        "result_payload_sha256": {
+          "$ref": "https://personal-ai-os.local/contracts/common/versioning-hash.v1.schema.json#/$defs/Sha256"
+        }
+      },
+      "additionalProperties": false
+    },
+    "OperationOutcome": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "outcome_class",
+            "error"
+          ],
+          "properties": {
+            "outcome_class": {
+              "const": "pre_claim_rejection"
+            },
+            "error": {
+              "$ref": "#/$defs/CanonicalError"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "outcome_class",
+            "error"
+          ],
+          "properties": {
+            "outcome_class": {
+              "const": "rollback_no_commit"
+            },
+            "error": {
+              "$ref": "#/$defs/CanonicalError"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "outcome_class",
+            "error",
+            "recorded_result_ref",
+            "resolution_mode"
+          ],
+          "properties": {
+            "outcome_class": {
+              "const": "committed_rejection"
+            },
+            "error": {
+              "$ref": "#/$defs/CanonicalError"
+            },
+            "recorded_result_ref": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/RecordedResultReference"
+                },
+                {
+                  "properties": {
+                    "outcome_class": {
+                      "const": "committed_rejection"
+                    }
+                  }
+                }
+              ]
+            },
+            "resolution_mode": {
+              "type": "string",
+              "enum": [
+                "direct",
+                "reconciled_no_effect"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "outcome_class",
+            "recorded_result_ref",
+            "resolution_mode"
+          ],
+          "properties": {
+            "outcome_class": {
+              "const": "committed_success"
+            },
+            "recorded_result_ref": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/RecordedResultReference"
+                },
+                {
+                  "properties": {
+                    "outcome_class": {
+                      "const": "committed_success"
+                    }
+                  }
+                }
+              ]
+            },
+            "resolution_mode": {
+              "type": "string",
+              "enum": [
+                "direct",
+                "reconciled_effect_confirmed"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "outcome_class",
+            "error"
+          ],
+          "properties": {
+            "outcome_class": {
+              "const": "indeterminate"
+            },
+            "error": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/CanonicalError"
+                },
+                {
+                  "properties": {
+                    "retry_class": {
+                      "const": "never"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

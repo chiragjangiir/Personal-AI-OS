@@ -1,0 +1,78 @@
+[
+  {
+    "run_id": "run",
+    "session_id": "session",
+    "conversation_session_id": "conversation",
+    "status": "completed",
+    "output": "body",
+    "native_final_response": {
+      "schema": "hermes.final-response.v1",
+      "run_id": "run",
+      "turn_id": "turn",
+      "after_tool_call_id": "open",
+      "after_tool_name": "paios_open_reply",
+      "phase": "final_buffer",
+      "session_id": "session",
+      "message_id": 2,
+      "sha256": "230d8358dc8e8890b4c58deeb62912ee2f20357ae92a5cc861b98e68fe31acb5",
+      "previous_message_id": 1,
+      "previous_message_role": "tool",
+      "last_tool_message_id": 1
+    },
+    "approval_results": [],
+    "schema": "hermes.run.v2",
+    "shape_sha256": "f5ecab354c673aa7354730b9d1fa03ccedcc3d47fdb1ccd3b8383b89d4c749e8",
+    "profile_home": "/tmp/paios-fixture/native-profile"
+  },
+  {
+    "run_id": "run",
+    "session_id": "session",
+    "conversation_session_id": "conversation",
+    "status": "completed",
+    "output": "body",
+    "native_final_response": {
+      "schema": "hermes.final-response.v1",
+      "run_id": "run",
+      "turn_id": "turn",
+      "after_tool_call_id": "open",
+      "after_tool_name": "paios_open_reply",
+      "phase": "final_buffer",
+      "session_id": "session",
+      "message_id": 2,
+      "sha256": "230d8358dc8e8890b4c58deeb62912ee2f20357ae92a5cc861b98e68fe31acb5",
+      "previous_message_id": 1,
+      "previous_message_role": "tool",
+      "last_tool_message_id": 1
+    },
+    "approval_results": [],
+    "schema": "hermes.run.v2",
+    "shape_sha256": "f5ecab354c673aa7354730b9d1fa03ccedcc3d47fdb1ccd3b8383b89d4c749e8",
+    "profile_home": "/tmp/paios-fixture/native-profile"
+  },
+  {
+    "run_id": "run",
+    "session_id": "session",
+    "conversation_session_id": "conversation",
+    "status": "completed",
+    "output": "body",
+    "native_final_response": {
+      "schema": "hermes.final-response.v1",
+      "run_id": "run",
+      "turn_id": "turn",
+      "after_tool_call_id": "open",
+      "after_tool_name": "paios_open_reply",
+      "phase": "final_buffer",
+      "session_id": "session",
+      "message_id": 2,
+      "sha256": "230d8358dc8e8890b4c58deeb62912ee2f20357ae92a5cc861b98e68fe31acb5",
+      "previous_message_id": 1,
+      "previous_message_role": "tool",
+      "last_tool_message_id": 1
+    },
+    "native_final_response_error": "NATIVE_FINAL_RESPONSE_SOURCE_UNAVAILABLE",
+    "approval_results": [],
+    "schema": "hermes.run.v2",
+    "shape_sha256": "f5ecab354c673aa7354730b9d1fa03ccedcc3d47fdb1ccd3b8383b89d4c749e8",
+    "profile_home": "/tmp/paios-fixture/native-profile"
+  }
+]

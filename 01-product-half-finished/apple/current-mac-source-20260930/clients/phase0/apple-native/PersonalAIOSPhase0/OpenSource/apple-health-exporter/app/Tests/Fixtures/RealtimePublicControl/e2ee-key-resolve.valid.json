@@ -1,0 +1,75 @@
+{
+  "operation": "realtime_e2ee_key_resolve",
+  "status": "key_resolved",
+  "request_id": "e2ee_key_resolve_018f000000000012",
+  "idempotency_context": {
+    "idempotency_scope": {
+      "owner_module": "T11B",
+      "operation_kind": "realtime_e2ee_key_resolve",
+      "target_object_type": "RealtimeSession",
+      "user_id": "018f0000-0000-7000-8000-000000000001"
+    },
+    "idempotency_key": "e2ee_key_resolve_018f000000000012",
+    "idempotency_profile_id": "https://personal-ai-os.local/contracts/realtime/idempotency/e2ee-key-resolve",
+    "idempotency_profile_version": "1.0.0",
+    "idempotency_profile_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "idempotency_request_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+  },
+  "realtime_session_ref": {
+    "ref_type": "RealtimeSession",
+    "ref_id": "018f0000-0000-7000-8000-000000000004",
+    "object_version": "1",
+    "canonical_payload_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "device_lease_ref": {
+    "ref_type": "DeviceLease",
+    "ref_id": "018f0000-0000-7000-8000-000000000005",
+    "object_version": "1",
+    "canonical_payload_sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "continuity_id": "018f0000-0000-7000-8000-000000000003",
+  "connection_epoch": "1",
+  "transport_aliases": [
+    {
+      "alias_type": "room",
+      "issuer": "livekit_cloud",
+      "value": "room-opaque-fixture-1"
+    },
+    {
+      "alias_type": "participant",
+      "issuer": "livekit_cloud",
+      "value": "participant-opaque-fixture-1"
+    }
+  ],
+  "key_envelope_ref": {
+    "alias_type": "key_envelope",
+    "issuer": "local_gateway",
+    "value": "key-envelope-opaque-fixture-1"
+  },
+  "key_index": 0,
+  "key_generation": "1",
+  "device_id": "018f0000-0000-7000-8000-000000000002",
+  "recipient_device_credential_ref": {
+    "ref_type": "DeviceCredential",
+    "ref_id": "018f0000-0000-7000-8000-000000000010",
+    "object_version": "1",
+    "canonical_payload_sha256": "abababababababababababababababababababababababababababababababab"
+  },
+  "participant_audience": {
+    "alias_type": "participant",
+    "issuer": "livekit_cloud",
+    "value": "participant-opaque-fixture-1"
+  },
+  "expires_at": "2026-08-22T12:10:00Z",
+  "cipher_suite": "DHKEM(X25519, HKDF-SHA256), HKDF-SHA256, AES-256-GCM",
+  "encapsulated_key": "fixture_non_secret_encapsulated_key",
+  "ciphertext": "fixture_non_secret_ciphertext",
+  "aad_sha256": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+  "governance": {
+    "purpose_scopes": ["realtime_assistant"],
+    "consent_record_refs": ["018f0000-0000-7000-8000-000000000006"],
+    "policy_decision_refs": ["018f0000-0000-7000-8000-000000000007"],
+    "purpose_token_refs": ["018f0000-0000-7000-8000-000000000008"],
+    "capability_grant_refs": ["018f0000-0000-7000-8000-000000000009"]
+  }
+}

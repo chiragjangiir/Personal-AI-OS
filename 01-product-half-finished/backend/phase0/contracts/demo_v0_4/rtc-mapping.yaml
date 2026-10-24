@@ -1,0 +1,329 @@
+schema_version: phase0-demo/0.4
+status:
+  - NON_CANONICAL
+  - EPHEMERAL
+  - PHASE0_ONLY
+namespace: paios.phase0.demo
+upstream:
+  transport: LiveKit
+  server_version: v1.13.4
+  protocol_ownership: upstream
+room:
+  name_source: session_id
+  one_session_per_room: true
+  metadata_allowed_fields:
+    - schema_version
+    - session_id
+    - expires_at
+    - active_device_id
+    - active_device_lease_version
+  metadata_authoritative: false
+participant:
+  identity_source: rtc_publisher_device_id
+  attributes:
+    schema_version: schema_version
+    device_id: rtc_publisher_device_id
+    device_class: rtc_publisher_device_class
+    client_instance_id: rtc_publisher_client_instance_id
+  gateway_identity: windows_gateway_01
+  gateway_binding:
+    canonical_publisher_device_id: windows_gateway_01
+    participant_identity: windows_gateway_01
+    participant_attribute_device_id: windows_gateway_01
+    event_origin_device_id: windows_gateway_01
+    aliases_allowed: false
+    rejected_legacy_aliases:
+      - windows-gateway
+      - windows_gateway
+gateway_outbound:
+  participant_identity: windows_gateway_01
+  publishable_origin_device_id: windows_gateway_01
+  generic_relay_allowed: false
+  preserve_foreign_origin_allowed: false
+  reconnect_replay_gateway_owned_only: true
+version_isolation:
+  session_schema_version_fixed: true
+  mixed_schema_versions_allowed: false
+  v0_1_reinterpretation_allowed: false
+watch_relay:
+  direct_rtc_publish_allowed: false
+  source_device_class: apple_watch
+  device_class: iphone
+  device_transport: watch_connectivity
+  rtc_participant_identity_source: origin.relay.device_id
+  rtc_participant_attributes_source: relay_publisher
+  original_watch_identity_location: event.origin
+  preserve_fields:
+    - event_id
+    - trace_id
+    - occurred_at
+    - expires_at
+    - origin.device_id
+    - origin.device_class
+    - origin.client_instance_id
+    - origin.relay
+    - connection
+    - sequence.stream_id
+    - sequence.number
+    - sequence.previous_event_id
+    - idempotency_key
+    - event_type
+    - payload
+http_event_auth_projection:
+  direct_non_watch:
+    origin_device_class_forbidden: apple_watch
+    relay_must_be_absent: true
+    authenticated_device_equals: origin.device_id
+  watch:
+    origin_device_class: apple_watch
+    relay_required: true
+    relay_device_class: iphone
+    relay_device_id_equals: authenticated_paired_iphone_device_id
+    relay_device_id_differs_from: origin.device_id
+    relay_transport: watch_connectivity
+    paired_relationship_same_session_required: true
+  mismatch_http_status: 403
+  mismatch_code: DEVICE_ORIGIN_MISMATCH
+  validation_before_idempotency_reservation: true
+http_event_ingress:
+  method: POST
+  path: /phase0/demo/v1/events
+  encoding: canonical-utf-8-json
+  raw_media_bytes_allowed: false
+  livekit_can_publish_data_false_compatible: true
+  watch_direct_call_allowed: false
+data_packet:
+  topic: paios.phase0.demo.event
+  encoding: utf-8-json
+  schema_path: session-event.schema.json
+  raw_media_bytes_allowed: false
+  reliable_event_types:
+    - paios.phase0.demo.session.started
+    - paios.phase0.demo.session.ended
+    - paios.phase0.demo.session.cleanup.completed
+    - paios.phase0.demo.device.status
+    - paios.phase0.demo.capture.status
+    - paios.phase0.demo.transcript.final
+    - paios.phase0.demo.location.observed
+    - paios.phase0.demo.workout.metric
+    - paios.phase0.demo.confirmation.requested
+    - paios.phase0.demo.confirmation.responded
+    - paios.phase0.demo.media.referenced
+    - paios.phase0.demo.share.received
+    - paios.phase0.demo.model.requested
+    - paios.phase0.demo.model.result
+    - paios.phase0.demo.delivery.requested
+    - paios.phase0.demo.delivery.acknowledged
+    - paios.phase0.demo.handoff.requested
+    - paios.phase0.demo.handoff.completed
+    - paios.phase0.demo.connection.reconnected
+  lossy_event_types:
+    - paios.phase0.demo.device.telemetry
+media:
+  livekit_track_binding:
+    locator_grammar: livekit://<session_id>/<rtc_publisher_identity>/<publication_sid>
+    room_component_source: event.session_id
+    publisher_component_source: rtc_publisher_device_id
+    publication_identity_algorithm: RemoteTrackPublication.sid
+    media_id_equals_publication_sid: true
+    publication_name_fallback_allowed: false
+    watch_publisher_source: origin.relay.device_id
+    gateway_outbound_publisher: windows_gateway_01
+    observation_key:
+      - session_id
+      - rtc_publisher_identity
+      - publication_sid
+    claim_alone_is_observed: false
+    authoritative_publication_evidence_required: true
+    cleanup_unique_observed_tracks_only: true
+    cleanup_requires_verified_room_absence: true
+  ephemeral_object_integrity_required:
+    - byte_length
+    - sha256
+  kind_mime_match_required: true
+  max_after_actual_session_end_seconds: 3600
+  audio:
+    upstream_primitive: LiveKit audio track
+    event_representation: media_ref
+  video:
+    upstream_primitive: LiveKit video track
+    event_representation: media_ref
+    phase0_capture_modes:
+      - user_triggered_frame
+      - periodic_frame
+      - low_fps_visual_stream
+  image:
+    upstream_primitive: LiveKit video track or ephemeral object
+    event_representation: media_ref
+    raw_bytes_in_event: false
+  locator_schemes:
+    - livekit
+    - ephemeral
+transcript:
+  final_source_binding:
+    source_field: payload.source_media_id
+    shared_scoped_id_changed: false
+    schema_shape_only: true
+    livekit_source_pattern: '^TR_[A-Za-z0-9_-]{3,64}$'
+    typed_non_media_source_pattern: '^[a-z][a-z0-9_-]*$'
+    media_event_type: paios.phase0.demo.media.referenced
+    media_requirements:
+      transport: livekit_track
+      kind: audio
+      capture_mode: microphone
+    equality_chain:
+      - transcript.final.payload.source_media_id
+      - media.referenced.payload.media_ref.media_id
+      - media.referenced.payload.media_ref.locator.publication_sid
+      - RemoteTrackPublication.sid
+    same_session_required: true
+    full_origin_equality_required: true
+    unique_prior_media_event_required: true
+    actual_publication_observation_required: true
+    acceptance_order_source: gateway_ephemeral_session_accepted_event_insertion_order
+    occurred_at_orders_acceptance: false
+    arrival_timestamp_orders_acceptance: false
+    cross_stream_sequence_orders_acceptance: false
+    late_evidence_ratification_allowed: false
+    typed_source_requires_publication: false
+    typed_source_media_id_collision_allowed: false
+    microphone_stt_lowercase_source_allowed: false
+    provenance_persisted: false
+model:
+  request_event: paios.phase0.demo.model.requested
+  result_event: paios.phase0.demo.model.result
+  result_authoritative: false
+  output_modalities:
+    - text
+    - audio
+    - ar_card
+delivery:
+  one_active_device: true
+  broadcast_defined: false
+  stale_lease_disposition: ignored_stale_lease
+  stale_lease_render_or_play_allowed: false
+  ack_target_and_lease_must_equal_current_active: true
+handoff:
+  completion_compare_and_swap_fields:
+    - current_active_device_id
+    - current_active_device_lease_version
+    - request.from_device_id
+    - request.expected_active_device_lease_version
+  request_single_consume: true
+  lease_monotonic_increment_exactly_by: 1
+  invalid_completion_mutates_active_lease: false
+idempotency:
+  scope:
+    - session_id
+    - idempotency_key
+  retry_noop_requires_identical_canonical_envelope: true
+  receive_metadata_in_envelope_allowed: false
+  drift_result: IDEMPOTENCY_CONFLICT
+reconnect:
+  preserve_session_id: true
+  preserve_origin_device_id: true
+  preserve_stream_id: true
+  reset_sequence_allowed: false
+  increment_connection_epoch_exactly_by: 1
+  new_connection_id_must_differ_from_all_prior_ids: true
+  resumed_from_must_equal_current_connection_id: true
+  last_acked_sequence_must_equal_observed_stream_head: true
+  replay_from_sequence_must_equal_next_sequence: true
+  dedupe_key:
+    - session_id
+    - idempotency_key
+credentials:
+  delivery: out_of_band
+  persisted: false
+  logged: false
+  max_access_token_ttl_seconds: 900
+  forbidden_event_keys:
+    - token
+    - access_token
+    - refresh_token
+    - authorization
+    - api_key
+    - secret
+    - password
+    - signed_url
+  forbidden_values_include:
+    - authorization_header
+    - bearer_credential
+    - provider_secret
+    - jwt
+    - github_token
+    - aws_access_key_id
+    - signed_url_or_locator
+  value_scan_locations:
+    - model.error.message
+    - media_ref.locator
+  value_normalization:
+    scan_raw_value: true
+    percent_decode_max_layers: 1
+    scan_once_decoded_value: true
+    invalid_percent_encoding_rejected: true
+    nested_percent_encoding_rejected: true
+  jwt_detection:
+    header_min_base64url_chars: 8
+    payload_min_base64url_chars: 2
+    signature_min_base64url_chars: 6
+    header_must_decode_to_json_object: true
+  signed_url_credential_locations:
+    - query
+    - fragment
+    - path
+  signed_url_percent_encoded_key_detected: true
+retention:
+  session_default_ttl_seconds: 7200
+  session_max_ttl_seconds: 14400
+  event_max_ttl_seconds: 86400
+  media_max_after_session_end_seconds: 3600
+  confirmation_ttl_seconds: 300
+  cleanup_sla_seconds: 300
+  cleanup_receipt_ttl_seconds: 3600
+  cleanup_trigger: earliest_of_user_stop_session_end_or_ttl
+  authoritative_store_allowed: false
+lifecycle:
+  require_single_session_start: true
+  reject_end_or_cleanup_without_start: true
+  reject_event_after_cleanup: true
+  cleanup_receipt_zero_requires_zero_observed_activity: true
+  cleanup_terminal_check_before_retry_dedupe: true
+  post_cleanup_retry_noop_event: paios.phase0.demo.session.cleanup.completed
+  cleanup_completed_at_not_before_session_ended_at: true
+capture:
+  stopped_stream_terminal: true
+  restart_requires_new_sequence_stream_id: true
+
+
+share:
+  event_type: paios.phase0.demo.share.received
+  explicit_foreground_user_action_required: true
+  discriminant:
+    text:
+      share_kind:
+        - text
+        - url
+      required: text
+      forbidden: media_id
+      utf8_byte_length_max: 2048
+    media:
+      share_kind:
+        - file
+        - image
+      required: media_id
+      forbidden: text
+      prior_same_session_media_required: true
+      media_byte_length_and_sha256_equal_share: true
+  common_byte_length_max: 10485760
+  exact_retry_noop_only: true
+  mismatch_http_status: 422
+  mismatch_code: CONTRACT_REJECTED
+low_rate_gate_telemetry:
+  required_metric_names:
+    - battery
+    - temperature
+    - frame_rate
+    - dropped_frames
+  dropped_frames_unit: count
+  dropped_frames_cumulative_per_capture_stream: true

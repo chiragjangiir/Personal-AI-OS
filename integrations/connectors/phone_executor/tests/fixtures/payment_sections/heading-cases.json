@@ -1,0 +1,171 @@
+[
+  {
+    "name": "positive_unpaid_control",
+    "kind": "continuation",
+    "status": "支付状态：未支付",
+    "safe_positive": true
+  },
+  {
+    "name": "positive_current_prefix",
+    "kind": "continuation",
+    "status": "本单支付状态：未支付",
+    "safe_positive": true
+  },
+  {
+    "name": "positive_whitespace",
+    "kind": "continuation",
+    "status": "　当前订单支付状态：　未支付　",
+    "safe_positive": true
+  },
+  {
+    "name": "lookalike_current",
+    "kind": "continuation",
+    "status": "当前訂单支付状态：未支付"
+  },
+  {
+    "name": "current_plus_number",
+    "kind": "continuation",
+    "status": "当前订单2支付状态：未支付"
+  },
+  {
+    "name": "zero_width",
+    "kind": "continuation",
+    "status": "本单​支付状态：未支付"
+  },
+  {
+    "name": "bidi_scope",
+    "kind": "continuation",
+    "status": "本单⁦支付状态：未支付"
+  },
+  {
+    "name": "same_node_foreign_suffix",
+    "kind": "continuation",
+    "status": "本单支付状态：未支付（其他订单）"
+  },
+  {
+    "name": "current_foreign_suffix",
+    "kind": "continuation",
+    "status": "当前订单支付状态：未支付 示例"
+  },
+  {
+    "name": "truncated_paid",
+    "kind": "continuation",
+    "status": "已支"
+  },
+  {
+    "name": "mixed_direct_scopes",
+    "kind": "continuation",
+    "status": [
+      "本单支付状态：未支付",
+      "其他订单支付状态：已支付"
+    ]
+  },
+  {
+    "name": "separate_section_其他订单",
+    "kind": "continuation",
+    "header": "其他订单",
+    "status": "支付状态：未支付"
+  },
+  {
+    "name": "separate_section_历史记录",
+    "kind": "continuation",
+    "header": "历史记录",
+    "status": "支付状态：未支付"
+  },
+  {
+    "name": "separate_section_订单历史",
+    "kind": "continuation",
+    "header": "订单历史",
+    "status": "支付状态：未支付"
+  },
+  {
+    "name": "separate_section_示例",
+    "kind": "continuation",
+    "header": "示例",
+    "status": "支付状态：未支付"
+  },
+  {
+    "name": "separate_section_上笔交易",
+    "kind": "continuation",
+    "header": "上笔交易",
+    "status": "支付状态：未支付"
+  },
+  {
+    "name": "section_and_current_prefix",
+    "kind": "continuation",
+    "header": "其他订单",
+    "status": "本单支付状态：未支付"
+  },
+  {
+    "name": "ack_foreign_section",
+    "kind": "ack",
+    "header": "其他订单",
+    "status": "支付状态：未支付"
+  },
+  {
+    "name": "ocr_tree_paid_unpaid_conflict",
+    "kind": "continuation",
+    "status": "支付状态：未支付",
+    "ocr_status": "支付状态：已支付"
+  },
+  {
+    "name": "ocr_foreign_section_tree_status",
+    "kind": "continuation",
+    "status": "支付状态：未支付",
+    "ocr_header": "其他订单"
+  },
+  {
+    "name": "receipt_separate_其他订单",
+    "kind": "receipt",
+    "header": "其他订单",
+    "status": "支付状态：已支付",
+    "no_effect": true
+  },
+  {
+    "name": "receipt_separate_历史记录",
+    "kind": "receipt",
+    "header": "历史记录",
+    "status": "支付状态：已支付",
+    "no_effect": true
+  },
+  {
+    "name": "receipt_separate_订单历史",
+    "kind": "receipt",
+    "header": "订单历史",
+    "status": "支付状态：已支付",
+    "no_effect": true
+  },
+  {
+    "name": "receipt_separate_示例",
+    "kind": "receipt",
+    "header": "示例",
+    "status": "支付状态：已支付",
+    "no_effect": true
+  },
+  {
+    "name": "history_same_id",
+    "kind": "receipt",
+    "header": "历史记录",
+    "status": "支付状态：已支付",
+    "extra": [
+      "订单号：order-A"
+    ],
+    "no_effect": true
+  },
+  {
+    "name": "history_list_control",
+    "kind": "receipt",
+    "header": "订单列表",
+    "status": "支付状态：已支付",
+    "extra": [
+      "订单号：order-A"
+    ],
+    "no_effect": true
+  },
+  {
+    "name": "positive_paid_control",
+    "kind": "receipt",
+    "status": "当前订单支付状态：已支付",
+    "safe_positive": true
+  }
+]

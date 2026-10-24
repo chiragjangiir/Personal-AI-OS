@@ -1,0 +1,10 @@
+[Unit]
+Description=PAIOS direct-origin certificate renewal (DNS-01)
+Wants=network-online.target
+After=network-online.target docker.service
+[Service]
+Type=oneshot
+EnvironmentFile=-/srv/paios/acme/renew.env
+ExecStart=/srv/paios/cm2/acme/acme.sh renew
+# Keep a pending TURN certificate reload visible across subsequent daily checks.
+ExecStartPost=/bin/sh -c 'test ! -f "$${PAIOS_TLS_DIR:-/srv/paios/tls}/turn-reload-required"'

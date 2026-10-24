@@ -1,0 +1,15 @@
+[Unit]
+Description=Encrypted production snapshot for staging
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/paios/current
+ExecStart=/usr/bin/python3 /srv/paios/current/deploy/cloud/staging_snapshot.py capture --settings /etc/paios/staging-snapshot-production.json
+UMask=0077
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=infinity
+TimeoutStopSec=180
+KillMode=process

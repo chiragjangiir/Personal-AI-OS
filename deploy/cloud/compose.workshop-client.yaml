@@ -1,0 +1,18 @@
+# Add to the runtime compose only after provisioning the remote builder.
+services:
+  hermes:
+    environment:
+      PAIOS_BUILDER_URL: ${PAIOS_BUILDER_URL:?Builder public HTTPS IP origin}
+      PAIOS_BUILDER_TOKEN_FILE: /run/secrets/workshop-builder.key
+      PAIOS_BUILDER_CA_FILE: /run/secrets/workshop-builder.crt
+    volumes:
+      - ${PAIOS_SECRETS_DIR:?}/workshop-builder.key:/run/secrets/workshop-builder.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/workshop-builder.crt:/run/secrets/workshop-builder.crt:ro
+  hermes-staging:
+    environment:
+      PAIOS_BUILDER_URL: ${PAIOS_BUILDER_URL:?Builder public HTTPS IP origin}
+      PAIOS_BUILDER_TOKEN_FILE: /run/secrets/workshop-builder.key
+      PAIOS_BUILDER_CA_FILE: /run/secrets/workshop-builder.crt
+    volumes:
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/workshop-builder.key:/run/secrets/workshop-builder.key:ro
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/workshop-builder.crt:/run/secrets/workshop-builder.crt:ro

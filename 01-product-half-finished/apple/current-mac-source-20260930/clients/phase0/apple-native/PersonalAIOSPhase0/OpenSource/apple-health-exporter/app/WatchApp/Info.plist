@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>依米</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>ai.paios.personal.phase0.watch</string>
+	<key>CFBundleName</key>
+	<string>依米</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.0.1</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>WKApplication</key>
+	<true/>
+	<key>WKCompanionAppBundleIdentifier</key>
+	<string>ai.paios.personal.phase0</string>
+	<key>WKBackgroundModes</key>
+	<array>
+		<string>workout-processing</string>
+	</array>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>你和依米说话时，用手表麦克风听你说的话。</string>
+	<key>CFBundleURLTypes</key>
+	<array><dict><key>CFBundleURLSchemes</key><array><string>yimi</string></array></dict></array>
+	<key>NSHealthShareUsageDescription</key>
+	<string>骑行时，依米读取你的心率、距离和消耗，显示在手表上并在需要时提醒你。</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>骑完后，依米把这次骑行存进「健康」。</string>
+</dict>
+</plist>

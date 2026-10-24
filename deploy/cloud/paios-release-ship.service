@@ -1,0 +1,16 @@
+[Unit]
+Description=Production: 依米's 「改回去」 requests, owner release notices, and her verified repair candidates switched at an idle moment
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/paios/current
+ExecStart=/usr/bin/python3 /srv/paios/current/deploy/cloud/release.py --config /etc/paios/release-production.json ship
+# 75: the release lock is held by an operator or the previous run; the next tick retries.
+SuccessExitStatus=75
+UMask=0077
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=infinity
+KillMode=control-group

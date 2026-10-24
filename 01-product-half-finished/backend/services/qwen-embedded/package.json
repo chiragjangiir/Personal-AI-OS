@@ -1,0 +1,13 @@
+{
+  "name": "qwen-audio-embedded-source-candidate",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "exports": {
+    "./embedded-realtime-session": "./server/src/voice/embedded-realtime-session.mjs"
+  },
+  "dependencies": {
+    "ws": "8.21.3"
+  }
+}
