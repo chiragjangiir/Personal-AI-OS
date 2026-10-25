@@ -1,0 +1,500 @@
+{
+  "schema": "mac-contract.v1",
+  "cases": [
+    {
+      "id": "exec-success",
+      "tool": "exec",
+      "args": {
+        "command": "pwd",
+        "context": {
+          "run_id": "run",
+          "session_id": "session",
+          "tool_call_id": "call"
+        }
+      },
+      "raw": {
+        "returncode": 0,
+        "output": "/Users/owner"
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "read-success",
+      "tool": "read",
+      "args": {
+        "path": "/Granted/report.txt",
+        "context": {
+          "run_id": "run",
+          "session_id": "session",
+          "tool_call_id": "call"
+        }
+      },
+      "raw": {
+        "content": "正文",
+        "total_lines": 1,
+        "file_size": 6,
+        "truncated": false,
+        "error": null
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "write-success",
+      "tool": "write",
+      "args": {
+        "path": "/Granted/report.txt",
+        "content": "正文",
+        "context": {
+          "run_id": "run",
+          "session_id": "session",
+          "tool_call_id": "call"
+        }
+      },
+      "raw": {
+        "bytes_written": 6,
+        "verified": true,
+        "error": null
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "fetch-success",
+      "tool": "fetch",
+      "args": {
+        "path": "/Granted/report.png",
+        "context": {
+          "run_id": "run",
+          "session_id": "session",
+          "tool_call_id": "call"
+        }
+      },
+      "raw": {
+        "path": "/cache/owner-mac/report.png",
+        "bytes": 12
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "put-success",
+      "tool": "put",
+      "args": {
+        "source": "/cache/report.txt",
+        "path": "/Granted/report.txt",
+        "context": {
+          "run_id": "run",
+          "session_id": "session",
+          "tool_call_id": "call"
+        }
+      },
+      "raw": {
+        "path": "/Granted/report.txt",
+        "bytes": 12
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "computer_use-success",
+      "tool": "computer_use",
+      "args": {
+        "action": "capture",
+        "context": {
+          "run_id": "run",
+          "session_id": "session",
+          "tool_call_id": "call"
+        }
+      },
+      "raw": {
+        "mode": "ax",
+        "width": 800,
+        "height": 600,
+        "elements": [],
+        "summary": "window"
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "write-service-ack",
+      "tool": "write",
+      "args": {
+        "path": "/Granted/report.txt",
+        "content": "正文",
+        "context": {
+          "run_id": "run",
+          "session_id": "session",
+          "tool_call_id": "call"
+        }
+      },
+      "raw": {
+        "bytes_written": 6,
+        "verified": null,
+        "error": null
+      },
+      "expect": {
+        "state": "succeeded",
+        "verification": "service_ack",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "read-truncated",
+      "tool": "read",
+      "args": {
+        "path": "/Granted/report.txt",
+        "context": {
+          "run_id": "run",
+          "session_id": "session",
+          "tool_call_id": "call"
+        }
+      },
+      "raw": {
+        "content": "正文",
+        "total_lines": 1,
+        "file_size": 6,
+        "truncated": true,
+        "error": null
+      },
+      "expect": {
+        "state": "partial",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "read-error",
+      "tool": "read",
+      "args": {
+        "path": "/Granted/report.txt",
+        "context": {
+          "run_id": "run",
+          "session_id": "session",
+          "tool_call_id": "call"
+        }
+      },
+      "raw": {
+        "error": "Permission denied"
+      },
+      "expect": {
+        "state": "failed",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "write-error",
+      "tool": "write",
+      "args": {
+        "path": "/Granted/report.txt",
+        "content": "正文",
+        "context": {
+          "run_id": "run",
+          "session_id": "session",
+          "tool_call_id": "call"
+        }
+      },
+      "raw": {
+        "error": "Readback mismatch"
+      },
+      "expect": {
+        "state": "failed",
+        "retry": "after_check"
+      }
+    },
+    {
+      "id": "exec-nonzero",
+      "tool": "exec",
+      "args": {
+        "command": "pwd",
+        "context": {
+          "run_id": "run",
+          "session_id": "session",
+          "tool_call_id": "call"
+        }
+      },
+      "raw": {
+        "returncode": 1,
+        "output": "command stopped"
+      },
+      "expect": {
+        "state": "failed",
+        "retry": "after_check"
+      }
+    },
+    {
+      "id": "exec-timeout",
+      "tool": "exec",
+      "args": {
+        "command": "pwd",
+        "context": {
+          "run_id": "run",
+          "session_id": "session",
+          "tool_call_id": "call"
+        }
+      },
+      "raw": {
+        "returncode": 124,
+        "output": "Command timed out"
+      },
+      "expect": {
+        "state": "unknown",
+        "retry": "after_check"
+      }
+    },
+    {
+      "id": "ssh-disconnected",
+      "tool": "exec",
+      "args": {
+        "command": "pwd",
+        "context": {
+          "run_id": "run",
+          "session_id": "session",
+          "tool_call_id": "call"
+        }
+      },
+      "raw": {
+        "returncode": 255,
+        "output": "SSH disconnected"
+      },
+      "expect": {
+        "state": "unknown",
+        "retry": "after_check"
+      }
+    },
+    {
+      "id": "write-timeout",
+      "tool": "write",
+      "args": {
+        "path": "/Granted/report.txt",
+        "content": "正文",
+        "context": {
+          "run_id": "run",
+          "session_id": "session",
+          "tool_call_id": "call"
+        }
+      },
+      "raw": {
+        "error": "Command timed out after 60s"
+      },
+      "expect": {
+        "state": "unknown",
+        "retry": "after_check"
+      }
+    },
+    {
+      "id": "cua-unverified",
+      "tool": "computer_use",
+      "args": {
+        "action": "click",
+        "context": {
+          "run_id": "run",
+          "session_id": "session",
+          "tool_call_id": "call"
+        }
+      },
+      "raw": {
+        "ok": true,
+        "action": "click",
+        "verified": false,
+        "effect": "unverifiable",
+        "verdict": {
+          "decision": "verify_fresh_state"
+        }
+      },
+      "expect": {
+        "state": "unknown",
+        "retry": "after_check",
+        "verification": "not_verified"
+      }
+    },
+    {
+      "id": "cua-verified",
+      "tool": "computer_use",
+      "args": {
+        "action": "click",
+        "context": {
+          "run_id": "run",
+          "session_id": "session",
+          "tool_call_id": "call"
+        }
+      },
+      "raw": {
+        "ok": true,
+        "action": "click",
+        "verified": true,
+        "effect": "confirmed",
+        "verdict": {
+          "decision": "done"
+        }
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden",
+        "verification": "verified"
+      }
+    },
+    {
+      "id": "cua-failed",
+      "tool": "computer_use",
+      "args": {
+        "action": "click",
+        "context": {
+          "run_id": "run",
+          "session_id": "session",
+          "tool_call_id": "call"
+        }
+      },
+      "raw": {
+        "ok": false,
+        "code": "INPUT_REJECTED"
+      },
+      "expect": {
+        "state": "failed",
+        "retry": "after_check"
+      }
+    },
+    {
+      "id": "unclassified",
+      "tool": "exec",
+      "args": {
+        "command": "pwd",
+        "context": {
+          "run_id": "run",
+          "session_id": "session",
+          "tool_call_id": "call"
+        }
+      },
+      "raw": {
+        "message": "unexpected result"
+      },
+      "expect": {
+        "state": "unknown",
+        "retry": "after_check"
+      }
+    },
+    {
+      "id": "cua-driver-timeout",
+      "tool": "computer_use",
+      "args": {
+        "action": "click",
+        "context": {
+          "run_id": "run",
+          "session_id": "session",
+          "tool_call_id": "call"
+        }
+      },
+      "raw": {
+        "ok": false,
+        "code": "driver_timeout"
+      },
+      "expect": {
+        "state": "unknown",
+        "retry": "after_check"
+      }
+    },
+    {
+      "id": "cua-confirmed-effect",
+      "tool": "computer_use",
+      "args": {
+        "action": "click",
+        "context": {
+          "run_id": "run",
+          "session_id": "session",
+          "tool_call_id": "call"
+        }
+      },
+      "raw": {
+        "ok": true,
+        "effect": "confirmed"
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden",
+        "verification": "verified"
+      }
+    },
+    {
+      "id": "cua-apps",
+      "tool": "computer_use",
+      "args": {
+        "action": "list_apps",
+        "context": {
+          "run_id": "run",
+          "session_id": "session",
+          "tool_call_id": "call"
+        }
+      },
+      "raw": {
+        "apps": [
+          {
+            "name": "Editor",
+            "pid": 123
+          }
+        ]
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "cua-windows",
+      "tool": "computer_use",
+      "args": {
+        "action": "list_windows",
+        "context": {
+          "run_id": "run",
+          "session_id": "session",
+          "tool_call_id": "call"
+        }
+      },
+      "raw": {
+        "windows": [
+          {
+            "title": "Editor",
+            "window_id": 17
+          }
+        ]
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "cua-wait",
+      "tool": "computer_use",
+      "args": {
+        "action": "wait",
+        "context": {
+          "run_id": "run",
+          "session_id": "session",
+          "tool_call_id": "call"
+        },
+        "seconds": 1
+      },
+      "raw": {
+        "ok": true,
+        "action": "wait"
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    }
+  ]
+}

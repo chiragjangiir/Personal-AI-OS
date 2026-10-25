@@ -338,6 +338,9 @@ struct YimiCallView: View {
                 }
                 Group { if failed { Text(failureReason) } else if connecting { Text("正在接通…") } else { CallClock(start: ui.callStartedAt) } }
                     .font(.system(size: 13).monospacedDigit()).foregroundStyle(Yimi.ink2)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("yimi.call.connection." + (vm.call.id ?? "pending"))
+                    .accessibilityValue(connecting ? "未接通" : "已接通")
             }
             Spacer()
             Menu {

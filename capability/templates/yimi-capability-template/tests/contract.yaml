@@ -1,0 +1,9 @@
+version: 1
+# Each case supplies its inputs under files using paths relative to /work.
+# Example: files: {input.txt: synthetic}; tool arguments may use /work/input.txt.
+cases:
+  - tool: sample
+    args: {}
+    expect:
+      status.state: succeeded
+      values.0.value: 1

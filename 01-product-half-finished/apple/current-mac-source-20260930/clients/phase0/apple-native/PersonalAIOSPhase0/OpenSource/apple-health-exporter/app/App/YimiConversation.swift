@@ -23,9 +23,7 @@ final class YimiConversation: ObservableObject {
 
     private unowned let vm: AssistantViewModel
     private var bag = Set<AnyCancellable>()
-    private var acked = Set<String>()
-    /// Final replies saved to the timeline but not yet seen in the chat: their "rendered" ACK waits for both.
-    private var unacknowledged: [String: CentralTextPresentation] = [:]
+    private let renderedACKs = YimiRenderedACKQueue()
 #if DEBUG
     private var activityFixturePackets: [Data] = []
     var hasActivityFixture: Bool { !activityFixturePackets.isEmpty }
@@ -62,25 +60,34 @@ final class YimiConversation: ObservableObject {
 #else
         loadStore()
 #endif
-        vm.$centralPresentation.compactMap { $0 }.map { [unowned vm] in ($0, vm.ownerProjectionIdentity) }.receive(on: RunLoop.main)
+        vm.$centralPresentation.compactMap { $0 }.map { [unowned vm] in ($0, vm.ownerProjectionIdentity) }
+            .receive(on: RunLoop.main)
             .sink { [weak self] in self?.reply($0.0, identity: $0.1) }.store(in: &bag)
         // Synchronous, in projection order: a row is never settled by a snapshot older than its own send.
         vm.$centralSnapshot.compactMap { $0 }
             .sink { [weak self] in self?.settleTypedSends($0) }.store(in: &bag)
-        vm.$terminalState.receive(on: RunLoop.main)
+        vm.$terminalState.removeDuplicates { $0.ownerIdentity == $1.ownerIdentity && $0.timeline.revision == $1.timeline.revision }
+            .receive(on: RunLoop.main)
             .sink { [weak self] state in
                 guard let self else { return }
-                let retained = self.items.filter { $0.seq == nil || $0.delivery != nil || $0.ownerIdentity != state.ownerIdentity }
-                self.timeline = YimiConversationTimeline(items: retained + state.timeline.items)
-                self.scheduleSave()
+                if self.timeline.merge(state.timeline, ownerIdentity: state.ownerIdentity) { self.scheduleSave() }
             }.store(in: &bag)
-        vm.$call.map { [unowned vm] in ($0, vm.ownerProjectionIdentity) }.receive(on: RunLoop.main)
+        vm.$call.map { [unowned vm] in ($0, vm.ownerProjectionIdentity) }
+            .removeDuplicates { (left: (CentralCall, String?), right: (CentralCall, String?)) -> Bool in
+                left.0 == right.0 && left.1 == right.1
+            }.receive(on: RunLoop.main)
             .sink { [weak self] in self?.callChanged($0.0, identity: $0.1) }.store(in: &bag)
-        vm.$voiceTurn.receive(on: RunLoop.main)
+        vm.$voiceTurn.removeDuplicates().receive(on: RunLoop.main)
             .sink { [weak self] in self?.voiceChanged($0) }.store(in: &bag)
-        vm.$ambientReplies.map { [unowned vm] in ($0, vm.ownerProjectionIdentity) }.receive(on: RunLoop.main)
+        vm.$ambientReplies.map { [unowned vm] in ($0, vm.ownerProjectionIdentity) }
+            .removeDuplicates { (left: ([CentralAmbientReply], String?), right: ([CentralAmbientReply], String?)) -> Bool in
+                left.0 == right.0 && left.1 == right.1
+            }.receive(on: RunLoop.main)
             .sink { [weak self] in self?.ambientReplied($0.0, identity: $0.1) }.store(in: &bag)
-        vm.$careCheckins.map { [unowned vm] in ($0, vm.ownerProjectionIdentity) }.receive(on: RunLoop.main)
+        vm.$careCheckins.map { [unowned vm] in ($0, vm.ownerProjectionIdentity) }
+            .removeDuplicates { (left: ([CentralAmbientReply], String?), right: ([CentralAmbientReply], String?)) -> Bool in
+                left.0 == right.0 && left.1 == right.1
+            }.receive(on: RunLoop.main)
             .sink { [weak self] in self?.ambientReplied($0.0, identity: $0.1) }.store(in: &bag)
         NotificationCenter.default.publisher(for: UIApplication.protectedDataDidBecomeAvailableNotification)
             .receive(on: RunLoop.main)
@@ -142,7 +149,7 @@ final class YimiConversation: ObservableObject {
 
     func resent(_ item: YimiItem) {
         if sendingVoiceItem == item.id { sendingVoiceItem = nil }
-        timeline = YimiConversationTimeline(items: items.filter { $0.id != item.id })
+        timeline.remove(ids: [item.id])
         scheduleSave()
     }
 
@@ -154,38 +161,34 @@ final class YimiConversation: ObservableObject {
         let text = QwenHandoff.split(presentation.text).display
         guard !text.isEmpty else { return }
         let id = "her-" + key
-        if let index = items.firstIndex(where: { $0.id == id }) {
-            var item = items[index]
+        let before = timeline.revision
+        if var item = timeline.item(id: id) {
             item.text = text
             item.privacy = presentation.privacy ?? item.privacy
             item.ownerIdentity = identity
-            timeline.upsert(item)
+            if timeline.item(id: id) != item { timeline.upsert(item) }
         } else {
             append(YimiItem(id: id, kind: .her, text: text, date: Date(), privacy: presentation.privacy), identity: identity)
             if !chatVisible { unread += 1 }
         }
-        scheduleSave()
+        if timeline.revision != before { scheduleSave() }
         // "Rendered" means shown and kept: the ACK waits until the chat is on screen and the timeline is saved.
-        if presentation.isFinal, !acked.contains(id) {
-            unacknowledged[id] = presentation
+        if presentation.isFinal {
+            renderedACKs.enqueue(presentation, id: id)
             Task { await acknowledgeShown() }
         }
     }
 
     private func acknowledgeShown() async {
-        guard chatVisible, !unacknowledged.isEmpty, await saveNow() else { return }
-        for (id, presentation) in unacknowledged where acked.insert(id).inserted {
-            await vm.centralTextSurfaceConsumed(presentation)
-        }
-        unacknowledged.removeAll()
+        await renderedACKs.drain(visible: chatVisible, save: { await self.saveNow() },
+            send: { await self.vm.centralTextSurfaceConsumed($0) })
     }
 
     /// A wake turn heard in 随身模式 and her answer: the request as said aloud, then the reply (once per processed event).
     private func ambientReplied(_ replies: [CentralAmbientReply], identity: String?) {
         for reply in replies {
-            let isNew = !items.contains { $0.id == "her-" + reply.id }
-            timeline.accept(reply)
-            stampOwner(ids: ["her-" + reply.id, "me-ambient-" + reply.id], identity: identity)
+            let isNew = timeline.item(id: "her-" + reply.id) == nil
+            timeline.accept(reply, ownerIdentity: identity)
             if isNew && !chatVisible { unread += 1 }
         }
         scheduleSave()
@@ -193,9 +196,8 @@ final class YimiConversation: ObservableObject {
 
     /// Call turns were heard aloud, so they never count as unread.
     private func callChanged(_ call: CentralCall, identity: String?) {
-        guard let callID = call.id else { return }
-        timeline.accept(call)
-        stampOwner(ids: ["call-" + callID] + call.lines.filter { $0.callID == callID }.map { "call-" + $0.id }, identity: identity)
+        guard call.id != nil else { return }
+        timeline.accept(call, ownerIdentity: identity)
         scheduleSave()
     }
 
@@ -230,7 +232,7 @@ final class YimiConversation: ObservableObject {
         case .sent:
             if let id = sendingVoiceItem {
                 if let event = turn.eventID, let delivery = vm.centralSnapshot?.submissionDelivery(eventID: event),
-                   var item = items.first(where: { $0.id == id }) {
+                   var item = timeline.item(id: id) {
                     item.setSubmissionDelivery(delivery, processedID: vm.centralSnapshot?.submissionProcessedID(eventID: event))
                     timeline.upsert(item); scheduleSave()
                 } else { setDelivery(id, nil) }
@@ -245,14 +247,11 @@ final class YimiConversation: ObservableObject {
     }
 
     private func settleTypedSends(_ consumer: AssistantCentralTextConsumer) {
-        let before = items
-        timeline.settleTypedSends(consumer)
-        if items != before { scheduleSave() }
+        if timeline.settleTypedSends(consumer) { scheduleSave() }
     }
 
     private func setDelivery(_ id: String, _ delivery: YimiItem.Delivery?) {
-        guard let index = items.firstIndex(where: { $0.id == id }), items[index].delivery != delivery else { return }
-        var item = items[index]
+        guard var item = timeline.item(id: id), item.delivery != delivery else { return }
         item.delivery = delivery
         item.queued = nil
         timeline.upsert(item)
@@ -266,13 +265,6 @@ final class YimiConversation: ObservableObject {
         item.ownerIdentity = identity
         timeline.upsert(item)
         scheduleSave()
-    }
-
-    private func stampOwner(ids: [String], identity: String?) {
-        for var item in items where ids.contains(item.id) {
-            item.ownerIdentity = identity
-            timeline.upsert(item)
-        }
     }
 
     /// Loads the timeline. A missing file is an empty history; an unreadable one blocks writes until a later load

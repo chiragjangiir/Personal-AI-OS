@@ -94,14 +94,17 @@ test('an explicit conversation still publishes approval and waits for the owner 
     confirmed_by:'owner',surface:{device_id:'phone',device_type:'phone'}}}]);
 });
 
-for(const explicit of [false,true])test(`I17 REVIEW: ${explicit?'explicit request carries acknowledged grants':'unattributed observation carries no action grants'} through runtime admission`,{timeout:10000},async t=>{
+for(const explicit of [false,true])test(`I17 REVIEW: ${explicit?'explicit request carries acknowledged grants':'unattributed observation carries only the gated desktop catalog'} through runtime admission`,{timeout:10000},async t=>{
   const f=await fixture(t,false);
   const result=await f.runtime.submit({schema_version:EVENT_SCHEMA,event_id:'scope-observation',device_id:'phone',device_type:'phone',
     captured_at:new Date().toISOString(),source:{channel:'background_scheduled'},media_type:'text',mime:'text/plain;charset=utf-8',
     representation:'uploaded_original',payload:Buffer.from('Synthetic observed text')},f.phone,'scope-session',explicit);
   const body=await f.accepted;
   assert.equal(principalAttribution(result.processed_event),explicit?'explicit_text':null);
-  assert.deepEqual(body.grant_toolsets,explicit?['desktop','terminal','file']:[]);
-  assert.equal(body.memory_write,explicit);
+  assert.deepEqual(body.grant_toolsets,explicit?['desktop','terminal','file']:['desktop']);
+  const deadline=Date.now()+2000;
+  while(!f.admission.find('run','scope-session')){assert.ok(Date.now()<deadline);await new Promise(resolve=>setTimeout(resolve,5));}
+  assert.equal((await f.runtime.scheduleContext({run_id:'run',session_id:'scope-session',tool_call_id:'authority'})).allow_owner_mutation,explicit);
+  assert.equal(Object.hasOwn(body,'memory_write'),false);
   assert.deepEqual((await f.native.status('run',{conversation_session_id:'scope-session'})).granted_toolsets,body.grant_toolsets);
 });

@@ -185,19 +185,6 @@ test('binds one production subscription and records every closed user-action cla
   assert.equal(h.seen.length, REALTIME_ACCEPTED_USER_ACTIONS.length);
 });
 
-test('exact replay reuses the durable result while conflicting replay is rejected', async () => {
-  const h = harness();
-  h.bridge.bind();
-  const event = eventFor();
-  assert.equal(await h.source.emit(event), RESULT);
-  assert.equal(await h.source.emit(structuredClone(event)), RESULT);
-  assert.equal(h.sinkCalls(), 1);
-  const conflict = mutableEvent();
-  conflict.actionReceipt.action = 'cycling_pause';
-  await rejectsCode(h.source.emit(conflict as unknown as RealtimeAcceptedUserActivityOwnerEvent), 'ACCEPTED_ACTIVITY_REPLAY_CONFLICT');
-  assert.equal(h.sinkCalls(), 1);
-});
-
 test('Watch actions retain the active iPhone device and require matching authority evidence', async () => {
   const h = harness();
   h.bridge.bind();
@@ -364,4 +351,45 @@ test('close is idempotent, unsubscribes once, closes source once and fences late
     owner: 'T04.accepted-user-activity', environment: 'production', ready: false, reason: 'closed',
   });
   assert.throws(() => h.bridge.bind(), /ACCEPTED_ACTIVITY_BRIDGE_CLOSED/u);
+});
+
+test('settled activities return to the durable ledger with the complete owner event, including after bridge restart', async () => {
+  const ledger = new Map<string, { fingerprint: string; result: RealtimeSessionRecord }>();
+  let attempts = 0;
+  const sink = {
+    async recordAcceptedUserActivity(activity: AcceptedUserActivity, ownerEvent?: unknown) {
+      attempts += 1;
+      assert.ok(ownerEvent, 'complete owner evidence reaches durable idempotency authority');
+      const fingerprint = JSON.stringify({ activity, ownerEvent });
+      const prior = ledger.get(activity.activityId);
+      if (prior) {
+        if (prior.fingerprint !== fingerprint) throw new Error('IDEMPOTENCY_CONFLICT');
+        return prior.result;
+      }
+      ledger.set(activity.activityId, { fingerprint, result: RESULT });
+      return RESULT;
+    },
+  };
+  const make = () => {
+    const source = sourceFixture();
+    const bridge = createRealtimeAcceptedUserActivityProduction({
+      source: source.source, sink, equality: createProductionStructuralEquality(),
+      purpose: 'cycling_assistant', now: () => NOW,
+    });
+    bridge.bind();
+    return { source, bridge };
+  };
+  const event = eventFor('durable-replay');
+  const first = make();
+  assert.equal(await first.source.emit(event), RESULT);
+  assert.equal(await first.source.emit(structuredClone(event)), RESULT);
+  assert.equal(attempts, 2, 'settled results are not cached by the long-lived bridge');
+  const conflict = mutableEvent('durable-replay', 'cycling_pause');
+  await assert.rejects(first.source.emit(conflict as unknown as RealtimeAcceptedUserActivityOwnerEvent), /IDEMPOTENCY_CONFLICT/);
+  await first.bridge.close();
+  const restarted = make();
+  assert.equal(await restarted.source.emit(structuredClone(event)), RESULT);
+  await assert.rejects(restarted.source.emit(conflict as unknown as RealtimeAcceptedUserActivityOwnerEvent), /IDEMPOTENCY_CONFLICT/);
+  assert.equal(ledger.size, 1);
+  await restarted.bridge.close();
 });

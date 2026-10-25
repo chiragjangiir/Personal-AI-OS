@@ -1,0 +1,78 @@
+{
+  "schema": "yimi.package.contract.v1",
+  "cases": [
+    {
+      "id": "paios_task_amend",
+      "tool": "paios_task_amend",
+      "args": {
+        "action": "list"
+      },
+      "raw": {
+        "tasks": [],
+        "pending_amendments": []
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "paios_desktop_queue",
+      "tool": "paios_desktop_queue",
+      "args": {
+        "action": "list"
+      },
+      "raw": {
+        "items": []
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "enqueue",
+      "tool": "paios_desktop_queue",
+      "args": {
+        "action": "add",
+        "task": "处理本地文件"
+      },
+      "raw": {
+        "queue_id": "queue",
+        "state": "pending",
+        "created_at_ms": 1792843200000
+      },
+      "expected": {
+        "state": "accepted"
+      }
+    },
+    {
+      "id": "amended",
+      "tool": "paios_task_amend",
+      "args": {
+        "action": "amend",
+        "run_id": "task"
+      },
+      "raw": {
+        "delivered_to": "delegate",
+        "amendment_id": "amend"
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "cancel-queue",
+      "tool": "paios_desktop_queue",
+      "args": {
+        "action": "cancel",
+        "queue_id": "cancel"
+      },
+      "raw": {
+        "queue_id": "cancel",
+        "cancelled": true
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    }
+  ]
+}

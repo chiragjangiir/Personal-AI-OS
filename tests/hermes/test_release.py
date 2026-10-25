@@ -638,6 +638,9 @@ def test_interrupted_request_resumes_its_commit_and_completed_receipts(tmp_path,
     host = release.Host({'stage': 'staging', 'root': str(tmp_path), 'project': 'p', 'profiles': ['staging'],
                          'repo': str(repo.bare), 'requests': str(request.parent), 'exchange': str(tmp_path / 'exchange')})
     host.state = tmp_path
+    (tmp_path / 'exchange').mkdir()
+    release_build.write(tmp_path / 'exchange/production.json', {'commit': repo.base})
+    monkeypatch.setattr(release.release_parity, 'ensure', lambda selected, lock: {'commit': repo.base})
     monkeypatch.setattr(host, 'refresh_base', lambda: None)
     monkeypatch.setattr(host, 'model_source', lambda: 'fixture-models')
     calls = {name: 0 for name in ('commit', 'build', 'suites', 'staging', 'export')}
@@ -672,7 +675,8 @@ def test_interrupted_request_resumes_its_commit_and_completed_receipts(tmp_path,
     def export(config, target, result, summary):
         package = Path(config['exchange']) / 'candidates' / request.name
         package.mkdir(parents=True)
-        release_build.write(package / 'manifest.json', {'delta_bytes': 12, 'reused_bytes': 34})
+        release_build.write(package / 'manifest.json', {'base': result['base'], 'commit': result['commit'],
+                                                        'delta_bytes': 12, 'reused_bytes': 34})
         interrupt('export')
         return {'package': str(package), 'delta_bytes': 12, 'reused_bytes': 34}
     monkeypatch.setattr(release_build, 'build', build)
@@ -723,7 +727,7 @@ if '--keep' in args:
                PAIOS_PUBLIC_API_URL='https://bj.example.invalid:9443', PAIOS_LEGACY_PUBLIC_API_URLS='')
     for name in ('one', 'two'):
         root = tmp_path / name
-        for relative in ('deploy/cloud/prepare-build.py', 'deploy/cloud/cloud.json', 'deploy/cloud/front.conf.in',
+        for relative in ('deploy/cloud/prepare-build.py', 'deploy/cloud/staging_config.py', 'deploy/cloud/cloud.json', 'deploy/cloud/front.conf.in',
                          'deploy/cloud/paios_roaming_guard.js.in', 'integrations/hermes/personal_aios/producer.lock.json'):
             (root / relative).parent.mkdir(parents=True, exist_ok=True)
             (root / relative).write_bytes((ROOT / relative).read_bytes())
@@ -735,8 +739,8 @@ if '--keep' in args:
     assert not (native / (tree + '.partial')).exists()
 
 
-@pytest.mark.parametrize('collision', [True, False])
-def test_snapshot_skill_authority_gate_runs_before_staging_volume_changes(tmp_path, monkeypatch, collision):
+@pytest.mark.parametrize('collision,current_inventory', [(True, False), (False, False), (True, True)])
+def test_snapshot_skill_authority_gate_runs_before_staging_volume_changes(tmp_path, monkeypatch, collision, current_inventory):
     from contextlib import nullcontext
     from datetime import datetime, timezone
     import staging_snapshot_restore as restore
@@ -750,6 +754,16 @@ def test_snapshot_skill_authority_gate_runs_before_staging_volume_changes(tmp_pa
         'name: cloud-phone', 'name: cloud-phone' if collision else 'name: learned-method') +
         '\nLoad the categorized path; accept restore only at phone_status stage=ready, installing is busy.\n')
     gates = []
+    inventory_file = None
+    if current_inventory:
+        import release_inventory
+        fresh = tmp_path / 'current-home'
+        (fresh / 'skills').mkdir(parents=True)
+        (fresh / 'config.yaml').write_text('mcp_servers: {}\n')
+        inventory_file = tmp_path / 'current-inventory.tar.gz'
+        release_inventory.pack(fresh, inventory_file)
+        monkeypatch.setenv('PAIOS_STAGE', 'staging')
+        monkeypatch.setattr(os, 'chown', lambda *args: None)
     class Fixture:
         definition = {'services': {'hermes-staging': {'image': 'fixture-candidate-hermes'}}}
         def __init__(self, *args, **kwargs):
@@ -757,6 +771,9 @@ def test_snapshot_skill_authority_gate_runs_before_staging_volume_changes(tmp_pa
         def maintenance(self, held=None):
             return nullcontext()
         def tools(self, args, work, **options):
+            if len(args) > 1 and args[1].endswith('/release_inventory.py'):
+                import release_inventory
+                release_inventory.install(work / 'inventory.tar.gz', work / 'current-inventory')
             if options.get('entrypoint'):
                 assert options['image'] == 'fixture-candidate-hermes'
                 script = args[1].replace("'/work/data/hermes-home/skills'", repr(str(work / 'data/hermes-home/skills')))
@@ -777,10 +794,11 @@ def test_snapshot_skill_authority_gate_runs_before_staging_volume_changes(tmp_pa
     envelope = tmp_path / 'snapshot-20261020T031800Z.age'
     envelope.touch()
     settings = {'evidence': str(tmp_path / 'evidence'), 'scratch': str(tmp_path), 'identity_file': 'fixture'}
-    with pytest.raises(ValueError if collision else RuntimeError,
-                       match='SKILL_AUTHORITY_COLLISION.*cloud-phone' if collision else 'volume_boundary'):
-        restore.restore(settings, envelope, True)
-    assert gates == ([] if collision else ['passed'])
+    rejected = collision and not current_inventory
+    with pytest.raises(ValueError if rejected else RuntimeError,
+                       match='SKILL_AUTHORITY_COLLISION.*cloud-phone' if rejected else 'volume_boundary'):
+        restore.restore(settings, envelope, True, inventory=inventory_file)
+    assert gates == ([] if rejected else ['passed'])
     assert skill.exists()  # Both the snapshot copy and the proposed learning are preserved.
     if collision:
         with pytest.raises(ValueError, match='reconcile local skills with product authority'):

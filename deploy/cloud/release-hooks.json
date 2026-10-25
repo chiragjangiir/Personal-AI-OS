@@ -1,0 +1,9 @@
+{
+  "rollback_projection": {
+    "service": "gateway",
+    "source_service": "hermes",
+    "source_target": "/opt/data",
+    "writable_target": "/opt/paios-rollback-native",
+    "command": ["node", "01-product-half-finished/backend/phase0/gateway/tools/core-profile-release.ts", "rollback", "/etc/paios/cloud.json"]
+  }
+}

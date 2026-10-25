@@ -68,9 +68,9 @@ enum DesktopPairingError: LocalizedError {
     case invalidCode
     var errorDescription: String? {
         switch self {
-        case .rejected(403): return "二维码已失效 · 回到 Mac 刷新"
-        case .rejected: return "连接失败 · 请检查网络，并回到 Mac 刷新二维码。"
-        case .invalidCode: return "二维码已失效 · 回到 Mac 刷新"
+        case .rejected(403): return "二维码已失效 · 请在 Mac 上刷新"
+        case .rejected: return "没连上。请检查网络，再刷新 Mac 上的二维码。"
+        case .invalidCode: return "二维码已失效 · 请在 Mac 上刷新"
         }
     }
 }
@@ -234,7 +234,7 @@ extension DesktopPairingController {
                 }
                 try await Task.sleep(for: .seconds(2))
             }
-            qrStatus = "二维码已失效 · 回到 Mac 刷新"
+            qrStatus = "二维码已失效 · 请在 Mac 上刷新"
         } catch is CancellationError {
             if qrGeneration == generation { qrStatus = "已取消" }
         } catch {

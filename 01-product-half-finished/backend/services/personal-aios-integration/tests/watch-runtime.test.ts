@@ -4,7 +4,6 @@ import {mkdtemp,mkdir,readFile,rm} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
-import {performance} from 'node:perf_hooks';
 import {AppleWatchCredentialError} from '../../platform-data/src/apple-physical-canary-binding-postgres.ts';
 import {PersonalAIOSRuntime,RunAdmission,sourceClient} from './native-source-fixture.ts';
 import {PosixStorage} from '../src/storage.ts';
@@ -23,12 +22,12 @@ const source=sourceSnapshot({principal_id:'owner',device_id:'watch',device_type:
  relay_device_id:'phone',output_target:{device_id:'phone',device_type:'phone'},output_modes:['text'],route_version:'watch-route'});
 const root=resolve(import.meta.dirname,'../../../../../');
 const toolchain=process.env.PAIOS_DEMUX_TOOLCHAIN??'/opt/personal-aios-runtime/toolchains/ffmpeg-8.0.3-minimal/bin';
-async function fixture(t:test.TestContext,samples=16000){
+async function fixture(t:test.TestContext,samples=16000,recording?:URL){
  const scratch=join(root,'.scratch','watch-runtime');await mkdir(scratch,{recursive:true});
  const directory=await mkdtemp(join(scratch,'case-')),storage=new PosixStorage(join(directory,'l5'));
  const fixtureAudio=join(directory,'utterance.m4a');
- await promisify(execFile)(join(toolchain,'ffmpeg'),['-hide_banner','-nostdin','-y','-f','lavfi','-i','sine=frequency=440:sample_rate=16000:duration=2','-af',`atrim=end_sample=${samples}`,'-ac','1','-c:a','aac','-profile:a','aac_low','-movie_timescale','16000','-f','mp4',fixtureAudio]);
- const bytes=await readFile(fixtureAudio);
+ if(!recording)await promisify(execFile)(join(toolchain,'ffmpeg'),['-hide_banner','-nostdin','-y','-f','lavfi','-i','sine=frequency=440:sample_rate=16000:duration=2','-af',`atrim=end_sample=${samples}`,'-ac','1','-c:a','aac','-profile:a','aac_low','-movie_timescale','16000','-f','mp4',fixtureAudio]);
+ const bytes=await readFile(recording??fixtureAudio);
  let opens=0,creates=0,confirmations=0,revoked=false,running=false,transcript:string|null='查询天气',allowCandidate:Promise<void>=Promise.resolve();
  const inputCommitted=Promise.withResolvers<void>();
  const logical=new Map<string,{run_id:string;session_id:string;conversation_session_id:string;status:string;output?:string}>();
@@ -108,8 +107,46 @@ test('no speech and invalid decoded duration retain original; frozen failure out
  const f=await fixture(t),a=await f.instance();f.transcript('');
  assert.deepEqual(await a.upload(),{status:'failed',turn_id:turn,reason:'not_heard'});
  assert.deepEqual(await a.upload(),{status:'failed',turn_id:turn,reason:'not_heard'});assert.equal((await f.storage.list('manifests')).length,1);
- const id='831a8900-0404-462c-a471-164c7fce363d';assert.deepEqual(await a.upload(f.bytes,{...metadata,duration_ms:900},id),{status:'failed',turn_id:id,reason:'audio_invalid'});
+ const id='831a8900-0404-462c-a471-164c7fce363d';assert.deepEqual(await a.upload(f.bytes,{...metadata,duration_ms:700},id),{status:'failed',turn_id:id,reason:'audio_invalid'});
  assert.equal((await f.storage.list('manifests')).length,2);assert.deepEqual(f.counts(),{opens:1,creates:0,confirmations:0});
+});
+for(const [duration,accepted] of [[808,true],[1192,true],[807,false],[1193,false]] as const)
+test(`Watch duration declaration ${duration}ms respects the three-frame codec bound`,async t=>{
+ const f=await fixture(t),a=await f.instance();
+ const reply=await a.upload(f.bytes,{...metadata,duration_ms:duration});
+ assert.equal(reply.status,accepted?'heard':'failed');
+ if(reply.status==='failed')assert.equal(reply.reason,'audio_invalid');
+ assert.equal(f.counts().opens,accepted?1:0);
+ if(accepted){
+  const key=(await f.storage.list('watch-turn-media'))[0]!;
+  const d=JSON.parse(Buffer.from(await f.storage.read('watch-turn-media',key)).toString()) as ProcessedEvent;
+  assert.deepEqual(d.time_range,{kind:'interval',timebase_id:'watch-media',start_ms:0,end_ms:1000});
+ }
+});
+// AVAudioRecorder AAC-LC/16kHz/mono/24kbps, with synthetic PCM from an isolated virtual input.
+// Apple reports valid frames; ffmpeg retains the encoder's 2112 priming samples.
+for(const [name,frames,milliseconds,silence] of [
+ ['speech-short',28672,1660,false],['speech-long',65536,3964,false],['silence',34816,2044,true],
+ ['automatic-limit',477184,29692,false]
+] as const)test(`Apple recorder ${name} uses the file duration and preserves actual decoded samples`,async t=>{
+ const f=await fixture(t,frames,new URL(`./fixtures/watch-audio/${name}.m4a`,import.meta.url)),a=await f.instance();
+ if(silence)f.transcript('');
+ const reply=await a.upload(f.bytes,{...metadata,duration_ms:milliseconds});
+ assert.equal(reply.status,silence?'failed':'heard');
+ if(reply.status==='failed')assert.equal(reply.reason,'not_heard');
+ assert.equal(f.counts().opens,1);
+ if(!silence){
+  const key=(await f.storage.list('watch-turn-media'))[0]!;
+  const d=JSON.parse(Buffer.from(await f.storage.read('watch-turn-media',key)).toString()) as ProcessedEvent;
+  assert.deepEqual(d.time_range,{kind:'interval',timebase_id:'watch-media',start_ms:0,end_ms:frames/16});
+  const original=await a.archive.locate(d.raw_ref,'owner');
+  assert.deepEqual(original.time_range,{kind:'interval',timebase_id:'watch-media',start_ms:0,end_ms:milliseconds});
+ }
+});
+test('Apple recorder output over 30 encoded seconds stays audio_too_long despite an in-limit file header',async t=>{
+ const f=await fixture(t,480256,new URL('./fixtures/watch-audio/over-limit.m4a',import.meta.url)),a=await f.instance();
+ assert.deepEqual(await a.upload(f.bytes,{...metadata,duration_ms:29884}),{status:'failed',turn_id:turn,reason:'audio_too_long'});
+ assert.equal(f.counts().opens,0);
 });
 for(const [namespace,written] of [['voice-confirmations',false],['processed-media-inputs',false],['processed-media',true],['audio-consumer-results',false],['watch-turn-media',false],['admissions',true],['watch-turn-outcomes',false]] as const){
  test(`restart recovers exact confirmation at ${namespace} ${written?'after':'before'} publication without ASR or another run`,async t=>{
@@ -123,17 +160,36 @@ for(const [namespace,written] of [['voice-confirmations',false],['processed-medi
 }
 test('GET observes canonical completion; disconnect releases subscription without cancelling work; revocation remains403',async t=>{
  const f=await fixture(t),a=await f.instance();f.running(true);assert.equal((await a.upload()).status,'heard');await settled(()=>f.counts().creates===1);
- const cancel=new AbortController(),wait=a.runtime.watchTurn(source,'phone-session','1',turn,cancel.signal);await new Promise(resolve=>setImmediate(resolve));cancel.abort();
+ const cancel=new AbortController(),wait=a.runtime.watchTurn(source,'phone-session','1',turn,cancel.signal);await settled(()=>(a.runtime as any).resultListeners.size===1);cancel.abort();
  assert.deepEqual(await wait,{status:'working',turn_id:turn});assert.equal((a.runtime as any).resultListeners.size,0);
- const reply=a.runtime.watchTurn(source,'phone-session','1',turn);await new Promise(resolve=>setImmediate(resolve));f.running(false);
+ const reply=a.runtime.watchTurn(source,'phone-session','1',turn);await settled(()=>(a.runtime as any).resultListeners.size===1);f.running(false);
  assert.equal((await reply).status,'replied');assert.equal((a.runtime as any).resultListeners.size,0);
  f.revoked();await assert.rejects(a.runtime.watchTurn(source,'phone-session','1',turn),error=>error instanceof AppleWatchCredentialError&&error.reason==='credential_revoked'&&error.status===403);
 });
 
+test('aborted result setup cannot register a late Watch subscription after its read finishes',async t=>{
+ const f=await fixture(t),a=await f.instance();f.running(true);await a.upload();await settled(()=>f.counts().creates===1);
+ const [key]=await f.storage.list('watch-turn-media'),d=JSON.parse(Buffer.from(await f.storage.read('watch-turn-media',key!)).toString()) as ProcessedEvent;
+ const entered=Promise.withResolvers<void>(),release=Promise.withResolvers<void>(),cancel=new AbortController();
+ const runtime=a.runtime as any,read=runtime.readEvent.bind(runtime);let held=true;
+ t.mock.method(runtime,'readEvent',async(...args:unknown[])=>{if(held){held=false;entered.resolve();await release.promise;}return read(...args);});
+ const pending=a.runtime.subscribeResult(source,'phone-session',d.processed_event_id,async()=>{assert.fail('aborted subscriber received a result');},error=>{throw error;},{signal:cancel.signal});
+ try{await entered.promise;cancel.abort();release.resolve();const stop=await pending;
+  assert.equal(runtime.resultListeners.size,0);stop();assert.equal(f.counts().creates,1);
+ }finally{release.resolve();}
+});
+
 test('GET returns working at25 seconds and releases subscription while native processing continues',async t=>{
  const f=await fixture(t),a=await f.instance();f.running(true);assert.equal((await a.upload()).status,'heard');await settled(()=>f.counts().creates===1);
- const started=performance.now();assert.deepEqual(await a.runtime.watchTurn(source,'phone-session','1',turn),{status:'working',turn_id:turn});
- assert.ok(performance.now()-started>=24900);await settled(()=>(a.runtime as any).resultListeners.size===0);
+ const scheduled=Promise.withResolvers<()=>void>(),schedule=setTimeout;
+ // Drive only this long-poll deadline; the native event producer keeps its own timers.
+ t.mock.method(globalThis,'setTimeout',((callback:(...args:any[])=>void,ms?:number,...args:any[])=>{
+  if(ms===25000){scheduled.resolve(()=>callback(...args));return schedule(()=>{},0);}
+  return schedule(callback,ms,...args);
+ }) as typeof setTimeout);
+ const wait=a.runtime.watchTurn(source,'phone-session','1',turn),expire=await scheduled.promise;
+ await settled(()=>(a.runtime as any).resultListeners.size===1);expire();
+ assert.deepEqual(await wait,{status:'working',turn_id:turn});assert.equal((a.runtime as any).resultListeners.size,0);
  assert.equal(f.counts().creates,1);f.running(false);assert.equal((await a.runtime.watchTurn(source,'phone-session','1',turn)).status,'replied');
 });
 

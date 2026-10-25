@@ -5,6 +5,7 @@ import {Ajv} from 'ajv';
 import {ActivityProjection,type ActivitySaved,type ActivityUpdate} from '../src/activity.ts';
 import {HermesClient,NATIVE_RUN_SHAPE_SHA256} from '../src/hermes-client.ts';
 import {activityTitle} from '../src/activity-title.ts';
+import {receipt} from '../../../../../capability/sdk/ts/receipt.ts';
 
 const contracts=new URL('../../../../../integrations/contracts/',import.meta.url);
 const schema=JSON.parse(readFileSync(new URL('formal-message.v1.json',contracts),'utf8'));
@@ -34,6 +35,18 @@ const progress={job_id:'job-test',title:'打开云手机',app:'phone',state:'run
   started_at:new Date(base).toISOString(),step:1,max_steps:10};
 const result=(success:boolean,terminal_reason:'completed'|'timed_out'='completed')=>({principal_id:'owner',
   job_id:'job-test',task:'synthetic',success,answer:'private raw answer',finished_at:new Date(base+60000).toISOString(),terminal_reason});
+
+test('receipt-derived states satisfy the existing card and item wire requirements',()=>{
+  for(const state of ['succeeded','failed','partial','unknown','waiting','accepted'] as const){
+    const h=harness();
+    h.projection.event({run_id:'run-test',event:'subagent.start',subagent_id:'child',goal:'处理事情',timestamp:base/1000});
+    h.projection.receipts([{id:'record',task_id:'child',tool_call_id:'call',tool:'opaque',invocation:'opaque',fingerprint:'opaque',receipt:receipt(state)}]);
+    const expected=state==='accepted'?'running':state;
+    assert.equal(h.latest().state,expected);assert.equal(h.latest().items[0]!.state,expected);
+    h.projection.event({run_id:'run-test',event:'subagent.complete',subagent_id:'child',status:'failed',timestamp:(base+1000)/1000});
+    assert.equal(h.latest().items[0]!.state,expected);h.projection.close();
+  }
+});
 
 test('delegated short title is preserved and a derived title ends at a word boundary with an ellipsis',async()=>{
   const h=harness(),title='计算 Excel 并通过微信发送';

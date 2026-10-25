@@ -65,7 +65,7 @@ object E2ee {
         while (out.size() < n) { previous = extract(prk, previous + data + byteArrayOf(i++.toByte())); out.write(previous) }
         return out.toByteArray().copyOf(n)
     }
-    fun open(request: JSONObject, response: JSONObject, recipientPrivateKey: ByteArray, now: Instant = Instant.now()): ByteArray {
+    fun open(request: JSONObject, response: JSONObject, recipientPrivateKey: ByteArray, now: Instant = Instant.ofEpochMilli(ServerClock.shared.nowMillis())): ByteArray {
         val echoed = listOf("request_id", "idempotency_context", "realtime_session_ref", "device_lease_ref", "continuity_id",
             "connection_epoch", "transport_aliases", "key_envelope_ref", "key_index", "key_generation", "device_id",
             "recipient_device_credential_ref", "participant_audience", "governance")

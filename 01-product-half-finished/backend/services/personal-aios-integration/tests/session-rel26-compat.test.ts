@@ -181,7 +181,7 @@ test('legacy drains admitted ingress of a gated ended source; roll-forward folds
     const record=await reader.readRecord(ref,'owner',streamManifestRevision(head));assert.deepEqual(Buffer.from(record.chunks[3].bytes),Buffer.from(payload));
   }finally{await reader.close();await legacy.close();}
   const disk=new PosixStorage(root),forward=make(disk);
-  try{await forward.recover();const final=await disk.readFinal(ref);assert.ok(final);assert.equal(final.bytes,12800);
+  try{await forward.recover();await forward.maintenance(2,Date.parse(at)+1000);const final=await disk.readFinal(ref);assert.ok(final);assert.equal(final.bytes,12800);
     await forward.finalizeSession(ref);assert.deepEqual(await disk.pendingFinals(),[]);assert.equal((await disk.list('session-finals')).length,1);
     assert.deepEqual(Buffer.from(await disk.read('objects',final.object_hash)),Buffer.concat([0,1,2,3].map(n=>Buffer.from(raw('pending-ended',n).payload))));
   }finally{await forward.close();await disk.close();}

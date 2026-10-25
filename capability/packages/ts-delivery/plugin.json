@@ -1,0 +1,85 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "ts-delivery",
+  "version": "1.0.0",
+  "description": "声明答复及向终端投递问题或通话邀请",
+  "extensions": {
+    "ai.yimi.capability": {
+      "schema": "yimi.capability.v1",
+      "receipt_schema": 1,
+      "compat": {
+        "hermes": ">=0.22.5 <0.24",
+        "gateway_api": 1
+      },
+      "maintainer": "lead",
+      "runtime": {
+        "server": "platform_ts",
+        "lazy": true,
+        "idle_timeout_seconds": 900,
+        "host": "shared"
+      },
+      "secrets": [
+        {
+          "name": "HERMES_INTERNAL_KEY"
+        }
+      ],
+      "network": {
+        "egress": []
+      },
+      "scopes": [
+        "owner",
+        "owner_uncertain",
+        "guest",
+        "build",
+        "care"
+      ],
+      "tools": {
+        "paios_open_reply": {
+          "effect": "workspace",
+          "retry": "forbidden",
+          "check_with": "paios_open_reply",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:open_reply"
+        },
+        "paios_terminal_question": {
+          "effect": "owner_data",
+          "retry": "forbidden",
+          "check_with": "paios_terminal_question",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:terminal_question"
+        },
+        "paios_call_offer": {
+          "effect": "owner_data",
+          "retry": "forbidden",
+          "check_with": "paios_call_offer",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:call_offer"
+        }
+      },
+      "staging": {
+        "fake": {
+          "command": "node",
+          "args": [
+            "fake/server.ts"
+          ]
+        }
+      },
+      "tests": {
+        "contract": "tests/contract.yaml"
+      },
+      "provenance": {
+        "source_commit": "decaff83c56b5e188b229a11e79b32106eeccf43",
+        "workshop_run": null,
+        "adapter_modules": [
+          "server/index.ts"
+        ]
+      }
+    }
+  }
+}

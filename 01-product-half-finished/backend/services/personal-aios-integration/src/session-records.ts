@@ -169,9 +169,24 @@ export class SessionRecords {
     db.exec('BEGIN IMMEDIATE');try{for(const record of records)if(!frozen.has(`${record.namespace}:${record.key}`))insert.run(id,record.namespace,record.key);db.exec('COMMIT');}
     catch(error){db.exec('ROLLBACK');throw error;}
   }
-  async sessionRecords(rawRef:string):Promise<SessionRecordRef[]>{
+  async sessionRecords(rawRef:string,publicationOrder=false):Promise<SessionRecordRef[]>{
     const id=sessionId(rawRef),db=await this.index();if(!db)return [];
-    return db.prepare('SELECT namespace,key FROM inflight WHERE session=? ORDER BY namespace,key').all(id) as unknown as SessionRecordRef[];
+    // Adjacent capture proofs share cold blocks; hash order would make sequential replay repeatedly decode unrelated blocks.
+    return db.prepare(`SELECT namespace,key FROM inflight WHERE session=? ORDER BY ${publicationOrder?'rowid':'namespace,key'}`).all(id) as unknown as SessionRecordRef[];
+  }
+  async sessionRecordCount(rawRef:string):Promise<number>{
+    const id=sessionId(rawRef),db=await this.index();
+    return db?Number(db.prepare('SELECT count(*) AS n FROM inflight WHERE session=?').get(id)!.n):0;
+  }
+  async activeSessionRefs():Promise<string[]>{
+    const db=await this.index();if(!db)return [];
+    return db.prepare(`SELECT DISTINCT session FROM inflight i WHERE namespace='objects'
+      AND NOT EXISTS(SELECT 1 FROM sessions s WHERE s.id=i.session) ORDER BY session`).all().map(row=>`l5:${row.session}`);
+  }
+  async hasSessionRecord(record:SessionRecordRef):Promise<boolean>{
+    validateRef(record);const db=await this.index();if(!db)return false;
+    return !!db.prepare('SELECT 1 FROM refs WHERE namespace=? AND key=? UNION ALL SELECT 1 FROM inflight WHERE namespace=? AND key=? LIMIT 1')
+      .get(record.namespace,record.key,record.namespace,record.key);
   }
   async hasLiveSessionOwner(record:SessionRecordRef):Promise<boolean>{
     validateRef(record);const db=await this.index();if(!db)return false;
@@ -179,6 +194,8 @@ export class SessionRecords {
       AND NOT EXISTS(SELECT 1 FROM sessions s WHERE s.id=i.session) LIMIT 1`).get(record.namespace,record.key);
   }
   async pendingFinals():Promise<string[]>{const db=await this.index();return db?db.prepare('SELECT id FROM sessions WHERE cleaned=0 ORDER BY created,id').all().map(row=>`l5:${row.id}`):[];}
+  async resumeFinalCleanup(rawRef:string):Promise<void>{const db=await this.index(false,true);
+    db?.prepare('UPDATE sessions SET cleaned=0 WHERE id=?').run(sessionId(rawRef));}
   async completeFinal(rawRef:string):Promise<void>{
     const id=sessionId(rawRef),db=await this.index(false,true);check(db,'FINAL_SESSION_MISSING',404);
     db.exec('BEGIN IMMEDIATE');try{const result=db.prepare('UPDATE sessions SET cleaned=1 WHERE id=?').run(id);check(result.changes===1,'FINAL_SESSION_MISSING',404);

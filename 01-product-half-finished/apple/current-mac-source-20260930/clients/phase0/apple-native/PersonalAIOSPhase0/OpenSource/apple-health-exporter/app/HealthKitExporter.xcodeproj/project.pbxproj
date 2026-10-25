@@ -5,6 +5,31 @@
 	};
 	objectVersion = 56;
 	objects = {
+		6C6FBF2D087643109EDC385C = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantModelSettings.swift; sourceTree = "<group>"; };
+		8F7CF9F2585042EC824A20AC = {isa = PBXBuildFile; fileRef = 6C6FBF2D087643109EDC385C; };
+		2930CC966B9B46858D3E96B2 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantModelSettingsModel.swift; sourceTree = "<group>"; };
+		F93E9F24F0BB4445937A985A = {isa = PBXBuildFile; fileRef = 2930CC966B9B46858D3E96B2; };
+		58FD32E45C834F81B8815D74 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantModelSettingsWire.swift; sourceTree = "<group>"; };
+		69BE8875996847C283423421 = {isa = PBXBuildFile; fileRef = 58FD32E45C834F81B8815D74; };
+		9BF63E3BC1734D098BE0099B = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiModelParametersView.swift; sourceTree = "<group>"; };
+		FFC3C986D8474AF0BE8F16F8 = {isa = PBXBuildFile; fileRef = 9BF63E3BC1734D098BE0099B; };
+		665924F80322474991069331 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiModelProviderView.swift; sourceTree = "<group>"; };
+		BBE1EAD42D63464AA305B131 = {isa = PBXBuildFile; fileRef = 665924F80322474991069331; };
+		DF03F15946844305A9FA3A37 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiModelRoleView.swift; sourceTree = "<group>"; };
+		C2B3C6AC96C94850926DB127 = {isa = PBXBuildFile; fileRef = DF03F15946844305A9FA3A37; };
+		22049BCB4FF04F3A8252B93F = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiModelSettingsConfirmationSheet.swift; sourceTree = "<group>"; };
+		B031F4980D8A4A84A65A6BE7 = {isa = PBXBuildFile; fileRef = 22049BCB4FF04F3A8252B93F; };
+		1AF7CF5857364E2DB2E75097 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiModelSettingsView.swift; sourceTree = "<group>"; };
+		2706A2CB90C54C81B0C6428C = {isa = PBXBuildFile; fileRef = 1AF7CF5857364E2DB2E75097; };
+		CEF853C1E61F41DC8028B5C2 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiModelUsageView.swift; sourceTree = "<group>"; };
+		1D795D90D0554ACDAC1FABDF = {isa = PBXBuildFile; fileRef = CEF853C1E61F41DC8028B5C2; };
+		2AFCB8ECE0E64D5595C28A80 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantModelSettingsTests.swift; sourceTree = "<group>"; };
+		BEE6B655892041CDA8CF58C3 = {isa = PBXBuildFile; fileRef = 2AFCB8ECE0E64D5595C28A80; };
+		6D5A6EF7F4874CFC94393961 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiModelSettingsRenderingTests.swift; sourceTree = "<group>"; };
+		3956D205DC614DD29301E601 = {isa = PBXBuildFile; fileRef = 6D5A6EF7F4874CFC94393961; };
+		08C86BABBAA54884AD6BC617 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YimiModelSettingsUITests.swift; sourceTree = "<group>"; };
+		A091E3CC4B964AE5B4307069 = {isa = PBXBuildFile; fileRef = 08C86BABBAA54884AD6BC617; };
+
 
 /* Begin PBXBuildFile section */
 		E7A000000000000000000011 /* WatchDeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A000000000000000000001 /* WatchDeepLink.swift */; };
@@ -574,6 +599,12 @@
 		A70000000000000000000002 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				CEF853C1E61F41DC8028B5C2,
+				1AF7CF5857364E2DB2E75097,
+				22049BCB4FF04F3A8252B93F,
+				DF03F15946844305A9FA3A37,
+				665924F80322474991069331,
+				9BF63E3BC1734D098BE0099B,
 				AC2020000000000000000002 /* YimiActivityCard.swift */,
 				D77F6E3F127649639277F6E1 /* YimiAppearancePhoto.swift */,
 				E956FF583DFD4CC59FB444CC /* YimiAppearanceView.swift */,
@@ -615,6 +646,9 @@
 		A70000000000000000000003 /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				58FD32E45C834F81B8815D74,
+				2930CC966B9B46858D3E96B2,
+				6C6FBF2D087643109EDC385C,
 				AC2020000000000000000001 /* AssistantActivity.swift */,
 				0501E6FE8A574BF582A0850A /* YimiCallWindowLayout.swift */,
 				2048AE24318346C5BCA1452B /* YimiCallAvatarPresentation.swift */,
@@ -685,6 +719,8 @@
 		A70000000000000000000004 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				6D5A6EF7F4874CFC94393961,
+				2AFCB8ECE0E64D5595C28A80,
 				AC2020000000000000000004 /* activity-update.fixtures.json */,
 				AC2020000000000000000003 /* AssistantActivityTests.swift */,
 				59BBD1345765468D857CEFF9 /* AssistantAppearanceTests.swift */,
@@ -793,7 +829,6 @@
 				E7A000000000000000000005 /* WatchWidgetPublisher.swift */,
 				C80CBDBB3E7FFEE2B247D5E0 /* WatchYimiHandler.swift */,
 				53F9DEDDFC5A521291D1D950 /* WatchUtteranceRecorder.swift */,
-				B0CBBA33A05002E4CEDF34CE /* WatchTalkClient.swift */,
 				07628C88087D164CF2763306 /* WatchRideHandler.swift */,
 				CB4168A28C982823D60CF17E /* WatchIdentityHandler.swift */,
 				D20000000000000000000011 /* PersonalAIOSWatchApp.swift */,
@@ -821,6 +856,7 @@
 		D30000000000000000000003 /* UITests */ = {
 			isa = PBXGroup;
 			children = (
+				08C86BABBAA54884AD6BC617,
 				D2000000000000000000001C /* YimiFlowUITests.swift */,
 			);
 			path = UITests;
@@ -834,6 +870,7 @@
 				E7A000000000000000000002 /* WatchWidgetSnapshot.swift */,
 				E7A000000000000000000003 /* WatchWidgetProjection.swift */,
 				017030BC6C963E645EA52F74 /* WatchTalkHTTP.swift */,
+				B0CBBA33A05002E4CEDF34CE /* WatchTalkClient.swift */,
 				A4420FAA052476E092046043 /* WatchStateReducer.swift */,
 				B185493D82A2E31C543DF5ED /* WatchRidePresentation.swift */,
 				1FF37D54A9129B6DA93C669D /* WatchRecorderSegmenter.swift */,
@@ -1072,6 +1109,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1D795D90D0554ACDAC1FABDF,
+				2706A2CB90C54C81B0C6428C,
+				B031F4980D8A4A84A65A6BE7,
+				C2B3C6AC96C94850926DB127,
+				BBE1EAD42D63464AA305B131,
+				FFC3C986D8474AF0BE8F16F8,
+				69BE8875996847C283423421,
+				F93E9F24F0BB4445937A985A,
+				8F7CF9F2585042EC824A20AC,
 				AC2010000000000000000002 /* YimiActivityCard.swift in Sources */,
 				AC2010000000000000000001 /* AssistantActivity.swift in Sources */,
 				91B932A1EE994592B5FE7B76 /* YimiAppearancePhoto.swift in Sources */,
@@ -1178,6 +1224,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3956D205DC614DD29301E601,
+				BEE6B655892041CDA8CF58C3,
 				AC2010000000000000000003 /* AssistantActivityTests.swift in Sources */,
 				0EE9A8CB51674565B50E082B /* AssistantAppearanceTests.swift in Sources */,
 				0C7BED866B454B0297B526E5 /* WatchAppearanceProjectionTests.swift in Sources */,
@@ -1272,6 +1320,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A091E3CC4B964AE5B4307069,
 				D1000000000000000000002A /* YimiFlowUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1386,7 +1435,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.0.1;
+				MARKETING_VERSION = 0.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.paios.personal.phase0;
 				PRODUCT_MODULE_NAME = HealthKitExporter;
 				PRODUCT_NAME = PersonalAIOSPhase0;
@@ -1411,7 +1460,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.0.1;
+				MARKETING_VERSION = 0.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.paios.personal.phase0;
 				PRODUCT_MODULE_NAME = HealthKitExporter;
 				PRODUCT_NAME = PersonalAIOSPhase0;
@@ -1569,7 +1618,7 @@
 				INFOPLIST_FILE = CallActivity/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks", );
-				MARKETING_VERSION = 0.0.1;
+				MARKETING_VERSION = 0.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.paios.personal.phase0.callactivity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -1592,7 +1641,7 @@
 				INFOPLIST_FILE = CallActivity/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks", );
-				MARKETING_VERSION = 0.0.1;
+				MARKETING_VERSION = 0.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.paios.personal.phase0.callactivity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -1615,7 +1664,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = WatchWidget/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks", );
-				MARKETING_VERSION = 0.0.1;
+				MARKETING_VERSION = 0.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.paios.personal.phase0.watch.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -1637,7 +1686,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = WatchWidget/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks", );
-				MARKETING_VERSION = 0.0.1;
+				MARKETING_VERSION = 0.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.paios.personal.phase0.watch.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;

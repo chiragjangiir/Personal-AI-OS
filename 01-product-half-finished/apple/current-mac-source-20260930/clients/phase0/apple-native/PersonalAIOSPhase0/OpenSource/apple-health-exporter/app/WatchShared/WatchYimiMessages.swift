@@ -102,32 +102,40 @@ struct WatchYimiRideMetrics: Codable, Equatable, Sendable {
     let kcal: Double?
     /// The phone's own climb for this ride (its altitude readings); absent when it has none.
     var elev_gain_m: Double? = nil
+    /// Original sensor sample times, not the time the phone relayed the state.
+    var hr_sample_at: String? = nil
+    var speed_sample_at: String? = nil
 
     func matches(workoutID: String?) -> Bool { workout_id != nil && workout_id == workoutID }
 }
 extension WatchYimiRideMetrics {
     init(from decoder: Decoder) throws {
         let f = try Fields(decoder, "ride_id", "workout_id", "ended", "speed_kmh", "avg_kmh", "max_kmh",
-            "distance_m", "elapsed_s", "moving_s", "hr_bpm", "hr_avg", "hr_max", "kcal", "elev_gain_m")
+            "distance_m", "elapsed_s", "moving_s", "hr_bpm", "hr_avg", "hr_max", "kcal", "elev_gain_m", "hr_sample_at", "speed_sample_at")
         ride_id = try f.get("ride_id"); workout_id = try f.optional("workout_id"); ended = try f.get("ended")
         speed_kmh = try f.optional("speed_kmh"); avg_kmh = try f.get("avg_kmh"); max_kmh = try f.get("max_kmh")
         distance_m = try f.get("distance_m"); elapsed_s = try f.get("elapsed_s"); moving_s = try f.get("moving_s"); hr_bpm = try f.optional("hr_bpm")
         hr_avg = try f.optional("hr_avg"); hr_max = try f.optional("hr_max"); kcal = try f.optional("kcal")
         elev_gain_m = try f.optional("elev_gain_m")
+        hr_sample_at = try f.optional("hr_sample_at"); speed_sample_at = try f.optional("speed_sample_at")
         let values = [speed_kmh, avg_kmh, max_kmh, distance_m, elapsed_s, moving_s, hr_bpm, hr_avg, hr_max, kcal, elev_gain_m].compactMap { $0 }
         guard !ride_id.isEmpty, workout_id.map({ !$0.isEmpty }) ?? true,
-              values.allSatisfy({ $0.isFinite && $0 >= 0 }) else { throw WatchYimiError.invalidValue }
+              values.allSatisfy({ $0.isFinite && $0 >= 0 }),
+              hr_sample_at.map(timestamp) ?? true, speed_sample_at.map(timestamp) ?? true else { throw WatchYimiError.invalidValue }
     }
 }
 struct WatchYimiRide: Codable, Equatable, Sendable {
     let hr_zone: Int?; let text: String?; let max_hr_bpm: Int?
     var metrics: WatchYimiRideMetrics? = nil
+    var feedback_at: String? = nil
 }
 extension WatchYimiRide {
     init(from decoder: Decoder) throws {
-        let f = try Fields(decoder, "hr_zone", "text", "max_hr_bpm", "metrics")
+        let f = try Fields(decoder, "hr_zone", "text", "max_hr_bpm", "metrics", "feedback_at")
         hr_zone = try f.optional("hr_zone"); text = try f.optional("text"); max_hr_bpm = try f.optional("max_hr_bpm"); metrics = try f.optional("metrics")
-        guard hr_zone.map({ (1...5).contains($0) }) ?? true, max_hr_bpm.map({ $0 > 0 }) ?? true else { throw WatchYimiError.invalidValue }
+        feedback_at = try f.optional("feedback_at")
+        guard hr_zone.map({ (1...5).contains($0) }) ?? true, max_hr_bpm.map({ $0 > 0 }) ?? true,
+              feedback_at.map(timestamp) ?? true else { throw WatchYimiError.invalidValue }
     }
 }
 // Binding scope. `scope` is the server's formal watch binding exactly as the credential

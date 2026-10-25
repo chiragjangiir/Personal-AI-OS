@@ -55,12 +55,10 @@ def _purge_stopped_profile(home, scope):
     from hermes_constants import set_hermes_home_override, reset_hermes_home_override
     from hermes_state import SessionDB
     from tools.memory_tool import MemoryStore
-    from gateway.session_context import (set_session_vars, clear_session_vars,
-        bind_api_memory_write, reset_api_memory_write)
+    from gateway.session_context import set_session_vars, clear_session_vars
     override = set_hermes_home_override(home)
     tokens = set_session_vars(platform='api_server', session_id='native-forget-admin',
                               session_key='native-forget-admin')
-    permission = bind_api_memory_write('native-forget-admin', 'native-forget-admin', True)
     db, response_store, run_store = None, None, None
     receipt = {'status': 'partial', 'authorization_ref': scope['authorization_ref'],
         'retention_rule': scope['retention_rule'], 'l3_receipt_ref': scope['l3_receipt_ref'],
@@ -139,7 +137,6 @@ def _purge_stopped_profile(home, scope):
             run_store.close()
         if db is not None:
             db.close()
-        reset_api_memory_write(permission)
         clear_session_vars(tokens)
         reset_hermes_home_override(override)
 

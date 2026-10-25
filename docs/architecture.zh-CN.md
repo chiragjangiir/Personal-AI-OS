@@ -2,7 +2,7 @@
 
 [English](architecture.md) · [参与贡献](../CONTRIBUTING.zh-CN.md) · [首次运行](first-run.md)
 
-依米是每个人自己的私人助理，她把对话、记忆和工具连到同一个人的各台设备上。0.0.1 包含下面列出的服务端和客户端源码。服务端在 Linux 主机上本地构建；客户端要用各平台的工具链，部分供应商 SDK 需要另外获取。云手机、数字人等外部服务按需接入。语音模型来自 Qwen，不是本项目训练的。
+依米是每个人自己的私人助理，她把对话、记忆和工具连到同一个人的各台设备上。0.0.2 包含下面列出的服务端和客户端源码。服务端在 Linux 主机上本地构建；客户端要用各平台的工具链，部分供应商 SDK 需要另外获取。云手机、数字人等外部服务按需接入。语音模型来自 Qwen，不是本项目训练的。
 
 ## 一个请求经过哪里
 
@@ -37,7 +37,7 @@ flowchart TD
 | --- | --- |
 | `front` | Nginx，对外的 HTTPS 入口（默认端口 9443），以及 WebRTC/TURN 端口。其他几个服务共用它的网络命名空间。 |
 | `gateway` | 一个 Node 进程，入口 `rayneo-persistent-production-entrypoint.ts`，同时承载 Gateway、Integration 和 Qwen 语音会话。 |
-| `hermes` | 固定版本、打过补丁的 Hermes Agent，加载 `personal_aios` 插件；配置后，手机执行器、米家和 Mac 连接作为 MCP 服务在这里运行。 |
+| `hermes` | Hermes Agent 提供原生代理运行时，加载平台适配和能力网关插件；配置后，手机执行器、米家和 Mac 连接作为 MCP 服务在这里运行。 |
 | `livekit` | 实时音视频。 |
 | `postgres` | 数据库里的权威记录。 |
 | `workshop`、`workshop-link` | 隔离工坊：单独的 Docker 网络、只读根文件系统、内存和进程数上限，只能经 `workshop-link` 访问。 |
@@ -53,6 +53,7 @@ flowchart TD
 | --- | --- | --- |
 | Gateway | `01-product-half-finished/backend/phase0/gateway/src/rayneo-persistent-production-entrypoint.ts` | 服务端进程入口，连接配对、通话和结果传输。沿着现有导入往下读，不要另起入口。 |
 | Integration | `01-product-half-finished/backend/services/personal-aios-integration/src/main.ts`，再看 `runtime.ts`、`admission.ts` | 接收处理后的事件，绑定身份和请求来源，协调记忆、发送确认（`effect-consent.ts`）和付款（`payment/`）。 |
+| 能力包 | `capability/packages/`、`capability/contracts/`、`capability/sdk/` | 包通过共同的网关接入既有授权与回执账本；各包可单独启停和回退。 |
 | Hermes 插件 | `integrations/hermes/personal_aios/__init__.py`、`run_api.py`、`producer.lock.json` | 向 Hermes 注册产品工具和执行门禁。Hermes 的版本由 `producer.lock.json` 锁定，改动由 `native-context.patch` 给出。 |
 | 人设与技能 | `integrations/hermes/personal_aios/persona/`、`errands/`、`shared-skills/`、`skills/personal-aios-main/` | 依米的人设，以及教她怎样使用已有工具的技能。技能目录由 `deploy/cloud/hermes-init.py` 配置进 Hermes。 |
 | 手机执行器 | `integrations/connectors/phone_executor/server.py`、`phone_apps.py`、`step_trace.py` | 用 Mobilerun 在云手机或 Android 设备上执行有边界的任务，返回进度和结果证据。`payment_guard.py` 在进入收银台后或触发扣款的动作前停止普通任务输入；绑定付款意图后交给付款流程。 |
@@ -79,7 +80,7 @@ flowchart TD
 | Connector / 连接器 | 通过已有工具或 MCP 服务接进来的应用或服务。 |
 | Skill / 技能 | 可被发现的 `SKILL.md`，教助理怎样用工具。它不授予权限，也不实现安全门禁。 |
 | RawEvent / ProcessedEvent | 输入与归档合同，以及被准入运行时的处理后事件。改动时保留它们的来源标识。 |
-| L1–L5 | 记忆分层：L1 当前上下文，L2 Hermes 原生长期记忆，L3 结构化断言，L4 跨终端的会话历史，L5 事件和媒体原件归档。各层的存储和删除合同不同。 |
+| L1–L5 | 记忆分层：L1 当前上下文，L2 由 L3 生成、供 Hermes 读取的核心资料视图，L3 结构化断言，L4 跨终端的会话历史，L5 事件和媒体原件归档。各层的存储和删除合同不同。 |
 | Run scope / 运行作用域 | 准入后的执行范围，例如使用者本人、身份不确定、访客或构建。工具权限跟着真实作用域走。 |
 | 首次发送确认 | 同一身份、同一收件人、同一类任务的持久授权，记录在服务器上。换人或换类任务要重新确认；不是使用者要求的对外动作，每次都确认。 |
 | Payment intent / 付款意图 | 绑定到这一次请求的服务端付款意图；创建意图不等于准许扣款。默认在已解锁的手机上点签名确认卡。可在手机设置里开启手机或眼镜上的语音确认，以及小额自动付款；两项默认关闭。自动付款要求声纹核实的合格语音请求、已知收款方、有效终端锁和租约，并满足适用限额（默认每单 50 元、每日 150 元，提供 5 秒撤回窗口）。以前的付款或发送授权不能批准新的付款。 |

@@ -1,0 +1,55 @@
+# Python 3.12 test dependencies from the 0.0.1 locked Hermes baseline.
+# Upstream f97608f178d1ffeca59860195ab7da295f7c8e5f, plus current native test-only dependencies.
+# Product images use the current native PM lock; this file supplies the Python 3.12 CI environment.
+openai==2.24.0
+certifi==2026.5.20
+python-dotenv==1.2.2
+fire==0.7.1
+httpx[socks]==0.28.1
+rich==14.3.3
+tenacity==9.1.4
+pyyaml==6.0.3
+ruamel.yaml==0.18.17
+requests==2.33.0
+jinja2==3.1.6
+firecrawl-anydoc==0.2.4
+pydantic==2.13.4
+prompt_toolkit==3.0.52
+croniter==6.0.0
+snowballstemmer==3.1.1
+packaging==26.0
+Markdown==3.10.2
+PyJWT[crypto]==2.13.0
+urllib3>=2.7.0,<3
+cryptography==50.0.0
+tzdata==2025.3; sys_platform == 'win32'
+psutil==7.2.2
+websockets==15.0.1
+pathspec==1.1.1
+fastapi>=0.104.0,<1
+uvicorn>=0.31.0,<1
+httptools>=0.6.3,<0.9
+watchfiles>=0.20,<2
+python-multipart>=0.0.9,<1
+ptyprocess>=0.7.0,<1; sys_platform != 'win32'
+pywinpty>=2.0.0,<3; sys_platform == 'win32'
+pywin32>=306,<312; sys_platform == 'win32'
+Pillow==12.3.0
+pillow-heif>=1.4.0,<2
+concurrent-log-handler==0.9.29; sys_platform == 'win32'
+nemo-relay>=0.8.3,<0.9; (sys_platform == 'darwin' and platform_machine == 'arm64') or (sys_platform == 'linux' and platform_machine == 'x86_64' and 'android' not in platform_release) or (sys_platform == 'linux' and platform_machine == 'aarch64' and 'android' not in platform_release) or (sys_platform == 'win32' and platform_machine == 'AMD64') or (sys_platform == 'win32' and platform_machine == 'ARM64')
+debugpy==1.8.20
+pytest==9.1.1
+pytest-asyncio==1.3.0
+mcp==2.0.0
+httpx2==2.7.0
+starlette==1.3.1
+ty==0.0.21
+ruff==0.15.10
+setuptools==83.0.0
+boto3==1.42.89
+distlib==0.4.3; sys_platform == 'win32'
+anthropic==0.87.0
+
+# Native messaging lock: HTTP SDK streaming tests exercise Brotli decoding.
+brotlicffi==1.2.0.2

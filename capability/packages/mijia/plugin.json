@@ -1,0 +1,89 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "mijia",
+  "version": "1.0.0",
+  "description": "米家设备发现、状态读取与家庭设备操作",
+  "extensions": {
+    "ai.yimi.capability": {
+      "schema": "yimi.capability.v1",
+      "receipt_schema": 1,
+      "compat": {
+        "hermes": ">=0.22.5 <0.24",
+        "gateway_api": 1
+      },
+      "maintainer": "lead",
+      "runtime": {
+        "server": "mijia",
+        "lazy": true,
+        "idle_timeout_seconds": 900,
+        "host": "dedicated"
+      },
+      "secrets": [
+        {
+          "name": "MIJIA_SESSION"
+        }
+      ],
+      "network": {
+        "egress": [
+          "api.io.mi.com",
+          "account.xiaomi.com",
+          "miot-spec.org"
+        ]
+      },
+      "scopes": [
+        "owner"
+      ],
+      "tools": {
+        "read_device": {
+          "effect": "observe",
+          "retry": "forbidden"
+        },
+        "control_device": {
+          "effect": "physical",
+          "retry": "after_check",
+          "target": "$.device",
+          "task_type": "mijia:control",
+          "check_with": "read_device",
+          "context_inject": []
+        },
+        "run_scene": {
+          "effect": "physical",
+          "retry": "after_check",
+          "target": "$.name",
+          "task_type": "mijia:scene",
+          "check_with": "read_device"
+        },
+        "get_login_status": {
+          "effect": "observe",
+          "retry": "forbidden"
+        },
+        "refresh_devices": {
+          "effect": "observe",
+          "retry": "forbidden"
+        },
+        "prepare_login": {
+          "effect": "account",
+          "retry": "forbidden",
+          "task_type": "mijia:login"
+        }
+      },
+      "staging": {
+        "fake": {
+          "command": "python3",
+          "args": [
+            "fake/server.py"
+          ]
+        }
+      },
+      "tests": {
+        "contract": "tests/contract.yaml"
+      },
+      "provenance": {
+        "source_commit": "decaff83c56b5e188b229a11e79b32106eeccf43",
+        "workshop_run": null,
+        "adapter_modules": []
+      }
+    }
+  },
+  "license": "GPL-3.0-or-later"
+}

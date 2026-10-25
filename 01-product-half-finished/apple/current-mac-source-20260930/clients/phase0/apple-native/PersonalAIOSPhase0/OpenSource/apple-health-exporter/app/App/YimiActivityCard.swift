@@ -45,6 +45,8 @@ struct YimiActivityCard: View {
         case .succeeded: return "checkmark"
         case .failed, .partial: return "exclamationmark.triangle"
         case .cancelled: return "xmark.circle"
+        case .unknown: return "questionmark.circle"
+        case .waiting: return "clock"
         }
     }
     private func card(at now: Date) -> some View {

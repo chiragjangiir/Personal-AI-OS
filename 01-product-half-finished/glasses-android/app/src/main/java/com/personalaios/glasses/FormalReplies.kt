@@ -224,7 +224,7 @@ class FormalReplies(private val deviceId: String, saved: JSONObject? = null,
         if (last != null) reply.textOutput = last.getString("output_id")
         return listOf(TextUpdate(id, ack, reset, cardAck))
     }
-    @Synchronized fun rendered(command: JSONObject, now: Long = System.currentTimeMillis()): JSONObject? {
+    @Synchronized fun rendered(command: JSONObject, now: Long = ServerClock.shared.nowMillis()): JSONObject? {
         val id = command.getString("processed_event_id"); val reply = replies[id] ?: return null
         val ack = command.getJSONObject("ack"); val h = reply.header ?: return null
         if (!bound(ack, reply) || h.getString("reply_phase") != "sealed") return null
@@ -285,7 +285,7 @@ class FormalReplies(private val deviceId: String, saved: JSONObject? = null,
         canonicalJson(JSONObject(first.toString()).apply { remove("final") }) == canonicalJson(JSONObject(second.toString()).apply { remove("final") })
     @Synchronized fun canPlay(packet: JSONObject): Boolean = voiceCurrent(packet) &&
         packet.getJSONObject("chunk").getLong("seq") == replies.getValue(packet.getString("processed_event_id")).played + 1
-    @Synchronized fun played(packet: JSONObject, now: Long = System.currentTimeMillis()): JSONObject {
+    @Synchronized fun played(packet: JSONObject, now: Long = ServerClock.shared.nowMillis()): JSONObject {
         check(canPlay(packet)) { "Playback belongs to a retired reply" }
         val reply = replies.getValue(packet.getString("processed_event_id")); val chunk = packet.getJSONObject("chunk")
         val ack = receipt(packet.getString("processed_event_id"), chunk, chunk.getLong("seq"), "played", now)

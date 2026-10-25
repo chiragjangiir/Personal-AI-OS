@@ -63,6 +63,7 @@ def test_watchdog_interruption_is_not_an_owner_cancellation():
 
 def test_native_product_delegation_attaches_result_contract_and_keeps_short_goal(monkeypatch):
     from tools import delegate_tool
+    from tools.delegate_tool_routes import TaskRoute
     built = []
     def build(**kwargs):
         built.append(kwargs)
@@ -71,9 +72,10 @@ def test_native_product_delegation_attaches_result_contract_and_keeps_short_goal
     title, task = "计算报表并发送", "生成测试报表，保存结果，再通过已授权渠道发送。"
     children, error = delegate_tool._build_children(
         task_list=[{"goal": title, "context": task}], task_schemas=[None],
-        creds=dict.fromkeys(["provider", "base_url", "api_key", "api_mode", "model"]),
+        routes=[TaskRoute(
+            dict.fromkeys(["provider", "base_url", "api_key", "api_mode", "model"]), {})],
         top_role="leaf", max_iterations=10,
-        parent_agent=SimpleNamespace(_paios_delegate_toolsets=["skills"]), routing_cfg={},
+        parent_agent=SimpleNamespace(_paios_delegate_toolsets=["skills"]),
         live_deleg_id=None, live_writers=[])
     assert error is None and len(children) == 1
     assert built[0]["goal"] == title and task in built[0]["context"]

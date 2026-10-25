@@ -16,14 +16,12 @@ from staging_snapshot_stack import Stack, WRITERS
 from staging_snapshot_transfer import encrypt, night, retain, taiwan, transfer
 
 # Manual daytime capture is separate from the timer. Calls prevent capture and take priority over upload.
-# Writers stop for at most the configured stop budget. Raw L5 may be omitted for manual daytime capture
-# when the loose per-chunk layout would exceed that budget; restoration preserves the captured layout.
+# Writers stop for at most the configured stop budget. Any capture may omit raw L5 when the loose per-chunk
+# layout would exceed that budget; rehearsing folding conversion still requires a raw capture.
 DAYTIME_STOP_SECONDS = 1800
 
 
 def capture(settings, daytime=False, bwlimit=244, stop_seconds=DAYTIME_STOP_SECONDS, raw=True):
-    if not raw and not daytime:
-        raise ValueError('Only a manual daytime cut may omit raw L5')
     local = taiwan() if daytime else night()
     for tool in ('age', 'rsync', 'docker'):
         if not shutil.which(tool):
@@ -31,7 +29,7 @@ def capture(settings, daytime=False, bwlimit=244, stop_seconds=DAYTIME_STOP_SECO
     spool = Path(settings['spool']).resolve()
     spool.mkdir(parents=True, exist_ok=True, mode=0o700)
     stack = Stack(settings)
-    if any(datetime.fromisoformat(p.read_text()).astimezone(local.tzinfo).date() == local.date()
+    if not daytime and any(datetime.fromisoformat(p.read_text()).astimezone(local.tzinfo).date() == local.date()
            for p in spool.glob('snapshot-*.sent')):
         print('Today snapshot was already delivered; no duplicate capture')
         return
@@ -137,6 +135,9 @@ def capture(settings, daytime=False, bwlimit=244, stop_seconds=DAYTIME_STOP_SECO
             stamp = datetime.fromisoformat(as_of.replace('Z', '+00:00')).strftime('%Y%m%dT%H%M%SZ')
             snapshot = spool / ('snapshot-' + stamp + '.age')
             encrypt(work, snapshot, settings['recipient_file'])
+            # Release identity uses the captured cut time, never the later upload timestamp.
+            from watchdog_platform import atomic_json
+            atomic_json(snapshot.with_suffix('.json'), manifest)
             print(json.dumps({**manifest, 'encrypted_bytes': snapshot.stat().st_size, 'snapshot': snapshot.name}))
     transfer(snapshot, settings['destination'], stack.idle, bwlimit)
     snapshot.with_suffix('.sent').write_text(datetime.now(timezone.utc).isoformat())
@@ -153,12 +154,10 @@ def main():
     parser.add_argument('--daytime-minutes', type=int, default=DAYTIME_STOP_SECONDS // 60,
                         help='writer stop budget of a daytime capture')
     parser.add_argument('--omit-raw', action='store_true',
-                        help='daytime structural cut: no raw L5 window and none of its per-chunk consumer records')
+                        help='structural cut: no raw L5 window and none of its per-chunk consumer records')
     args = parser.parse_args()
-    if (args.daytime or args.bwlimit != 244) and args.command != 'capture':
-        parser.error('--daytime and --bwlimit apply only to capture')
-    if args.omit_raw and not (args.daytime and args.command == 'capture'):
-        parser.error('--omit-raw applies only to a daytime capture')
+    if (args.daytime or args.bwlimit != 244 or args.omit_raw) and args.command != 'capture':
+        parser.error('--daytime, --bwlimit and --omit-raw apply only to capture')
     if not 1 <= args.bwlimit <= 1024:
         parser.error('--bwlimit must be 1-1024 KiB/s')
     if not 5 <= args.daytime_minutes <= 150:

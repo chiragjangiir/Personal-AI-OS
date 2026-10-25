@@ -27,7 +27,7 @@ struct YimiWatchProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (YimiWatchEntry) -> Void) {
-        completion(entries().first ?? placeholder(in: context))
+        completion(entries().last { $0.date <= Date() } ?? placeholder(in: context))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<YimiWatchEntry>) -> Void) {

@@ -1,5 +1,6 @@
 """Tool-execution admission; TS owns durable first-consent scope."""
 import json
+from pathlib import Path
 import re
 import uuid
 from urllib.error import HTTPError, URLError
@@ -120,41 +121,27 @@ def register_execution_gate(ctx, gate):
 
 
 def register(ctx, provider):
-    from tools.send_message_tool import SEND_MESSAGE_SCHEMA, send_message_tool, _resolve_tool_target
-    from tools.send_message_targets import _EMAIL_TARGET_RE, _parse_target_ref
-    from gateway.channel_directory import load_directory
+    packaged=callable(getattr(provider,'capability_enabled',None)) and provider.capability_enabled('messaging') is True
+    if packaged:
+        from .packaged_messaging import register as register_messaging
+        register_messaging(ctx)
+        if all(provider.capability_enabled(family) is True for family in ('wechat-mac','phone','owner-mac')):
+            return
+    from tools.send_message_tool import send_message_tool
 
     def sending(tool_name, args, session_id="", **kwargs):
         if tool_name != "send_message" or args.get("action") == "list":
             return None
         try:
-            # Native name resolution permits prefix guesses. Accept platform
-            # addresses or exact existing directory IDs, then pin before approval.
-            target = args.get("target", "")
-            if not isinstance(target, str) or ":" not in target:
-                raise ValueError("recipient")
-            platform, reference = target.split(":", 1)
-            platform, reference = platform.strip().lower(), reference.strip()
-            if platform == "dingtalk" and args.get("action", "send") == "send":
+            try:
+                pinned, effect = prepare_message(args, args.get('requested'))
+            except ValueError as error:
+                if str(error) != 'static_webhook_recipient':
+                    raise
                 return {"action": "block", "message": "EFFECT_RECIPIENT_REQUIRED: 当前原生钉钉发送使用静态机器人 webhook，不按 target 选择收件人。请改用能核实真实收件人的 Mac 发送路径，并先调用 paios_effect_check。"}
-            _, _, explicit_address = _parse_target_ref(platform, reference)
-            if not explicit_address or platform == "wecom":
-                entries = load_directory().get("platforms", {}).get(platform, [])
-                if not any(entry.get("id") == reference for entry in entries):
-                    raise ValueError("recipient")
-            platform, recipient, thread, error = _resolve_tool_target(target)
-            if error or not recipient or recipient.startswith(("user_name:", "http:", "https:")):
-                raise ValueError("recipient")
-            if platform == "email" and not _EMAIL_TARGET_RE.fullmatch(recipient):
-                raise ValueError("recipient")
-            effect = {"kind": "send", "recipient": f"{platform}:{recipient}",
-                      "task_type": f"send_message:{platform}:{args.get('action', 'send')}",
-                      "requested": args.get("requested") is True,
-                      "summary": str(args.get("message") or args.get("emoji") or "撤回回应")[:240]}
             gate = check_effect(provider, tool_name, {"effect": effect}, session_id, kwargs.get("tool_call_id", ""))
-            address = recipient.removeprefix("user:") if platform == "slack" else recipient
             return gate if blocked(gate) else {"action": "modify", "args": {
-                "target": f"{platform}:{address}" + (f":{thread}" if thread else ""), "effect": {**effect, "approval": gate}}}
+                "target": pinned['target'], "effect": {**effect, "approval": gate}}}
         except ValueError:
             return {"action": "block", "message": "EFFECT_RECIPIENT_REQUIRED: 请先查询联系人，提供已核实的平台账号地址；不能用昵称、默认目标或空收件人发送。"}
         except Exception as error:
@@ -166,14 +153,14 @@ def register(ctx, provider):
                           **{key: gate[key] for key in ("status", "approval_request_id") if key in gate}} if blocked(gate) else
                           {"allowed": True, **({"approval": gate} if gate else {})}, ensure_ascii=False)
 
-    schema = deepcopy(SEND_MESSAGE_SCHEMA)
+    schema = send_message_schema()
     schema["description"] = "向明确的平台账号发送消息、文件或回应，或用 action=list 查询联系人。首次发送由服务器确认，同人同类在新会话沿用。"
     schema["parameters"]["properties"]["target"]["description"] = (
         "已核实的平台稳定地址，不能只填平台名或默认目标。先用 action=list 查询联系人；"
         "例如 email:li@example.com、telegram:12345678、telegram:-1001234567890:17585、feishu:ou_verified_id。")
     schema["parameters"]["properties"]["requested"] = {
         "type": "boolean", "description": "仅主人明确要求本次发送时为 true；否则每次确认。收件人和任务类型由实际 target 和 action 推导。"}
-    if ctx.register_tool("send_message", "messaging", schema, send_message_tool, override=True) is None:
+    if not packaged and ctx.register_tool("send_message", "messaging", schema, send_message_tool, override=True) is None:
         raise RuntimeError("Effect-gated sender was not registered")
     schema = {"name": "paios_effect_check", "description": "自制工具、terminal/execute_code 脚本和未接入代码门禁的 Mac 发送，执行前必须调用。只有 allowed=true 才执行同一效果；拒绝或不可达立即停止。服务器保存同一人同一任务类型的首次确认，原生 memory 不保存授权。",
               "parameters": {"type": "object", "additionalProperties": False, "required": ["effect"], "properties": {"effect": {
@@ -184,4 +171,42 @@ def register(ctx, provider):
                       "summary": {"type": "string", "maxLength": 240, "description": "仅确认展示的短预览，不含密钥，不属于授权键。"}}}}}}
     if ctx.register_tool("paios_effect_check", "effects", schema, explicit) is None:
         raise RuntimeError("Explicit effect check was not registered")
-    register_execution_gate(ctx, sending)
+    if not packaged:
+        register_execution_gate(ctx, sending)
+
+
+# The upstream sender no longer exports its schema or e-mail pattern; the package and the legacy path share these.
+_EMAIL_TARGET_RE = re.compile(r"^\s*[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\s*$")
+
+
+def send_message_schema():
+    return json.loads(Path(__file__).with_name("send-message.schema.json").read_text())
+
+
+def prepare_message(args, requested=False):
+    from tools.send_message_tool import _resolve_tool_target
+    from tools.send_message_targets import _parse_target_ref
+    from gateway.channel_directory import load_directory
+    target = args.get('target', '')
+    if not isinstance(target, str) or ':' not in target:
+        raise ValueError('recipient')
+    platform, reference = target.split(':', 1)
+    platform, reference = platform.strip().lower(), reference.strip()
+    if platform == 'dingtalk' and args.get('action', 'send') == 'send':
+        raise ValueError('static_webhook_recipient')
+    _, _, explicit_address = _parse_target_ref(platform, reference)
+    if not explicit_address or platform == 'wecom':
+        entries = load_directory().get('platforms', {}).get(platform, [])
+        if not any(entry.get('id') == reference for entry in entries):
+            raise ValueError('recipient')
+    platform, recipient, thread, error = _resolve_tool_target(target)
+    if error or not recipient or recipient.startswith(('user_name:', 'http:', 'https:')):
+        raise ValueError('recipient')
+    if platform == 'email' and not _EMAIL_TARGET_RE.fullmatch(recipient):
+        raise ValueError('recipient')
+    effect = {'kind': 'send', 'recipient': f'{platform}:{recipient}',
+              'task_type': f"send_message:{platform}:{args.get('action', 'send')}",
+              'requested': requested is True,
+              'summary': str(args.get('message') or args.get('emoji') or '撤回回应')[:240]}
+    address = recipient.removeprefix('user:') if platform == 'slack' else recipient
+    return {**args, 'target': f'{platform}:{address}' + (f':{thread}' if thread else '')}, effect

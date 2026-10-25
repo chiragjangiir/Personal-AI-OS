@@ -1406,6 +1406,9 @@ private struct Harness {
         transport: (any AssistantRealtimeTransporting)? = nil,
         dataPublishFailures: Int = 0,
         watchDeliveryStatuses: [AssistantWatchControlDeliveryStatus] = [],
+        contactsSync: AssistantContactsSync = AssistantContactsSync(),
+        ownerDataPairing: @escaping @Sendable () throws -> RealtimeDevicePairing? = { nil },
+        localWakeCapture: (start: @Sendable () throws -> Void, stop: @Sendable () throws -> Void) = ({}, {}),
         realtimeEventCapacity: Int = AssistantRealtimeEventIngress.maximumQueuedEvents,
         voiceSendWait: UInt64 = 10_000_000_000,
         voiceTurnSleep: @escaping @Sendable (UInt64) async throws -> Void = { try await Task.sleep(nanoseconds: $0) },
@@ -1447,6 +1450,7 @@ private struct Harness {
             locationService: location,
             receipts: AppleReceiptStore(),
             watchControl: watchControl,
+            contactsSync: contactsSync, ownerDataPairing: ownerDataPairing, localWakeCapture: localWakeCapture,
             realtimeEventCapacity: realtimeEventCapacity,
             voiceSendConfirmationWait: voiceSendWait,
             voiceTurnSleep: voiceTurnSleep,
@@ -1972,7 +1976,10 @@ private actor FakeRealtimeTransport: AssistantRealtimeTransporting,
         publishedPrompts.append(prompt)
     }
 
+    private var stopObserver: (@Sendable () -> Void)?
+    func setStopObserver(_ callback: @escaping @Sendable () -> Void) { stopObserver = callback }
     func stop() async {
+        stopObserver?()
         connected = false
         stopCount += 1
     }
@@ -3605,8 +3612,13 @@ extension AssistantSessionTests {
             for state in [["call_id": "another-call", "state": "closed"], ["call_id": id, "state": "closing"]] {
                 await harness.realtime.emit(.centralText(try central(["operation": "call_state"].merging(state) { _, next in next })))
             }
-            do { try await harness.coordinator.startCall(video: false); XCTFail("Unacknowledged close still owns the call") }
-            catch CentralTextError.unavailable { }
+            let retry = Task { try await harness.coordinator.startCall(video: false) }
+            try await eventually("redial waits without discarding the original close") {
+                await harness.coordinator.presentationSnapshot().isDialing
+            }
+            try await harness.coordinator.endCall()
+            do { _ = try await retry.value; XCTFail("Hang-up cancels the waiting redial") }
+            catch { XCTAssertEqual(error as? AssistantSessionCoordinatorError, .superseded) }
             await harness.realtime.emit(.centralText(try central(["operation": "call_state", "call_id": id, "state": "closed", "reason": "button"])))
             try await eventually("matching close ACK accepted") { await harness.coordinator.centralTextSnapshot().call.state == "closed" }
             await harness.realtime.emit(.reconnecting); await harness.realtime.emit(.reconnected); await harness.realtime.emit(.encryptionActive)
@@ -3701,6 +3713,57 @@ extension AssistantSessionTests {
         XCTAssertEqual(after, before, "Late recovery cannot reattach or republish payment presence")
         XCTAssertTrue(acceptedAfterStop)
         await fulfillment(of: [noOutput], timeout: 0.1)
+    }
+
+    func testRedialWaitsForPreviousCallTerminalReceipt() async throws {
+        let harness = try await centralHarness(callDialTimeout: 5_000_000_000)
+        try await harness.coordinator.startCall(video: false)
+        let first = await harness.coordinator.centralTextSnapshot().call, id = try XCTUnwrap(first.id)
+        await harness.realtime.emit(.centralText(try central(["operation": "call_state", "call_id": id, "state": "live"])))
+        try await eventually("first call is live") { await harness.coordinator.centralTextSnapshot().call.state == "live" }
+        try await harness.coordinator.endCall()
+        let closedRequests = await sent(harness)
+        XCTAssertEqual(closedRequests.filter { $0["operation"] as? String == "call_close" }.count, 1)
+        let retry = Task { try await harness.coordinator.startCall(video: false) }
+        defer { retry.cancel() }
+        try await eventually("redial waits for the previous terminal receipt") {
+            await harness.coordinator.presentationSnapshot().isDialing
+        }
+        let waiting = await sent(harness)
+        XCTAssertEqual(waiting.filter { $0["operation"] as? String == "call_open" }.count, 1)
+        await harness.realtime.emit(.centralText(try central(["operation": "call_state", "call_id": id, "state": "closed"])))
+        _ = try await retry.value
+        let requests = await sent(harness)
+        let ids = requests.filter { $0["operation"] as? String == "call_open" }.compactMap { $0["call_id"] as? String }
+        XCTAssertEqual(ids.count, 2)
+        XCTAssertEqual(Set(ids).count, 2, "A new dial must have its own call ID")
+        let next = try XCTUnwrap(ids.last)
+        await harness.realtime.emit(.centralText(try central(["operation": "call_state", "call_id": next, "state": "live"])))
+        try await eventually("second call reaches live") {
+            let call = await harness.coordinator.centralTextSnapshot().call
+            return call.id == next && call.state == "live"
+        }
+        _ = await harness.coordinator.stop()
+    }
+
+    func testRedialDeadlineCoversUnacknowledgedClose() async throws {
+        let harness = try await centralHarness(callDialTimeout: 500_000_000)
+        try await harness.coordinator.startCall(video: false)
+        let call = await harness.coordinator.centralTextSnapshot().call
+        let id = try XCTUnwrap(call.id)
+        await harness.realtime.emit(.centralText(try central(["operation": "call_state", "call_id": id, "state": "live"])))
+        try await eventually("first call is live") {
+            await harness.coordinator.centralTextSnapshot().call.state == "live"
+        }
+        try await harness.coordinator.endCall()
+        do { try await harness.coordinator.startCall(video: false); XCTFail("Unacknowledged close cannot wait beyond the dial deadline") }
+        catch { XCTAssertEqual(error as? AssistantSessionCoordinatorError, .superseded) }
+        let snapshot = await harness.coordinator.presentationSnapshot()
+        XCTAssertFalse(snapshot.isDialing)
+        XCTAssertEqual(snapshot.callFailure, "连接超时，请重试")
+        let requests = await sent(harness)
+        XCTAssertEqual(requests.filter { $0["operation"] as? String == "call_open" }.count, 1)
+        _ = await harness.coordinator.stop()
     }
 
     func testOfflineHangupFailedPublicationRetainsIntentUntilMatchingTerminal() async throws {
@@ -4313,13 +4376,16 @@ extension AssistantSessionTests {
         try await harness.coordinator.startCall(video: false)
         let opened = await harness.coordinator.centralTextSnapshot().call
         let id = try XCTUnwrap(opened.id)
-        await harness.realtime.emit(.centralText(try central(["operation": "call_state", "call_id": id, "state": "live"])))
+        await harness.realtime.emit(.centralText(try central(["operation": "call_state", "call_id": id, "state": "live", "mode": "manual", "conversation_mode": "chat"])))
         try await eventually("call becomes live") { await harness.coordinator.centralTextSnapshot().call.state == "live" }
         try await Task.sleep(nanoseconds: 300_000_000)
         let snapshot = await harness.coordinator.presentationSnapshot(), ops = await operations(harness)
         XCTAssertFalse(snapshot.isDialing); XCTAssertNil(snapshot.callFailure)
         XCTAssertFalse(ops.contains("call_close"))
         try await harness.coordinator.endCall()
+        let ended = await operations(harness), stopped = await harness.bootstrap.stopCount
+        XCTAssertEqual(ended.filter { $0 == "call_close" }.count, 1)
+        XCTAssertEqual(stopped, 0, "An accepted N13 live state permits hang-up without retiring the room by dial timeout")
         _ = await harness.coordinator.stop()
     }
 
@@ -6057,4 +6123,76 @@ extension AssistantSessionTests {
         }
         _ = await harness.coordinator.stop()
     }
+}
+
+
+extension AssistantSessionTests {
+    func testExt13UnpairStopsLocalWakeBeforeRTCAndDoesNotRestoreIt() async throws {
+        for reason in ["desktop_unpaired", "pairing_changed", "user_stop", "desktop_reconnect"] {
+            let capture = Ext13CaptureLog()
+            let harness = await Harness.make(localWakeCapture: ({ capture.append("capture-start") }, { capture.append("capture-stop") }))
+            await harness.realtime.setStopObserver { capture.append("rtc-stop") }
+            try await harness.coordinator.start(AssistantStartIntent(userInitiated: true))
+            try await harness.coordinator.setWakeEnabled(true)
+            // Finish native detector initialization before this short test can exit the process.
+            try await eventually("local detector initialized", seconds: 60) {
+                await harness.coordinator.presentationSnapshot().media.wake == .waitingForAudio
+            }
+            _ = await harness.coordinator.stop(reasonCode: reason)
+            let snapshot = await harness.coordinator.presentationSnapshot()
+            let log = capture.values
+            if reason == "desktop_reconnect" {
+                XCTAssertTrue(snapshot.media.wakeArmed)
+                XCTAssertFalse(log.contains("capture-stop"), "A reconnect retains the authorized wake capture")
+                try await harness.coordinator.setWakeEnabled(false)
+            } else {
+                XCTAssertFalse(snapshot.media.wakeArmed, reason)
+                XCTAssertEqual(log, ["capture-start", "capture-stop", "rtc-stop"], reason)
+            }
+            try await harness.coordinator.setWakeEnabled(false)
+        }
+    }
+
+    func testExt13ContactsDisableFencesSendAfterSuspendedAccessCheck() async throws {
+        let fixture = try CentralTextTestFixture(), gate = StopGate()
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let source = Ext13ContactsSource(gate: gate)
+        let sync = AssistantContactsSync(source: source, directory: directory)
+        let pairing = RealtimeDevicePairing(schema: RealtimeDevicePairing.schema, origin: "https://example.test",
+            deviceID: fixture.binding.deviceID, userID: "test-owner", token: "test-token",
+            governance: .init(purposeScopes: [], consentRecordRefs: [], policyDecisionRefs: [], purposeTokenRefs: [], capabilityGrantRefs: []),
+            media: ["data"], pairedAt: "2026-10-24T00:00:00Z")
+        let harness = await Harness.make(canPublishData: true, contactsSync: sync, ownerDataPairing: { pairing })
+        await harness.bootstrap.setCentralBinding(fixture.binding)
+        try await harness.coordinator.start(AssistantStartIntent(userInitiated: true))
+        try await harness.coordinator.setContactsEnabled(true)
+        await gate.waitUntilEntered()
+        try await harness.coordinator.setContactsEnabled(false)
+        await gate.release()
+        // The suspended OS access check ignores cancellation, as a completed permission callback may do.
+        try await Task.sleep(nanoseconds: 100_000_000)
+        let packets = await harness.realtime.centralPackets
+        XCTAssertFalse(packets.contains { (try? JSONSerialization.jsonObject(with: $0) as? [String: Any])?["operation"] as? String == "contacts_batch" })
+        let enabled = try await sync.isEnabled(identity: CentralOwnerDataIdentity.pairing(pairing))
+        XCTAssertFalse(enabled)
+        _ = await harness.coordinator.stop()
+    }
+}
+
+private final class Ext13CaptureLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var log: [String] = []
+    func append(_ value: String) { lock.withLock { log.append(value) } }
+    var values: [String] { lock.withLock { log } }
+}
+
+private actor Ext13ContactsSource: AssistantContactsReading {
+    let gate: StopGate
+    init(gate: StopGate) { self.gate = gate }
+    func requestAccess() {}
+    func snapshot() -> AssistantContactsSnapshot {
+        .init(contacts: [.init(id: "contact", name: "Test", phones: [], relations: [])], limited: false)
+    }
+    func verifyAccess(limited: Bool) async throws { await gate.markEntered(); await gate.waitForRelease() }
 }

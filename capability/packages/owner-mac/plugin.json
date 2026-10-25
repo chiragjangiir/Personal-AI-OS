@@ -1,0 +1,122 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "owner-mac",
+  "version": "1.0.0",
+  "description": "Existing paired Mac SSH and computer operations with capability receipts.",
+  "extensions": {
+    "ai.yimi.capability": {
+      "schema": "yimi.capability.v1",
+      "receipt_schema": 1,
+      "compat": {
+        "hermes": ">=0.22.5 <0.24",
+        "gateway_api": 1
+      },
+      "maintainer": "lead",
+      "secrets": [
+        {
+          "name": "PAIOS_HERMES_INTERNAL_KEY"
+        }
+      ],
+      "network": {
+        "egress": []
+      },
+      "scopes": [
+        "owner"
+      ],
+      "provenance": {
+        "source_commit": "decaff83c56b5e188b229a11e79b32106eeccf43",
+        "workshop_run": null,
+        "adapter_modules": [
+          "server/package_server.py",
+          "server/receipts.py"
+        ]
+      },
+      "runtime": {
+        "server": "owner_mac",
+        "lazy": true,
+        "idle_timeout_seconds": 900,
+        "host": "dedicated"
+      },
+      "tools": {
+        "exec": {
+          "effect": "owner_data",
+          "task_type": "owner_mac:exec",
+          "retry": "after_check",
+          "check_with": "read",
+          "target": "$.device_id",
+          "context_inject": [
+            "context"
+          ]
+        },
+        "read": {
+          "effect": "observe",
+          "task_type": "owner_mac:read",
+          "retry": "after_check",
+          "check_with": "read",
+          "target": "$.path",
+          "context_inject": [
+            "context"
+          ]
+        },
+        "write": {
+          "effect": "owner_data",
+          "task_type": "owner_mac:write",
+          "retry": "after_check",
+          "check_with": "read",
+          "target": "$.path",
+          "context_inject": [
+            "context"
+          ]
+        },
+        "fetch": {
+          "effect": "observe",
+          "task_type": "owner_mac:fetch",
+          "retry": "after_check",
+          "check_with": "read",
+          "target": "$.path",
+          "context_inject": [
+            "context"
+          ]
+        },
+        "put": {
+          "effect": "owner_data",
+          "task_type": "owner_mac:put",
+          "retry": "after_check",
+          "check_with": "read",
+          "target": "$.path",
+          "context_inject": [
+            "context"
+          ]
+        },
+        "computer_use": {
+          "effect_by_arg": {
+            "$.action": {
+              "capture": "observe", "list_apps": "observe", "list_windows": "observe", "wait": "observe",
+              "click": "owner_data", "double_click": "owner_data", "right_click": "owner_data",
+              "middle_click": "owner_data", "drag": "owner_data", "scroll": "owner_data", "type": "owner_data",
+              "key": "owner_data", "set_value": "owner_data", "focus_app": "owner_data"
+            }
+          },
+          "task_type": "owner_mac:computer_use",
+          "retry": "after_check",
+          "check_with": "computer_use",
+          "target": "$.device_id",
+          "context_inject": [
+            "context"
+          ]
+        }
+      },
+      "staging": {
+        "fake": {
+          "command": "python3",
+          "args": [
+            "fake/server.py"
+          ]
+        }
+      },
+      "tests": {
+        "contract": "tests/contract.yaml"
+      }
+    }
+  }
+}

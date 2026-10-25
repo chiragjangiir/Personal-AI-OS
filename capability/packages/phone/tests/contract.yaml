@@ -1,0 +1,79 @@
+schema: yimi.capability.contract.v1
+fixtures:
+  - id: accepted
+    input: {status: started}
+    state: accepted
+  - id: running
+    input: {state: running, step: 2, max_steps: 5}
+    state: running
+  - id: completed_read
+    input: {success: true, terminal_reason: completed, task_type: read_app, answer: 已读取首页}
+    state: succeeded
+  - id: completed_verified
+    input:
+      success: true
+      terminal_reason: completed
+      effect_evidence:
+        - {kind: physical, action: 提交订单, verification: verified, evidence: 屏幕回读同一订单, ref: 'screen:order'}
+    state: succeeded
+  - id: service_ack
+    input:
+      success: true
+      effect_evidence:
+        - {kind: account, action: 关闭会话, verification: service_ack, evidence: 服务确认已释放, ref: 'service:session'}
+    state: succeeded
+  - id: unverified_completion
+    input: {success: true, terminal_reason: completed, answer: 我办完了}
+    state: unknown
+  - id: unverified_effect
+    input:
+      success: true
+      effect_evidence:
+        - {kind: send, action: 发送, verification: not_verified, evidence: 仅点击, ref: null}
+    state: unknown
+  - id: partial
+    input:
+      success: true
+      effect_evidence:
+        - {kind: physical, action: 提交, verification: verified, evidence: 屏幕回读, ref: null}
+        - {kind: physical, action: 配送, verification: not_verified, evidence: 尚无配送信息, ref: null}
+    state: partial
+  - id: timed_out
+    input: {success: false, terminal_reason: timed_out}
+    state: unknown
+  - id: interrupted
+    input: {success: false, terminal_reason: interrupted}
+    state: unknown
+  - id: disconnected
+    input: {success: false, error_code: PHONE_DISCONNECTED}
+    state: unknown
+  - id: login
+    input: {success: false, error_code: APP_LOGIN_REQUIRED}
+    state: waiting
+  - id: denied_in_package
+    input: {success: false, status: rejected, error_code: EFFECT_CLASSIFICATION_REQUIRED}
+    state: failed
+  - id: unavailable
+    input: {success: false, status: unavailable}
+    state: failed
+  - id: cancelled
+    input: {success: false, terminal_reason: cancelled_by_user}
+    state: cancelled
+  - id: unknown_payment
+    input: {success: false, payment_outcome: unknown, payment_intent: pi-fixture}
+    state: unknown
+  - id: paid
+    input: {success: true, payment_outcome: paid, payment_intent: pi-fixture}
+    state: succeeded
+  - id: price_eta_order
+    input:
+      success: true
+      task_type: read_app
+      partial_findings: {last_screen_text: '价格￥16.60，预计23分钟。订单号：20261024001'}
+    state: succeeded
+  - id: empty_status
+    input: {jobs: []}
+    state: unknown
+  - id: stopped_step
+    input: {state: stopping}
+    state: running

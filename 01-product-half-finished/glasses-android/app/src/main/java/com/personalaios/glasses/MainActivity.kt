@@ -60,7 +60,7 @@ class MainActivity : BaseMirrorActivity<ActivityMainBinding>(), SensorEventListe
     private var presentedCallId: String? = null
     private var noticeId: String? = null
     private var noticeSince = 0L
-    private var lastContent = System.currentTimeMillis()
+    private var lastContent = monotonicMillis()
     private var hintUntil = 0L
     private var showHint = false
     private val timer = Handler(Looper.getMainLooper())
@@ -102,10 +102,10 @@ class MainActivity : BaseMirrorActivity<ActivityMainBinding>(), SensorEventListe
                 val changed = incoming.cards.lastOrNull()?.copy(ack = null) != hud.cards.lastOrNull()?.copy(ack = null)
                 val known = hud.cards.map { it.id }.toSet()
                 val fresh = incoming.cards.any { it.progress == null && it.id !in known }
-                if (changed || incoming.callId != hud.callId) lastContent = System.currentTimeMillis()
+                if (changed || incoming.callId != hud.callId) lastContent = monotonicMillis()
                 if (incoming.summary != null && incoming.summary !== hud.summary) screen = HudScreen.Summary(incoming.summaryAt)
                 hud = incoming
-                if (changed) screen = reconcileHud(screen, visibleHud(hud, System.currentTimeMillis()), fresh)
+                if (changed) screen = reconcileHud(screen, visibleHud(hud, monotonicMillis(), ServerClock.shared.nowMillis()), fresh)
                 schedule(0)
             } }
             launch { templeActionViewModel.state.collect(::temple) }
@@ -140,7 +140,7 @@ class MainActivity : BaseMirrorActivity<ActivityMainBinding>(), SensorEventListe
         else if (action is TempleAction.Click || action is TempleAction.DoubleClick) tracker!!.handleFocusTargetEvent(action)
     }
     private fun dispatch(gesture: HudGesture, focus: Int? = null) {
-        val state = visibleHud(hud, System.currentTimeMillis())
+        val state = visibleHud(hud, monotonicMillis(), ServerClock.shared.nowMillis())
         screen = reconcileHud(screen, state)
         if (gesture == HudGesture.Click || gesture == HudGesture.Nod || gesture == HudGesture.Shake ||
             gesture == HudGesture.DoubleClick) {
@@ -154,8 +154,8 @@ class MainActivity : BaseMirrorActivity<ActivityMainBinding>(), SensorEventListe
             is HudScreen.Consent -> current.copy(focus = focus)
             else -> current
         }
-        val result = reduceHud(screen, gesture, state, System.currentTimeMillis())
-        screen = result.screen; lastContent = System.currentTimeMillis()
+        val result = reduceHud(screen, gesture, state, monotonicMillis())
+        screen = result.screen; lastContent = monotonicMillis()
         when (result.action) {
             "SCAN" -> if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) enroll()
                 else requestPermissions(arrayOf(Manifest.permission.CAMERA), 3)
@@ -166,7 +166,7 @@ class MainActivity : BaseMirrorActivity<ActivityMainBinding>(), SensorEventListe
                 .setClassName("com.eg.android.AlipayGGlasses", "com.alipay.InnerScanApi.GlassesTransparentActivity")) }
                 catch (_: ActivityNotFoundException) {
                     send("PAY_CLOSED")
-                    screen = HudScreen.Notice("这副眼镜没装支付宝", System.currentTimeMillis() + 3000)
+                    screen = HudScreen.Notice("这副眼镜没装支付宝", monotonicMillis() + 3000)
                 }
             "AMBIENT_ON", "AMBIENT_OFF" -> send("AMBIENT", detail = if (result.action == "AMBIENT_ON") "on" else "off")
             "AVATAR_ON", "AVATAR_OFF" -> send("AVATAR", detail = if (result.action == "AVATAR_ON") "on" else "off")
@@ -187,7 +187,7 @@ class MainActivity : BaseMirrorActivity<ActivityMainBinding>(), SensorEventListe
         CompanionService.paying = screen == HudScreen.Paying
         schedule(0)
     }
-    private fun updateNavigationMap(visible: HudState = visibleHud(hud, System.currentTimeMillis()),
+    private fun updateNavigationMap(visible: HudState = visibleHud(hud, monotonicMillis(), ServerClock.shared.nowMillis()),
         layout: MoveHudLayout? = (screen as? HudScreen.Move)?.let { moveHudLayout(visible, it.page, enrollment.largeText) }) {
         val route = visible.navigationRoute; val fix = visible.navigationFix; val heading = headingSample
         navigationMirror?.update(if (screen is HudScreen.Move && visible.nav != null && route != null && visible.routeOverviewUntil > 0)
@@ -207,7 +207,7 @@ class MainActivity : BaseMirrorActivity<ActivityMainBinding>(), SensorEventListe
                 scanRecognized = true; schedule(0)
                 enrollment.exchange(payload, DEFAULT_GATEWAY)
                 CompanionService.state.value = CompanionService.state.value.copy(avatar = null)
-                hud = hud.copy(paired = true); screen = HudScreen.Paired(System.currentTimeMillis() + 2000)
+                hud = hud.copy(paired = true); screen = HudScreen.Paired(monotonicMillis() + 2000)
                 afterPermission = "CONNECT"; permit()
             } catch (_: TimeoutCancellationException) { screen = HudScreen.ScanFailed("没认出配对码，请靠近 iPhone 重新扫描") }
             catch (cancelled: CancellationException) { throw cancelled }
@@ -228,7 +228,7 @@ class MainActivity : BaseMirrorActivity<ActivityMainBinding>(), SensorEventListe
         }
         if (code == 1) {
             if (results.isNotEmpty() && results.all { it == PackageManager.PERMISSION_GRANTED }) send(afterPermission)
-            else screen = HudScreen.Notice("允许麦克风和相机后，再单击和我说话", System.currentTimeMillis() + 3000)
+            else screen = HudScreen.Notice("允许麦克风和相机后，再单击和我说话", monotonicMillis() + 3000)
         }
         schedule(0)
     }
@@ -251,8 +251,8 @@ class MainActivity : BaseMirrorActivity<ActivityMainBinding>(), SensorEventListe
 
     private fun render() {
         lastDraw = SystemClock.uptimeMillis()
-        val now = System.currentTimeMillis()
-        val hud = visibleHud(this.hud, now)
+        val now = monotonicMillis()
+        val hud = visibleHud(this.hud, now, ServerClock.shared.nowMillis())
         screen = reconcileHud(settleHud(screen, now), hud)
         if (screen is HudScreen.Move && !hud.paymentLock.locked && hud.routeOverviewUntil == 0L && hud.nav != null && BuildConfig.AMAP_CONFIGURED && enrollment.mapPrivacyChoice == null)
             screen = HudScreen.Consent(screen, navigation = true)
@@ -694,7 +694,7 @@ class MainActivity : BaseMirrorActivity<ActivityMainBinding>(), SensorEventListe
                 if (presentedCard?.copy(ack = null) != card?.copy(ack = null)) head.reset()
                 presented = painting; presentedCard = card; presentedMenu = hudMenu(hud, (screen as? HudScreen.Menu)?.modeChoices == true); presentedCallId = hud.callId
                 if (card?.actions?.isEmpty() == true && noticeId != card.id) {
-                    noticeId = card.id; noticeSince = System.currentTimeMillis(); schedule(3000)
+                    noticeId = card.id; noticeSince = monotonicMillis(); schedule(3000)
                 }
                 // Receipts cover packet text only after it fits inside the visible optical band.
                 if (card?.ack != null && rendered != canonicalJson(card.ack) && cardText.all { text ->

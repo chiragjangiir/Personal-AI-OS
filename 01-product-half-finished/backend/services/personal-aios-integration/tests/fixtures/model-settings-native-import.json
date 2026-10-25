@@ -1,0 +1,923 @@
+{
+  "owner": {
+    "model": {
+      "provider": "deepseek-paios",
+      "base_url": "https://api.deepseek.com",
+      "api_mode": "chat_completions",
+      "request_overrides": {
+        "max_tokens": 8192,
+        "extra_body": {
+          "thinking": {
+            "type": "enabled"
+          }
+        }
+      },
+      "context_length": 262144,
+      "default": "deepseek-flash"
+    },
+    "providers": {
+      "deepseek-paios": {
+        "api": "https://api.deepseek.com",
+        "transport": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        }
+      },
+      "opencode-paios": {
+        "api": "https://opencode.ai/zen/go/v1",
+        "transport": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "session_affinity_header": "x-opencode-session"
+      },
+      "siliconflow-paios": {
+        "api": "https://api.siliconflow.cn/v1",
+        "transport": "chat_completions",
+        "extra_body": {
+          "max_tokens": 8192
+        }
+      }
+    },
+    "fallback_providers": [
+      {
+        "provider": "opencode-paios",
+        "model": "deepseek-v4.1-flash",
+        "base_url": "https://opencode.ai/zen/go/v1",
+        "api_mode": "chat_completions",
+        "request_overrides": {
+          "max_tokens": 8192,
+          "extra_body": {
+            "thinking": {
+              "type": "enabled"
+            }
+          }
+        },
+        "context_length": 262144
+      }
+    ],
+    "delegation": {
+      "max_concurrent_children": 3,
+      "max_spawn_depth": 2,
+      "oneshot_max_children": 0,
+      "child_timeout_seconds": 0,
+      "provider": "opencode-paios",
+      "model": "deepseek-v4.1-flash",
+      "base_url": "https://opencode.ai/zen/go/v1",
+      "api_mode": "chat_completions",
+      "request_overrides": {
+        "max_tokens": 8192,
+        "extra_body": {
+          "thinking": {
+            "type": "enabled"
+          }
+        }
+      },
+      "context_length": 262144,
+      "fallback_providers": [
+        {
+          "provider": "deepseek-paios",
+          "model": "deepseek-flash",
+          "base_url": "https://api.deepseek.com",
+          "api_mode": "chat_completions",
+          "request_overrides": {
+            "max_tokens": 8192,
+            "extra_body": {
+              "thinking": {
+                "type": "enabled"
+              }
+            }
+          },
+          "context_length": 262144
+        }
+      ],
+      "enabled": true
+    },
+    "auxiliary": {
+      "transient_retries": 2,
+      "title_generation": {
+        "enabled": false,
+        "model_upgrade_enabled": false
+      },
+      "vision": {
+        "provider": "siliconflow-paios",
+        "model": "zai-org/GLM-5.3-Flash",
+        "base_url": "https://api.siliconflow.cn/v1",
+        "api_mode": "chat_completions",
+        "extra_body": {
+          "max_tokens": 8192
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.vision"
+      },
+      "compression": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.compression"
+      },
+      "skills_hub": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.skills_hub"
+      },
+      "approval": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.approval"
+      },
+      "review": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.review"
+      },
+      "mcp": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.mcp"
+      },
+      "memory_query_rewrite": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.memory_query_rewrite"
+      },
+      "tts_audio_tags": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.tts_audio_tags"
+      },
+      "triage_specifier": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.triage_specifier"
+      },
+      "kanban_decomposer": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.kanban_decomposer"
+      },
+      "profile_describer": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.profile_describer"
+      },
+      "goal_judge": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.goal_judge"
+      },
+      "curator": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.curator"
+      },
+      "monitor": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.monitor"
+      },
+      "background_review": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.background_review"
+      },
+      "moa_reference": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.moa_reference"
+      },
+      "moa_aggregator": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.moa_aggregator"
+      },
+      "call_intent": {
+        "provider": "deepseek-paios",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "model": "deepseek-flash",
+        "role_id": "call.intent",
+        "extra_body": {
+          "max_tokens": 128,
+          "temperature": 0,
+          "thinking": {
+            "type": "disabled"
+          }
+        },
+        "fallback_chain": [
+          {
+            "provider": "opencode-paios",
+            "model": "deepseek-v4.1-flash",
+            "base_url": "https://opencode.ai/zen/go/v1",
+            "api_mode": "chat_completions",
+            "context_length": 262144,
+            "extra_body": {
+              "max_tokens": 128,
+              "temperature": 0,
+              "thinking": {
+                "type": "disabled"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "cron": {
+      "wrap_response": false,
+      "allowed_scripts": [
+        "personal-aios-reminder.py",
+        "personal-aios-task.py"
+      ],
+      "provider": "deepseek-paios",
+      "model": "deepseek-flash",
+      "base_url": "https://api.deepseek.com",
+      "api_mode": "chat_completions",
+      "request_overrides": {
+        "max_tokens": 8192,
+        "extra_body": {
+          "thinking": {
+            "type": "enabled"
+          }
+        }
+      },
+      "context_length": 262144,
+      "fallback_providers": [],
+      "model_provider": "deepseek-paios",
+      "enabled": true
+    }
+  },
+  "workshop": {
+    "model": {
+      "provider": "deepseek-paios",
+      "base_url": "https://api.deepseek.com",
+      "api_mode": "chat_completions",
+      "request_overrides": {
+        "max_tokens": 8192,
+        "extra_body": {
+          "thinking": {
+            "type": "enabled"
+          }
+        }
+      },
+      "context_length": 262144,
+      "default": "deepseek-flash"
+    },
+    "providers": {
+      "deepseek-paios": {
+        "api": "https://api.deepseek.com",
+        "transport": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        }
+      },
+      "opencode-paios": {
+        "api": "https://opencode.ai/zen/go/v1",
+        "transport": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "session_affinity_header": "x-opencode-session"
+      },
+      "siliconflow-paios": {
+        "api": "https://api.siliconflow.cn/v1",
+        "transport": "chat_completions",
+        "extra_body": {
+          "max_tokens": 8192
+        }
+      }
+    },
+    "fallback_providers": [
+      {
+        "provider": "opencode-paios",
+        "model": "deepseek-v4.1-flash",
+        "base_url": "https://opencode.ai/zen/go/v1",
+        "api_mode": "chat_completions",
+        "request_overrides": {
+          "max_tokens": 8192,
+          "extra_body": {
+            "thinking": {
+              "type": "enabled"
+            }
+          }
+        },
+        "context_length": 262144
+      }
+    ],
+    "delegation": {
+      "max_concurrent_children": 3,
+      "max_spawn_depth": 2,
+      "oneshot_max_children": 0,
+      "child_timeout_seconds": 0,
+      "provider": "opencode-paios",
+      "model": "deepseek-v4.1-flash",
+      "base_url": "https://opencode.ai/zen/go/v1",
+      "api_mode": "chat_completions",
+      "request_overrides": {
+        "max_tokens": 8192,
+        "extra_body": {
+          "thinking": {
+            "type": "enabled"
+          }
+        }
+      },
+      "context_length": 262144,
+      "fallback_providers": [
+        {
+          "provider": "deepseek-paios",
+          "model": "deepseek-flash",
+          "base_url": "https://api.deepseek.com",
+          "api_mode": "chat_completions",
+          "request_overrides": {
+            "max_tokens": 8192,
+            "extra_body": {
+              "thinking": {
+                "type": "enabled"
+              }
+            }
+          },
+          "context_length": 262144
+        }
+      ],
+      "enabled": true
+    },
+    "auxiliary": {
+      "transient_retries": 2,
+      "title_generation": {
+        "enabled": false,
+        "model_upgrade_enabled": false
+      },
+      "vision": {
+        "provider": "siliconflow-paios",
+        "model": "zai-org/GLM-5.3-Flash",
+        "base_url": "https://api.siliconflow.cn/v1",
+        "api_mode": "chat_completions",
+        "extra_body": {
+          "max_tokens": 8192
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.vision"
+      },
+      "compression": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.compression"
+      },
+      "skills_hub": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.skills_hub"
+      },
+      "approval": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.approval"
+      },
+      "review": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.review"
+      },
+      "mcp": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.mcp"
+      },
+      "memory_query_rewrite": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.memory_query_rewrite"
+      },
+      "tts_audio_tags": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.tts_audio_tags"
+      },
+      "triage_specifier": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.triage_specifier"
+      },
+      "kanban_decomposer": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.kanban_decomposer"
+      },
+      "profile_describer": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.profile_describer"
+      },
+      "goal_judge": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.goal_judge"
+      },
+      "curator": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.curator"
+      },
+      "monitor": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.monitor"
+      },
+      "background_review": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.background_review"
+      },
+      "moa_reference": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.moa_reference"
+      },
+      "moa_aggregator": {
+        "provider": "deepseek-paios",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "api_mode": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192,
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "fallback_chain": [],
+        "role_id": "auxiliary.moa_aggregator"
+      },
+      "call_intent": {
+        "enabled": false
+      }
+    },
+    "cron": {
+      "wrap_response": false,
+      "allowed_scripts": [
+        "personal-aios-reminder.py",
+        "personal-aios-task.py"
+      ],
+      "provider": "deepseek-paios",
+      "model": "deepseek-flash",
+      "base_url": "https://api.deepseek.com",
+      "api_mode": "chat_completions",
+      "request_overrides": {
+        "max_tokens": 8192,
+        "extra_body": {
+          "thinking": {
+            "type": "enabled"
+          }
+        }
+      },
+      "context_length": 262144,
+      "fallback_providers": [],
+      "model_provider": "deepseek-paios",
+      "enabled": true
+    }
+  },
+  "builder": {
+    "model": {
+      "provider": "paios-builder",
+      "base_url": "https://opencode.ai/zen/go/v1",
+      "api_mode": "chat_completions",
+      "request_overrides": {
+        "max_tokens": 8192
+      },
+      "context_length": 262144,
+      "default": "deepseek-v4.1-flash"
+    },
+    "providers": {
+      "paios-builder": {
+        "api": "https://opencode.ai/zen/go/v1",
+        "transport": "chat_completions",
+        "context_length": 262144,
+        "extra_body": {
+          "max_tokens": 8192
+        },
+        "session_affinity_header": "x-opencode-session"
+      }
+    },
+    "fallback_providers": [],
+    "delegation": {
+      "max_concurrent_children": 3,
+      "max_spawn_depth": 2,
+      "oneshot_max_children": 0,
+      "child_timeout_seconds": 0,
+      "enabled": false
+    },
+    "cron": {
+      "wrap_response": false,
+      "allowed_scripts": [
+        "personal-aios-reminder.py",
+        "personal-aios-task.py"
+      ],
+      "enabled": false
+    },
+    "auxiliary": {
+      "transient_retries": 2,
+      "title_generation": {
+        "enabled": false,
+        "model_upgrade_enabled": false
+      },
+      "vision": {
+        "enabled": false
+      },
+      "compression": {
+        "provider": "paios-builder",
+        "model": "deepseek-v4.1-flash",
+        "base_url": "https://opencode.ai/zen/go/v1",
+        "api_mode": "chat_completions",
+        "extra_body": {},
+        "fallback_chain": [],
+        "role_id": "auxiliary.compression"
+      },
+      "skills_hub": {
+        "enabled": false
+      },
+      "approval": {
+        "enabled": false
+      },
+      "review": {
+        "enabled": false
+      },
+      "mcp": {
+        "enabled": false
+      },
+      "memory_query_rewrite": {
+        "enabled": false
+      },
+      "tts_audio_tags": {
+        "enabled": false
+      },
+      "triage_specifier": {
+        "enabled": false
+      },
+      "kanban_decomposer": {
+        "enabled": false
+      },
+      "profile_describer": {
+        "enabled": false
+      },
+      "goal_judge": {
+        "enabled": false
+      },
+      "curator": {
+        "enabled": false
+      },
+      "monitor": {
+        "enabled": false
+      },
+      "background_review": {
+        "enabled": false
+      },
+      "moa_reference": {
+        "enabled": false
+      },
+      "moa_aggregator": {
+        "enabled": false
+      },
+      "call_intent": {
+        "enabled": false
+      }
+    },
+    "workshop": {
+      "repair": {
+        "provider": "paios-builder",
+        "model": "deepseek-v4.1-flash",
+        "base_url": "https://opencode.ai/zen/go/v1",
+        "api_mode": "chat_completions",
+        "request_overrides": {
+          "max_tokens": 8192
+        },
+        "context_length": 262144,
+        "fallback_providers": []
+      }
+    }
+  }
+}

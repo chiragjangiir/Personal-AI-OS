@@ -17,7 +17,6 @@ import { createBarkNotifier } from './bark-notifier.ts';
 import { createStagingEffectSink } from './staging-effect-sink.ts';
 import { createAmapNavigation } from './amap-navigation.ts';
 import { createReceiptClockProvider } from './source-media-receipt-clock.ts';
-import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, readFileSync, statSync } from 'node:fs';
 import { resolve, isAbsolute, dirname } from 'node:path';
@@ -82,14 +81,12 @@ import {
 import type { ProductionPortRegistration } from '../../../services/realtime-core/src/production-owner-ports.ts';
 import type { RealtimeClockPort, RealtimeIdentityPort } from '../../../services/realtime-core/src/ports.ts';
 import {
-  RAYNEO_LOCAL_OWNER_POLICY_PATH,
   parseConfiguredOwnerPolicy,
   type RayneoLocalOwnerPolicy,
 } from './rayneo-demo-owner-projection.ts';
 import { Phase0SharedSessionOwner } from './phase0-shared-session-owner.ts';
 import {
   QWEN38_ORCAROUTER_CANARY_PROFILE,
-  QWEN38_ORCAROUTER_SUPERVISED_PROFILE,
   Qwen38ProviderAdapter,
   type Qwen38LocalProviderProfile,
 } from './qwen38-provider-adapter.ts';
@@ -110,7 +107,6 @@ import {
   createPersistentPublicSecretFileReader,
   createPersistentPublicSecretResolver,
   createPersistentRealtimePublicControlPorts,
-  PERSISTENT_PUBLIC_SECRET_PATHS,
   type PersistentRealtimePublicControlPorts,
   type PersistentPublicOwnerProtectionPort,
   type PersistentPublicSecretFileReader,
@@ -121,7 +117,6 @@ import {
 } from './realtime-public-control-livekit-room-admin.ts';
 import {
   createPersistentPublicBearerAuthority,
-  PERSISTENT_PUBLIC_BEARER_AUTHORITY_RECORD_PATH,
 } from './realtime-public-control-persistent-bearer-authority.ts';
 import {
   createRealtimePublicControlSelfHostedCloudProjection,
@@ -135,7 +130,6 @@ import {
   type RealtimePublicControlPgCompositionOptions,
 } from './realtime-public-control-pg-composition.ts';
 import {
-  T03_APPLE_CYCLING_AUTHORITY_RECORD_PATH,
   type T03AppleCyclingAuthorityRecordReader,
   type T03AppleCyclingOwnerProtectionPort,
 } from './t03-apple-cycling-lease-authority.ts';
@@ -173,9 +167,7 @@ import type {
 } from './realtime-accepted-user-activity-production.ts';
 import type { T04ProductionOwner } from './realtime-public-control-t04-owner.ts';
 import {
-  createQwenModelSupervisor,
   type QwenModelSupervisor,
-  type QwenModelSupervisorAssets,
 } from './qwen-model-supervisor.ts';
 import type { ExplicitUserRememberCommand } from '../../../services/memory-os/src/explicit-user-remember-service.ts';
 import { createRealtimeCredentialFence } from '../../../services/platform-data/src/realtime-credential-fence.ts';
@@ -204,115 +196,12 @@ export type {
 
 const LOOPBACK_HOST = '127.0.0.1' as const;
 const RAYNEO_STANDALONE_SESSION_DURATION_MS = 86_400_000 as const;
-const PG_HOST = LOOPBACK_HOST;
-const PG_PORT = 55432 as const;
-const PG_DATABASE = 'personal_ai_os' as const;
-const PG_USER = 'paios_memory_app' as const;
-const QWEN_RUNTIME_MANIFEST_PATH = 'D:\\AI\\personal ai os\\.runtime\\phase0-roaming\\windows\\config\\runtime-manifest.json' as const;
 export const PERSISTENT_PROVIDER_READINESS_HORIZON_MS = 2_110_000 as const;
-const LIVEKIT_API_KEY_PATH = 'D:\\AI\\personal ai os\\.runtime\\phase0-roaming\\windows\\secrets\\livekit-api-key' as const;
-const LIVEKIT_API_SECRET_PATH = 'D:\\AI\\personal ai os\\.runtime\\phase0-roaming\\windows\\secrets\\livekit-api-secret' as const;
-const PG_PASSWORD_PATH = 'D:\\AI\\personal ai os\\.runtime\\postgresql-18.6\\secrets\\postgres.password' as const;
-const PROXY_ATTESTATION_PATH = 'D:\\AI\\personal ai os\\.runtime\\phase0-roaming\\windows\\secrets\\proxy-attestation' as const;
-const OWNER_ACL_TIMEOUT_MS = 5_000 as const;
-const OWNER_ACL_WORKING_DIRECTORY = 'D:\\AI\\personal ai os' as const;
-const OWNER_ACL_SCRIPT = String.raw`& {
-  $ErrorActionPreference = 'Stop'
-  $Path = if ($args.Count -eq 1) { [string]$args[0] } else { exit 10 }
-  $expectedByRelativePath = @{
-    '.runtime\phase0-roaming\windows\config\apple-cycling-governance-authority.v1.json' =
-      'D:\AI\personal ai os\.runtime\phase0-roaming\windows\config\apple-cycling-governance-authority.v1.json'
-    '.runtime\phase0-roaming\windows\config\realtime-public-control-bearer-authority.v1.json' =
-      'D:\AI\personal ai os\.runtime\phase0-roaming\windows\config\realtime-public-control-bearer-authority.v1.json'
-    '.runtime\phase0-roaming\windows\secrets\livekit-api-key' =
-      'D:\AI\personal ai os\.runtime\phase0-roaming\windows\secrets\livekit-api-key'
-    '.runtime\phase0-roaming\windows\secrets\livekit-api-secret' =
-      'D:\AI\personal ai os\.runtime\phase0-roaming\windows\secrets\livekit-api-secret'
-    '.runtime\phase0-roaming\windows\secrets\proxy-attestation' =
-      'D:\AI\personal ai os\.runtime\phase0-roaming\windows\secrets\proxy-attestation'
-    '.runtime\phase0-roaming\windows\secrets\e2ee-root-key' =
-      'D:\AI\personal ai os\.runtime\phase0-roaming\windows\secrets\e2ee-root-key'
-  }
-  if (-not $expectedByRelativePath.ContainsKey($Path)) { exit 10 }
-  $fullPath = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine((Get-Location).Path, $Path))
-  $expectedPath = [System.IO.Path]::GetFullPath([string]$expectedByRelativePath[$Path])
-  if ($fullPath -cne $expectedPath) { exit 14 }
-  Import-Module Microsoft.PowerShell.Security -ErrorAction Stop
-  $acl = Get-Acl -LiteralPath $fullPath -ErrorAction Stop
-  $owner = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-  if ($acl.Owner -cne $owner -or $acl.AreAccessRulesProtected -ne $true) { exit 11 }
-  $ownerRules = @($acl.Access | Where-Object { $_.IdentityReference.Value -ceq $owner })
-  if ($ownerRules.Count -ne 1) { exit 12 }
-  $rule = $ownerRules[0]
-  if ($rule.AccessControlType -cne 'Allow' -or $rule.FileSystemRights -cne 'FullControl' -or
-      $rule.IsInherited -ne $false -or $rule.InheritanceFlags -cne 'None' -or
-      $rule.PropagationFlags -cne 'None') { exit 13 }
-  exit 0
-}`;
-
-const PERSISTENT_OWNER_PROTECTED_PATHS = new Map<string, string>([
-  [T03_APPLE_CYCLING_AUTHORITY_RECORD_PATH, '.runtime\\phase0-roaming\\windows\\config\\apple-cycling-governance-authority.v1.json'],
-  [PERSISTENT_PUBLIC_BEARER_AUTHORITY_RECORD_PATH, '.runtime\\phase0-roaming\\windows\\config\\realtime-public-control-bearer-authority.v1.json'],
-  [PERSISTENT_PUBLIC_SECRET_PATHS.livekitApiKey, '.runtime\\phase0-roaming\\windows\\secrets\\livekit-api-key'],
-  [PERSISTENT_PUBLIC_SECRET_PATHS.livekitApiSecret, '.runtime\\phase0-roaming\\windows\\secrets\\livekit-api-secret'],
-  [PERSISTENT_PUBLIC_SECRET_PATHS.proxyAttestation, '.runtime\\phase0-roaming\\windows\\secrets\\proxy-attestation'],
-  [PERSISTENT_PUBLIC_SECRET_PATHS.e2eeRootKey, '.runtime\\phase0-roaming\\windows\\secrets\\e2ee-root-key'],
-]);
-
 export type PersistentProductionOwnerProtectionPort = PersistentPublicOwnerProtectionPort &
   T03AppleCyclingOwnerProtectionPort;
 
-function assertPersistentOwnerProtectedPath(path: string): void {
-  if (!PERSISTENT_OWNER_PROTECTED_PATHS.has(path)) fail('PERSISTENT_OWNER_PROTECTION_PATH_INVALID');
-}
-
-function assertWindowsOwnerProtected(path: string): void {
-  assertPersistentOwnerProtectedPath(path);
-  const relativePath = PERSISTENT_OWNER_PROTECTED_PATHS.get(path);
-  if (relativePath === undefined) {
-    fail('PERSISTENT_OWNER_PROTECTION_PATH_INVALID');
-  }
-  try {
-    const result = spawnSync(
-      'powershell.exe',
-      [
-        '-NoLogo', '-NoProfile', '-NonInteractive', '-Command', OWNER_ACL_SCRIPT,
-        relativePath,
-      ],
-      {
-        stdio: 'ignore', timeout: OWNER_ACL_TIMEOUT_MS, windowsHide: true,
-        cwd: OWNER_ACL_WORKING_DIRECTORY,
-        env: { ...process.env, PSModulePath: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\Modules' },
-      },
-    );
-    if (result.error !== undefined || result.status !== 0 || result.signal !== null) {
-      fail('PERSISTENT_OWNER_PROTECTION_ACL_INVALID');
-    }
-  } catch {
-    fail('PERSISTENT_OWNER_PROTECTION_ACL_INVALID');
-  }
-}
-
-/** One concrete Windows ACL proof is shared by T03 and persistent Public secrets. */
-export function createPersistentPublicOwnerProtection(): PersistentProductionOwnerProtectionPort {
-  const assertOwnerProtected = (path: string): void => {
-    if (path !== T03_APPLE_CYCLING_AUTHORITY_RECORD_PATH) fail('PERSISTENT_OWNER_PROTECTION_PATH_INVALID');
-    assertWindowsOwnerProtected(path);
-  };
-  const isOwnerProtected = (path: string): boolean => {
-    if (typeof path !== 'string' || !PERSISTENT_OWNER_PROTECTED_PATHS.has(path)) return false;
-    try {
-      assertWindowsOwnerProtected(path);
-      return true;
-    } catch {
-      return false;
-    }
-  };
-  return Object.freeze({ isOwnerProtected, assertOwnerProtected });
-}
-
 /** T03's record reader is fixed to the owner-governed canonical record path. */
-export function createPersistentT03AuthorityRecordReader(path = T03_APPLE_CYCLING_AUTHORITY_RECORD_PATH as string): T03AppleCyclingAuthorityRecordReader {
+export function createPersistentT03AuthorityRecordReader(path: string): T03AppleCyclingAuthorityRecordReader {
   return Object.freeze({
     path,
     read: () => {
@@ -490,15 +379,10 @@ export type WholeProductExecutionSelection = PersistentPublicExecutionSelection 
 
 /** Concrete owner factory seams for controlled source tests; production uses these exact defaults. */
 export interface WholeProductOwnerPorts {
-  readonly readPolicy: typeof readOwnerPolicy;
-  readonly readPostgresPassword: typeof readPostgresPassword;
-  readonly readLiveKit: typeof readLiveKitCredentials;
   readonly createPool: typeof createPostgresPool;
   readonly inspectPostgres: typeof inspectPostgres;
   readonly createSourceMedia: typeof createSourceMediaAuthority;
   readonly createFinalTranscript: typeof createFinalTranscriptEvidencePostgresBridge;
-  readonly createQwenSupervisor: () => QwenModelSupervisor;
-  readonly inspectQwen: typeof inspectQwen;
   readonly createPublicOwner: typeof createPersistentPublicControlOwnerHandoff;
 }
 
@@ -623,10 +507,6 @@ function readProtectedTextFile(
   }
 }
 
-function readPostgresPassword(): string {
-  return readTextFile(PG_PASSWORD_PATH, 'PERSISTENT_PG_PASSWORD_REF_INVALID');
-}
-
 function valueFromCredential(resolve: () => string): string {
   let value: string;
   try { value = resolve(); }
@@ -638,9 +518,9 @@ function valueFromCredential(resolve: () => string): string {
 }
 
 function readProxyAttestationSecret(
-  reader?: PersistentPublicSecretFileReader,
-  ownerProtection?: PersistentProductionOwnerProtectionPort,
-  path = PROXY_ATTESTATION_PATH as string,
+  reader: PersistentPublicSecretFileReader,
+  ownerProtection: PersistentProductionOwnerProtectionPort,
+  path: string,
 ): string {
   const value = reader !== undefined && ownerProtection !== undefined
     ? readProtectedTextFile(path, 'PERSISTENT_PROXY_ATTESTATION_REF_INVALID', reader, ownerProtection)
@@ -650,9 +530,9 @@ function readProxyAttestationSecret(
 }
 
 function readLiveKitCredentials(
-  reader?: PersistentPublicSecretFileReader,
-  ownerProtection?: PersistentProductionOwnerProtectionPort,
-  paths:PersistentPublicSecretPaths=PERSISTENT_PUBLIC_SECRET_PATHS,
+  reader: PersistentPublicSecretFileReader,
+  ownerProtection: PersistentProductionOwnerProtectionPort,
+  paths: PersistentPublicSecretPaths,
 ): SecretResolver {
   const read = reader !== undefined && ownerProtection !== undefined
     ? (path: string, code: string) => readProtectedTextFile(path, code, reader, ownerProtection)
@@ -669,7 +549,7 @@ function readLiveKitCredentials(
   });
 }
 
-function readOwnerPolicy(path = RAYNEO_LOCAL_OWNER_POLICY_PATH as string): RayneoLocalOwnerPolicy {
+function readOwnerPolicy(path: string): RayneoLocalOwnerPolicy {
   return parseConfiguredOwnerPolicy(JSON.parse(readTextFile(path, 'PERSISTENT_OWNER_POLICY_INVALID')));
 }
 
@@ -883,49 +763,6 @@ export async function createRayneoPersistentPublicControl(
     return closeFlight;
   };
   return Object.freeze({ controller: boundComposition.controller, composition: boundComposition, close });
-}
-
-function readQwenSupervisorAssets(): QwenModelSupervisorAssets {
-  let manifest: Record<string, unknown>;
-  try { manifest = JSON.parse(readFileSync(QWEN_RUNTIME_MANIFEST_PATH, 'utf8')) as Record<string, unknown>; }
-  catch (error) { fail('PERSISTENT_QWEN_MANIFEST_INVALID', error); }
-  const endpoints = manifest.endpoints as Record<string, unknown> | undefined;
-  const qwen = endpoints?.qwen as Record<string, unknown> | undefined;
-  const assets = qwen?.assets as Record<string, unknown> | undefined;
-  if (qwen === undefined || assets === undefined || qwen.origin !== QWEN38_ORCAROUTER_SUPERVISED_PROFILE.origin ||
-      qwen.model !== QWEN38_ORCAROUTER_SUPERVISED_PROFILE.model || qwen.contextTokens !== 262_144 ||
-      qwen.backendPort !== 15_811 || qwen.idleMs !== 2_700_000 || qwen.maxActiveRequests !== 3) {
-    fail('PERSISTENT_QWEN_MANIFEST_INVALID');
-  }
-  const value = (key: string): string => {
-    const item = assets[key];
-    if (typeof item !== 'string' || item.length === 0) fail('PERSISTENT_QWEN_MANIFEST_INVALID');
-    return item;
-  };
-  const size = (key: string): number => {
-    const item = assets[key];
-    if (!Number.isSafeInteger(item) || Number(item) < 1) fail('PERSISTENT_QWEN_MANIFEST_INVALID');
-    return Number(item);
-  };
-  return Object.freeze({
-    runtimeRoot: value('runtimeRoot'), runtimeRootBytes: size('runtimeRootBytes'), runtimeTreeSha256: value('runtimeTreeSha256'),
-    executablePath: value('executablePath'), executableBytes: size('executableBytes'), executableSha256: value('executableSha256'),
-    modelPath: value('modelPath'), modelBytes: size('modelBytes'), modelSha256: value('modelSha256'),
-    mmprojPath: value('mmprojPath'), mmprojBytes: size('mmprojBytes'), mmprojSha256: value('mmprojSha256'),
-    templatePath: value('templatePath'), templateBytes: size('templateBytes'), templateSha256: value('templateSha256'),
-    model: QWEN38_ORCAROUTER_SUPERVISED_PROFILE.model, contextTokens: 262_144,
-    frontOrigin: QWEN38_ORCAROUTER_SUPERVISED_PROFILE.origin, frontPort: 16_001, backendPort: 15_811,
-    idleMs: 2_700_000, maxActiveRequests: 3,
-  });
-}
-
-async function inspectQwen(profile: Qwen38LocalProviderProfile): Promise<boolean> {
-  const provider = new Qwen38ProviderAdapter(profile);
-  try {
-    const readiness = await provider.checkAvailability();
-    if (!readiness.ready) fail('PERSISTENT_QWEN_HEALTH_NOT_READY');
-    return true;
-  } finally { provider.close(); }
 }
 
 async function inspectPostgres(pool: { query: (sql: string) => Promise<unknown> }): Promise<boolean> {
@@ -1440,6 +1277,13 @@ export async function createPersistentPublicControlOwnerHandoff(
       }} : {}),
       ...(appearanceImages?{appearanceImages}:{}),
       ...(ownerMac?{ownerMac}:{}),
+      wechatPreviews:async(bearer,value)=>{
+        const paired=await readActivePairedDevice(input.pool,bearer.deviceId);
+        check(paired?.deviceType==='mac'&&paired.userId===bearer.principal&&value.device_id===paired.deviceId,'WECHAT_MAC_REQUIRED',403);
+        const execution=executionByDevice.get(paired.deviceId);
+        check(execution,'WECHAT_PREVIEWS_UNAVAILABLE',503);
+        return execution.assembly.runtime.wechatPreviews(paired.userId,paired.deviceId,value);
+      },
       place:{credential:(token,value)=>devices.place.credential(token,value),upload:async(token,batch)=>{
         const projection=await devices.place.resolve(createHash('sha256').update(token).digest('hex'));
         if(!projection || batch.device_id!==projection.deviceId)throw Object.assign(new Error('PLACE_CAPABILITY_INVALID'),{status:401});
@@ -1543,30 +1387,26 @@ export async function createRayneoPersistentProductionHandoff(
       (!selection.central || typeof selection.inputReadiness?.isReady !== 'function' ||
        !selection.inputReadiness.isReady())) fail('HERMES_INPUT_OWNER_NOT_READY');
   const ports: WholeProductOwnerPorts = {
-    readPolicy: readOwnerPolicy, readPostgresPassword, readLiveKit: readLiveKitCredentials,
     createPool: createPostgresPool, inspectPostgres, createSourceMedia: createSourceMediaAuthority,
     createFinalTranscript: createFinalTranscriptEvidencePostgresBridge,
-    createQwenSupervisor: () => createQwenModelSupervisor({assets: readQwenSupervisorAssets()}),
-    inspectQwen, createPublicOwner: createPersistentPublicControlOwnerHandoff, ...overrides,
+    createPublicOwner: createPersistentPublicControlOwnerHandoff, ...overrides,
   };
-  const productResources = selection.executionOwner === 'hermes_text'
-    ? createConfiguredProductResources(selection.product_resources!,cleanup) : undefined;
-  const ownerProtection = productResources?.ownerProtection ?? createPersistentPublicOwnerProtection();
-  const secretFileReader = productResources?.secretFileReader ?? createPersistentPublicSecretFileReader();
-  const policy = productResources?.policy ?? ports.readPolicy();
-  const postgresPassword = productResources?.postgresPassword ?? ports.readPostgresPassword();
-  const livekit = productResources?.livekit ?? ports.readLiveKit(secretFileReader, ownerProtection);
+  const productResources = createConfiguredProductResources(selection.product_resources!,cleanup);
+  const ownerProtection = productResources.ownerProtection;
+  const secretFileReader = productResources.secretFileReader;
+  const policy = productResources.policy;
+  const postgresPassword = productResources.postgresPassword;
+  const livekit = productResources.livekit;
   let pool: ReturnType<typeof createPostgresPool> | undefined;
   let sourceMedia: SourceMediaAuthorityPort | undefined;
   let publicControl: RayneoPersistentPublicControlOwnerHandoff | undefined;
   let owner: Phase0SharedSessionOwner | undefined;
-  let qwenSupervisor: QwenModelSupervisor | undefined;
   try {
     pool = ports.createPool({
-      host: productResources?.configuration.postgres.host ?? PG_HOST,
-      port: productResources?.configuration.postgres.port ?? PG_PORT,
-      database: productResources?.configuration.postgres.database ?? PG_DATABASE,
-      user: productResources?.configuration.postgres.user ?? PG_USER,
+      host: productResources.configuration.postgres.host,
+      port: productResources.configuration.postgres.port,
+      database: productResources.configuration.postgres.database,
+      user: productResources.configuration.postgres.user,
       password: postgresPassword,
       max: 4,
       applicationName: 'paios-rayneo-persistent-gateway',
@@ -1580,7 +1420,7 @@ export async function createRayneoPersistentProductionHandoff(
       publicControl = await ports.createPublicOwner({
         pool, postgresReadiness: productionReadiness('T02.postgres', postgresReady),
         postgresPassword, identity, livekit, ownerProtection, secretFileReader, policy,
-        ...(productResources ? {productResources} : {}),
+        productResources,
         // The historical preflight field is an input-owner port, not transcript evidence.
         inputReadiness: selection.inputReadiness!,
         executionOwner: 'hermes_text', central: l3 ? {...selection.central, l3} : selection.central,
@@ -1592,11 +1432,11 @@ export async function createRayneoPersistentProductionHandoff(
       return Object.freeze({publicControl, launcherInput: Object.freeze({
         executionOwner: 'hermes_text' as const, owner, pool,
         environment: Object.freeze({PAIOS_DEMO_ROAMING: '1', PAIOS_GATE_A_LOCAL_DEVICE: '1',
-          PAIOS_RAYNEO_LIVEKIT_URL: productResources!.configuration.livekit_url,
-          PAIOS_GATEWAY_OWNER_HOST: `127.0.0.1:${productResources?.configuration.gateway_port ?? GATEWAY_PORT}`,
-          ...(productResources?.configuration.public_api_url ? {PAIOS_PUBLIC_API_URL: productResources.configuration.public_api_url} : {}),
+          PAIOS_RAYNEO_LIVEKIT_URL: productResources.configuration.livekit_url,
+          PAIOS_GATEWAY_OWNER_HOST: `127.0.0.1:${productResources.configuration.gateway_port ?? GATEWAY_PORT}`,
+          ...(productResources.configuration.public_api_url ? {PAIOS_PUBLIC_API_URL: productResources.configuration.public_api_url} : {}),
           PAIOS_RAYNEO_PROXY_ATTESTATION_SECRET: livekit.proxyAttestationSecret}),
-        pairingRegistry: new RayneoPairingRegistry({path:productResources!.configuration.pairing_file}), inputReadiness: selection.inputReadiness!,
+        pairingRegistry: new RayneoPairingRegistry({path:productResources.configuration.pairing_file}), inputReadiness: selection.inputReadiness!,
       })});
   } catch (error) {
     await publicControl?.centralTextAssembly?.close().catch(() => undefined);
@@ -1604,7 +1444,6 @@ export async function createRayneoPersistentProductionHandoff(
     await publicControl?.persistentPublicPorts?.close().catch(() => undefined);
     await publicControl?.t02.publicControl.prebuiltT02Bundle.close().catch(() => undefined);
     await publicControl?.t03?.close().catch(() => undefined);
-    await qwenSupervisor?.close().catch(() => undefined);
     await owner?.close().catch(() => undefined);
     await sourceMedia?.close().catch(() => undefined);
     await pool?.end().catch(() => undefined);
@@ -1860,6 +1699,7 @@ export function createConfiguredProductResources(configuration: ProductResourceC
 }
 
 export interface HermesProductConfiguration extends CentralProvisionConfiguration {
+  capability_packages?:import('../../../services/personal-aios-integration/src/capability/packages.ts').PackageSelection;
   timeline?:Omit<import('../../../services/personal-aios-integration/src/timeline.ts').TimelineOptions,'directory'|'queue'|'now'>;
   executionOwner: 'hermes_text';
   desktop?:{enabled?:boolean;relay?:Partial<import('./desktop-relay.ts').DesktopConfig['relay']>;files?:Partial<import('./desktop-relay.ts').DesktopConfig['files']>;queue?:import('../../../services/personal-aios-integration/src/timeline.ts').TimelineOptions['queue']};
@@ -1874,7 +1714,7 @@ export interface HermesProductConfiguration extends CentralProvisionConfiguratio
     continuous?: {budget: import('../../../services/personal-aios-integration/src/media/continuous-source.ts').ContinuousBudget}};
 }
 const HERMES_PRODUCT_CONFIGURATION_FIELDS = Object.freeze({
-  ...CENTRAL_PROVISION_CONFIGURATION_FIELDS, executionOwner:true, product_resources:true, l3:false, pcm:false,timeline:false,desktop:false,
+  ...CENTRAL_PROVISION_CONFIGURATION_FIELDS, executionOwner:true, product_resources:true, l3:false, pcm:false,timeline:false,desktop:false,capability_packages:false,
 } satisfies {[K in keyof HermesProductConfiguration]-?: {} extends Pick<HermesProductConfiguration,K> ? false : true});
 export function configuredPcm(pcm: HermesProductConfiguration['pcm']) {
   if (pcm === undefined) return undefined;
@@ -1925,15 +1765,14 @@ export async function startConfiguredHermesProduct(config: HermesProductConfigur
   let handle: RayneoPersistentProductionHandle | undefined;
   let stopped = false;
   try {
-    // Construct the actual NativeClient before claiming configured-resource readiness.
+    // Settings, pairing and resume must remain available while inference is unavailable.
+    // NativeClient reports model transport failures at request time; input readiness owns ING/D/L4.
     const native = provision.native;
-    const nativeReady = await native.ready(config.max_request_bytes);
-    check(nativeReady, 'HERMES_NATIVE_API_NOT_READY', 503);
     handoff = await ports.createHandoff({executionOwner: 'hermes_text', central: {...provision.resources,desktop:config.desktop,...(config.timeline?.enabled!==false&&config.timeline?{timeline:{...config.timeline,directory:resolve(config.storage_root,'timeline'),...(config.desktop?.queue?{queue:config.desktop.queue}:{})}}:{})}, product_resources:config.product_resources,viduCleanup,
       ...(pcm ? {pcm} : {}),
       ...(config.l3 ? {l3: config.l3} : {}),
-      inputReadiness: {owner: 'configured-central-and-native-api-not-model-acceptance',
-        isReady: () => !stopped && nativeReady && provision.resources.native === native}});
+      inputReadiness: {owner: 'configured-central-inputs-model-independent',
+        isReady: () => !stopped && provision.resources.native === native}});
     handle = await ports.start(handoff.launcherInput, {executionOwner: 'hermes_text',
       publicControl: handoff.publicControl, centralListenPort: provision.port,
       gatewayBinding: {host: config.product_resources.gateway_host ?? LOOPBACK_HOST, port: config.product_resources.gateway_port ?? GATEWAY_PORT}});

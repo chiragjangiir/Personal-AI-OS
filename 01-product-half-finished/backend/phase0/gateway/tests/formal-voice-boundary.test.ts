@@ -36,7 +36,8 @@ function fixture() {
     sameRef:(a,b)=>canonical(a)===canonical(b),now:()=>Date.parse(now),resolveSource:async()=>({device_type:'phone',channel:'rtc_typed_text',consent_ref:'submit-consent',route_version:route,output_modes:['text','voice']})});
   return {input,current,authority,setRoute:(value:string)=>{route=value;},setFail:()=>{fail=true;}};
 }
-async function eventually(predicate:()=>boolean|Promise<boolean>){for(let i=0;i<200;i++){if(await predicate())return;await new Promise(resolve=>setTimeout(resolve,5));}throw new Error('TEST_TIMEOUT');}
+// Wait for durable asynchronous boundaries within the enclosing test's timeout.
+async function eventually(predicate:()=>boolean|Promise<boolean>){const deadline=performance.now()+5000;while(performance.now()<deadline){if(await predicate())return;await new Promise(resolve=>setTimeout(resolve,5));}throw new Error('TEST_TIMEOUT');}
 
 import { inspectWav } from '../../../services/personal-aios-integration/src/tts.ts';
 import { createAppleCyclingTypedSourceResolver } from '../src/personal-aios-formal-source.ts';
@@ -75,7 +76,7 @@ async function voiceFixture(t:test.TestContext,options:{failFirst?:boolean;block
   await runtime.tool('paios_open_reply',{context:{run_id:'voice-native-1',session_id:'continuity',tool_call_id:'voice-open'},args:{reply_mode:options.mode??'text_and_voice'}});
   runs.get('voice-native-1')!.status='completed';runs.get('voice-native-1')!.output='原回复🔬';
   send({operation:'result',processed_event_id:accepted.processed_event_id});
-  try { await eventually(()=>syntheses===1 && (options.mode==='voice' || packets.some(x=>x.operation==='text_chunk'))); } catch(error) { t.diagnostic(JSON.stringify({packets,errors:errors.map(String),syntheses}));throw error; }
+  try { await eventually(()=>syntheses===1 && packets.some(x=>x.operation==='result_header') && (options.mode==='voice' || packets.some(x=>x.operation==='text_chunk'))); } catch(error) { t.diagnostic(JSON.stringify({packets,errors:errors.map(String),syntheses}));throw error; }
   assert.equal(streams.length,0,'text is available before TTS settles');
   const header=packets.find(x=>x.operation==='result_header'),chunks=packets.filter(x=>x.operation==='text_chunk');
   assert.equal(header.reply_mode,options.mode??'text_and_voice');assert.equal(chunks.map(x=>x.chunk.text).join(''),options.mode==='voice'?'':'原回复🔬');

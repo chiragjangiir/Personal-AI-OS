@@ -36,6 +36,7 @@ def execution(request, home, monkeypatch, schemas, gate):
     cloud.initialize(home, INTEGRATION, PRODUCT_CONFIG)
     config = load(home)
     token = set_hermes_home_override(home)
+    monkeypatch.syspath_prepend(str(INTEGRATION.parent))
     registrations = []
 
     def register_tool(name, toolset, schema, handler, **kwargs):
@@ -47,6 +48,9 @@ def execution(request, home, monkeypatch, schemas, gate):
     try:
         effects.register(SimpleNamespace(register_tool=register_tool, register_hook=lambda *args: None,
                                          register_middleware=lambda *args: None), gate.provider)
+        from personal_aios.owner_mac_tools import register as register_owner_mac
+        monkeypatch.setattr(gate.provider, 'owner_mac_enabled', 'owner_mac' in config['mcp_servers'], raising=False)
+        register_owner_mac(SimpleNamespace(register_tool=register_tool, register_hook=lambda *args: None), gate.provider)
         parent = SimpleNamespace(_paios_delegate_toolsets=config['personal_aios']['delegated_toolsets'],
             enabled_toolsets=config['platform_toolsets']['api_server'],
             disabled_toolsets=config['agent'].get('disabled_toolsets', []))

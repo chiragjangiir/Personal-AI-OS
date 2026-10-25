@@ -12,9 +12,17 @@ final class WatchRideFiguresTests: XCTestCase {
             elapsedS: elapsed, cadenceSPM: nil, cyclingSpeedMPS: speed, heartRateSampleAt: heart == nil ? nil : now.addingTimeInterval(-heartAge),
             cadenceSampleAt: nil, cyclingSpeedSampleAt: speed == nil ? nil : now.addingTimeInterval(-speedAge))
     }
-    private func phone(workout: String? = "live-1", ended: Bool = false, speed: Double? = 30, hr: Double? = 150, elev: Double? = nil) -> WatchYimiRideMetrics {
-        WatchYimiRideMetrics(ride_id: "ride-1", workout_id: workout, ended: ended, speed_kmh: speed, avg_kmh: 22, max_kmh: 41, distance_m: 5_000,
-                             elapsed_s: 700, moving_s: 650, hr_bpm: hr, hr_avg: 140, hr_max: 175, kcal: 120, elev_gain_m: elev)
+    private func phone(workout: String? = "live-1", ended: Bool = false, speed: Double? = 30, hr: Double? = 150,
+                       elev: Double? = nil, sampleAge: TimeInterval? = 1) -> WatchYimiRideMetrics {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let at = sampleAge.map { formatter.string(from: now.addingTimeInterval(-$0)) }
+        return WatchYimiRideMetrics(ride_id: "ride-1", workout_id: workout, ended: ended, speed_kmh: speed, avg_kmh: 22, max_kmh: 41, distance_m: 5_000,
+                             elapsed_s: 700, moving_s: 650, hr_bpm: hr, hr_avg: 140, hr_max: 175, kcal: 120, elev_gain_m: elev,
+                             hr_sample_at: at, speed_sample_at: at)
+    }
+    private func feedback(_ metrics: WatchYimiRideMetrics?, text: String? = nil) -> WatchYimiRide? {
+        metrics.map { .init(hr_zone: nil, text: text, max_hr_bpm: nil, metrics: $0) }
     }
     private func live(_ metrics: WatchYimiRideMetrics?, receivedAgo: TimeInterval? = 1, local snapshot: WatchCyclingMetricSnapshot?, elapsed: Double? = 612) -> WatchRideFigures {
         .live(phone: metrics, phoneAt: receivedAgo.map { now.addingTimeInterval(-$0) }, local: snapshot, elapsed: elapsed, now: now)
@@ -42,6 +50,23 @@ final class WatchRideFiguresTests: XCTestCase {
         XCTAssertEqual(live(phone(speed: 36), local: local(speed: 7)).speedMPS, 10)
     }
 
+    func testNewPhoneRelayDoesNotRenewOldUndatedOrFutureSensorSamples() {
+        for age: TimeInterval? in [5.001, nil, -1] {
+            let figures = live(phone(sampleAge: age), receivedAgo: 0, local: local(speed: 7, heart: 141))
+            XCTAssertTrue(figures.phoneCurrent)
+            XCTAssertEqual(figures.distanceM, 5_000)
+            XCTAssertEqual(figures.speedMPS, 7); XCTAssertEqual(figures.heartRate, 141)
+            XCTAssertFalse(figures.phoneHeartCurrent)
+            XCTAssertEqual(figures.sensorsExpireAt, now.addingTimeInterval(4))
+            let unavailable = live(phone(sampleAge: age), local: local(distance: nil))
+            XCTAssertNil(unavailable.speedMPS); XCTAssertNil(unavailable.heartRate)
+            XCTAssertNil(unavailable.sensorsExpireAt)
+        }
+        let boundary = live(phone(sampleAge: 5), local: local())
+        XCTAssertEqual(boundary.heartRate, 150); XCTAssertTrue(boundary.phoneHeartCurrent)
+        XCTAssertEqual(boundary.sensorsExpireAt, now)
+    }
+
     func testPhoneFiguresNotCurrentOrNotForThisWorkoutAreIgnored() {
         XCTAssertFalse(live(phone(), receivedAgo: 10.1, local: local()).phoneCurrent)
         XCTAssertTrue(live(phone(), receivedAgo: 10, local: local()).phoneCurrent)
@@ -65,17 +90,29 @@ final class WatchRideFiguresTests: XCTestCase {
 
     func testSummaryUsesPhoneTotalsForThisWorkoutElseTheSavedWorkout() throws {
         let saved = WatchRideSummary(workoutID: "live-1", distanceM: 30_000, durationS: 3_600, kcal: 800, hrAvg: nil, hrMax: nil, maxKMH: nil, elevationM: 120)
-        let fromPhone = WatchRideSummaryFigures.resolve(phone: phone(ended: true, elev: 186), local: saved)
+        let fromPhone = WatchRideSummaryFigures.resolve(phone: feedback(phone(ended: true, elev: 186)), local: saved)
         XCTAssertEqual(fromPhone.avgKMH, 22); XCTAssertEqual(fromPhone.maxKMH, 41); XCTAssertEqual(fromPhone.timeS, 650)
         XCTAssertEqual(fromPhone.elevationM, 186); XCTAssertEqual(fromPhone.hrMax, 175)
-        XCTAssertEqual(WatchRideSummaryFigures.resolve(phone: phone(ended: true), local: saved).elevationM, 120)
+        XCTAssertEqual(WatchRideSummaryFigures.resolve(phone: feedback(phone(ended: true)), local: saved).elevationM, 120)
         for unusable in [nil, phone(ended: false), phone(workout: "another", ended: true)] {
-            let alone = WatchRideSummaryFigures.resolve(phone: unusable, local: saved)
+            let alone = WatchRideSummaryFigures.resolve(phone: feedback(unusable), local: saved)
             XCTAssertEqual(alone.distanceM, 30_000); XCTAssertEqual(alone.timeS, 3_600); XCTAssertEqual(alone.elevationM, 120)
             XCTAssertEqual(alone.kcal, 800)
             XCTAssertEqual(try XCTUnwrap(alone.avgKMH), 30, accuracy: 0.001)
             XCTAssertNil(alone.maxKMH); XCTAssertNil(alone.hrAvg)
         }
+    }
+
+    func testSummaryCommentaryWaitsForThisWorkoutsEndedProjection() {
+        let saved = WatchRideSummary(workoutID: "live-1", distanceM: 30_000, durationS: 3_600, kcal: 800,
+                                     hrAvg: nil, hrMax: nil, maxKMH: nil, elevationM: nil)
+        for metrics in [nil, phone(ended: false), phone(workout: "previous", ended: true)] {
+            let figures = WatchRideSummaryFigures.resolve(phone: feedback(metrics, text: "上一趟的点评"), local: saved)
+            XCTAssertNil(figures.commentary)
+            XCTAssertEqual(figures.distanceM, 30_000)
+        }
+        let figures = WatchRideSummaryFigures.resolve(phone: feedback(phone(ended: true), text: "这次骑行完成了"), local: saved)
+        XCTAssertEqual(figures.commentary, "这次骑行完成了")
     }
 
     func testSavedWorkoutSuppliesDurationAndClimbOnlyWhenRecorded() {

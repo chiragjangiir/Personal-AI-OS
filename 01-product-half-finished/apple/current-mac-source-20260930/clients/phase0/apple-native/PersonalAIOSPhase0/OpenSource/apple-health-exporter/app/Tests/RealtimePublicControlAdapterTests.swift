@@ -2018,6 +2018,60 @@ final class RealtimePublicControlAdapterTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: input.path))
     }
 
+    func testUpgradeLoadsMigratedPairingWithoutUsingNewBuildEndpoints() async throws {
+        // Persisted migration routes follow the packaged endpoint configuration.
+        let previousOrigin = RealtimeAPIOriginMigration.legacyOrigin
+        let pairedOrigin = RealtimeAPIOriginMigration.canonicalOrigin
+        for successes in [1, 2] {
+            RealtimeURLProtocolSpy.reset()
+            let saved = try pairingData {
+                $0["origin"] = pairedOrigin
+                $0["anchor_origin"] = previousOrigin
+                $0["fallback_origin"] = previousOrigin
+                $0["canonical_successes"] = successes
+            }
+            let store = RealtimeTestPairingStore()
+            try store.replacePairingData(saved)
+            let bodyProvider = PairedRealtimeRequestBodyProvider(store: store)
+            XCTAssertTrue(bodyProvider.isReady, "An upgrade keeps the installed pairing")
+            let configuration = URLSessionConfiguration.ephemeral
+            configuration.protocolClasses = [RealtimeURLProtocolSpy.self]
+            let provider = ProductionRealtimePublicControlProvider(
+                settingsStore: RealtimeTestSettingsStore(settings: AppSettings(endpoint: previousOrigin)),
+                credentialStore: PairedRealtimeCredentialStore(store: store),
+                canonicalBodyProvider: bodyProvider,
+                session: URLSession(configuration: configuration))
+            RealtimeURLProtocolSpy.handler = { [self] request in
+                response(for: request, body: fixture("bootstrap-response.valid.json"))
+            }
+            _ = try await provider.bootstrap(for: AssistantStartIntent(userInitiated: true))
+            let request = try XCTUnwrap(RealtimeURLProtocolSpy.observations.first)
+            XCTAssertEqual(request.absoluteURL, pairedOrigin + RealtimePublicControlOperation.bootstrap.path)
+            XCTAssertEqual(request.authorization, "Bearer " + (try RealtimeDevicePairing.decode(saved)).token)
+            XCTAssertEqual(RealtimeURLProtocolSpy.requestCount, 1)
+            XCTAssertEqual(store.data, saved, "Connecting never resets or re-pairs the installed owner")
+        }
+    }
+
+    func testUpgradeRejectsIncompleteOrInvalidPersistedMigrationRoutes() throws {
+        let mutations: [(inout [String: Any]) -> Void] = [
+            { $0["anchor_origin"] = "http://previous-release.example" },
+            { $0["fallback_origin"] = "https://unrelated.example" },
+            { $0.removeValue(forKey: "anchor_origin") },
+            { $0["canonical_successes"] = 0 },
+            { $0["canonical_successes"] = 3 }
+        ]
+        for mutate in mutations {
+            XCTAssertThrowsError(try RealtimeDevicePairing.decode(pairingData {
+                $0["origin"] = "https://paired-release.example:9443"
+                $0["anchor_origin"] = "https://previous-release.example"
+                $0["fallback_origin"] = "https://previous-release.example"
+                $0["canonical_successes"] = 2
+                mutate(&$0)
+            }))
+        }
+    }
+
     func testOriginMigrationKeepsHealthIdentityAndOriginalArtifactCannotUndoIt() throws {
         let original = try pairingData()
         let pairing = try RealtimeDevicePairing.decode(original)
@@ -4245,6 +4299,7 @@ extension RealtimePublicControlAdapterTests {
                     "pair_state": ["pair_version": "1", "status": "active", "requires_rebind": false], "binding": formal]))
             }
             XCTAssertEqual(request.url?.path, "/v1/realtime/watch-binding/credential")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "application/json")
             XCTAssertEqual(preparation.values.last!?.scope, WatchBindingScope(
                 watch_device_id: (formal["watch"] as! [String: Any])["deviceId"] as! String, pair_version: "1"))
             let pairing = try RealtimeDevicePairing.decode(pairingData())

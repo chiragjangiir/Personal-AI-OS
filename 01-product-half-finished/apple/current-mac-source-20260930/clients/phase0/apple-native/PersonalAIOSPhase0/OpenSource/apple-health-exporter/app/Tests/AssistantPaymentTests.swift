@@ -221,7 +221,7 @@ final class AssistantPaymentTests: XCTestCase {
         let formal = try contract("formal-message.v1").1
         let entries = try XCTUnwrap(formal["extensions"] as? [[String: Any]])
         XCTAssertEqual(entries.compactMap { $0["contract"] as? String }, ["payment-message.v1.json", "terminal-message.v1.json",
-            "owner-override-message.v1.json", "call-avatar.v1.json", "appearance-message.v1.json"])
+            "owner-override-message.v1.json", "call-avatar.v1.json", "appearance-message.v1.json", "model-settings.v1.json"])
         let terminal = try contract("terminal-message.v1").1
         let groups = try XCTUnwrap(terminal["examples"] as? [String: Any])
         let examples = try XCTUnwrap(groups["outputs"] as? [String: [[String: Any]]])

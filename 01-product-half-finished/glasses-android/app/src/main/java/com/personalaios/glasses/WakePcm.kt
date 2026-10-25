@@ -17,7 +17,7 @@ internal fun wakeCaptureSamples(audio: ByteBuffer, muted: Boolean): ByteBuffer =
 
 /** One SDK tap, one ordered wake-call stream. Pending PCM (including the sending head) never exceeds five seconds. */
 internal class WakePcm(private val available: () -> Unit, private val overflow: (String) -> Unit,
-    private val wallMs: () -> Long = System::currentTimeMillis,
+    private val wallMs: () -> Long = ServerClock.shared::nowMillis,
     private val elapsedMs: () -> Long = SystemClock::elapsedRealtime) : AudioTrackSink {
     data class Packet(val callId: String, val seq: Long, val capturedAtMs: Long, val pcm: ByteArray) {
         fun message(): JSONObject = JSONObject().put("operation", "call_pcm").put("call_id", callId).put("seq", seq)

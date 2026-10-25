@@ -25,29 +25,49 @@ data class HudState(val status: String = "配置连接", val cards: List<HudCard
     val avatarPhase: String = "Off", val recording: Boolean = false,
     val conversation: CallConversation? = null, val conversationPending: CallModeRequest? = null, val conversationError: String? = null,
     val avatar: AvatarPortrait? = null, val ambientConfirmation: Boolean = false,
-    val activities: List<ActivityCard> = emptyList(),
+    val activities: List<ActivityCard> = emptyList(), val legacyProgressCovered: Boolean = false,
     val microphoneApplied: Microphone? = null, val ambientRequestedAt: Long = 0L, val ambientError: String? = null)
 
 class HudCards(private val deviceId: String, val replies: FormalReplies = FormalReplies(deviceId),
-    private val monotonic: () -> Long = android.os.SystemClock::elapsedRealtime) {
+    private val monotonic: () -> Long = android.os.SystemClock::elapsedRealtime,
+    private val wireNow: () -> Long = ServerClock.shared::nowMillis) {
     private val activities = linkedMapOf<String, ActivityCard>()
-    fun activities() = activities.values.toList()
+    // Replay identity survives presentation retirement until this inbox's scope is cleared.
+    private val retiredActivityRevisions = mutableMapOf<String, Long>()
+    private val activityProcessedIds = mutableSetOf<String>()
+    fun activities(): List<ActivityCard> {
+        val now = monotonic()
+        val entries = activities.entries.iterator()
+        while (entries.hasNext()) {
+            val card = entries.next().value
+            if (card.phase != ActivityPhase.running && card.alpha(now) == 0f) {
+                retiredActivityRevisions[card.id] = card.revision
+                entries.remove()
+            }
+        }
+        return activities.values.toList()
+    }
+    fun legacyProgressCovered(card: HudCard? = cards.values.lastOrNull { it.progress != null }): Boolean =
+        card?.ack?.optString("processed_event_id") in activityProcessedIds
     private val cards = linkedMapOf<String, HudCard>()
     private val captions = linkedMapOf<String, HudCaption>()
     private var payment: PaymentNotice? = null
     var accepted: JSONObject? = null
         private set
     fun captions() = captions.values.toList()
-    fun payment(now: Long = System.currentTimeMillis()) = payment?.takeIf { it.until > now }
+    fun payment(now: Long = monotonicMillis()) = payment?.takeIf { it.until > now }
     fun clearPayment() { payment = null }
 
-    fun accept(message: JSONObject, now: Long = System.currentTimeMillis()): List<HudCard> {
+    fun accept(message: JSONObject, now: Long = monotonicMillis()): List<HudCard> {
         snapshot(now)
         accepted = null
         when (message.getString("operation")) {
             "activity_update" -> {
+                activities()
                 val next = ActivityCard.from(message, monotonic())
-                if (next.revision > (activities[next.id]?.revision ?: -1)) {
+                if (next.revision > (activities[next.id]?.revision ?: retiredActivityRevisions[next.id] ?: -1)) {
+                    retiredActivityRevisions.remove(next.id)
+                    activityProcessedIds.add(next.processedEventId)
                     activities.remove(next.id)
                     activities[next.id] = next
                 }
@@ -85,7 +105,7 @@ class HudCards(private val deviceId: String, val replies: FormalReplies = Formal
                     while (captions.size > 8) captions.remove(captions.keys.first())
                     return snapshot(now)
                 }
-                val update = if (delivery != null) replies.accept(message, now).lastOrNull() ?: return snapshot(now) else null
+                val update = if (delivery != null) replies.accept(message, wireNow()).lastOrNull() ?: return snapshot(now) else null
                 val card = HudCard(id, title, lines, priority,
                     now + message.getLong("lifetime_ms"), progress = progress, actions = actions, ack = update?.cardAck,
                     startedAt = cards[id]?.startedAt ?: now)
@@ -93,7 +113,7 @@ class HudCards(private val deviceId: String, val replies: FormalReplies = Formal
                 put(card)
             }
             "accepted", "result_header", "ack_receipt" -> {
-                replies.accept(message, now).forEach { update ->
+                replies.accept(message, wireNow()).forEach { update ->
                     if (update.reset) cards.values.filter { it.ack?.optString("processed_event_id") == update.id }
                         .forEach { cards.remove(it.id) }
                 }
@@ -101,15 +121,15 @@ class HudCards(private val deviceId: String, val replies: FormalReplies = Formal
         }
         return snapshot(now)
     }
-    fun callFailure(text: String, now: Long = System.currentTimeMillis()): List<HudCard> {
+    fun callFailure(text: String, now: Long = monotonicMillis()): List<HudCard> {
         put(HudCard("call-failure", "", listOf(text), 2, now + 5000, startedAt = now))
         return snapshot(now)
     }
-    fun notice(now: Long = System.currentTimeMillis(), text: String = "这次请求未完成，请再试一次", priority: Int = 1): List<HudCard> {
+    fun notice(now: Long = monotonicMillis(), text: String = "这次请求未完成，请再试一次", priority: Int = 1): List<HudCard> {
         put(HudCard("request-notice", "", listOf(text), priority, now + 5000, startedAt = now))
         return snapshot(now)
     }
-    fun snapshot(now: Long = System.currentTimeMillis()): List<HudCard> {
+    fun snapshot(now: Long = monotonicMillis()): List<HudCard> {
         cards.values.filter { it.expiresAt <= now }.forEach {
             cards.remove(it.id)
         }
@@ -121,9 +141,10 @@ class HudCards(private val deviceId: String, val replies: FormalReplies = Formal
         cards[card.id] = card
         while (cards.size > 32) cards.remove(cards.keys.first())
     }
-    fun action(cardId: String, actionId: String, now: Long = System.currentTimeMillis()): JSONObject? =
+    fun action(cardId: String, actionId: String, now: Long = monotonicMillis()): JSONObject? =
         cards[cardId]?.takeIf { it.expiresAt > now }?.actions?.firstOrNull { it.id == actionId }?.command
     fun consume(id: String) { cards.remove(id) }
     fun clearInteractions() { cards.values.filter { it.actions.isNotEmpty() }.forEach { cards.remove(it.id) } }
-    fun clear() { activities.clear(); cards.clear(); captions.clear(); replies.clear(); payment = null; accepted = null }
+    fun clear() { activities.clear(); retiredActivityRevisions.clear(); activityProcessedIds.clear()
+        cards.clear(); captions.clear(); replies.clear(); payment = null; accepted = null }
 }

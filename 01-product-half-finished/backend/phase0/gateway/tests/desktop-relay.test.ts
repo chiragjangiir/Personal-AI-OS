@@ -32,7 +32,7 @@ const errorCode=(result:unknown)=>(result as {structuredContent?:{error?:{code?:
 const settle=async()=>{for(let n=0;n<20;n++)await new Promise<void>(resolve=>setImmediate(resolve));};
 async function eventually(check:()=>boolean){for(let n=0;n<400;n++){if(check())return;await new Promise<void>(resolve=>setTimeout(resolve,5));}assert.fail('desktop condition did not arrive');}
 type MacHandler=(request:CallToolRequest,extra:{requestId:string|number;signal:AbortSignal},server:Server)=>Promise<CallToolResult>;
-async function fixture(t:test.TestContext,settings:{analyzeVision?:HermesClient['analyzeVision'];owner?:boolean;onManifest?:()=>void;runtime?:Pick<PersonalAIOSRuntime,'terminals'|'desktopReady'>;mismatch?:boolean;config?:unknown;handler?:MacHandler;prepareDownload?:Awaited<ReturnType<typeof createDesktopFiles>>['prepareDownload']}={}) {
+async function fixture(t:test.TestContext,settings:{analyzeVision?:HermesClient['analyzeVision'];owner?:boolean;onManifest?:()=>void;runtime?:Pick<PersonalAIOSRuntime,'terminals'|'desktopReady'>;mismatch?:boolean;config?:unknown;capability?:boolean;handler?:MacHandler;prepareDownload?:Awaited<ReturnType<typeof createDesktopFiles>>['prepareDownload']}={}) {
   const root=await fs.mkdtemp(join(tmpdir(),'desktop-relay-')),errors:unknown[]=[],clients:Client[]=[],stops:(()=>void)[]=[],macServers:Server[]=[];
   const rows=['phone','mac','mac-two'].map(id=>({device_id:id,user_id:'owner',device_class:id==='phone'?'iphone':'mac',status:'active',paired_at:at,label:id,
     recipient_public_key:'pk',device_credential_ref:{},media:['data'],governance:{terminal_capabilities:id==='phone'?PHONE_CAPABILITIES:MAC_CAPABILITIES}}));
@@ -51,7 +51,7 @@ async function fixture(t:test.TestContext,settings:{analyzeVision?:HermesClient[
     readCurrentBinding:async()=>undefined,deviceId:'phone',participant:{roomPort:new Room()} as never,onError:error=>errors.push(error)}):undefined;
   const files=await createDesktopFiles({...config.files,inbox:join(root,'inbox'),workshop:join(root,'workshop'),onError:error=>errors.push(error)});
   // Register the real relay after the owner has built its HTTP server, with isolated transfer directories.
-  const relay=(await createDesktopRelay({config:settings.config??{},analyzeVision:settings.analyzeVision??(async()=>assert.fail('Unexpected vision call')),runtime,sources:{revalidate:async device=>{if(rows.find(row=>row.device_id===device.device_id)?.status!=='active')throw Object.assign(new Error('PAIRED_DEVICE_REVOKED'),{status:403});return device;}},pool:pool as never,http,onError:error=>errors.push(error),files:settings.prepareDownload?{...files,prepareDownload:settings.prepareDownload}:files}))!;
+  const relay=(await createDesktopRelay({config:settings.config??{},...(settings.capability?{capabilityCatalog:new Set(['mcp__desktop__list_allowed_directories'])}:{}),analyzeVision:settings.analyzeVision??(async()=>assert.fail('Unexpected vision call')),runtime,sources:{revalidate:async device=>{if(rows.find(row=>row.device_id===device.device_id)?.status!=='active')throw Object.assign(new Error('PAIRED_DEVICE_REVOKED'),{status:403});return device;}},pool:pool as never,http,onError:error=>errors.push(error),files:settings.prepareDownload?{...files,prepareDownload:settings.prepareDownload}:files}))!;
   const listener=owner?.assembly.server??createPersonalAIOSServer(runtime as never,http);await new Promise<void>(resolve=>listener.listen(0,'127.0.0.1',resolve));
   const address=listener.address();assert.ok(address&&typeof address!=='string');const url=new URL(`http://127.0.0.1:${address.port}/internal/desktop/mcp`);
   const connect=async()=>{const client=new Client({name:'hermes-fixture',version:'1'},{capabilities:{elicitation:{form:{}}}}),transport=new StreamableHTTPClientTransport(url,{requestInit:{headers:{authorization:`Bearer ${token}`}}});
@@ -230,6 +230,47 @@ test('synthetic per-file grant traverses real HTTP relay and bounded file receiv
   assert.equal(errorCode(await call('upload_to_workshop')),'GUARD_PATH_NOT_AUTHORIZED');
   assert.deepEqual((await fs.readdir(join(sim.root,'inbox'))).filter(name=>name.startsWith('dt-')),[receipt.transfer_id]);
   assert.deepEqual(f.errors,[]);
+});
+
+test('desktop package receipts wrap the real HTTP relay without changing the Mac wire',{timeout:10000},async t=>{
+  const f=await fixture(t,{capability:true,handler:async()=>({content:[{type:'text',text:'正文'}],structuredContent:{text:'正文'}})}),mac=await f.attachMac();
+  const listed=await f.client.listTools();
+  assert.equal((listed.tools[0]!.inputSchema.properties!.owner_requested as any).type,'boolean');
+  const result=await f.client.callTool({name:'read_text_file',arguments:{path:'/granted/report.txt',owner_requested:true}});
+  assert.equal((result.structuredContent as any).status.state,'succeeded');
+  assert.equal((result.structuredContent as any).content[0].text,'正文');
+  assert.equal((result.content as unknown[]).length,1);
+  assert.deepEqual(mac.calls[0]!.request.params.arguments,{path:'/granted/report.txt'});
+  mac.stop();
+  const offline=await f.client.callTool({name:'read_text_file',arguments:{path:'/granted/report.txt'}});
+  assert.equal((offline.structuredContent as any).status.reason_code,'DESKTOP_OFFLINE');
+});
+
+test('desktop package keeps per-file revocation and verified transfer receipts in the original authority',{timeout:10000},async t=>{
+  const f=await fixture(t,{capability:true}),sim=await f.attachSimulator(),path=join(sim.root,'package.txt');await fs.writeFile(path,'synthetic');
+  const denied=await f.client.callTool({name:'read_text_file',arguments:{path}});
+  assert.equal((denied.structuredContent as any).status.reason_code,'GUARD_PATH_NOT_AUTHORIZED');
+  const {attachment}=await sim.host.grant(path,'drag');
+  const uploaded=await f.client.callTool({name:'upload_to_workshop',arguments:{path,owner_requested:true}}),body=uploaded.structuredContent as any;
+  assert.equal(body.status.state,'succeeded');assert.equal(body.effects[0].verification,'service_ack');
+  const size=body.values.find((item:any)=>item.key==='size');assert.equal(size.value,9);assert.equal(size.unit,'B');
+  const transfer=body.values.find((item:any)=>item.key==='transfer_id').value;
+  assert.equal((await fs.readFile(join(sim.root,'inbox',transfer,'package.txt'))).toString(),'synthetic');
+  sim.host.revoke(attachment.grant_id);
+  const revoked=await f.client.callTool({name:'upload_to_workshop',arguments:{path}});
+  assert.equal((revoked.structuredContent as any).status.reason_code,'GUARD_PATH_NOT_AUTHORIZED');
+  assert.deepEqual(f.errors,[]);
+});
+
+test('desktop package preserves first-trash refusal and timeout uncertainty',{timeout:10000},async t=>{
+  let calls=0;
+  const f=await fixture(t,{capability:true,handler:async()=>({isError:true,content:[],structuredContent:{error:{code:++calls===1?'GUARD_CONSENT_DENIED':'DESKTOP_TIMEOUT'}}})});
+  await f.attachMac();
+  const denied=await f.client.callTool({name:'trash',arguments:{paths:['/granted/report.txt']}}),timeout=await f.client.callTool({name:'write_file',arguments:{path:'/granted/report.txt',content:'test'}});
+  assert.equal((denied.structuredContent as any).status.state,'failed');assert.deepEqual((denied.structuredContent as any).effects,[]);
+  assert.equal((timeout.structuredContent as any).status.state,'unknown');
+  assert.equal((timeout.structuredContent as any).next.retry,'after_check');
+  assert.equal((timeout.structuredContent as any).next.check_with,'read_text_file');
 });
 
 test('desktop config remains opt-in; I3 execution owner HTTP sees late relay initialize/list and enforces bearer, method, sessions and batches',{timeout:10000},async t=>{

@@ -23,6 +23,17 @@ struct DesktopContentScroll<Content: View>: View {
     }
 }
 
+struct DesktopContentForm<Content: View>: View {
+    @ViewBuilder var content: Content
+    @Environment(\.desktopRendering) private var rendering
+    var body: some View {
+        if rendering {
+            VStack(alignment: .leading, spacing: 16) { content }.padding(24)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        } else { Form { content } }
+    }
+}
+
 struct DesktopCheckbox: View {
     let title: String
     @Binding var isOn: Bool

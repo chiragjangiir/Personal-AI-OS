@@ -1,0 +1,63 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "wechat-mac",
+  "version": "1.0.0",
+  "description": "wechat-mac capability manifest fixture",
+  "extensions": {
+    "ai.yimi.capability": {
+      "schema": "yimi.capability.v1",
+      "receipt_schema": 1,
+      "compat": {
+        "hermes": ">=0.22.5 <0.24",
+        "gateway_api": 1
+      },
+      "maintainer": "lead",
+      "runtime": {
+        "server": "wechat-mac",
+        "lazy": true,
+        "idle_timeout_seconds": 900,
+        "host": "dedicated"
+      },
+      "secrets": [],
+      "network": {
+        "egress": []
+      },
+      "scopes": [
+        "owner"
+      ],
+      "tools": {
+        "wechat_send": {
+          "effect": "send",
+          "retry": "after_check",
+          "target": "$.contact_id",
+          "task_type": "send_message:weixin:send",
+          "check_with": "wechat_read_recent",
+          "context_inject": [
+            "principal_id"
+          ]
+        },
+        "wechat_read_recent": {
+          "effect": "observe",
+          "retry": "forbidden",
+          "target": "$.contact_id"
+        }
+      },
+      "staging": {
+        "fake": {
+          "command": "python3",
+          "args": [
+            "fake/server.py"
+          ]
+        }
+      },
+      "tests": {
+        "contract": "tests/contract.yaml"
+      },
+      "provenance": {
+        "source_commit": "027f2ef23",
+        "workshop_run": null,
+        "adapter_modules": []
+      }
+    }
+  }
+}

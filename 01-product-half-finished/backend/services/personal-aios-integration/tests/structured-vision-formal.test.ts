@@ -65,13 +65,23 @@ test('formal camera stream persists structured caption and person links; caption
     if('response_schema' in body){assert.deepEqual(body.response_schema,VISION_CAPTION_SCHEMA);assert.match(body.prompt,/first-person scene/u);}
     else assert.ok(['Where is the key?','Echo failure?'].includes(body.prompt),'free questions retain their original prompt');
     // The native API test can supply its isolated real HTTP server and provider.
-    if(httpEndpoint)return fetch(input,init);
+    if(httpEndpoint){
+      if(!body.source_context){
+        assert.equal('response_schema' in body,false,'background caption keeps its actual archive proof');
+        assert.ok(body._model_context,'only the synthetic question run needs HTTP fixture rebinding');
+        assert.ok(process.env.PAIOS_VISION_SOURCE_CONTEXT,'HTTP fixture supplies its explicit archived capture authority');
+        body.source_context=JSON.parse(process.env.PAIOS_VISION_SOURCE_CONTEXT);
+        delete body._model_context;
+      }
+      return fetch(input,{...init,body:JSON.stringify(body)});
+    }
     if(!('response_schema' in body))return body.prompt==='Echo failure?'?Response.json({error:'vision failed'},{status:502}):new Response('The key is on the white desk.');
     return failCaption?Response.json({error:'caption provider failed'},{status:502}):
       Response.json({caption:'白色桌面上放着钥匙，一位来访者站在旁边',ocr:'会议室 301'});
   });
   const models={embedImage:async()=>Array.from({length:1024},(_,i)=>i===0?1:0),embedQuery:async()=>Array(1024).fill(1),
-    describe:(bytes:Buffer,signal?:AbortSignal)=>describeVision(native.analyzeVision.bind(native),bytes,signal)};
+    describe:(bytes:Buffer,signal?:AbortSignal,context?:Parameters<typeof native.analyzeVision>[3])=>
+      describeVision((bytes,prompt,signal)=>native.analyzeVision(bytes,prompt,signal,context),bytes,signal)};
   const faces={prepare:async(bytes:Buffer)=>{faceCalls++;assert.deepEqual(bytes,image);return {...prepared,faces:[{embedding:face,bbox:[0,0,1,1],confidence:1}]};}};
   await people.faceRecognition(true);
   visual=await VisualMemory.open(directory,models,{},people,faces,undefined,archive);

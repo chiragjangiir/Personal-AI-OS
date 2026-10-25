@@ -67,7 +67,7 @@ final class YimiFlowUITests: XCTestCase {
 
     /// Regression: 她了解你 → 健康数据与诊断 pushed a view with its own NavigationStacks onto the bound root stack.
     func testHealthPageOpensAndPresentsTheExporter() {
-        XCTAssertTrue(app.staticTexts["在呢"].waitForExistence(timeout: 25))
+        XCTAssertTrue(button("她了解你").waitForExistence(timeout: 25))
         button("她了解你").tap()
         app.staticTexts["健康数据与诊断"].firstMatch.tap()
         XCTAssertTrue(app.navigationBars.staticTexts["健康数据与诊断"].waitForExistence(timeout: 5), "health page pushed, no crash")
@@ -77,7 +77,7 @@ final class YimiFlowUITests: XCTestCase {
     }
 }
 
-/// Live acceptance on a real, paired iPhone against production: no loopback and no fixtures.
+/// Live acceptance on a paired client against its server: no loopback and no fixtures.
 /// Runs only with TEST_RUNNER_YIMI_LIVE_UI=1. It never pays, books, or messages anyone but 依米.
 final class YimiLiveUITests: XCTestCase {
     private var app: XCUIApplication!
@@ -96,6 +96,8 @@ final class YimiLiveUITests: XCTestCase {
             tree.lifetime = .keepAlways
             add(tree)
             shot("failure")
+            // A failed responsiveness assertion must still release the live microphone.
+            app.terminate()
         }
     }
 
@@ -112,6 +114,51 @@ final class YimiLiveUITests: XCTestCase {
     private func send() {
         XCTAssertTrue(button("发送").waitForExistence(timeout: 5), "send button appears for the draft")
         button("发送").tap()
+    }
+
+    private func dialAndWaitForLive() -> String {
+        button("语音通话").tap()
+        let connection = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "yimi.call.connection.")).firstMatch
+        XCTAssertTrue(connection.waitForExistence(timeout: 15), "call presentation opens")
+        let live = expectation(for: NSPredicate(format: "value == %@", "已接通"), evaluatedWith: connection)
+        XCTAssertEqual(XCTWaiter().wait(for: [live], timeout: 60), .completed,
+                       "the server confirms live, beyond merely showing the hang-up button")
+        return String(connection.identifier.dropFirst("yimi.call.connection.".count))
+    }
+
+    func test12DialHangUpDialConnectsAgain() {
+        assertHomeWithoutCover("12-home")
+        let first = dialAndWaitForLive()
+        shot("12-first-live")
+        button("挂断").tap()
+        let ended = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: button("挂断"))
+        XCTAssertEqual(XCTWaiter().wait(for: [ended], timeout: 10), .completed)
+        let second = dialAndWaitForLive()
+        XCTAssertNotEqual(second, first, "redial establishes a new call")
+        shot("12-second-live")
+        button("挂断").tap()
+    }
+
+    func test13OneDialShowsExactlyOneCall() {
+        assertHomeWithoutCover("13-home")
+        button("对话").tap()
+        let records = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "yimi.call.record."))
+        let previous = Set(records.allElementsBoundByIndex.map(\.identifier))
+        let id = dialAndWaitForLive()
+        button("收起通话").tap()
+        let matching = app.buttons.matching(identifier: "yimi.call.record.call-" + id)
+        let record = matching.firstMatch
+        XCTAssertTrue(record.waitForExistence(timeout: 10), "the call has one history record")
+        XCTAssertEqual(matching.count, 1)
+        XCTAssertEqual(record.value as? String, "通话中")
+        let added = Set(records.allElementsBoundByIndex.map(\.identifier)).subtracting(previous)
+        XCTAssertEqual(added, [record.identifier], "one dial creates exactly one call record")
+        shot("13-one-live-record")
+        button("回到语音通话").tap()
+        let same = app.descendants(matching: .any)["yimi.call.connection." + id].firstMatch
+        XCTAssertTrue(same.waitForExistence(timeout: 5), "restoring keeps the same call identity")
+        button("挂断").tap()
     }
 
     private func assertHomeWithoutCover(_ step: String) {
@@ -275,13 +322,25 @@ final class YimiLiveUITests: XCTestCase {
 
     func test4VoiceCallConnectsAndHangsUp() {
         assertHomeWithoutCover("04-home")
-        button("语音通话").tap()
-        XCTAssertTrue(button("挂断").waitForExistence(timeout: 15), "voice call opens")
-        sleep(20)
-        XCTAssertTrue(button("挂断").exists, "voice call still up after 20 s")
-        shot("04-voice-call-20s")
-        button("挂断").tap()
-        XCTAssertFalse(button("挂断").waitForExistence(timeout: 5), "voice call closes")
+        let id = dialAndWaitForLive()
+        let duration = Int(ProcessInfo.processInfo.environment["YIMI_CALL_PERF_SECONDS"] ?? "20")!
+        print("YIMI_LIVE_CALL_PERF call_id=\(id) duration_s=\(duration)")
+        let hangUp = app.buttons["yimi.call.hangUp"].firstMatch
+        // Measure the accessibility query itself: a one-second waiter alone can hide a minute-long snapshot.
+        for elapsed in stride(from: 0, to: duration, by: 2) {
+            sleep(UInt32(min(2, duration - elapsed)))
+            let start = ProcessInfo.processInfo.systemUptime
+            XCTAssertTrue(hangUp.isHittable, "hang-up remains hittable during call \(id), \(elapsed + 2) s")
+            XCTAssertLessThanOrEqual(ProcessInfo.processInfo.systemUptime - start, 1,
+                "the app must answer accessibility within one second while the microphone is live")
+        }
+        shot("04-voice-call-live")
+        hangUp.tap()
+        let connection = app.descendants(matching: .any)["yimi.call.connection." + id].firstMatch
+        let ended = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: connection)
+        let home = expectation(for: NSPredicate(format: "hittable == true"), evaluatedWith: button("对话"))
+        XCTAssertEqual(XCTWaiter().wait(for: [ended, home], timeout: 5), .completed,
+            "the same live call ends and home answers after tapping hang-up")
         shot("04-voice-call-closed")
     }
 
@@ -400,13 +459,15 @@ final class YimiActivityUITests: XCTestCase {
         app.launch()
         let card = app.descendants(matching: .any)["yimi.activity.card"].firstMatch
         XCTAssertTrue(card.waitForExistence(timeout: 15))
-        XCTAssertEqual(card.value as? String, "2 项")
+        let items = try XCTUnwrap((running["card"] as? [String: Any])?["items"] as? [[String: Any]])
+        for (index, item) in items.enumerated() {
+            XCTAssertEqual(card.label.contains(try XCTUnwrap(item["summary"] as? String)), index < 2)
+        }
         XCTAssertFalse(card.label.contains("整理测试数据文件夹"))
         shot(app, name: "activity-running-two-items")
         let expand = app.buttons["yimi.activity.expand"].firstMatch
         expand.tap()
-        XCTAssertEqual(card.value as? String, "6 项")
-        let items = try XCTUnwrap((running["card"] as? [String: Any])?["items"] as? [[String: Any]])
+        XCTAssertEqual(expand.value as? String, "已展开")
         for item in items { XCTAssertTrue(card.label.contains(try XCTUnwrap(item["summary"] as? String))) }
         shot(app, name: "activity-expanded-six-items")
         // The normal composer advances the isolated fixture stream and supplies the matching reply.

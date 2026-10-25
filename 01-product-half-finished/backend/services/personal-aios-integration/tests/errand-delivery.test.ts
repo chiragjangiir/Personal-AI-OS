@@ -103,14 +103,19 @@ test('delivery failure enters the original main-agent session once with source r
  assert.equal((await f.admission.readOnly('owner','session',failures[0].processed_event_id))?.session_id,'session');
  assert.equal(failures[0].origin,'device_observation');assert.equal(failures[0].captured_at,failedAt);
 });
-test('a rejected errand subscription stays rejected after its failure observation is admitted',async t=>{
+test('a rejected errand subscription retires its cached error and stays closed by the durable failure observation',async t=>{
  const f=await fixture(t),first=await f.submit();await f.finish(first.processed_event.processed_event_id);
  await f.watch(async()=>false,async()=>true);
  const failure=new ContractError('ERRAND_REPORT_NOT_DELIVERED',409);
  await f.runtime.subscribeResult(f.source,'session',first.processed_event.processed_event_id,async()=>{throw failure;},error=>f.errors.push(error),{outreach:'errand'});
  assert.equal(await f.runtime.errandDeliveryFailed(f.result,failure.code,new Date().toISOString()),true);
+ const reports=(f.runtime as unknown as {errandReports:Map<string,unknown>}).errandReports;
+ assert.equal(reports.has(f.result.job_id),false,'durable failure admission retires the transient error reference');
  let calls=0;
- await assert.rejects(f.runtime.subscribeResult(f.source,'session',first.processed_event.processed_event_id,async()=>{calls++;},error=>f.errors.push(error),{outreach:'errand'}),error=>error===failure);
+ await assert.rejects(f.runtime.subscribeResult(f.source,'session',first.processed_event.processed_event_id,async()=>{calls++;},error=>f.errors.push(error),{outreach:'errand'}),error=>error instanceof ContractError&&error.code===failure.code);
+ await assert.rejects(f.runtime.deliverErrand(f.result,()=>{}),error=>error instanceof ContractError&&error.code===failure.code);
+ assert.equal(await f.runtime.errandDeliveryFailed(f.result,failure.code,new Date().toISOString()),true);
+ assert.equal(reports.has(f.result.job_id),false,'replayed failure admission also retires the cache');
  assert.equal(calls,0);assert.deepEqual(f.errors,[failure]);
 });
 test('delivery failure without an authenticated source remains pending',async t=>{

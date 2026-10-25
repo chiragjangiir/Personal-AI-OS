@@ -37,8 +37,8 @@ def test_call_intent_uses_only_current_utterance_and_validates_native_contract(m
     spec.loader.exec_module(module)
     text = '他说“先把发言权交还给我”，这句话是什么意思？'
     async def classify(**kwargs):
-        assert set(kwargs) == {'messages', 'temperature', 'max_tokens', 'timeout', 'reasoning_config'}
-        assert kwargs['reasoning_config'] == {'enabled': False}
+        assert set(kwargs) == {'task', 'messages', 'timeout'}
+        assert kwargs['task'] == 'call_intent'
         assert len(kwargs['messages']) == 2
         assert kwargs['messages'][0]['role'] == 'system'
         assert 'Quoted, reported' in kwargs['messages'][0]['content']
@@ -119,7 +119,7 @@ def schemas(tmp_path_factory):
         str(Path(__file__).parents[2] / '01-product-half-finished/backend/services/'
             'personal-aios-integration/src/tool-contracts.ts')))
     script = ('const {enabledToolSchemas}=await import(process.argv[1]);'
-              'process.stdout.write(JSON.stringify(enabledToolSchemas({memory:true,actions:true})));')
+              'process.stdout.write(JSON.stringify(enabledToolSchemas({memory:true,actions:true,model_settings:true})));')
     result = subprocess.run(['node', '--input-type=module', '-e', script, source.as_uri()],
                             capture_output=True, text=True, check=True, timeout=15)
     fixture = tmp_path_factory.mktemp('central-tool-schema') / 'tool-contracts.json'
@@ -148,6 +148,32 @@ def test_provider_resolves_profile_configuration_with_native_env_refs(tmp_path, 
     assert provider.is_available()
 
 
+@pytest.mark.parametrize('scope', ['owner', 'guest', 'owner_uncertain', 'care'])
+def test_manifest_tools_replace_owner_registrations_and_preserve_restricted_aliases(seam, schemas, scope):
+    from gateway.run_scope import runtime_scope
+    packages = Path(__file__).parents[2] / 'capability/packages'
+    migrated = {tool for manifest in packages.glob('ts-*/plugin.json')
+                for tool in json.loads(manifest.read_text())['extensions']['ai.yimi.capability']['tools']}
+    seam.provider.capability_tools = frozenset(migrated)
+    with runtime_scope(scope):
+        actual = seam.provider.get_tool_schemas()
+    expected = [schema for schema in schemas if scope != 'owner' or schema['name'] not in migrated]
+    assert actual == expected
+    seam.provider.capability_tools = frozenset()
+    with runtime_scope(scope):
+        assert seam.provider.get_tool_schemas() == schemas
+
+
+def test_disabled_ts_families_keep_the_provider_path_without_scope_projection(seam, schemas, monkeypatch):
+    import gateway.run_scope
+    def unexpected_scope():
+        raise AssertionError('No TS family is selected')
+    monkeypatch.setattr(gateway.run_scope, 'current_scope', unexpected_scope)
+    for selected in [set(), {'mcp__unrelated__read'}]:
+        seam.provider.capability_tools = frozenset(selected)
+        assert seam.provider.get_tool_schemas() == schemas
+
+
 @pytest.fixture
 def seam(monkeypatch, tmp_path, schemas):
     source = Path(__file__).parents[2] / 'integrations/hermes/personal_aios/__init__.py'
@@ -165,7 +191,7 @@ def seam(monkeypatch, tmp_path, schemas):
     key.write_text('synthetic-isolated-provider-test-key')
     provider.base_url = 'http://127.0.0.1:9'
     provider.key_file = str(key)
-    provider.initialize('session-host', agent_context='primary')
+    provider.initialize('session-host', agent_context='primary', hermes_home=str(tmp_path))
     calls = []
     def forbid(*args, **kwargs):
         raise AssertionError('No live network is allowed in isolated provider tests')
@@ -193,7 +219,7 @@ def test_host_context_is_separate_from_model_args():
                  InlineToolContext(effective_task_id='session-host', tool_call_id='call-host'))
     finally:
         clear_session_vars(tokens)
-    assert calls[0][2] == {'session_id': 'session-host', 'run_id': 'run-host', 'tool_call_id': 'call-host'}
+    assert calls[0][2] == {'session_id': 'session-host', 'run_id': 'run-host', 'tool_call_id': 'call-host', 'caller_gsk': ''}
     assert calls[0][1] == {'run_id': 'model-forged'}
 
 
@@ -207,7 +233,7 @@ def test_native_restricted_dispatch_refuses_l3_forget(scope):
 @pytest.mark.parametrize('context', ['primary', 'cron', 'subagent', 'flush'])
 def test_provider_defers_identity_and_scope_to_central_source(seam, monkeypatch, context):
     provider = seam.provider
-    provider.initialize('session-host', agent_context=context)
+    provider.initialize('session-host', agent_context=context, hermes_home=str(provider.profile_home))
     args = {'assertion': {'scope': {'principal_id': 'foreign-principal'}}}
     def reject(request, timeout):
         seam.calls.append(json.loads(request.data))
@@ -218,7 +244,7 @@ def test_provider_defers_identity_and_scope_to_central_source(seam, monkeypatch,
                   {'session_id': 'session-host', 'run_id': 'run-host', 'tool_call_id': 'call-host'}]
     for identity in identities:
         result = provider.handle_tool_call('paios_l3_commit', args, **identity)
-        assert json.loads(result) == {'status': 'rejected', 'error_code': 'L3_SCOPE_DENIED', 'http_status': 403}
+        assert json.loads(result) == {'status': 'rejected', 'error_code': 'L3_SCOPE_DENIED', 'http_status': 403, 'success': False, 'error': 'L3_SCOPE_DENIED'}
     assert seam.calls == [{'context': {key: identity.get(key, '') for key in
         ('session_id', 'run_id', 'tool_call_id')}, 'args': args} for identity in identities]
     # Every initialize label only transports host kwargs. This injected response
@@ -240,6 +266,25 @@ def test_provider_posts_only_trusted_context(seam):
     assert seam.calls == [{'context': {'session_id': 'session-host', 'run_id': 'run-host',
                                       'tool_call_id': 'call-host'}, 'args': args}]
     # This stub proves identity transport only. Real HTTP/PG tests own argument acceptance.
+
+
+@pytest.mark.parametrize('name', ['paios_model_settings_read', 'paios_model_settings_draft'])
+def test_model_settings_use_native_provider_registration_and_bound_owner_context(seam, name):
+    manager = MemoryManager()
+    manager.add_provider(seam.provider)
+    assert manager.has_tool(name)
+    schema = next(item for item in manager.get_all_tool_schemas() if item['name'] == name)
+    assert not {'key', 'statement_b64', 'signature_b64', 'public_x963_b64'} & set(schema['parameters']['properties'])
+    executor = resolve_invoke_tool_executor(SimpleNamespace(session_id='session-host', _memory_manager=manager), name)
+    tokens = set_session_vars(platform='api_server', session_id='session-host', session_key='owner-run')
+    try:
+        result = executor(SimpleNamespace(session_id='session-host', _memory_manager=manager), {},
+                          InlineToolContext(effective_task_id='session-host', tool_call_id='settings-call'))
+    finally:
+        clear_session_vars(tokens)
+    assert json.loads(result)['status'] == 'opened'
+    assert seam.calls == [{'context': {'session_id': 'session-host', 'run_id': 'owner-run',
+                                      'tool_call_id': 'settings-call'}, 'args': {}}]
 
 
 def test_recap_source_tools_preserve_owner_and_unidentified_speaker_provenance(seam, monkeypatch):
@@ -303,7 +348,7 @@ def test_missing_api_binding_sends_empty_host_run_to_central_rejection(seam, mon
         result = executor(agent, args, InlineToolContext(effective_task_id='session-host', tool_call_id='call-host'))
     finally:
         clear_session_vars(tokens)
-    assert json.loads(result) == {'status': 'rejected', 'error_code': 'INVALID_ID', 'http_status': 400}
+    assert json.loads(result) == {'status': 'rejected', 'error_code': 'INVALID_ID', 'http_status': 400, 'success': False, 'error': 'INVALID_ID'}
     assert seam.calls == [{'context': {'session_id': 'session-host', 'run_id': '', 'tool_call_id': 'call-host'}, 'args': args}]
 
 
@@ -316,7 +361,99 @@ def test_provider_preserves_source_typed_errors(seam, monkeypatch, code, status)
     monkeypatch.setattr(seam.module, 'urlopen', reject)
     result = seam.provider.handle_tool_call('paios_open_reply', {}, session_id='session-host',
                                            run_id='run-host', tool_call_id='call-host')
-    assert json.loads(result) == {'status': 'rejected', 'error_code': code, 'http_status': status}
+    assert json.loads(result) == {'status': 'rejected', 'error_code': code, 'http_status': status, 'success': False, 'error': code}
+
+
+@pytest.mark.parametrize('status', ['rejected', 'failed'])
+def test_business_rejection_uses_native_failure_contract(seam, monkeypatch, status):
+    source = {'status': status, 'error_code': 'PAYMENT_NOT_CONFIRMED', 'details': {'scope': 'request'}}
+    monkeypatch.setattr(seam.provider, '_request', lambda *a, **kw: source)
+    result = json.loads(seam.provider.handle_tool_call('paios_request_payment', {}))
+    assert result == {**source, 'success': False, 'error': source['error_code']}
+    assert 'success' not in source, 'projection must not mutate the source record'
+
+
+def test_pending_approval_is_not_a_native_failure(seam, monkeypatch):
+    from agent.display import _detect_tool_failure
+    from agent.tool_guardrails import classify_tool_failure
+    pending = {'status': 'pending_approval', 'approval_id': 'fixture-approval'}
+    monkeypatch.setattr(seam.provider, '_request', lambda *a, **kw: pending)
+    result = seam.provider.handle_tool_call('paios_l3_commit', {})
+    assert json.loads(result) == pending
+    assert not _detect_tool_failure('paios_l3_commit', result)[0]
+    assert not classify_tool_failure('paios_l3_commit', result)[0]
+
+
+def test_transport_failure_uses_native_failure_contract(seam, monkeypatch):
+    def unavailable(*a, **kw):
+        raise TimeoutError('fixture timeout')
+    monkeypatch.setattr(seam.provider, '_request', unavailable)
+    assert json.loads(seam.provider.handle_tool_call('paios_open_reply', {})) == {
+        'status': 'failed', 'error_code': 'internal_service_unavailable',
+        'success': False, 'error': 'internal_service_unavailable'}
+
+
+def test_provider_rejections_reach_native_executor_and_sixth_is_not_dispatched(seam, monkeypatch):
+    from unittest.mock import patch
+    from run_agent import AIAgent
+    config = {'tool_loop_guardrails': {'hard_stop_enabled': True}}
+    manager = MemoryManager()
+    manager.add_provider(seam.provider)
+    request_outcomes = []
+
+    def transport(request, timeout):
+        seam.calls.append(json.loads(request.data))
+        if request_outcomes and request_outcomes.pop(0) == 'success':
+            return BytesIO(b'{"status":"opened","error_code":null}')
+        raise HTTPError(request.full_url, 429, 'fixture rejection', {},
+                        BytesIO(b'{"error_code":"OUTPUT_EPOCH_LIMIT"}'))
+
+    monkeypatch.setattr(seam.module, 'urlopen', transport)
+
+    def agent():
+        with patch('model_tools.get_tool_definitions', return_value=[]), \
+                patch('model_tools.check_toolset_requirements', return_value={}), \
+                patch('hermes_cli.config.load_config', return_value=config), \
+                patch('hermes_cli.config.load_config_readonly', return_value=config), \
+                patch('agent.process_bootstrap.OpenAI'):
+            value = AIAgent(model='fixture', api_key='fixture', base_url='http://127.0.0.1:9/v1',
+                quiet_mode=True, skip_context_files=True, skip_memory=True, platform='api_server',
+                save_trajectories=False)
+        value._memory_manager = manager
+        return value
+
+    def execute(value, outcomes, modes):
+        request_outcomes.extend(outcomes)
+        messages, attempts = [], []
+        for index, mode in enumerate(modes):
+            before = len(seam.calls)
+            call = SimpleNamespace(id=f'fixture-{index}', type='function',
+                function=SimpleNamespace(name='paios_open_reply', arguments=json.dumps({'reply_mode': mode})))
+            value._execute_tool_calls_sequential(SimpleNamespace(tool_calls=[call]), messages, 'session-host')
+            attempts.append({'number': index + 1, 'dispatch_delta': len(seam.calls) - before,
+                             'tool_result': messages[-1]['content']})
+        return attempts
+
+    value = agent()
+    try:
+        attempts = execute(value, ['reject'] * 5, ['text'] * 6)
+        assert [row['dispatch_delta'] for row in attempts] == [1, 1, 1, 1, 1, 0]
+        assert 'repeated_exact_failure_block' in attempts[-1]['tool_result']
+        assert all('OUTPUT_EPOCH_LIMIT' in row['tool_result'] for row in attempts[:5])
+        different = execute(value, ['success'], ['none'])
+        assert different[0]['dispatch_delta'] == 1
+    finally:
+        value.close()
+    value = agent()
+    try:
+        reset = execute(value, ['reject'] * 4 + ['success'] + ['reject'] * 5, ['text'] * 11)
+        assert [row['dispatch_delta'] for row in reset] == [1] * 10 + [0]
+        assert 'repeated_exact_failure_block' in reset[-1]['tool_result']
+    finally:
+        value.close()
+    print(json.dumps({'case': 'p13-provider-native', 'hard_stop_enabled': True,
+        'sdk_requests': len(seam.calls), 'six_attempts': attempts, 'different_args': different,
+        'success_resets_streak': reset}, ensure_ascii=False))
 
 
 def test_schema_is_fetched_from_central_ts_source(seam, schemas):
@@ -604,9 +741,26 @@ async def test_native_vision_http_is_raw_and_cache_cleanup_owns_the_profile(tmp_
     key = 'synthetic-native-vision-test-key'
     (home / 'internal.key').write_text(key)
     entered, release = asyncio.Event(), asyncio.Event()
-    calls, formal_captions = [], []
+    calls, formal_captions, usage_facts = [], [], []
+    provider_key = 'synthetic-private-vision-provider-key'
+    service_token = 'synthetic-vision-authority-service-token'
+    source_context = {'kind': 'capture', 'raw_ref': 'l5:' + 'a' * 64,
+        'archive_revision': 'b' * 64, 'principal_id': 'owner', 'device_id': 'fixture-camera'}
+
+    async def model_settings(request):
+        assert request.headers.get('Authorization') == 'Bearer ' + service_token
+        body = await request.json()
+        if request.path.endswith('/credential'):
+            assert body == {'environment_id': 'vision-fixture', 'profile': 'owner', 'revision': 1,
+                            'handle': 'fixture-vision-key-v1'}
+            return web.json_response({'key': provider_key})
+        assert body['role'] == 'auxiliary.vision' and body['provider_id'] == 'fixture-vision-provider'
+        assert body['source_context']['kind'] == 'capture'
+        usage_facts.append(body)
+        return web.json_response({'recorded': True})
 
     async def completion(request):
+        assert request.headers.get('Authorization') == 'Bearer ' + provider_key
         body = await request.json()
         calls.append(body)
         if 'Echo failure?' in str(body['messages']):
@@ -637,11 +791,13 @@ async def test_native_vision_http_is_raw_and_cache_cleanup_owns_the_profile(tmp_
 
     app = web.Application()
     app.router.add_post('/v1/chat/completions', completion)
+    app.router.add_post('/internal/model-settings/credential', model_settings)
+    app.router.add_post('/internal/model-settings/usage', model_settings)
     async def tool(request):
         body = await request.json()
         async with ClientSession() as client:
             async with client.post(f'http://127.0.0.1:{native_port}/v1/paios/vision',
-                headers={'Authorization': 'Bearer ' + key}, json={'image_url': image, 'prompt': body['args']['question']}) as response:
+                headers={'Authorization': 'Bearer ' + key}, json={'image_url': image, 'prompt': body['args']['question'], 'source_context': source_context}) as response:
                 assert response.status == 200
                 return web.json_response(await response.text())
     app.router.add_post('/internal/hermes/tools/paios_visual_analyze', tool)
@@ -653,14 +809,37 @@ async def test_native_vision_http_is_raw_and_cache_cleanup_owns_the_profile(tmp_
     with socket.socket() as reservation:
         reservation.bind(('127.0.0.1', 0))
         native_port = reservation.getsockname()[1]
-    (home / 'config.yaml').write_text(yaml.safe_dump({
-        'model': {'provider': 'custom', 'default': 'fixture', 'base_url': f'http://127.0.0.1:{provider_port}/v1', 'api_key': 'fixture'},
+    base_url = f'http://127.0.0.1:{provider_port}/v1'
+    route = {'provider': 'fixture-vision-provider', 'base_url': base_url, 'api_mode': 'chat_completions',
+             'key_env': 'PAIOS_FIXTURE_VISION_KEY', 'context_length': 128000}
+    unused = ('compression', 'skills_hub', 'approval', 'review', 'mcp', 'title_generation',
+        'memory_query_rewrite', 'tts_audio_tags', 'triage_specifier', 'kanban_decomposer',
+        'profile_describer', 'goal_judge', 'curator', 'monitor', 'background_review',
+        'moa_reference', 'moa_aggregator', 'call_intent')
+    projection = home / 'model-projection.json'
+    projection.write_text(json.dumps({'environment_id': 'vision-fixture', 'profile': 'owner',
+        'revision': 1, 'group': 'brain', 'configured': True,
+        'credentials': [{'name': 'PAIOS_FIXTURE_VISION_KEY', 'handle': 'fixture-vision-key-v1'}],
+        'config': {'model': {**route, 'default': 'fixture', 'request_overrides': {'max_tokens': 128}},
+            'providers': {'fixture-vision-provider': {'api': base_url, 'transport': 'chat_completions', 'key_env': 'PAIOS_FIXTURE_VISION_KEY'}},
+            'fallback_providers': [], 'delegation': {'enabled': False}, 'cron': {'enabled': False},
+            'auxiliary': {**{name: {'enabled': False} for name in unused},
+                'vision': {**route, 'enabled': True, 'role_id': 'auxiliary.vision', 'model': 'fixture-vision',
+                    'extra_body': {'max_tokens': 128}, 'fallback_chain': []}}}}))
+    (home / 'model-service.key').write_text(service_token)
+    transport_spec = importlib.util.spec_from_file_location('vision_model_transport', root / 'integrations/hermes/personal_aios/model_transport.py')
+    transport = importlib.util.module_from_spec(transport_spec)
+    transport_spec.loader.exec_module(transport)
+    (home / 'config.yaml').write_text(yaml.safe_dump(transport.projected_config({
         'memory': {'provider': 'personal_aios'}, 'plugins': {'enabled': ['personal_aios'], 'entries': {'personal_aios': {'allow_tool_override': True}}},
         'personal_aios': {'internal_base_url': f'http://127.0.0.1:{provider_port}', 'internal_key_file': str(home / 'internal.key')},
-        'platforms': {'personal_aios': {'enabled': True}}, 'auxiliary': {'vision': {'provider': 'custom', 'model': 'fixture-vision'}}}))
+        'platforms': {'personal_aios': {'enabled': True}}}, projection)))
     env = {**os.environ, 'HERMES_HOME': str(home), 'API_SERVER_KEY': key, 'API_SERVER_HOST': '127.0.0.1',
         'API_SERVER_PORT': str(native_port), 'VISION_TOOLS_DEBUG': 'true', 'OPENAI_LOG': 'debug', 'PYTHONDONTWRITEBYTECODE': '1',
-        'PYTHONPATH': str(Path(sys.modules['gateway.session_context'].__file__).parents[1])}
+        'PYTHONPATH': str(Path(sys.modules['gateway.session_context'].__file__).parents[1]),
+        'PAIOS_MODEL_SETTINGS_PROJECTION': str(projection),
+        'PAIOS_MODEL_SETTINGS_SERVICE_URL': f'http://127.0.0.1:{provider_port}',
+        'PAIOS_MODEL_SETTINGS_TOKEN_FILE': str(home / 'model-service.key')}
     command = [sys.executable, str(root / 'integrations/hermes/personal_aios/run_api.py')]
     with (home / 'service.log').open('w') as log:
         process = subprocess.Popen(command, env=env, stdout=log, stderr=log)
@@ -687,12 +866,17 @@ async def test_native_vision_http_is_raw_and_cache_cleanup_owns_the_profile(tmp_
                                    'ocr': {'type': 'string', 'maxLength': 16000}}}
                 async def analyze(prompt, structured=False):
                     async with client.post(url + '/v1/paios/vision', headers={'Authorization': 'Bearer ' + key},
-                                           json={'image_url': image, 'prompt': prompt,
+                                           json={'image_url': image, 'prompt': prompt, 'source_context': source_context,
                                                  **({'response_schema': schema} if structured else {})}) as response:
                         return response.status, await response.text()
 
                 work = asyncio.create_task(analyze('Return caption and ocr JSON'))
-                await asyncio.wait_for(entered.wait(), 15)
+                try:
+                    await asyncio.wait_for(entered.wait(), 15)
+                except TimeoutError:
+                    if work.done():
+                        raise AssertionError(await work)
+                    raise
                 active = list((home / 'cache/vision').glob('temp_image_*'))
                 assert active
                 contender = subprocess.Popen(command, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -733,11 +917,16 @@ async def test_native_vision_http_is_raw_and_cache_cleanup_owns_the_profile(tmp_
                      '01-product-half-finished/backend/services/personal-aios-integration/tests/structured-vision-formal.test.ts'],
                     cwd=root, env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1',
                         'PAIOS_VISION_PYTHON': os.environ.get('PAIOS_VISION_PYTHON', sys.executable),
-                        'PAIOS_STRUCTURED_VISION_TEST_URL': url, 'PAIOS_STRUCTURED_VISION_TEST_TOKEN': key},
+                        'PAIOS_STRUCTURED_VISION_TEST_URL': url, 'PAIOS_STRUCTURED_VISION_TEST_TOKEN': key,
+                        'PAIOS_VISION_SOURCE_CONTEXT': json.dumps(source_context)},
                     capture_output=True, text=True, timeout=45)
                 assert proof.returncode == 0, proof.stdout + proof.stderr
                 assert len(formal_captions) == 2
                 assert all(call['model'] == 'fixture-vision' for call in calls)
+                assert any(fact['phase'] == 'started' for fact in usage_facts)
+                assert any(fact['phase'] == 'terminal' for fact in usage_facts)
+                assert provider_key not in (home / 'service.log').read_text()
+                assert provider_key not in (home / 'config.yaml').read_text()
         finally:
             release.set()
             process.send_signal(signal.SIGTERM)
@@ -761,3 +950,21 @@ def test_phone_hook_keeps_typed_server_errors(seam, monkeypatch, protected_phone
                           'http_status': 403, 'message': 'OWNER_REQUEST_REQUIRED'}
     finally:
         clear_session_vars(tokens)
+
+
+def test_core_profile_is_loaded_each_turn_and_never_disclosed_to_restricted_scopes(seam, monkeypatch):
+    from gateway.run_scope import runtime_scope
+    home = seam.provider.profile_home
+    (home / 'memories').mkdir()
+    (home / 'memories' / 'USER.md').write_text('称呼：测试主人')
+    memory = home / 'memories' / 'MEMORY.md'
+    memory.write_text('原始偏好')
+    with runtime_scope('owner'):
+        assert '原始偏好' in seam.provider.prefetch('query')
+        memory.write_text('已纠正的偏好')
+        assert '已纠正的偏好' in seam.provider.prefetch('query')
+        assert '原始偏好' not in seam.provider.prefetch('query')
+    import gateway.run_scope as scopes
+    for scope in ('guest', 'owner_uncertain', 'care', 'build'):
+        monkeypatch.setattr(scopes, 'current_scope', lambda: scope)
+        assert seam.provider.prefetch('query') == ''

@@ -189,6 +189,7 @@ test('I14 enrollment tokens are single-use, five-minute, class-bound and active-
     {session:{realtimeSessionRef:'s',connectionEpoch:'1'},lease:{deviceLeaseRef:'l',capabilities:['data','audio','video'],policyDecisionRef:projection.policyDecisionRef}} as never,
     {bearer} as never);
   assert.deepEqual(source.output_modes,['text','voice']);assert.equal(hasTerminalCapability(source,'health'),false);
+  assert.equal(source.recipient_public_key,projection.recipientPublicKey);
   assert.equal(hasTerminalCapability(source,'continuous_audio'),true);assert.equal(hasTerminalCapability(source,'contacts'),false);
   assert.equal(hasTerminalCapability(source,'local_wake'),true);
   assert.equal(hasTerminalCapability({...source,capabilities:['location']},'location'),true);

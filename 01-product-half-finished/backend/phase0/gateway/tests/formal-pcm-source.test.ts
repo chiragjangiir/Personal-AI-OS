@@ -193,6 +193,13 @@ function pcmBytes(frame:PcmFrame) {
 async function committedCount(storage:PosixStorage){
  let count=0;for(const key of await storage.list('stream-revisions')){const m=JSON.parse(Buffer.from(await storage.read('stream-revisions',key)).toString());if(key===digest([m.raw_ref,m.revision]))count++;}return count;
 }
+async function sessionEnd(storage:PosixStorage,rawRef:string){
+ return JSON.parse(Buffer.from(await storage.read('session-ends',rawRef.slice(3))).toString());
+}
+async function assertSessionEnded(storage:PosixStorage,rawRef:string,endedBy:string){
+ const end=await sessionEnd(storage,rawRef);assert.equal(end.raw_ref,rawRef);assert.equal(end.ended_by,endedBy);
+ assert.equal(await storage.readFinal(rawRef),null,'capture end records intent before maintenance folds the session');
+}
 // One current registrar: TrackSubscribed, TrackUnsubscribed, Reconnecting, Reconnected, Disconnected.
 const REGISTRAR_LISTENERS=5;
 const ioTimeout=setTimeout; // Keep loopback IO polling live when a rejoin test advances the server timer.
@@ -466,7 +473,7 @@ test('capture modality denial invokes source cancellation while archived process
   const result=await f.owner.assembly.runtime.processMedia(input.source,'continuity','archived-after-modality-denial',input.request);
   assert.equal(result.processed_events.length,1);assert.equal(result.archive_revision,archived.event.archive_revision);
 });
-test('capture cancellation folds an open route before archived reprocessing stats it',{timeout:10000},async t=>{
+test('maintenance folds a cancelled open route before archived reprocessing stats it',{timeout:10000},async t=>{
   const f=await fixture(t);await connect(f);f.feed();const archived=await latest(f),input=await request(f,archived);
   const key=digest([archived.event.principal_id,archived.event.device_id,archived.event.raw_ref]);
   const target=join(await fs.realpath(f.storage.root),'audio-consumer-routes',key),open=fs.open,folded=latch();
@@ -477,6 +484,9 @@ test('capture cancellation folds an open route before archived reprocessing stat
     if(args[0]===target&&!held){held=true;const stat=handle.stat.bind(handle);
       handle.stat=(async()=>{
         f.revokeAudio();f.feed(waveform(4));
+        await eventually(async()=>(await f.storage.list('session-ends')).includes(archived.event.raw_ref.slice(3)));
+        await assertSessionEnded(f.storage,archived.event.raw_ref,'source_exhausted');
+        await f.owner.assembly.runtime.existingArchive().maintenance(1,Date.now(),{budget_ms:5000});
         await folded.promise;
         await assert.rejects(fs.lstat(target),{code:'ENOENT'});
         const result=await stat();links=result.nlink;return result;
@@ -914,7 +924,9 @@ test('continuous detector cancel does not cancel formal PCM reader; later chunk 
   f.feed(continuousMarker(512,false));const next=await latest(f,1);assert.equal(f.cancels,0);assert.equal(f.raws.length,2);
   assert(f.errors.some(e=>/CONTINUOUS_DETECTION_CANCELLED/.test(String(e))));assert.notEqual(first.event.archive_revision,next.event.archive_revision);assert.equal(next.processing_admission?.status,'failed');assert(next.processing_receipt_ref);
   f.end();await assert.rejects(f.owner.pcmIngress!.close(),/CONTINUOUS_DETECTION_CANCELLED/);
-  assert.equal((await f.storage.readFinal(next.event.raw_ref))?.bytes,2048,'detector cancellation cannot leave ended raw input live');
+  await assertSessionEnded(f.storage,next.event.raw_ref,'source_exhausted');
+  await f.owner.assembly.runtime.existingArchive().maintenance(1,Date.now(),{budget_ms:5000});
+  assert.equal((await f.storage.readFinal(next.event.raw_ref))?.bytes,2048,'maintenance folds ended raw input despite detector cancellation');
 });
 
 
@@ -965,6 +977,8 @@ test('formal PCM uninferred EOF tail stays archived without invented speech or m
 });
 test('formal PCM EOF on disabled continuous path adds no detector or automatic analysis',async t=>{
   const f=await fixture(t);await connect(f);f.feed();const snapshot=await latest(f);f.end();await f.owner.pcmIngress!.close();
+  await assertSessionEnded(f.storage,snapshot.event.raw_ref,'source_exhausted');
+  await f.owner.assembly.runtime.existingArchive().maintenance(1,Date.now(),{budget_ms:5000});
   const final=await f.storage.readFinal(snapshot.event.raw_ref);assert.equal(final?.bytes,640);assert.equal(final?.ended_by,'source_exhausted');
   assert.equal((await f.storage.list('media-detection-finished')).length,0);assert.equal(f.requests.length,0);assert.equal(f.nativeInputs.length,0);
 });
@@ -975,19 +989,22 @@ test('whole runtime close finishes acquisition and retains an open acoustic tail
   assert.equal(finished.acoustic_end_asserted,false);assert.equal(finished.semantic_status,'open');
   assert.equal(f.nativeInputs.length,0);assert.equal(f.raws.length,1);
 });
-test('voice commit, voice cancel and hangup finalize their capture while the microphone keeps running',async t=>{
+test('voice commit, voice cancel and hangup durably end their capture while the microphone keeps running',async t=>{
   const f=await fixture(t);await connect(f);
   await f.owner.pcmIngress!.voice.open('committed');f.feed(waveform(1));const committed=await latest(f);
-  await f.owner.pcmIngress!.voice.commit('committed');assert.equal((await f.storage.readFinal(committed.event.raw_ref))?.ended_by,'voice_commit');
+  await f.owner.pcmIngress!.voice.commit('committed');await assertSessionEnded(f.storage,committed.event.raw_ref,'voice_commit');
   await f.owner.pcmIngress!.voice.open('cancelled');f.feed(waveform(2));
   await eventually(()=>f.owner.pcmIngress!.snapshot().latest?.event.event_id!==committed.event.event_id);const cancelled=f.owner.pcmIngress!.snapshot().latest!;
   assert.equal(f.owner.pcmIngress!.voice.cancel('cancelled'),true);
-  await eventually(async()=>!!await f.storage.readFinal(cancelled.event.raw_ref));assert.equal((await f.storage.readFinal(cancelled.event.raw_ref))?.ended_by,'voice_cancel');
+  await eventually(async()=>(await f.storage.list('session-ends')).includes(cancelled.event.raw_ref.slice(3)));await assertSessionEnded(f.storage,cancelled.event.raw_ref,'voice_cancel');
   f.feed(waveform(3));await eventually(()=>f.owner.pcmIngress!.snapshot().latest?.event.event_id!==cancelled.event.event_id);const call=f.owner.pcmIngress!.snapshot().latest!;
-  await f.owner.pcmIngress!.finishSession();assert.equal((await f.storage.readFinal(call.event.raw_ref))?.ended_by,'call_hangup');
+  await f.owner.pcmIngress!.finishSession();await assertSessionEnded(f.storage,call.event.raw_ref,'call_hangup');
   f.feed(waveform(4));await eventually(()=>f.owner.pcmIngress!.snapshot().latest?.event.event_id!==call.event.event_id);
   assert.equal(f.cancels,0);assert.equal(f.streams,1);assert.deepEqual(f.errors,[]);
-  f.end();await f.owner.pcmIngress!.close();assert.equal((await f.storage.list('session-finals')).length,4);
+  f.end();await f.owner.pcmIngress!.close();assert.equal((await f.storage.list('session-ends')).length,4);
+  assert.equal((await f.storage.list('session-finals')).length,0);
+  await f.owner.assembly.runtime.existingArchive().maintenance(1,Date.now(),{budget_ms:5000});
+  assert.equal((await f.storage.list('session-finals')).length,4);
 });
 test('explicit formal PCM span uses sealed owner anchor and retained per-track proof without changing default v1 callers',async t=>{
   const f=await fixture(t,{span:true});await connect(f);f.feed();const first=await latest(f);
@@ -1137,7 +1154,9 @@ for(const partial of [false,true])test(`joined batch ${partial?'partly published
  const record=await archive.readRecord(head!.raw_ref,'owner',digest(head));assert.equal(record.kind,'stream');if(record.kind!=='stream')return;
  assert.deepEqual(record.chunks.map(x=>x.chunk.seq),partial?[0,1]:[0]);assert.deepEqual(record.chunks.map(x=>x.bytes.length),partial?[1280,640]:[1920]);
  assert.deepEqual(Buffer.concat(record.chunks.map(x=>Buffer.from(x.bytes))),Buffer.concat(frames.map(pcmBytes)));
- await eventually(async()=>!!await storage.readFinal(head!.raw_ref)&&(await storage.pendingFinals()).length===0);assert.equal((await storage.readFinal(head!.raw_ref))?.bytes,1920);
+ await assertSessionEnded(storage,head!.raw_ref,'source_exhausted');
+ await archive.maintenance(1,Date.now(),{budget_ms:5000});
+ assert.equal((await storage.pendingFinals()).length,0);assert.equal((await storage.readFinal(head!.raw_ref))?.bytes,1920);
  const ranges=record.chunks.map(x=>x.chunk.source_range as {start_ms:number;end_ms:number});assert.deepEqual(ranges.map(r=>[r.start_ms,r.end_ms]),partial?[[0,40],[40,60]]:[[0,60]]);
 });
 test('shutdown seals the complete recovered session after a published batch and a durable pending batch',async t=>{
@@ -1148,7 +1167,9 @@ test('shutdown seals the complete recovered session after a published batch and 
  for(const frame of frames)f.feed(frame);await eventually(async()=>refused>0&&(await f.storage.list('raw-ingress')).length===1);
  await f.owner.bridge.close!();assert.equal(await f.storage.readFinal(first.event.raw_ref),null);
  const storage=new PosixStorage(f.storage.root),archive=new RawArchive(storage,4096,undefined,parseMediaReplayConfiguration(f.pcm.configuration,true).stream_budget);
- t.after(()=>archive.close());await archive.recover();await eventually(async()=>!!await storage.readFinal(first.event.raw_ref)&&(await storage.pendingFinals()).length===0);
+ t.after(()=>archive.close());await archive.recover();await eventually(async()=>(await storage.list('raw-ingress')).length===0);
+ await assertSessionEnded(storage,first.event.raw_ref,'source_exhausted');
+ await archive.maintenance(1,Date.now(),{budget_ms:5000});assert.equal((await storage.pendingFinals()).length,0);
  const final=await storage.readFinal(first.event.raw_ref);assert.equal(final?.bytes,3840);assert.equal((await storage.list('raw-ingress')).length,0);
  const event=await archive.locate(first.event.raw_ref,'owner'),record=await archive.readRecord(event.raw_ref,'owner',event.archive_revision);
  assert.equal(record.kind,'stream');if(record.kind==='stream')assert.deepEqual(Buffer.concat(record.chunks.map(chunk=>Buffer.from(chunk.bytes))),Buffer.concat([...frames,...frames].map(pcmBytes)));
@@ -1255,7 +1276,9 @@ test('shutdown retains glasses ambient PCM with phone and Mac text connections o
  const storage=new PosixStorage(glasses.storage.root),archive=new RawArchive(storage,4096,undefined,parseMediaReplayConfiguration(glasses.pcm.configuration,true).stream_budget);
  t.after(()=>archive.close());await archive.recover();
  const rawRef=`l5:${digest({event_id:glasses.raws[0]!.event_id,principal_id:'owner',device_id:'glasses'})}`;
- await eventually(async()=>!!await storage.readFinal(rawRef)&&(await storage.pendingFinals()).length===0);
+ await eventually(async()=>(await storage.list('raw-ingress')).length===0);
+ await assertSessionEnded(storage,rawRef,'source_exhausted');
+ await archive.maintenance(1,Date.now(),{budget_ms:5000});assert.equal((await storage.pendingFinals()).length,0);
  assert.equal((await storage.list('raw-ingress')).length,0);assert.equal(await committedCount(storage),1);
  assert.equal((await storage.readFinal(rawRef))?.bytes,frame.data.byteLength);
 });
@@ -1295,6 +1318,8 @@ if(process.env.FORMAL_FILE_COUNT_BENCH)for(const joined of [false,true])test(`fi
  const live=await physical();
  f.end();await f.owner.pcmIngress!.drain();await f.owner.assembly.runtime.continuousMedia().drain();
  await waitBench(async()=>(await f.storage.list('raw-ingress')).length===0);
+ const archive=f.owner.assembly.runtime.existingArchive();
+ await waitBench(async()=>{await archive.maintenance(1,Date.now(),{budget_ms:5000});return archive.maintenanceSnapshot().phase==='idle';});
  const {spaces,total,data,fixed_reserve}=await physical(),hour=60/minutes;
  const scaled=Object.fromEntries(Object.entries(spaces).filter(([name,r])=>name!=='fixed_reserve'&&r.names).sort((a,b)=>b[1].inodes-a[1].inodes).map(([k,r])=>[k,{names_per_hour:Math.round(r.names*hour),inodes_per_hour:Math.round(r.inodes*hour),mib_per_hour:+(r.block_bytes*hour/1048576).toFixed(1)}]));
  const finals=await Promise.all((await f.storage.list('session-finals')).map(key=>f.storage.readFinal(`l5:${key}`)));
@@ -2118,7 +2143,7 @@ for(const phase of ['admission pressure','admission failure','late old admission
     return {connect:async()=>{},appendAudio:()=>{},appendImage:()=>{},close:()=>{},context:async()=>{},respond:async()=>({completed:true}),setOutputPaused:(paused:boolean)=>{front.paused=paused;front.pressure.push(paused);}};}};
   await f.create({central:{...f.options.central,voice}});const runtime=f.owner.assembly.runtime;
   t.mock.method(runtime,'callContext',async()=> 'owner context');t.mock.method(runtime,'archiveAlert',async()=>{});
-  t.mock.method(runtime.existingArchive(),'finalizeSession',async()=>null);
+  t.mock.method(runtime.existingArchive(),'endSession',async()=>null);
   t.mock.method(f.owner.clock!,'capture',async()=>({metadata:{captured_at:new Date(f.base).toISOString(),time_range:{kind:'instant',timebase_id:'utc_epoch_ms',at_ms:f.base}},capture_timing:{basis_ref:'synthetic-flow-only',quality:'synthetic',uncertainty_ms:0}} as never));
   t.mock.method(runtime,'admitMedia',async(...[raw,_source,chunk]:Parameters<typeof runtime.admitMedia>)=>{
     assert.equal(chunk.track_id,'assistant_reply');const samples=raw.payload.byteLength/2;admitted+=samples;
@@ -2179,6 +2204,8 @@ test('reply archive terminal publication failure retains durable bytes and stops
   t.mock.method(f.storage,'publishAliased',async(...args:Parameters<typeof f.storage.publishAliased>)=>{
     if(args[0]==='stream-revisions'&&refused)throw Object.assign(new Error('reply metadata permission refused'),{code:'EACCES'});return publish(...args);
   });
+  // Complete the terminal handshake before testing a reply's archive publication failure.
+  f.addExisting();
   await f.owner.bridge.onBootstrapConnected!(f.input);
   const snapshot=()=>((f.owner.sharedExecution.terminals.get('phone')!.resourceSnapshot!() as any).call.archive);
   const live=(id:string)=>f.published.some((p:any)=>p.call_id===id&&p.state==='live');
@@ -2206,8 +2233,8 @@ test('reply archive terminal publication failure retains durable bytes and stops
 
 test('queued formal-owner call media keeps source receipt time and durably archives microphone, actual played reply and exact compressed camera segments on independent tracks',async t=>{
   const f=await fixture(t,{voice:true,camera:true,receiptClock:true,budget:{max_pending_bytes:16384}});
-  let receivedAt=f.base,cameraResolves=0;const receipt=createReceiptClockProvider({uncertainty_ms:500,now:()=>receivedAt});
-  f.pcm.clock={...receipt,resolve:async(binding,chunk)=>{const map=await receipt.resolve(binding,chunk);if(chunk.track_id==='call_camera')cameraResolves++;return map;}};
+  let receivedAt=f.base;const cameraClock=Promise.withResolvers<void>(),receipt=createReceiptClockProvider({uncertainty_ms:500,now:()=>receivedAt});
+  f.pcm.clock={...receipt,resolve:async(binding,chunk)=>{const map=await receipt.resolve(binding,chunk);if(chunk.track_id==='call_camera')cameraClock.resolve();return map;}};
   t.mock.method(LocalSpeechEngine,'open',async()=>({openCallVad:async()=>({write:async()=>[],close:async()=>{}}),close:async()=>{}} as unknown as LocalSpeechEngine));
   const played:Int16Array[]=[];t.mock.method(AudioSource.prototype,'captureFrame',async(frame:{data:Int16Array})=>{played.push(frame.data.slice());});
   Object.assign(f.options.participant.roomPort!.localParticipant!,{publishTrack:async()=>({sid:'archive-track',waitForSubscription:async()=>{}}),unpublishTrack:async()=>{}});
@@ -2215,7 +2242,7 @@ test('queued formal-owner call media keeps source receipt time and durably archi
   f.pcm.cameraEncoderFactory=syntheticCameraEncoder(f.base);
   const images:string[]=[],imageReady=Promise.withResolvers<void>();f.pcm.cameraStreamFactory=()=>new ReadableStream<VideoFrameEvent>({start:controller=>{video=controller;}});
   const voice={...f.options.central.voice!,createFront:(callbacks:{onEvent(event:Record<string,unknown>):void})=>{emit=callbacks.onEvent;return {connect:async()=>{},appendAudio:()=>{},appendImage:(jpeg:string)=>{images.push(jpeg);imageReady.resolve();},close:()=>{},context:async()=>{},respond:async()=>({completed:true})};}};
-  await f.create({central:{...f.options.central,voice}});f.addExisting();
+  await f.create({central:{...f.options.central,voice},retainAssembly:true});t.after(()=>f.owner.assembly.close());f.addExisting();
   const room=f.options.participant.roomPort!,peer=room.remoteParticipants!.get('terminal')!;
   peer.trackPublications.set('camera',{kind:TrackKind.KIND_VIDEO,source:TrackSource.SOURCE_CAMERA,track:{camera:true,sid:'camera-track'}} as never);
   await f.owner.bridge.onBootstrapConnected!({...f.input,enabledMedia:{data:true,audio:true,video:true}});
@@ -2227,10 +2254,10 @@ test('queued formal-owner call media keeps source receipt time and durably archi
     return {...admitted,commit:admitted.commit.then(async published=>{await barrier.promise;return published;})};});
   emit({type:'response.created',response:{id:'actual'}});
   const reply=new Int16Array(480).fill(2048);emit({type:'response.audio.delta',response_id:'actual',delta:Buffer.from(reply.buffer).toString('base64')});
-  await new Promise(resolve=>setTimeout(resolve,FIRST_AUDIO_CONFIRM_MS+25));await eventually(()=>played.length===1&&blocked);
+  await eventually(()=>played.length===1&&blocked);
   const w=64,h=36,pixels=new Uint8Array(w*h*3/2).fill(128);pixels.fill(70,0,w*h);
   for(let frame=0;frame<3;frame++)video.enqueue({frame:new VideoFrame(pixels,w,h,VideoBufferType.I420),rotation:0,timestampUs:BigInt(frame)} as never);
-  try{await eventually(()=>cameraResolves===1);receivedAt+=5000;}finally{barrier.release();}
+  try{await cameraClock.promise;receivedAt+=5000;}finally{barrier.release();}
   await eventually(async()=>{if(f.errors.length)throw f.errors[0];return await committedCount(f.storage)===6;});
   // Archive and preview finish independently. Verify the image reached the live call before closing its sink.
   await imageReady.promise;f.sendText({operation:'call_close',call_id:'archive-call'});await eventually(()=>f.published.some((p:any)=>p.operation==='call_state'&&p.state==='closed'));await f.owner.bridge.close?.();
@@ -2240,6 +2267,11 @@ test('queued formal-owner call media keeps source receipt time and durably archi
   assert.equal(new Set([...tracks.values()].map(x=>x.event.raw_ref)).size,3);
   assert.deepEqual(Buffer.from((await archive.readExactChunk(mic.event,mic.chunk,4096)).bytes),pcmBytes(waveform()));
   const out=tracks.get('assistant_reply')!,camera=tracks.get('call_camera')!;
+  await assertSessionEnded(f.storage,mic.event.raw_ref,'call_start');
+  await assertSessionEnded(f.storage,inbound.event.raw_ref,'call_hangup');
+  await assertSessionEnded(f.storage,out.event.raw_ref,'call_hangup');
+  assert.equal((await f.storage.list('session-finals')).length,0);
+  await archive.maintenance(1,Date.now(),{budget_ms:5000});
   assert.equal((await f.storage.readFinal(mic.event.raw_ref))?.ended_by,'call_start');
   assert.equal((await f.storage.readFinal(inbound.event.raw_ref))?.ended_by,'call_hangup');
   assert.equal((await f.storage.readFinal(out.event.raw_ref))?.ended_by,'call_hangup');
@@ -2364,17 +2396,18 @@ test('glasses camera abrupt end releases dead-session tail and next HTTP bootstr
   const live=(id:string)=>f.published.some((row:any)=>row.call_id===id&&row.state==='live');
   assert.equal((await bootstrap()).status,200);f.sendText({operation:'call_open',call_id:'glasses-before-drop'});await eventually(()=>live('glasses-before-drop'));
   frame(0);await eventually(()=>writes===1);
-  ended=true;f.unsubscribe(track);await eventually(()=>f.errors.length>0);
-  assert.equal(f.errors.length,1);assert.match(String(f.errors[0]),/SOURCE_BINDING_INACTIVE/);
+  ended=true;f.unsubscribe(track);
+  await eventually(()=>logs.some(line=>{const row=JSON.parse(line);return row.call_camera_capture==='released'&&row.reason==='SOURCE_BINDING_INACTIVE';}));
+  assert.ok(f.errors.some(error=>error instanceof ContractError&&error.code==='SOURCE_BINDING_INACTIVE'));
   const nextRef={...oldRef,ref_id:'01900000-0000-7000-8000-000000000005'},nextLease={...f.session.activeDeviceLeaseRef,ref_id:'01900000-0000-7000-8000-000000000006'};
   Object.assign(f.session,{realtimeSessionRef:nextRef,activeDeviceLeaseRef:nextLease,connectionEpoch:'2'});
   Object.assign(f.session.binding,{realtimeSessionRef:nextRef,deviceLeaseRef:nextLease,connectionEpoch:'2'});Object.assign(current.lease,{realtimeSessionRef:nextRef,deviceLeaseRef:nextLease});
   input={...input,currentBinding:{...input.currentBinding,realtimeSessionRef:nextRef,deviceLeaseRef:nextLease,connectionEpoch:'2'}};
-  const disconnects=f.disconnects;
   const reconnect=await bootstrap();assert.equal(reconnect.status,200,await reconnect.text());
-  assert.equal(f.disconnects,disconnects+1,'new initial bootstrap replaces its old participant binding');
+  assert.equal(f.room.isConnected,true,'new initial bootstrap has a connected participant');
+  assert.equal(connectedBinding.realtimeSessionRef.ref_id,nextRef.ref_id,'the HTTP owner replaced the old source binding');
   assert.equal(discarded,1);
-  assert.ok(f.errors.slice(1).every(error=>error instanceof ContractError&&error.code==='FORMAL_TEXT_CONNECTION_CHANGED'),f.errors.map(String).join('\n'));
+  assert.ok(f.errors.every(error=>error instanceof ContractError&&['SOURCE_BINDING_INACTIVE','FORMAL_TEXT_CONNECTION_CHANGED'].includes(error.code)),f.errors.map(String).join('\n'));
   assert.equal(logs.filter(line=>JSON.parse(line).call_camera_capture==='released'&&JSON.parse(line).reason==='SOURCE_BINDING_INACTIVE').length,1);
   assert.equal(alerts.filter(reason=>reason==='camera_capture_paused').length,1);assert.equal(callVideoResourcesSnapshot().queued_bytes,0);
   frame(1);await eventually(()=>writes===2);f.unsubscribe(track);await eventually(async()=>await committedCount(f.storage)===1);
@@ -2798,6 +2831,64 @@ test('same-binding PCM refresh reuses the reader without waiting for its pending
     assert.equal(f.streams,1);assert.equal(f.cancels,0);assert.equal(f.owner.pcmIngress!.snapshot().pending_frames,1);
   }finally{gate.release();await refresh;}
   const archived=await latest(f);assert.deepEqual(Buffer.from((await f.owner.assembly.runtime.existingArchive().readExactChunk(archived.event,archived.chunk,4096)).bytes),pcmBytes(waveform(7)));
+});
+
+test('repeated binding reconnects retain one terminal admission and preserve original archive replay',async t=>{
+  const f=await fixture(t);await connect(f);f.feed(waveform(1));const original=await latest(f);
+  const oldSource=await f.owner.pcmIngress!.source();
+  for(let epoch=2;epoch<=12;epoch++){
+    f.session.connectionEpoch=String(epoch);f.session.binding.connectionEpoch=String(epoch);
+    await f.owner.bridge.onBootstrapConnected!({...f.input,currentBinding:{...f.input.currentBinding,connectionEpoch:String(epoch)}});
+    assert.equal(f.owner.sharedExecution.admissions.size,1,'replaced routes must release their admission owner');
+    const currentAdmission=[...f.owner.sharedExecution.admissions.values()][0]!;
+    await assert.rejects(currentAdmission.withAppendAdmission!(f.raws[0]!,{...oldSource,submission:'observation'},original.chunk,
+      async()=>assert.fail('stale route must not append through the current terminal')),/MEDIA_CAPTURE_CONTEXT_MISMATCH/);
+    f.feed(waveform(epoch));const current=await latest(f);
+    assert.notEqual(current.chunk.stream_epoch,original.chunk.stream_epoch);
+    assert.deepEqual(Buffer.from((await f.owner.assembly.runtime.existingArchive().readExactChunk(current.event,current.chunk,4096)).bytes),pcmBytes(waveform(epoch)));
+  }
+  assert.deepEqual(Buffer.from((await f.owner.assembly.runtime.existingArchive().readExactChunk(original.event,original.chunk,4096)).bytes),pcmBytes(waveform(1)));
+  assert.deepEqual(f.errors,[]);
+  await f.owner.bridge.close!();assert.equal(f.owner.sharedExecution.admissions.size,0);
+});
+
+test('replaced admission cannot tear down a new route while old durable admission is blocked',async t=>{
+  const f=await fixture(t),gate=latch();await connect(f);f.holdClock(gate.promise);
+  f.feed(waveform(1));await eventually(()=>f.clockReads===1);
+  f.session.connectionEpoch='2';f.session.binding.connectionEpoch='2';
+  const refreshing=f.owner.bridge.onBootstrapConnected!({...f.input,currentBinding:{...f.input.currentBinding,connectionEpoch:'2'}});
+  try{
+    await eventually(()=>f.cancels===1);gate.release();f.holdClock();await refreshing;
+    assert.equal(f.owner.sharedExecution.admissions.size,1);assert.equal(f.disconnects,0);
+    assert.ok(f.errors.some(error=>String(error).includes('SOURCE_OWNER_BINDING_DENIED')),'the original authority rejects the superseded epoch');
+    f.feed(waveform(2));const fresh=await latest(f);
+    assert.deepEqual(Buffer.from((await f.owner.assembly.runtime.existingArchive().readExactChunk(fresh.event,fresh.chunk,4096)).bytes),pcmBytes(waveform(2)));
+    assert.equal(f.owner.pcmIngress!.snapshot().error,undefined);
+  }finally{gate.release();f.holdClock();await refreshing;}
+});
+
+test('reconnect releases the old admission while durable originals wait for publication',async t=>{
+  const f=await fixture(t),gate=latch();await connect(f);let entered=false;
+  const publish=f.storage.publishAliased.bind(f.storage);
+  t.mock.method(f.storage,'publishAliased',async(...args:Parameters<typeof publish>)=>{
+    if(args[0]==='stream-revisions'&&!entered){entered=true;await gate.promise;}return publish(...args);
+  });
+  f.feed(waveform(1));await eventually(()=>entered);
+  let refreshing:Promise<void>|undefined;
+  try{
+    await eventually(()=>f.owner.pcmIngress!.snapshot().pending_frames===0);
+    f.session.connectionEpoch='2';f.session.binding.connectionEpoch='2';
+    refreshing=Promise.resolve(f.owner.bridge.onBootstrapConnected!({...f.input,currentBinding:{...f.input.currentBinding,connectionEpoch:'2'}}));
+    await eventually(()=>f.cancels===1);
+    assert.equal(f.owner.sharedExecution.admissions.size,1);
+  }finally{gate.release();await refreshing;}
+  assert.equal(f.streams,2);
+  await eventually(async()=>await committedCount(f.storage)===1);
+  const archive=f.owner.assembly.runtime.existingArchive(),raw=f.raws[0]!;
+  const original=await archive.locate(`l5:${digest({event_id:raw.event_id,principal_id:'owner',device_id:raw.device_id})}`,'owner');
+  const record=await archive.readRecord(original.raw_ref,'owner',original.archive_revision);assert.equal(record.kind,'stream');
+  if(record.kind==='stream')assert.deepEqual(Buffer.concat(record.chunks.map(chunk=>Buffer.from(chunk.bytes))),pcmBytes(waveform(1)));
+  f.feed(waveform(2));await latest(f);assert.deepEqual(f.errors,[]);
 });
 
 for(const rejected of [false,true])test(`PCM readiness joins durable ingress before ${rejected?'rejected':'delayed'} native cancellation`,async t=>{

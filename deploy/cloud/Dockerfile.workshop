@@ -1,6 +1,8 @@
 FROM debian:13.4@sha256:e2d08da6f42ef4b09b165d55528a12727aeed8240dc9edf888e3ec07e10ef9da
 ARG PAIOS_BUILD_MAINLAND_MIRRORS=0
-RUN if [ "$PAIOS_BUILD_MAINLAND_MIRRORS" = "1" ]; then sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list.d/debian.sources; fi && apt-get update && apt-get install -y --no-install-recommends openssh-server python3-venv python3-pip python3-openpyxl python3-docx python3-pypdf git curl ca-certificates iptables util-linux socat libseccomp2 && rm -rf /var/lib/apt/lists/* /etc/ssh/ssh_host_*
+RUN if [ "$PAIOS_BUILD_MAINLAND_MIRRORS" = "1" ]; then sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list.d/debian.sources; fi && apt-get update && apt-get install -y --no-install-recommends openssh-server python3-venv python3-pip python3-yaml python3-openpyxl python3-docx python3-pypdf git curl ca-certificates iptables util-linux socat libseccomp2 && rm -rf /var/lib/apt/lists/* /etc/ssh/ssh_host_*
+COPY --chmod=a+rX,go-w capability /opt/yimi/capability
+COPY --chmod=a+rX,go-w 01-product-half-finished/backend/services/personal-aios-integration/src/capability/registry/*.py /opt/yimi/registration/
 # Reuse only the product toolchain/dependencies; repair workspaces never receive another revision's source.
 COPY --from=gateway_runtime /usr/local/ /usr/local/
 COPY --from=gateway_runtime /opt/paios/01-product-half-finished/backend/phase0/gateway/node_modules /opt/paios-test-deps/phase0/gateway/node_modules

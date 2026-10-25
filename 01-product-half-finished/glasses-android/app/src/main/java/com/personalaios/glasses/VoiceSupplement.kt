@@ -34,7 +34,8 @@ class VoiceSupplement(private val id: () -> String = { UUID.randomUUID().toStrin
             state = state.copy(phase = VoiceSupplementPhase.Starting, message = "正在接通依米")
             return listOf(command("start"))
         }
-        if (!granted && running) fail("授权已结束，请重新申请")
+        // Saving consumes the grant before its enrollment receipt arrives; that receipt owns the outcome.
+        if (!granted && running && state.phase != VoiceSupplementPhase.Saving) fail("授权已结束，请重新申请")
         return emptyList()
     }
 
@@ -81,9 +82,10 @@ class VoiceSupplement(private val id: () -> String = { UUID.randomUUID().toStrin
         else -> emptyList()
     }
 
-    /** Leaves the screen: an unsaved draft is discarded on the server, which also ends its call. */
+    /** Leaves the screen: discard also cancels approval before a draft exists. */
     fun cancel(): List<JSONObject> {
-        val discard = if (session != null && state.phase != VoiceSupplementPhase.Saved) listOf(command("discard")) else emptyList()
+        val discard = if (state.phase == VoiceSupplementPhase.AwaitingPhone || running || session != null && state.phase != VoiceSupplementPhase.Saved)
+            listOf(command("discard")) else emptyList()
         session = null; callId = null; callRequested = false; controls.clear()
         state = VoiceSupplementState()
         return discard

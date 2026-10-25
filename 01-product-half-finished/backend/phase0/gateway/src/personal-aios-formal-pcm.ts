@@ -263,6 +263,7 @@ export function createFormalPcmIngress(options: {
           else {lane.processingGap=true;if(!processingSkippedFrames)options.onError(new Error('FORMAL_PCM_PROCESSING_BACKLOG'));processingSkippedFrames+=count;}
           const resetConsume=consume&&(!!lane.processingGap||gapBefore);if(consume)lane.processingGap=false;
           return {onDurable:()=>{durableFrames+=count;onDurable();},beforeConsume:publicationTail,consume,
+            ...(lane.purpose?{audioPurpose:lane.purpose}:{}),
             // Runtime reads this after beforeConsume: earlier publication may still report a rejection.
             get resetConsume(){const reset=resetConsume||!!lane.admissionGap;if(consume)lane.admissionGap=false;return reset;}};
         };

@@ -54,7 +54,7 @@ export interface PaymentPolicy {
   principal_id:string;version:number;voice_enabled:boolean;auto_enabled:boolean;limits:Partial<Limits>;paused_until_ms:number|null;updated_at_ms:number;
 }
 export interface LockRow {device_id:string;principal_id:string;device_type:'phone'|'glasses';enabled:boolean;relock_s:number|null;updated_at_ms:number}
-export interface DeviceKey {device_id:string;role:'device'|'user';principal_id:string;public_x963_b64:string;created_at_ms:number;revoked_at_ms:number|null}
+export interface DeviceKey {device_id:string;role:'device'|'user'|'model_settings'|'model_settings_pending';principal_id:string;public_x963_b64:string;created_at_ms:number;revoked_at_ms:number|null}
 export interface PaymentIntent {
   intent_id:string;principal_id:string;run_id:string;tool_call_id:string;session_id:string;processed_event_id:string;
   initiating:Initiating;initiating_text:string|null;purpose:string;app:string;budget_fen:number|null;

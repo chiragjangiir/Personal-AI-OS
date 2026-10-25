@@ -5,6 +5,7 @@ struct WatchWidgetRide: Equatable {
     let paused: Bool
     let figures: String
     let startedAt: Date?
+    var sensorsExpireAt: Date? = nil
 }
 
 extension WatchWidgetSnapshot {
@@ -12,12 +13,13 @@ extension WatchWidgetSnapshot {
     static let rideHorizon: TimeInterval = 120
 
     /// Priority is the watch home's (WatchStateReducer.home: question, then work in progress, then her latest reply);
-    /// a running ride goes first. The question's expiry and the ride horizon are the moments the card changes by itself.
+    /// a running ride replaces work while keeping a pending question first. Expiry entries need no app reload.
     static func make(state: WatchYimiState?, ride: WatchWidgetRide?, now: Date) -> WatchWidgetSnapshot {
         let rideEnds = ride.map { _ in now.addingTimeInterval(rideHorizon) }
         let questionEnds = state?.question.flatMap { WatchStateReducer.date($0.expires_at) }
-        let changes = Set([rideEnds, questionEnds].compactMap { $0 }.filter { $0 > now })
+        let changes = Set([rideEnds, questionEnds, ride?.sensorsExpireAt].compactMap { $0 }.filter { $0 > now })
         let items = ([now] + changes.sorted()).map { at -> Item in
+            if case .question = WatchStateReducer.home(state: state, now: at) { return stateItem(state, at: at) }
             if let ride, let rideEnds, at < rideEnds { return rideItem(ride, from: at) }
             return stateItem(state, at: at)
         }
@@ -25,7 +27,9 @@ extension WatchWidgetSnapshot {
     }
 
     private static func rideItem(_ ride: WatchWidgetRide, from: Date) -> Item {
-        Item(kind: .ride, from: from, header: ride.paused ? "已暂停" : "骑行中", title: ride.figures, detail: nil,
+        let fresh = ride.sensorsExpireAt.map { from < $0 } ?? true
+        return Item(kind: .ride, from: from, header: ride.paused ? "已暂停" : "骑行中",
+             title: fresh ? ride.figures : "-- km/h · ♥ --", detail: nil,
              since: ride.paused ? nil : ride.startedAt, link: nil)
     }
 

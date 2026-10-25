@@ -371,6 +371,20 @@ final class YimiPaymentModel: ObservableObject {
     }
 
     /// Reuses the registered user-presence key and current transport authorization.
+    func signModelSettings(_ statement: Data, deviceID: String) async throws -> Data {
+        let authorization = try authorization()
+        guard authorization.binding.deviceID == deviceID else { throw CentralTextError.unavailable }
+        let context = try await userContext("确认模型与密钥设置", authorization: authorization)
+        defer { context.invalidate() }
+        try await registerUser(context: context, authorization: authorization)
+        try check(authorization)
+        let (_, keys) = try identity()
+        let signature = try keys.sign(statement, role: .user, context: context)
+        try check(authorization)
+        return signature
+    }
+
+    /// Reuses the registered user-presence key and current transport authorization.
     func authorizeMacPairing(_ qr: RealtimeMacPairingQR, pairing: RealtimeDevicePairing) async throws -> [String: Any] {
         let authorization = try authorization()
         guard authorization.binding.deviceID == pairing.deviceID else { throw CentralTextError.unavailable }

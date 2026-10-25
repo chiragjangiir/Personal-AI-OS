@@ -3,7 +3,7 @@ import SwiftUI
 /// Every page pushed on the root stack. A pushed page never owns a NavigationStack of its own: SwiftUI merges a nested
 /// stack into this bound `[YimiRoute]` path and traps (`boundPathChange` → `swift_unexpectedError`; for example,
 /// 她了解你 → 健康数据与诊断 pushed the exporter's TabView of stacks). Screens with their own stacks are presented modally.
-enum YimiRoute: Hashable, CaseIterable { case chat, memory, health, contacts, payment, voiceprint, appearance }
+enum YimiRoute: Hashable, CaseIterable { case chat, memory, health, contacts, payment, modelSettings, voiceprint, appearance }
 
 /// UI-only state shared by the screens: the call cover (open / minimised, voice or video, where it grows from),
 /// hold-to-talk, and the top toast. Session work stays in AssistantViewModel.
@@ -67,6 +67,7 @@ struct YimiRootView: View {
                         case .health: YimiHealthView(vm: vm)
                         case .contacts: YimiContactsView(vm: vm)
                         case .payment: YimiPaymentSettingsView(payment: vm.payment, ownerOverride: vm.ownerOverride, onVoice: { ui.path.append(.voiceprint) })
+                        case .modelSettings: YimiModelSettingsView(model: vm.modelSettings)
                         case .voiceprint: YimiPaymentVoiceprintView(vm: vm)
                         case .appearance: YimiAppearanceView(state: vm.appearanceState, terminals: vm.terminalState.terminals,
                             onRefresh: { Task { await vm.refreshAppearance() } },

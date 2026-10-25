@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {existsSync, readdirSync, readFileSync} from 'node:fs';
-import {mkdtemp, rm, writeFile} from 'node:fs/promises';
+import {chmod, mkdir, mkdtemp, rm, symlink, unlink, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -64,19 +64,15 @@ test('the archived patch is the single producer source and carries every contrac
   // Shape bytes the producer publishes are byte-identical to the consumer's pinned schema.
   assert.equal(sha256(createdFile(lock.producer.shape_schema)),lock.shape_sha256);
   const publisher=addedText(lock.producer.publisher);
-  for(const literal of [`schema="${lock.contract}"`,`shape_sha256="${lock.shape_sha256}"`,'X-Hermes-Run-Contract','memory_receipt_source',
-    'api_memory_write_request(body)','bind_api_memory_write(run.run_id'])
+  for(const literal of [`schema="${lock.contract}"`,`shape_sha256="${lock.shape_sha256}"`,'X-Hermes-Run-Contract','conversation_session_id'])
     assert.ok(publisher.includes(literal),`publisher hunk lacks ${literal}`);
   assert.match(createdFile('agent/final_response_evidence.py'),/"native_final_response"/u);
   assert.match(addedText('agent/turn_finalizer.py'),/result\["native_final_response"\] = proof/u);
-  // memory_write is accepted on the authenticated run body and enforced where native memory is written.
-  assert.match(addedText('gateway/session_context.py'),/def api_memory_write_request\(body\)/u);
-  assert.match(addedText('tools/memory_tool_store.py'),/api_memory_write_allowed\(\)/u);
-  assert.match(createdFile('tools/memory_tool_outcomes.py'),/api_memory_write_allowed\(run_id, session_id\)/u);
+  assert.doesNotMatch(publisher,/memory_receipt_source|begin_memory_effect_run|read_memory_effects/u);
   // The speaker run scope the consumer sends for unverified voices is validated, isolated and enforced at dispatch.
   const scope=createdFile('gateway/run_scope.py');
-  assert.match(scope,/def run_scope_request\(body, memory_write\)/u); assert.match(scope,/def guest_session_id\(conversation_session_id, guest_key\)/u);
-  for(const literal of ['run_scope_request(body, memory_write)','guest_session_id(conversation_session_id, guest_key)','run_scope=run_scope'])
+  assert.match(scope,/def run_scope_request\(body\)/u); assert.match(scope,/def guest_session_id\(conversation_session_id, guest_key\)/u);
+  for(const literal of ['run_scope_request(body)','guest_session_id(conversation_session_id, guest_key)','run_scope=run_scope'])
     assert.ok(publisher.includes(literal),`publisher hunk lacks ${literal}`);
   assert.match(scope,/def action_grants/u);
   assert.match(scope,/def bind_action_grants/u);
@@ -126,4 +122,83 @@ test('a tampered patch, or one without the shape producer, cannot pass as the lo
   await writeFile(join(dir,'producer.lock.json'),JSON.stringify({...lock,patch:{...lock.patch,sha256:sha256(old)}}));
   const partial=verify('--source',upstreamSource,'--lock',join(dir,'producer.lock.json'));
   assert.equal(partial.status,1); assert.match(partial.stderr,/REBUILT_TREE_MISMATCH/u); assert.match(partial.stderr,/PRODUCER_SHAPE_MISMATCH/u);
+});
+
+test('image inventories accept only exact build paths, including ignored files and symlink targets',{skip:rebuildSkip},async t=>{
+  const parent=await mkdtemp(join(tmpdir(),'paios-image-inventory-')); t.after(()=>rm(parent,{recursive:true,force:true}));
+  const kept=join(parent,'hermes'), fixtureLock=join(parent,'producer.lock.json');
+  const built=verify('--source',upstreamSource,'--keep',kept); assert.equal(built.status,0,built.stderr);
+  await mkdir(join(kept,'.venv/bin'),{recursive:true});
+  await symlink('/usr/bin/python3',join(kept,'.venv/bin/python'));
+  await writeFile(join(kept,'manifest.json'),'{}\n');
+  await writeFile(join(parent,lock.patch.path),patchBytes);
+  const inventory=(entries:string[][])=>({path_count:entries.length,paths_sha256:sha256(JSON.stringify(entries))});
+  await writeFile(fixtureLock,JSON.stringify({...lock,build_products:{
+    dockerfile_sha256:sha256(readFileSync(join(kept,'Dockerfile'))),paths:[
+      {path:'.venv',reason:'Fixture of the upstream dependency environment.',...inventory([
+        ['.venv','directory',''],['.venv/bin','directory',''],['.venv/bin/python','120000','/usr/bin/python3']])},
+      {path:'manifest.json',reason:'Fixture of the upstream image assembler output.',...inventory([
+        ['manifest.json','100644','']])}]}}));
+  const check=()=>verify('--check-running',kept,'--lock',fixtureLock);
+  assert.equal(check().status,0,check().stderr);
+  for(const path of ['sitecustomize.py','.env','__pycache__/injected.pyc','.venv/bin/injected.pth']){
+    await mkdir(join(kept,path,'..'),{recursive:true});
+    await writeFile(join(kept,path),'injected');
+    const rejected=check(); assert.equal(rejected.status,1,path);
+    assert.match(rejected.stderr,/RUNNING_TREE_DIRTY|BUILD_PRODUCT_INVENTORY_MISMATCH/u);
+    await rm(join(kept,path));
+    if(path.startsWith('__pycache__'))await rm(join(kept,'__pycache__'),{recursive:true});
+  }
+  await unlink(join(kept,'.venv/bin/python'));
+  assert.match(check().stderr,/BUILD_PRODUCT_INVENTORY_MISMATCH/u);
+  await symlink('/tmp/replacement-python',join(kept,'.venv/bin/python'));
+  assert.equal(check().status,1);
+  await unlink(join(kept,'.venv/bin/python'));
+  await symlink('/usr/bin/python3',join(kept,'.venv/bin/python'));
+  await unlink(join(kept,'manifest.json'));
+  assert.match(check().stderr,/BUILD_PRODUCT_INVENTORY_MISMATCH/u);
+  await writeFile(join(kept,'manifest.json'),'{}\n');
+  assert.equal(check().status,0,check().stderr);
+  const cache=join(kept,'uv-cache');
+  await mkdir(join(cache,'archive-v0'),{recursive:true});
+  await writeFile(join(cache,'archive-v0/random-seed'),'seed');
+  await symlink('archive-v0/random-seed',join(cache,'wheel'));
+  const seedLock=JSON.parse(readFileSync(fixtureLock,'utf8'));
+  seedLock.build_products.paths.push({path:'uv-cache',verification:'opaque_seed_cache',reason:'Upstream seed-cache fixture.'});
+  await writeFile(fixtureLock,JSON.stringify(seedLock));
+  assert.equal(check().status,0,check().stderr);
+  await writeFile(join(cache,'another-random-seed'),'seed');
+  assert.equal(check().status,0,check().stderr);
+  await symlink('/tmp',join(cache,'escape'));
+  assert.match(check().stderr,/BUILD_PRODUCT_CONTAINMENT_FAILED/u);
+  await unlink(join(cache,'escape'));
+  await chmod(join(cache,'another-random-seed'),0o2644);
+  assert.match(check().stderr,/BUILD_PRODUCT_CONTAINMENT_FAILED/u);
+  await chmod(join(cache,'another-random-seed'),0o644);
+  const exposed=spawnSync(process.execPath,[verifier,'--check-running',kept,'--lock',fixtureLock],
+    {encoding:'utf8',env:{...process.env,PATH:`${cache}:${process.env.PATH}`}});
+  assert.equal(exposed.status,1); assert.match(exposed.stderr,/seed cache on runtime sys.path\/PATH/u);
+  await rm(cache,{recursive:true});
+  assert.match(check().stderr,/BUILD_PRODUCT_CONTAINMENT_FAILED/u);
+});
+
+test('tracked bytes and executable modes cannot hide behind index flags',{skip:rebuildSkip},async t=>{
+  const parent=await mkdtemp(join(tmpdir(),'paios-tracked-identity-')); t.after(()=>rm(parent,{recursive:true,force:true}));
+  const kept=join(parent,'hermes');
+  const built=verify('--source',upstreamSource,'--keep',kept); assert.equal(built.status,0,built.stderr);
+  const path='Dockerfile', original=readFileSync(join(kept,path));
+  const git=(...args:string[])=>{const run=spawnSync('git',['-C',kept,...args],{encoding:'utf8'});assert.equal(run.status,0,run.stderr);};
+  git('update-index','--assume-unchanged',path);
+  await writeFile(join(kept,path),Buffer.concat([original,Buffer.from('\n# altered\n')]));
+  assert.match(verify('--check-running',kept).stderr,/RUNNING_TREE_DIRTY/u);
+  await writeFile(join(kept,path),original);
+  await chmod(join(kept,path),0o755);
+  assert.match(verify('--check-running',kept).stderr,/RUNNING_TREE_DIRTY/u);
+  await chmod(join(kept,path),0o644);
+  git('update-index','--no-assume-unchanged',path);
+  git('update-index','--skip-worktree',path);
+  await writeFile(join(kept,path),Buffer.concat([original,Buffer.from('\n# altered\n')]));
+  assert.match(verify('--check-running',kept).stderr,/RUNNING_TREE_DIRTY/u);
+  await writeFile(join(kept,path),original);
+  assert.equal(verify('--check-running',kept).status,0);
 });

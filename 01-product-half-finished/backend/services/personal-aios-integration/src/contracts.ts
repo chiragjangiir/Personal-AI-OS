@@ -98,6 +98,7 @@ export interface RawEvent {
   representation: 'uploaded_original' | 'received_encoded_track' | 'received_decoded_sample' | 'encoded_video_segment';
   payload: Uint8Array; time_range?: TimeRange; attachments?: FileAttachment[];
 }
+export interface AudioCapture {purpose:'request'|'voiceprint';lane:'finite'|'continuous'}
 // Created by the transport's authenticated device registry, never by model/media content.
 export interface TrustedContext {
   principal_id: string; device_id: string; device_type: DeviceType; consent_ref: string;
@@ -105,8 +106,11 @@ export interface TrustedContext {
   // owner_confirmation: set only by the server-side "确认是我" path for an owner_uncertain voice request.
   channel: string; submission: 'explicit_text' | 'owner_call_turn' | 'owner_confirmation' | 'owner_gesture' | 'unidentified_gesture' | 'observation' | 'errand_result';
   relay_device_id?: string; capabilities?: readonly TerminalCapability[];
+  /** Host acquisition intent, persisted with the admitted original; never taken from raw input. */
+  audio_capture?:AudioCapture;
 }
 export interface BoundEvent extends Omit<RawEvent, 'payload' | 'time_range'> {
+  audio_capture?:AudioCapture;
   principal_id: string; consent_ref: string; received_at: string;
   origin: 'explicit_user_prompt' | 'device_observation'; user_identity: string | 'unknown';
   time_range: TimeRange;
@@ -192,10 +196,10 @@ export function bindRawSource(event: Omit<RawEvent, 'captured_at' | 'time_range'
   check(!callTurn || event.media_type === 'app_event', 'CALL_TURN_REQUIRES_APP_EVENT');
   check(!confirmation || event.media_type === 'app_event', 'VOICE_CONFIRMATION_REQUIRES_APP_EVENT');
   check(!gesture || event.media_type === 'app_event', 'GESTURE_REQUIRES_APP_EVENT');
-  const {payload: _payload, ...metadata} = event;
+  const {payload: _payload,audio_capture:_untrustedCapture, ...metadata} = event as typeof event&{audio_capture?:unknown};
   canonical(metadata);
   // The internal call producer may attribute only speech it has identified as owner speech.
-  return {...metadata, principal_id: trusted.principal_id, consent_ref: trusted.consent_ref, received_at: receivedAt,
+  return {...metadata,...(trusted.audio_capture?{audio_capture:structuredClone(trusted.audio_capture)}:{}), principal_id: trusted.principal_id, consent_ref: trusted.consent_ref, received_at: receivedAt,
     origin: explicit ? 'explicit_user_prompt' as const : 'device_observation' as const,
     user_identity: explicit || callTurn || confirmation || trusted.submission === 'owner_gesture' ? trusted.principal_id : 'unknown'};
 }

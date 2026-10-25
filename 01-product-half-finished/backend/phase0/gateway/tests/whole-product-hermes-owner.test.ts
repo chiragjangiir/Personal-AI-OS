@@ -89,10 +89,8 @@ test('whole-product constructor selects Hermes before FinalTranscript/SourceMedi
   const pool={end:async()=>{calls.push('pool.close');}} as never;
   const forbidden=()=>{throw new Error('LEGACY_RESOURCE_ALLOCATED');};
   const ports:Partial<WholeProductOwnerPorts>={
-    readPolicy:()=>({} as never),readPostgresPassword:()=> 'controlled-not-a-secret',
-    readLiveKit:()=>({livekitApiKey:'fixture-key',livekitApiSecret:'fixture-secret',proxyAttestationSecret:SECRET}),
     createPool:()=>{calls.push('pool');return pool;},inspectPostgres:async()=>{calls.push('pg.probe');return true;},
-    createSourceMedia:forbidden,createFinalTranscript:forbidden,createQwenSupervisor:forbidden,inspectQwen:forbidden,
+    createSourceMedia:forbidden,createFinalTranscript:forbidden,
     createPublicOwner:async input=>{calls.push('public.owner');assert.equal(input.executionOwner,'hermes_text');
       assert.equal(input.central,central);assert.equal(input.inputReadiness,inputReadiness);
       assert.equal(input.finalTranscriptEvidence,undefined);assert.equal(input.sourceMedia,undefined);

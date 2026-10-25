@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "wechat-mac": {
+      "command": "python3",
+      "args": [
+        "-m",
+        "capability.hosts.python",
+        "capability.packages.wechat-mac.server.server"
+      ],
+      "type": "stdio"
+    }
+  }
+}

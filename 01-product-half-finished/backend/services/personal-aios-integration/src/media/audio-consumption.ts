@@ -2,6 +2,7 @@ import {publishRawRecord,withRawPublication} from '../stream-archive.ts';
 import {randomUUID} from 'node:crypto';
 import {canonical,ContractError,check,digest,sha256,type ArchivedEvent,type ProcessedEvent} from '../contracts.ts';
 import type {StoragePort} from '../storage.ts';
+import type {SessionRecordRef} from '../session-records.ts';
 import type {MediaProcessResult} from './service.ts';
 import {MediaCancelledWithoutEffectError,readReusedAudio,type MediaInputRecord,type WorkerRequest} from './processing.ts';
 import {selectedAudioTimeline} from './sample-timeline.ts';
@@ -20,6 +21,7 @@ export interface AudioRoute {
 interface Route extends AudioRoute {schema:'paios.audio-consumer.v1'|'paios.audio-consumer.v2';raw_ref:string;principal_id:string;device_id:string;lane:AudioLane}
 interface MediaOutcome {metadata:Omit<MediaProcessResult,'processed_events'>|null;pins:{key:string;id:string;sha256:string}[]}
 interface Outcome<T> {key:string;result:T;processed_event_ids:string[]}
+type VerifiedFact=SessionRecordRef&{bytes:Uint8Array};
 /** `wake_turn`: a wake turn re-analysing audio its speech candidates already consumed — a consumption of its own. */
 export type AudioPurpose='wake_turn';
 export interface AudioConsumptionOwner {
@@ -32,22 +34,32 @@ export class AudioConsumption implements AudioConsumptionOwner {
   private readonly storage:StoragePort;private readonly metadataReadBudget:number;
   constructor(storage:StoragePort,metadataReadBudget:number){this.storage=storage;this.metadataReadBudget=metadataReadBudget;}
   private routeKey(event:ArchivedEvent){return digest([event.principal_id,event.device_id,event.raw_ref]);}
-  private async read<T>(namespace:string,key:string):Promise<T|undefined> {
+  private async read<T>(namespace:string,key:string,refs?:VerifiedFact[]):Promise<T|undefined> {
     let bytes:Uint8Array;
     try{bytes=await this.storage.read(namespace,key);}
     catch(error){if((error as NodeJS.ErrnoException).code==='ENOENT')return undefined;throw error;}
-    return this.decode<T>(namespace,key,bytes);
+    return this.decode<T>(namespace,key,bytes,refs);
   }
   private async publish<T>(namespace:string,key:string,value:T,rawRef?:string):Promise<T> {
     const bytes=Buffer.from(canonical(value));
     const saved=rawRef?await publishRawRecord(this.storage,rawRef,namespace,key,bytes):await this.storage.publish(namespace,key,bytes);
     return JSON.parse(Buffer.from(saved).toString()) as T;
   }
+  private capturedRoute(event:ArchivedEvent):AudioRoute|undefined{
+    const capture=event.audio_capture;
+    return capture?{consumer:capture.purpose==='request'?'voice':'audit_only',source_scope:event.device_id,
+      capture_span:event.raw_ref,purpose_evidence_ref:event.consent_ref}:undefined;
+  }
   async select(event:ArchivedEvent,lane:AudioLane,requested?:AudioRoute):Promise<Route> {
     check(event.archive_status==='durable'&&event.origin==='device_observation'&&event.user_identity==='unknown','AUDIO_SOURCE_REQUIRED',403);
     const fallback:AudioRoute={consumer:'media',source_scope:this.routeKey(event),capture_span:event.raw_ref,purpose_evidence_ref:event.consent_ref};
     event=structuredClone(event);requested=requested&&structuredClone(requested);
     if(requested?.input_contract==='frame_v1'){const {input_contract:_,...rest}=requested;requested=rest;}
+    const captured=this.capturedRoute(event);
+    if(captured){
+      check(lane===event.audio_capture!.lane&&(!requested||canonical(requested)===canonical(captured)),'AUDIO_ROUTE_CONFLICT',409);
+      requested=captured;
+    }
     const selection=requested??fallback;
     check(selection.input_contract===undefined||['frame_v1','interval_v2'].includes(selection.input_contract),'AUDIO_INPUT_CONTRACT_INVALID');
     check(selection.input_contract!=='interval_v2'||lane==='continuous'&&selection.consumer==='media','AUDIO_INTERVAL_ROUTE_REQUIRED');
@@ -70,9 +82,15 @@ export class AudioConsumption implements AudioConsumptionOwner {
     check(route&&route.raw_ref===event.raw_ref&&route.principal_id===event.principal_id&&route.device_id===event.device_id,'AUDIO_ROUTE_REQUIRED',403);
     return route;
   }
-  /** Read the source owner's durable choice without selecting a new consumer. */
+  /** Resolve the durable source choice, completing a capture-owned partial publication when necessary. */
   async existingRoute(event:ArchivedEvent):Promise<AudioRoute|undefined> {
-    const saved=await this.read<Route>('audio-consumer-routes',this.routeKey(event));
+    let saved=await this.read<Route>('audio-consumer-routes',this.routeKey(event));
+    const captured=this.capturedRoute(event);
+    if(captured){
+      if(!saved)saved=await this.select(event,event.audio_capture!.lane,captured);
+      check(saved.lane===event.audio_capture!.lane&&saved.consumer===captured.consumer&&saved.source_scope===captured.source_scope&&
+        saved.capture_span===captured.capture_span&&saved.purpose_evidence_ref===captured.purpose_evidence_ref&&saved.input_contract===undefined,'AUDIO_ROUTE_CONFLICT',409);
+    }
     if(!saved)return undefined;
     check(saved.raw_ref===event.raw_ref&&saved.principal_id===event.principal_id&&saved.device_id===event.device_id,'AUDIO_ROUTE_REQUIRED',403);
     const {consumer,source_scope,capture_span,purpose_evidence_ref,input_contract}=saved;
@@ -140,15 +158,16 @@ export class AudioConsumption implements AudioConsumptionOwner {
     const values=await this.executeClaims([{event,key,fingerprint}],lane,async(_fresh,accept)=>[await run(accept)],events,consumer,recover);
     return values[0]!;
   }
-  private async decode<T>(namespace:string,key:string,bytes:Uint8Array):Promise<T>{
+  private async decode<T>(namespace:string,key:string,bytes:Uint8Array,refs?:VerifiedFact[]):Promise<T>{
     const value=JSON.parse(Buffer.from(bytes).toString());
-    if(value.schema!=='paios.audio-consumption.facts.v2')return value as T;
+    if(value.schema!=='paios.audio-consumption.facts.v2'){refs?.push({namespace,key,bytes});return value as T;}
     check(bytes.length<=this.metadataReadBudget&&Array.isArray(value.records)&&value.records.length>0&&value.records.length<=64&&
       new Set(value.records.map((r:{key:string})=>r.key)).size===value.records.length,'AUDIO_FACT_BUNDLE_BUDGET',413);
     const blob=digest(value);check(sha256(bytes)===blob,'AUDIO_FACT_BUNDLE_INTEGRITY',409);
     let original:Uint8Array;try{original=await this.storage.read(namespace,blob);}catch(error){if((error as NodeJS.ErrnoException).code==='ENOENT')throw new ContractError('AUDIO_FACT_BUNDLE_INTEGRITY',409);throw error;}
     check(Buffer.from(original).equals(Buffer.from(bytes)),'AUDIO_FACT_BUNDLE_INTEGRITY',409);
     const record=value.records.find((r:{key:string})=>r.key===key);check(record&&value.common&&typeof value.common==='object'&&typeof value.key_from_slot==='boolean','AUDIO_FACT_SLOT_CONFLICT',409);
+    refs?.push({namespace,key,bytes},{namespace,key:blob,bytes});
     return {...value.common,...record.value,...(value.key_from_slot?{key}: {})} as T;
   }
   private async facts<T>(namespace:string,values:{key:string;value:T}[],rawRef:string):Promise<T[]> {
@@ -195,8 +214,8 @@ export class AudioConsumption implements AudioConsumptionOwner {
     const account=(value:unknown)=>{remaining-=Buffer.byteLength(canonical(value));check(remaining>=0,'AUDIO_RECONCILE_METADATA_BUDGET',413);};
     const same=(saved:typeof attempts[number],index:number)=>check(saved.fingerprint===attempts[index]!.fingerprint&&saved.consumer===consumer&&saved.lane===lane,'AUDIO_CONSUMPTION_CONFLICT',409);
     const complete=async(index:number)=>{
-      const c=claims[index]!;let saved=await this.read<Outcome<T>>('audio-consumer-results',c.key);
-      const first=await this.read<typeof attempts[number]>('audio-consumer-attempts',c.key);
+      const c=claims[index]!,refs:VerifiedFact[]=[];let saved=await this.read<Outcome<T>>('audio-consumer-results',c.key,refs);
+      const first=await this.read<typeof attempts[number]>('audio-consumer-attempts',c.key,refs);
       if(!saved&&recover&&first){
         same(first,index);const result=await recover();
         if(result!==undefined){const value={key:c.key,result,processed_event_ids:events(result)};
@@ -205,6 +224,13 @@ export class AudioConsumption implements AudioConsumptionOwner {
       }
       if(!saved)return false;
       check(first,'AUDIO_CONSUMPTION_CONFLICT',409);same(first,index);
+      // A trusted capture span may replay the same claim through another raw source.
+      // Its verified dedup facts must survive deletion of the original source owner.
+      if(this.storage.trackSessionRecords)await withRawPublication(this.storage,c.event.raw_ref,async()=>{
+        check(this.storage.matchesMetadata,'METADATA_IDENTITY_CHECK_REQUIRED');
+        for(const ref of refs)check(await this.storage.matchesMetadata(ref.namespace,ref.key,ref.bytes),'AUDIO_CONSUMPTION_CONFLICT',409);
+        await this.storage.trackSessionRecords!(c.event.raw_ref,refs);
+      });
       await this.bindEvents(c.key,saved.processed_event_ids,c.event.raw_ref);outcomes[index]={result:saved.result,replayed:true};return true;
     };
     const rejectOwned=async(error:unknown,state:string)=>{

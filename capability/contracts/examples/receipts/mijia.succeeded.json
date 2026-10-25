@@ -1,0 +1,25 @@
+{
+  "receipt": 1,
+  "status": {
+    "state": "succeeded",
+    "started_at": "2026-10-24T13:03:10Z",
+    "ended_at": "2026-10-24T13:03:12Z"
+  },
+  "effects": [
+    {
+      "kind": "physical",
+      "target": "mijia:fixture:living-room-ac",
+      "action": "power_on",
+      "verification": "service_ack",
+      "evidence": "Fixture: Mi Home returned code=0.",
+      "ref": "mijia:command:fixture"
+    }
+  ],
+  "values": [],
+  "content": [],
+  "unknowns": [],
+  "next": {
+    "retry": "forbidden",
+    "waiting_on": "none"
+  }
+}

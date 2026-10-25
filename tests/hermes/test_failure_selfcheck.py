@@ -54,6 +54,27 @@ def test_delivery_failure_uses_the_same_system_selfcheck(monkeypatch):
     assert len(calls) == 1
 
 
+@pytest.mark.parametrize('source', ['errand', 'delegate'])
+def test_selfcheck_receives_original_and_later_owner_constraints(monkeypatch, source):
+    from tools import delegate_tool
+    calls = []
+    monkeypatch.setattr(delegate_tool, 'delegate_task', lambda **kw: calls.append(kw) or '{"status":"dispatched"}')
+    bridge = RunDelegation(SimpleNamespace(_paios_delegate_toolsets=['file']), lambda waiting: None)
+    original = json.dumps({'origin': 'explicit_user_prompt', 'content': {'text': '只读查报价；故障自检不复派查询。'}}, ensure_ascii=False)
+    history = [{'role': 'user', 'content': original}, {'role': 'assistant', 'content': '已派出'},
+               {'role': 'user', 'content': '以后也不重新查询。'}]
+    if source == 'errand':
+        d = {'origin': 'device_observation', 'content': {'app_event': {'kind': 'errand_result',
+            'job_id': 'job-1', 'task': '只读查报价', 'terminal_reason': 'timed_out'}}}
+        bridge.initial(json.dumps(d), history, lambda *a, **kw: {'messages': history})
+    else:
+        bridge._start_failure_selfchecks([{'delegation_id': 'failed-child', 'goal': '只读查报价',
+                                          'status': 'timed_out'}], history)
+    failure = json.loads(calls[0]['context'].split('Failure evidence:\n', 1)[1])
+    assert failure['request_context'] == [original, '以后也不重新查询。']
+    assert calls[0]['failure_context']['request_context'] == failure['request_context']
+
+
 @pytest.mark.parametrize('status', ['failed', 'error', 'timeout', 'timed_out', 'interrupted'])
 def test_failure_dispatches_one_async_selfcheck(monkeypatch, status):
     from tools import delegate_tool

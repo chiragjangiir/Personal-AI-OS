@@ -8,16 +8,12 @@ import yaml
 
 def prepare_builder_home(home, access=Path('/run/workshop-access')):
     home, access = Path(home), Path(access)
-    provider = os.environ.get('PAIOS_BUILDER_PROVIDER', 'paios-builder')
-    if provider.strip().lower() == 'opencode-go':
-        raise ValueError('Use a custom provider name; opencode-go selects native provider behavior')
-    model = os.environ.get('PAIOS_BUILDER_MODEL', 'deepseek-v4.1-flash')
-    base_url = os.environ.get('PAIOS_BUILDER_BASE_URL', 'https://opencode.ai/zen/go/v1')
-    config_file = home / 'config.yaml'
-    existing = yaml.safe_load(config_file.read_text()) if config_file.exists() else {}
-    repair_model = os.environ.get('PAIOS_BUILDER_REPAIR_MODEL') or (existing or {}).get('workshop', {}).get('repair_model')
-    if repair_model is not None and (not isinstance(repair_model, str) or not repair_model.strip()):
-        raise ValueError('workshop.repair_model must be a nonempty model name')
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('model_transport',
+        Path(os.environ.get('PAIOS_APP_ROOT', Path(__file__).parents[2])) / 'integrations/hermes/personal_aios/model_transport.py')
+    transport = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(transport)
+    transport.read_projection(os.environ['PAIOS_MODEL_SETTINGS_PROJECTION'])
     key = home / 'workshop-ssh/id_ed25519'
     key.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     access.mkdir(mode=0o755, parents=True, exist_ok=True)
@@ -29,11 +25,6 @@ def prepare_builder_home(home, access=Path('/run/workshop-access')):
     authorized.chmod(0o644)
     toolsets = ['skills', 'terminal', 'file', 'code_execution', 'skills_hub', 'todo']
     config = {
-        'model': {'default': model, 'provider': provider, 'base_url': base_url},
-        'workshop': {'repair_model': repair_model} if repair_model is not None else {},
-        'custom_providers': [{'name': provider, 'base_url': base_url,
-            'key_env': 'PAIOS_BUILDER_API_KEY', 'api_mode': 'chat_completions',
-            'context_length': 262144}],
         # One shared tool-call cap bounds a build, as in the product profile; no turn or time limit.
         'agent': {'max_tool_calls': int(os.environ.get('PAIOS_BUILDER_MAX_TOOL_CALLS', '120')),
             'tool_call_milestone_interval': int(os.environ.get('PAIOS_BUILDER_TOOL_CALL_MILESTONE_INTERVAL', '20')),
@@ -53,6 +44,7 @@ def prepare_builder_home(home, access=Path('/run/workshop-access')):
         'plugins': {'enabled': []}, 'mcp_servers': {},
         'fallback_providers': [], 'sync': {'enabled': False},
     }
+    config = transport.projected_config(config, os.environ['PAIOS_MODEL_SETTINGS_PROJECTION'])
     paths = [home, key.parent, key, key.with_suffix('.pub')]
     for profile in (home, home / 'workshop'):
         profile.mkdir(mode=0o700, parents=True, exist_ok=True)

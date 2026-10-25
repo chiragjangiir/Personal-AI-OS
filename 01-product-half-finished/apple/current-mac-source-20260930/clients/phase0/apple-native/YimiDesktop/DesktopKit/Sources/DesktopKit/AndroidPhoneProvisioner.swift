@@ -71,7 +71,7 @@ public struct AndroidPhoneProvisioner: Sendable {
         let apk: URL
         if let member = app.archive_path {
             guard let digest = app.archive_sha256 else {
-                throw AndroidHostError.unavailable("手机 App 压缩包缺少 SHA-256：\(app.package)")
+                throw AndroidHostError.unavailable("手机 App 的外层压缩包缺少 SHA-256：\(app.package)")
             }
             try AndroidArtifact.verify(download, size: nil, checksum: digest, algorithm: .sha256, name: app.package + " archive")
             let extracted = work.appendingPathComponent("extracted")

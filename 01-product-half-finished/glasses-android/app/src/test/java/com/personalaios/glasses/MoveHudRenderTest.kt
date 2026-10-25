@@ -2,11 +2,14 @@ package com.personalaios.glasses
 
 import android.app.Application
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.drawable.GradientDrawable
 import android.view.View
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.ScrollView
 import android.widget.TextView
 import org.json.JSONObject
@@ -43,19 +46,36 @@ class MoveHudRenderTest {
         val streets = streetFixture()
         mirror.resume()
         try {
-            for (large in listOf(false, true)) for (scene in listOf("caption", "thinking", "mode_error", "behind", "stale")) {
+            val thinkingPortraits = mutableListOf<String>()
+            // The optical HUD and night street map keep their approved colors in either Android theme.
+            for (theme in listOf("light", "dark")) for (large in listOf(false, true))
+                for (scene in listOf("caption", "thinking", "mode_error", "mode_pending", "behind", "stale")) {
+                RuntimeEnvironment.setQualifiers("${if (theme == "dark") "night" else "notnight"}-mdpi")
                 val thinking = scene == "thinking" || scene == "mode_error"
                 val state = HudState(paired = true, ride = ride, nav = nav, callId = "call", listening = true,
                     callPlayback = !thinking, foregroundCalls = if (thinking) setOf("call") else emptySet(),
                     conversation = CallConversation(if (thinking) "thinking" else "chat",
                         if (scene == "thinking") "正在核对沿途信息，稍后告诉你。" else null),
                     conversationError = if (scene == "mode_error") "请求未送达" else null,
+                    conversationPending = if (scene == "mode_pending") CallModeRequest("mode", "thinking") else null,
                     say = "前方三十米右转，我在呢。")
                 val layout = moveHudLayout(state, largeText = large)
+                if (thinking && layout.portrait != null) thinkingPortraits += "$theme/$scene/large=$large"
                 val map = if (scene == "behind") frame.copy(headingDegrees = 180.0, compassUnreliable = true) else frame
                 mirror.update(map, layout)
                 mirror.hosts.forEach { it.present(map, streets, "离线街道夹具", metersPerPixel = 1.0) }
                 val bitmaps = eyes.map { lens ->
+                    layout.portrait?.let { rect ->
+                        lens.addView(ImageView(context).apply {
+                            setImageBitmap(BitmapFactory.decodeFile("src/main/res/drawable-nodpi/yimi_face.jpg"))
+                            scaleType = ImageView.ScaleType.CENTER_CROP
+                            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.BLACK) }
+                            clipToOutline = true
+                            foreground = GradientDrawable().apply {
+                                shape = GradientDrawable.OVAL; setStroke(2, accent)
+                            }
+                        }, FrameLayout.LayoutParams(34, 34).apply { leftMargin = rect.x + 4; topMargin = rect.y + 4 })
+                    }
                     val texts = layout.texts.map { item ->
                         val color = when {
                             item.role == "call_status" -> accent
@@ -86,8 +106,8 @@ class MoveHudRenderTest {
                 assertTrue("both eyes must present the same generation", bitmaps[0].sameAs(bitmaps[1]))
                 assertEquals(mirror.hosts[0].contentDescription, mirror.hosts[1].contentDescription)
                 System.getenv("MOVE_SCREENSHOT_DIR")?.let { dir ->
-                    File(dir).mkdirs()
-                    File(dir, "ride_nav_${scene}_${if (large) "large" else "standard"}.png").outputStream().use {
+                    val directory = File(dir, theme).apply { mkdirs() }
+                    File(directory, "ride_nav_${scene}_${if (large) "large" else "standard"}.png").outputStream().use {
                         bitmaps[0].compress(Bitmap.CompressFormat.PNG, 100, it)
                     }
                 }
@@ -96,6 +116,7 @@ class MoveHudRenderTest {
                     if (lens.getChildAt(i).tag != NavigationMirror.TAG) lens.removeViewAt(i)
                 } }
             }
+            assertTrue("Thinking navigation must not render a static portrait: $thinkingPortraits", thinkingPortraits.isEmpty())
             mirror.update(null)
             assertTrue(mirror.hosts.all { it.visibility == View.GONE })
             mirror.pause(); mirror.resume(); mirror.update(frame, moveHudLayout(HudState(ride = ride, nav = nav)))

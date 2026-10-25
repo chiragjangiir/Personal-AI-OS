@@ -42,6 +42,7 @@ export interface RealtimeAcceptedUserActivityOwnerEvent {
 export interface RealtimeAcceptedUserActivitySink {
   readonly recordAcceptedUserActivity: (
     activity: AcceptedUserActivity,
+    ownerEvent: Omit<RealtimeAcceptedUserActivityOwnerEvent, 'activity'>,
   ) => Promise<RealtimeAcceptedUserActivityResult>;
 }
 
@@ -143,34 +144,6 @@ function same(equality: Pick<OpaqueEqualityPort, 'same'>, left: unknown, right: 
     ) === true;
   } catch {
     return false;
-  }
-}
-
-function stable(value: unknown, ancestors = new WeakSet<object>()): string {
-  if (value === null) return 'null;';
-  if (typeof value === 'string') return `s:${value.length}:${value};`;
-  if (typeof value === 'boolean') return value ? 'b:1;' : 'b:0;';
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value)) fail('ACCEPTED_ACTIVITY_FINGERPRINT_INVALID');
-    return `n:${String(value)};`;
-  }
-  if (typeof value !== 'object' || value === undefined || ancestors.has(value)) {
-    fail('ACCEPTED_ACTIVITY_FINGERPRINT_INVALID');
-  }
-  ancestors.add(value);
-  try {
-    if (Array.isArray(value)) {
-      if (Reflect.ownKeys(value).some((key) => typeof key !== 'string') ||
-          Object.getOwnPropertyNames(value).length !== value.length + 1) {
-        fail('ACCEPTED_ACTIVITY_FINGERPRINT_INVALID');
-      }
-      return `a:${value.length}:[${value.map((item) => stable(item, ancestors)).join('')}]`;
-    }
-    if (!isPlainRecord(value)) fail('ACCEPTED_ACTIVITY_FINGERPRINT_INVALID');
-    const fields = Object.keys(value).sort().map((key) => `${key.length}:${key}=${stable(value[key], ancestors)}`);
-    return `o:${fields.length}:{${fields.join('')}}`;
-  } finally {
-    ancestors.delete(value);
   }
 }
 
@@ -323,10 +296,6 @@ export function createRealtimeAcceptedUserActivityProduction(
   let unsubscribe: (() => void | Promise<void>) | undefined;
   let tail = Promise.resolve();
   let closeFlight: Promise<void> | undefined;
-  const replay = new Map<string, Readonly<{
-    fingerprint: string;
-    result: Promise<RealtimeAcceptedUserActivityResult>;
-  }>>();
 
   const readiness = (): RealtimeAcceptedUserActivityProductionReadiness => {
     let ownerReady = false;
@@ -346,16 +315,12 @@ export function createRealtimeAcceptedUserActivityProduction(
     const operation = tail.then(async () => {
       if (closed) fail('ACCEPTED_ACTIVITY_BRIDGE_CLOSED');
       const activity = validateEvent(event, options.purpose, options.equality, now());
-      const fingerprint = stable(event);
-      const previous = replay.get(activity.activityId);
-      if (previous !== undefined) {
-        if (previous.fingerprint !== fingerprint) fail('ACCEPTED_ACTIVITY_REPLAY_CONFLICT');
-        return previous.result;
-      }
-      const result = Promise.resolve(options.sink.recordAcceptedUserActivity(activity));
-      replay.set(activity.activityId, Object.freeze({ fingerprint, result }));
-      try { return await result; }
-      catch (error) { replay.delete(activity.activityId); throw error; }
+      // T02 persists the full owner evidence with the activity idempotency record.
+      return options.sink.recordAcceptedUserActivity(activity, {
+        actionReceipt: event.actionReceipt,
+        currentBinding: event.currentBinding,
+        authorityProjection: event.authorityProjection,
+      });
     });
     tail = operation.then(() => undefined, () => undefined);
     return operation;
@@ -379,7 +344,6 @@ export function createRealtimeAcceptedUserActivityProduction(
       try { await unsubscribe?.(); } catch (error) { failures.push(error); }
       try { await tail; } catch (error) { failures.push(error); }
       try { await options.source.close?.(); } catch (error) { failures.push(error); }
-      replay.clear();
       if (failures.length !== 0) fail('ACCEPTED_ACTIVITY_CLOSE_FAILED');
     })();
     return closeFlight;

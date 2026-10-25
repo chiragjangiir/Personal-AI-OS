@@ -35,7 +35,7 @@ import UserNotifications
         callSnapshot?.voiceStatus ?? AssistantVoiceStatus(call: call, media: AssistantMediaSnapshot())
     }
     var voiceStatusTitle: String {
-        voiceStatus.phase == .standby ? "本地待命 · 仅本机" : voiceStatus.title
+        voiceStatus.phase == .standby ? "等你唤醒 · 仅本机" : voiceStatus.title
     }
     @Published private(set) var voiceEnrollment = CentralVoiceEnrollment()
     @Published private(set) var voiceEnrollmentBusy = false
@@ -44,7 +44,7 @@ import UserNotifications
     @Published var listeningText = ""
     @Published var voiceFeedback = "已发给依米"
     static let voiceNotSent = "语音没发出去，可在对话里重发这段文字"
-    static let voiceUnconfirmed = "语音未确认是否送达，可在对话里重发这段文字"
+    static let voiceUnconfirmed = "不确定语音是否送到，可在对话里重发这段文字"
     var presenceLabel: String {
         if !connected { return connectionLabel }
         if pause.paused { return "已暂停操作电脑" }
@@ -57,11 +57,16 @@ import UserNotifications
     private let windowSharing: WindowSharing
     let desktop: any DesktopControl
     let composer: DesktopComposer
+    let modelSettings = AssistantModelSettingsModel()
+    let wechatPreview: DesktopWeChatPreview
     let pairingController: DesktopPairingController?
+    private var revocationError: String?
     private var ownerSSH: DesktopOwnerSSH?
     private(set) var androidHost: DesktopAndroidHost?
     var sshAuditURL: URL? { ownerSSH?.auditURL }
     private let storeURL: URL
+    private let cacheWriter = CentralTerminalCacheWriter()
+    private var cacheVersion: UInt64 = 0
     private var session: AssistantSessionCoordinator?
     private var transport: DesktopSessionTransport?
     private var desktopTransition: Task<Void, Never>?
@@ -97,6 +102,7 @@ import UserNotifications
 
     init(desktop: (any DesktopControl)? = nil, pairingController: DesktopPairingController? = nil, storeURL: URL = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Application Support/依米/desktop", isDirectory: true),
+        ownerSSH: DesktopOwnerSSH? = nil,
         sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
         ownerUnlockEnabled: Bool = false,
         authenticateOwner: @escaping @Sendable () async throws -> Void = { try await DesktopOwnerAuthentication.touchID() }) throws {
@@ -104,11 +110,12 @@ import UserNotifications
         self.storeURL = storeURL; self.sleep = sleep; self.authenticateOwner = authenticateOwner
         self.desktop = try desktop ?? Desktop(store: storeURL, resources: Bundle.main.resourceURL!, windowSharing: windowSharing)
         composer = DesktopComposer(desktop: self.desktop)
+        wechatPreview = try DesktopWeChatPreview(file: storeURL.appendingPathComponent("wechat-preview.json"))
         notifications = desktop == nil ? DesktopNotifications(isChatFront: {
             NSApp?.isActive == true && NSApp?.keyWindow?.title == "依米"
         }, openChat: { NotificationCenter.default.post(name: Notification.Name("desktop.openChat"), object: nil) }) : nil
         self.pairingController = try pairingController ?? (desktop == nil ? DesktopPairingController(store: DesktopPairingStore(), ownerUnlockEnabled: ownerUnlockEnabled) : nil)
-        ownerSSH = desktop == nil ? DesktopOwnerSSH(directory: storeURL.appendingPathComponent("owner-ssh")) : nil
+        self.ownerSSH = ownerSSH ?? (desktop == nil ? DesktopOwnerSSH(directory: storeURL.appendingPathComponent("owner-ssh")) : nil)
         androidHost = desktop == nil ? DesktopAndroidHost() : nil
         NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification).sink { [weak self] _ in self?.ownerSSH?.shutdown() }.store(in: &bag)
         pairing = self.pairingController?.pairing
@@ -126,8 +133,23 @@ import UserNotifications
                 self?.syncOwnerSSH()
                 if value != nil { Task { await self?.connect() } }
             }.store(in: &bag)
+        modelSettings.signer = { [weak self] bytes, deviceID in
+            guard let self, let pairing = self.pairing, pairing.deviceID == deviceID else { throw ModelSettingsError.changed }
+            let context = try await DesktopModelSettingsIdentity.context(reason: "确认模型与密钥设置")
+            defer { context.invalidate() }
+            guard self.pairing == pairing else { throw ModelSettingsError.changed }
+            return try AssistantPaymentKeys(deviceID: deviceID).sign(bytes, role: .modelSettings, context: context)
+        }
     }
     func activate() async {
+        do {
+            if let pairing, try ownerSSH?.hasPendingRevocation(pairing) == true { await clearPairing() }
+        } catch { self.error = DesktopUserFacingError.message(error); return }
+        resumeRevocations()
+        wechatPreview.activate { [weak self] in
+            let reason = self?.call.isActive == true ? "通话中，结束后继续整理" : self?.pause.reasons.contains(.manual) == true ? "已手动暂停，恢复电脑操作后继续整理" : nil
+            return (self?.pairing, self?.connected == true, reason)
+        }
         if observation == nil {
             do { try androidHost?.activate() } catch { self.error = error.localizedDescription }
             pause = await desktop.pauseState(); syncOwnerSSH()
@@ -154,9 +176,18 @@ import UserNotifications
     func connect() async {
         reconnect?.cancel(); reconnect = nil
         guard !connectionInProgress, !connected, let controller = pairingController, pairing != nil else { return }
-        connectionInProgress = true; defer { connectionInProgress = false }
+        if let pairing {
+            do { if try ownerSSH?.hasPendingRevocation(pairing) == true { await clearPairing(); return } }
+            catch { self.error = DesktopUserFacingError.message(error); return }
+        }
         let generation = UUID(); connectionID = generation
+        connectionInProgress = true
+        defer {
+            connectionInProgress = false
+            if connectionID != generation, pairing != nil, !connected { Task { [weak self] in await self?.connect() } }
+        }
         await screenSharing?.stop()
+        guard connectionID == generation else { return }
         screenSharing = nil
         beginCentralSession()
         let old = session, oldWire = transport; session = nil; transport = nil; oldWire?.finish()
@@ -185,6 +216,7 @@ import UserNotifications
                 voiceIdentityAuth: "touch_id", authenticateVoiceIdentity: authenticateOwner,
                 careIdentity: { (CentralOwnerDataIdentity.pairing(pairing), pairing.deviceID) })
             session = coordinator; transport = wire; snapshotRevision = 0
+            modelSettings.connect(coordinator)
             callEngine = DesktopCallEngine(coordinator: coordinator)
             screenSharing = DesktopScreenSharing(grant: windowSharing)
             let cache = storeURL.appendingPathComponent("conversation.json")
@@ -302,9 +334,12 @@ import UserNotifications
         let mine = timeline.filter { $0.seq == nil || $0.delivery != nil }
         let local = mine.isEmpty ? state.timeline.items.filter { $0.seq == nil } : mine
         acknowledgeLoadedAppearance()
+        var merged = conversation.timeline
+        if mine.isEmpty, !local.isEmpty { merged = YimiConversationTimeline(items: local) }
+        let changed = merged.merge(state.timeline, ownerIdentity: state.ownerIdentity, includeLocal: false) || (mine.isEmpty && !local.isEmpty)
         conversation = state
-        conversation.timeline = YimiConversationTimeline(items: local + state.timeline.items.filter { $0.seq != nil })
-        timeline = conversation.timeline.chatItems
+        conversation.timeline = merged
+        if changed { timeline = merged.chatItems }
         // Rows restored from a previous run were never sent by this one.
         if mine.isEmpty, !local.isEmpty { settleOrphanedSends(Set(local.map(\.id))) }
         persistConversation()
@@ -332,15 +367,16 @@ import UserNotifications
         catch {
             guard connectionID == generation else { return }
             voiceConfirmationError = error is CentralVoiceprintFailure ? DesktopUserFacingError.message(error)
-                : "未能完成确认，请重试，或从配对手机打字发送请求"
+                : "没能完成确认。请重试，或在已配对的手机上打字告诉她。"
         }
     }
-    @discardableResult private func persistConversation() -> Bool {
-        do {
-            try FileManager.default.createDirectory(at: storeURL, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
-            try conversation.encodedCache().write(to: storeURL.appendingPathComponent("conversation.json"), options: .atomic)
-            return true
-        } catch { self.error = DesktopUserFacingError.message(error); return false }
+    @discardableResult private func persistConversation() -> Task<Bool, Never> {
+        cacheVersion &+= 1
+        let snapshot = conversation, version = cacheVersion, url = storeURL.appendingPathComponent("conversation.json")
+        return Task {
+            do { try await cacheWriter.write(snapshot, version: version, to: url); return true }
+            catch { self.error = DesktopUserFacingError.message(error); return false }
+        }
     }
     func controlVoiceEnrollment(_ action: String) async {
         guard let session, connected, !voiceEnrollmentBusy else { return }
@@ -480,7 +516,7 @@ import UserNotifications
                 try await session.retryVoiceSend()
             } else {
                 let replacement = AssistantPromptEnvelope(promptID: RealtimeUUIDv7.make(), text: prompt.text, attachments: prompt.attachments)
-                conversation.timeline = YimiConversationTimeline(items: timeline.filter { $0.id != item.id })
+                conversation.timeline.remove(ids: [item.id])
                 outgoing[item.id] = nil
                 addOutgoing(replacement, via: item.via ?? "text")
                 await submit(replacement, session: session)
@@ -489,10 +525,12 @@ import UserNotifications
         } catch { if connectionID == generation { self.error = DesktopUserFacingError.message(error) } }
     }
     func shown(_ item: YimiItem) async {
+        let generation = connectionID
         shownTexts[item.id] = item.text
         guard NSApp?.isActive == true, NSApp?.keyWindow?.title == "依米",
               let presentation = unacknowledged[item.id], item.text == QwenHandoff.split(presentation.text).display,
-              persistConversation(), let session else { return }
+              await persistConversation().value, connectionID == generation,
+              conversation.timeline.item(id: item.id)?.text == item.text, let session else { return }
         do {
             let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
             try await session.centralTextConsumed(presentation, observedAt: formatter.string(from: Date()))
@@ -568,17 +606,13 @@ import UserNotifications
         let messages = shown.map(DesktopChatEntry.message)
         let files = auditEntries.filter { $0.result == "ok" && $0.undoneAt == nil && $0.reveal != nil && ["save_from_workshop", "write_file"].contains($0.tool) && $0.at >= (floor ?? .distantPast) }.map(DesktopChatEntry.file)
         var entries = (messages + files).sorted { $0.date == $1.date ? $0.id < $1.id : $0.date < $1.date }
-        let replies = Set(timeline.filter { $0.kind == .her }.compactMap(\.processedEventID))
+        let layout = YimiActivityLayout(items: timeline, activities: activities, consumer: central)
         for activity in activities {
-            let collapsed = activity.collapsed(replyProcessedIDs: replies)
-            let anchor = timeline.first { item in
-                guard item.kind == (collapsed ? .her : .me) else { return false }
-                return item.activityProcessedEventID(consumer: central) == activity.processedEventID
-            }
+            let collapsed = activity.collapsed(replyProcessedIDs: layout.replyProcessedIDs)
             let entry = DesktopChatEntry.activity(activity, collapsed: collapsed)
-            if let anchor {
+            if let anchor = layout.anchor(for: activity) {
                 // An activity anchored above the window is older history and stays hidden with it.
-                if let index = entries.firstIndex(where: { $0.id == "message-" + anchor.id }) { entries.insert(entry, at: index + 1) }
+                if let index = entries.firstIndex(where: { $0.id == "message-" + anchor }) { entries.insert(entry, at: index + 1) }
             } else { entries.append(entry) }
         }
         return entries
@@ -612,11 +646,30 @@ import UserNotifications
     func terminalPause(_ id: String, paused: Bool) async { do { try await session?.pauseDesktop(deviceID: id, paused: paused) } catch { self.error = DesktopUserFacingError.message(error) } }
     func unpair() async {
         guard let pairing else { return }
-        if ownerSSH != nil { ownerSSH?.shutdown(); await clearPairing() }
-        do {
-            if let ownerSSH { try await ownerSSH.revoke(pairing) }
-            else { try await session?.revokeTerminal(deviceID: pairing.deviceID); await clearPairing() }
-        } catch { self.error = DesktopUserFacingError.message(error) }
+        ownerSSH?.shutdown()
+        if let ownerSSH {
+            do { try ownerSSH.rememberRevocation(pairing) }
+            catch {
+                await clearPairing()
+                self.error = "这台电脑已停止连接；云端解绑意图未能保存：" + DesktopUserFacingError.message(error)
+                return
+            }
+            await clearPairing()
+            resumeRevocations()
+        } else {
+            let coordinator = session
+            await clearPairing()
+            do { try await coordinator?.revokeTerminal(deviceID: pairing.deviceID) }
+            catch { self.error = DesktopUserFacingError.message(error) }
+        }
+    }
+    private func resumeRevocations() {
+        ownerSSH?.resumeRevocations { [weak self] message in
+            guard let self else { return }
+            if let message { error = message }
+            else if error == revocationError { error = nil }
+            revocationError = message
+        }
     }
     private func transitionDesktop(active: Bool) -> Task<Void, Never> {
         if !active { desktopReady = false }
@@ -635,6 +688,8 @@ import UserNotifications
         return next
     }
     func prepareForTermination() async throws {
+        wechatPreview.stop()
+        if pairing != nil { _ = await persistConversation().value }
         guard await androidHost?.requiresShutdown() == true else { return }
         connectionID = UUID(); reconnect?.cancel(); reconnect = nil
         ownerSSH?.shutdown(); transport?.finish()
@@ -644,28 +699,39 @@ import UserNotifications
         try await androidHost?.shutdown()
     }
     private func clearPairing() async {
-        ownerSSH?.shutdown()
-        await screenSharing?.stop()
-        screenSharing = nil
+        wechatPreview.stop(); ownerSSH?.shutdown()
+        let clearing = UUID(); connectionID = clearing
+        reconnect?.cancel(); reconnect = nil; reconnectAttempt = 0
+        let old = session, oldWire = transport, oldScreen = screenSharing
+        session = nil; transport = nil; screenSharing = nil; oldWire?.finish()
         YimiAvatarStore.shared.bind(nil)
-        connectionID = UUID(); reconnect?.cancel(); reconnect = nil; reconnectAttempt = 0; composer.clear(); conversation = CentralTerminalState(); unacknowledged = [:]; shownTexts = [:]; outgoing = [:]; central = AssistantCentralTextConsumer(); lastTerminalReceiptID = nil
+        composer.clear(); conversation = CentralTerminalState(); unacknowledged = [:]; shownTexts = [:]; outgoing = [:]; central = AssistantCentralTextConsumer(); lastTerminalReceiptID = nil
         listening = false; listeningText = ""; autoSend = false; lastVoicePhase = nil
         callEngine = nil; callSnapshot = nil; call = CentralCall(); callPreview.update(.cleared)
         voiceEnrollment = CentralVoiceEnrollment()
         connected = false; pairing = nil; connectionLabel = "这台电脑已解除配对"
         timeline = []; terminals = []; confirmations = []; errands = []; activities = []
         voiceConfirmations = []; confirmingVoice = []; voiceConfirmationError = nil
-        let old = session, oldWire = transport; session = nil; transport = nil; oldWire?.finish()
-        let stopped = transitionDesktop(active: false)
-        _ = await old?.stop(reasonCode: "desktop_unpaired"); await stopped.value
-        do { try await oldWire?.removeTemporaryFiles() } catch { self.error = DesktopUserFacingError.message(error) }
         do { try pairingController?.clearPairing() } catch { self.error = DesktopUserFacingError.message(error) }
         do {
             let cache = storeURL.appendingPathComponent("conversation.json")
-            if FileManager.default.fileExists(atPath: cache.path) { try FileManager.default.removeItem(at: cache) }
+            cacheVersion &+= 1
+            try await cacheWriter.remove(version: cacheVersion, at: cache)
         } catch { self.error = DesktopUserFacingError.message(error) }
-        do { try await notifications?.confirmations([]) } catch { self.error = DesktopUserFacingError.message(error) }
-        do { try await androidHost?.shutdown() } catch { self.error = error.localizedDescription }
+        let stopped = transitionDesktop(active: false)
+        let teardown = Task { [weak self] in
+            await oldScreen?.stop()
+            _ = await old?.stop(reasonCode: "desktop_unpaired"); await stopped.value
+            do { try await oldWire?.removeTemporaryFiles() } catch { self?.error = DesktopUserFacingError.message(error) }
+            guard let self, connectionID == clearing else { return }
+            do { try await wechatPreview.reset() } catch { self.error = error.localizedDescription }
+            guard connectionID == clearing else { return }
+            do { try await notifications?.confirmations([]) } catch { self.error = DesktopUserFacingError.message(error) }
+            guard connectionID == clearing else { return }
+            do { try await androidHost?.shutdown() } catch { self.error = error.localizedDescription }
+        }
+        desktopTransition = teardown
+        await teardown.value
     }
 
 }

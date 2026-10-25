@@ -11,6 +11,7 @@ import {existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync}
 import {tmpdir} from 'node:os';
 import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {checkSeedCache, inspectTree, productInventory} from './producer-tree.mjs';
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const SELF = fileURLToPath(import.meta.url);
@@ -47,6 +48,19 @@ function loadLock(path) {
     typeof lock.producer?.shape_schema === 'string' && typeof lock.consumer?.shape_schema === 'string' &&
     typeof lock.consumer?.pin === 'string';
   if (!ok) throw new Error(`${path}: not a valid paios.hermes-producer-lock.v1`);
+  if (lock.build_products) {
+    const paths = lock.build_products.paths;
+    if (!HEX64.test(lock.build_products.dockerfile_sha256 ?? '') || !Array.isArray(paths) || !paths.length ||
+        !paths.every(item => typeof item.path === 'string' && item.path && !item.path.startsWith('/') &&
+          !item.path.split('/').some(part => ['', '.', '..', '.git'].includes(part)) &&
+          typeof item.reason === 'string' && item.reason && (item.verification === 'opaque_seed_cache'
+            ? item.path === 'uv-cache' && !('path_count' in item) && !('paths_sha256' in item)
+            : item.verification === undefined && Number.isSafeInteger(item.path_count) && item.path_count > 0 &&
+              HEX64.test(item.paths_sha256 ?? ''))) ||
+        paths.some((item, i) => paths.some((other, j) => i !== j &&
+          (item.path === other.path || item.path.startsWith(`${other.path}/`)))))
+      throw new Error(`${path}: invalid build_products inventory`);
+  }
   return lock;
 }
 
@@ -120,18 +134,51 @@ function rebuild(lock, lockPath, options) {
 function checkRunning(lock, lockPath, dir) {
   const {consumerBytes} = checkRepo(lock, lockPath);
   const root = resolve(dir);
-  let tree = null, dirty = null;
+  let tree = null, inspected = null;
   try {
     tree = git(root, ['rev-parse', 'HEAD^{tree}']);
-    dirty = git(root, ['status', '--porcelain', '--untracked-files=normal']);
+    inspected = inspectTree(root, gitRaw(root, ['ls-tree', '-rz', '--full-tree', 'HEAD']),
+      path => git(root, ['hash-object', '--path', path, '--', path]));
+    inspected.dirty.push(...git(root, ['diff', '--cached', '--name-only', '--no-ext-diff', '--no-textconv', 'HEAD']).split('\n').filter(Boolean));
   } catch (error) { fail('RUNNING_NOT_A_GIT_TREE', `${root}: ${reason(error)}`, 'Deploy Hermes as a git checkout built from the lock.'); }
   if (tree !== null && tree !== lock.result_tree)
     fail('RUNNING_TREE_MISMATCH', `${root} HEAD tree ${tree} != lock result_tree ${lock.result_tree}`,
       `Either rebuild H from the lock (node ${SELF} --keep <dir>), or, if the fork change is intended, commit it in H and ` +
       `run: node ${SELF} --export ${root}  (then commit the patch+lock in Personal-AIOS).`);
-  if (dirty)
-    fail('RUNNING_TREE_DIRTY', `${root} has uncommitted changes:\n${dirty.split('\n').slice(0, 10).join('\n')}`,
+  if (inspected?.dirty.length)
+    fail('RUNNING_TREE_DIRTY', `${root} has tracked changes:\n${inspected.dirty.slice(0, 10).join('\n')}`,
       `Commit the change in H and run: node ${SELF} --export ${root}; or discard it.`);
+  if (inspected) {
+    const declared = lock.build_products?.paths ?? [];
+    const unknown = inspected.products.filter(([path]) => !declared.some(item => path === item.path || path.startsWith(`${item.path}/`)));
+    if (unknown.length)
+      fail('RUNNING_TREE_DIRTY', `${root} has undeclared paths (including ignored files):\n${unknown.slice(0, 10).map(([path]) => path).join('\n')}`,
+        'Only the locked upstream image build products may accompany the source.');
+    // Source-only checkouts have no products. Runtime roots follow their declared verification contract.
+    if (declared.some(item => inspected.products.some(([path]) => path === item.path || path.startsWith(`${item.path}/`)))) {
+      if (sha256(readFileSync(join(root, 'Dockerfile'))) !== lock.build_products.dockerfile_sha256)
+        fail('BUILD_PRODUCTS_SOURCE_MISMATCH', 'The build inventory belongs to another upstream Dockerfile.', 'Rebuild the base and bind its inventory to the lock.');
+      for (const item of declared) {
+        if (item.verification === 'opaque_seed_cache') {
+          try { checkSeedCache(join(root, item.path)); }
+          catch (error) { fail('BUILD_PRODUCT_CONTAINMENT_FAILED', reason(error), 'Restore the confined upstream seed cache.'); }
+          continue;
+        }
+        const actual = productInventory(inspected.products, item.path);
+        if (actual.path_count !== item.path_count || actual.paths_sha256 !== item.paths_sha256)
+          fail('BUILD_PRODUCT_INVENTORY_MISMATCH', `${item.path}: ${JSON.stringify(actual)} != locked inventory`,
+            'Rebuild from the clean locked base; do not add, remove or replace its product paths.');
+      }
+      // Run the native interpreter only after source and executable-product paths pass.
+      if (!failures.length && declared.some(item => item.verification === 'opaque_seed_cache')) {
+        execFileSync(join(root, '.venv/bin/python'), ['-B', '-c',
+          'import os,sys; from pathlib import Path; cache=Path(sys.argv[1]).resolve(); ' +
+          'bad=[p for p in [*sys.path,*os.get_exec_path()] if Path(p or ".").resolve().is_relative_to(cache)]; ' +
+          'sys.exit("seed cache on runtime sys.path/PATH: " + repr(bad)) if bad else None', join(root, 'uv-cache')],
+        {cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']});
+      }
+    }
+  }
   checkProducerFiles(root, lock, consumerBytes);
   return {mode: 'check-running', dir: root, tree};
 }

@@ -67,7 +67,7 @@ async function approvalFixture(t:test.TestContext,timeout=8,scheduled=false,cont
   if(controlledClock)await writeFile(approvalClock,String(Date.now()));
   await writeFile(settings,JSON.stringify({key,port,...(controlledClock?{approval_clock:approvalClock}:{})}));
   await writeFile(join(home,'config.yaml'),`approvals:\n  timeout: ${timeout}\n  mode: manual\npersonal_aios:\n  grantable_toolsets: [desktop, terminal, file]\n`);
-  const child=spawn(python,[new URL('./native-memory-fixture.py',import.meta.url).pathname,home,'--approval-http',settings],{
+  const child=spawn(python,[new URL('./native-run-fixture.py',import.meta.url).pathname,home,'--approval-http',settings],{
     cwd:source,env:{...process.env,PYTHONPATH:source,PAIOS_NATIVE_CONTRACT_SOURCE_ROOT:source,HERMES_HOME:home,
       HERMES_EXEC_ASK:'1',PYTHONDONTWRITEBYTECODE:'1',TMPDIR:directory,API_SERVER_HOST:'127.0.0.1',API_SERVER_PORT:String(port)},
     stdio:['ignore','pipe','pipe']});
@@ -171,7 +171,7 @@ test('real native approval reaches owner phone and background notice; approve re
   for(const restricted of [{run_scope:'guest' as const,guest_key:'speaker:3:fixture'},{care_decision:true as const}]){
     const session=`restricted-${'run_scope' in restricted?'guest':'care'}`;
     const accepted=await f.native.create({input:JSON.stringify({question:'不能向客人索取主人授权'}),
-      instructions:'controlled turn',session_id:session,memory_write:false,...restricted},session);
+      instructions:'controlled turn',session_id:session,...restricted},session);
     const result=await f.wait(()=>f.native.status(accepted.run_id,{conversation_session_id:session}),run=>run.status==='completed');
     assert.equal(result.output,'scope denied');assert.equal(result.approval,undefined);
     assert.equal(result.approval_results?.length??0,0);
@@ -218,7 +218,7 @@ async function fixture(t: test.TestContext, segments: Segment[] | (() => WorkerP
   const service = new MediaService({storage, archive, streamArchive, processor, capabilities: async () => [capability],
     vad: {candidates: async () => [{start_ms: 0, end_ms: 1200, semantic_status: 'open', basis: 'controlled'}]},
     align: {max_chunks: 20, max_visual_refs: 10, max_frame_gap_ms: 100, max_uncertainty_ms: 2}, max_segments: 4, max_window_ms: 5000, fixtureOnly: true});
-  const bodies: {input: string; session_id: string; memory_write: boolean; run_scope?: string; guest_key?: string}[] = [];
+  const bodies: {input: string; session_id: string;  run_scope?: string; guest_key?: string}[] = [];
   const native: NativeClient = {create: async (body, key) => {bodies.push(structuredClone(body)); return {run_id: `run-${sha256(key).slice(0, 12)}`,
     session_id: body.session_id, conversation_session_id: body.session_id, status: 'running'};},
     status: async id => ({run_id: id, session_id: 'session', conversation_session_id: 'session', status: options.finish ? 'completed' : 'running'}),
@@ -266,7 +266,7 @@ async function fixture(t: test.TestContext, segments: Segment[] | (() => WorkerP
   };
   const until = async (count: number) => {for (let i = 0; i < 400 && bodies.length < count; i++) await new Promise(r => setTimeout(r, 5));
     assert.equal(bodies.length, count);};
-  return {directory, storage, archive, runtime, admission, glasses, phone, stranger, bodies, heard, until, notices};
+  return {directory, storage, archive, runtime, processor, admission, glasses, phone, stranger, bodies, heard, until, notices};
 }
 
 test('owner-verified speech is the principal\'s own request: attributable, owner scope, memory writes allowed', async t => {
@@ -277,7 +277,7 @@ test('owner-verified speech is the principal\'s own request: attributable, owner
   assert.equal(await f.archive.validateEvidence(d!), true);
   assert.equal(event!.voice_confirmation, undefined);
   await f.until(1);
-  assert.equal(f.bodies[0]!.memory_write, true); assert.equal(f.bodies[0]!.run_scope, undefined);
+  assert.equal(Object.hasOwn(f.bodies[0]!,'memory_write'),false); assert.equal(f.bodies[0]!.run_scope, undefined);
   assert.deepEqual(JSON.parse(f.bodies[0]!.input).source.location, location);
 });
 
@@ -290,7 +290,7 @@ test('uncertain owner: chat-only owner_uncertain scope without location, a pendi
   assert.equal(f.runtime.activeTerminal(f.phone),true,'uncertain glasses speech cannot move owner outreach');
   assert.equal(f.runtime.activeTerminal(f.glasses),false);
   await f.until(1);
-  assert.deepEqual([f.bodies[0]!.memory_write, f.bodies[0]!.run_scope, f.bodies[0]!.guest_key], [false, 'owner_uncertain', undefined]);
+  assert.deepEqual([Object.hasOwn(f.bodies[0]!,'memory_write'), f.bodies[0]!.run_scope, f.bodies[0]!.guest_key], [false, 'owner_uncertain', undefined]);
   assert.equal(JSON.parse(f.bodies[0]!.input).source.location, undefined);
   assert.ok(event!.voice_confirmation);
   assert.deepEqual(JSON.parse(f.bodies[0]!.input).voice_confirmation,event!.voice_confirmation);
@@ -346,7 +346,7 @@ test('another voice, unattributed speech and model-local labels are guests in an
       assert.equal(runScope(d!), 'owner_uncertain'); assert.equal(f.bodies[0]!.run_scope, 'owner_uncertain'); continue;
     }
     assert.deepEqual([d!.user_identity, principalAttribution(d!), runScope(d!)], ['unknown', null, 'guest']);
-    assert.deepEqual([f.bodies[0]!.memory_write, f.bodies[0]!.run_scope], [false, 'guest']);
+    assert.deepEqual([Object.hasOwn(f.bodies[0]!,'memory_write'), f.bodies[0]!.run_scope], [false, 'guest']);
     assert.equal(JSON.parse(f.bodies[0]!.input).voice_confirmation,null);
     assert.deepEqual(await f.runtime.voiceConfirmations(f.phone),[]);
     assert.equal(f.bodies[0]!.guest_key, guestKey(d!)); assert.match(f.bodies[0]!.guest_key!, new RegExp(`^${label}:\\d{4}-\\d{2}-\\d{2}$`, 'u'));
@@ -588,7 +588,7 @@ test('"确认是我": paired phone re-admits the uncertain request once as an ow
   await f.until(2);
   await new Promise(r => setTimeout(r, 50));
   assert.equal(f.bodies.length, 2);
-  assert.deepEqual([f.bodies[1]!.memory_write, f.bodies[1]!.run_scope, f.bodies[1]!.session_id], [true, undefined, 'session']);
+  assert.deepEqual([Object.hasOwn(f.bodies[1]!,'memory_write'), f.bodies[1]!.run_scope, f.bodies[1]!.session_id], [false, undefined, 'session']);
   const input = JSON.parse(f.bodies[1]!.input) as ProcessedEvent;
   assert.deepEqual(input.content.app_event, {...c.content.app_event as object, confirmed_request: d});
   assert.equal(await f.archive.validateEvidence((input.content.app_event as {confirmed_request: ProcessedEvent}).confirmed_request), true);
@@ -681,7 +681,7 @@ test('owner override admits directed short and other-speaker requests without ch
     assert.deepEqual(accepted.speakers,original.speakers);assert.equal(accepted.user_identity,original.user_identity);
     assert.equal(voiceEvidence(accepted),voiceEvidence(original));assert.equal(await f.archive.validateEvidence(accepted),true);
     assert.notEqual(accepted.processed_event_id,original.processed_event_id);assert.equal(heard.events[0]!.voice_confirmation,undefined);
-    assert.deepEqual(await f.runtime.voiceConfirmations(f.phone),[]);await f.until(1);assert.equal(f.bodies[0]!.memory_write,true);
+    assert.deepEqual(await f.runtime.voiceConfirmations(f.phone),[]);await f.until(1);assert.equal(Object.hasOwn(f.bodies[0]!,'memory_write'),false);
   }
 });
 test('owner override never turns 依米\'s own voice heard back into the owner',async t=>{
@@ -791,4 +791,25 @@ test('a tap arriving after the withdrawal snapshot cannot approve the old identi
   };
   await confirmations.open(d(2),'conversation');assert.equal(await lateTap,false);
   assert.deepEqual(confirmations.list('owner').map(row=>row.processed_event_id),['late-tap-2']);
+});
+
+
+test('owner override input publication settles before exact owner deletion returns',async t=>{
+  const f=await fixture(t,whole('owner_uncertain',.52),{directed:true});
+  const original=(await f.heard()).processed_events[0]!;
+  const key=digest([original.raw_ref,original.segment_id,original.revision+1]);
+  const publish=f.storage.publish.bind(f.storage),entered=Promise.withResolvers<void>(),release=Promise.withResolvers<void>();
+  f.storage.publish=async(namespace,recordKey,bytes)=>{
+    if(namespace==='processed-media-inputs'&&recordKey===key){entered.resolve();await release.promise;}
+    return publish(namespace,recordKey,bytes);
+  };
+  t.after(()=>release.resolve());
+  const override=f.processor.overrideRequest(original).catch(error=>error);
+  await entered.promise;
+  const deletion=f.archive.delete(original.raw_ref,original.principal_id);
+  // The publication owns the same fence as deletion. Baseline deletion can finish while it is held here.
+  await Promise.race([deletion,new Promise(resolve=>setTimeout(resolve,1000).unref())]);
+  release.resolve();await Promise.all([override,deletion]);
+  await assert.rejects(f.storage.read('processed-media-inputs',key),{code:'ENOENT'});
+  assert.ok(!(await f.storage.list('processed-media')).includes(digest([original.raw_ref,original.segment_id,original.revision+1])));
 });

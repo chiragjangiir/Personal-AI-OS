@@ -1,0 +1,71 @@
+{
+  "schema": "yimi.package.contract.v1",
+  "cases": [
+    {
+      "id": "paios_health_query",
+      "tool": "paios_health_query",
+      "args": {
+        "metric": "heart_rate",
+        "aggregation": "sample"
+      },
+      "raw": {
+        "metric": "heart_rate",
+        "unit": "count/min",
+        "tz": "Asia/Shanghai",
+        "aggregation": "sample",
+        "synced_at": "2026-10-24T12:00:00.000Z",
+        "samples": [
+          {
+            "sample_id": "sample",
+            "start_ms": 1792843200000,
+            "end_ms": 1792843201000,
+            "value": 72,
+            "source": "HealthKit"
+          }
+        ],
+        "truncated": false
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "health-never-synced",
+      "tool": "paios_health_query",
+      "args": {
+        "metric": "overview"
+      },
+      "raw": {
+        "metric": "overview",
+        "tz": "UTC",
+        "synced_at": null
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "overview-computed-trend",
+      "tool": "paios_health_query",
+      "args": {
+        "metric": "overview"
+      },
+      "raw": {
+        "metric": "overview",
+        "tz": "Asia/Shanghai",
+        "synced_at": "2026-10-24 20:00",
+        "resting_heart_rate": {
+          "day": "2026-10-24",
+          "latest": 62,
+          "avg_7d": 60.5,
+          "observed_days": 7,
+          "delta_from_7d_avg": 1.5,
+          "unit": "count/min"
+        }
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    }
+  ]
+}

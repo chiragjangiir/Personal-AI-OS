@@ -31,7 +31,7 @@ async def main():
                   'env': {'PROBE_SOURCE': str(source), 'PROBE_OUT': tmp, 'PROBE_CASE': case,
                           'PYTHONDONTWRITEBYTECODE': '1', 'PAIOS_DEEPSEEK_KEY_FILE': '', 'DEEPSEEK_API_KEY': 'synthetic'},
                   'timeout': 60, 'connect_timeout': 30, 'tools': {'resources': False, 'prompts': False}}
-        bad = {**config, 'command': sys.executable, 'args': ['-B', str(source / 'integrations/hermes/personal_aios/staging/fake_mijia.py')]}
+        bad = {**config, 'command': sys.executable, 'args': ['-B', str(source / 'capability/packages/mijia/fake/server.py')]}
         report = {'case': case, 'client_python': sys.executable, 'client_versions': {'python': sys.version, 'mcp': version('mcp')}}
         async def call(tool, args):
             result = await _call_tool_racing_stdio_death(phone, 'phone', tool, args)

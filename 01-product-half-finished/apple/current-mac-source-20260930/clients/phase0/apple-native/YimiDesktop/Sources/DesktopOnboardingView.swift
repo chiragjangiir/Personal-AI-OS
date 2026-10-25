@@ -40,7 +40,7 @@ struct DesktopOnboardingView: View {
         VStack(spacing: 18) {
             Image("YimLockup").resizable().scaledToFit().frame(width: 180, height: 60).accessibilityLabel("Yim")
             Text("让依米来到你的电脑").font(.title2).fontWeight(.semibold)
-            Text("和手机上的依米是同一个她。你说过的话和她做好的事，会接着出现在这里。")
+            Text("和手机上的依米是同一个她。你说过的话、她办好的事，都会接着出现在这里。")
                 .multilineTextAlignment(.center).foregroundStyle(Yimi.ink2)
             DesktopCheckbox(title: "在菜单栏显示依米", isOn: $showMenuBar)
             Button("添加这台电脑") { step = 1 }.buttonStyle(.borderedProminent).controlSize(.large)
@@ -52,8 +52,8 @@ struct DesktopOnboardingView: View {
     }
     private var folderStep: some View {
         VStack(spacing: 14) {
-            Text("她可以碰哪些文件夹？").font(.title2).fontWeight(.semibold)
-            Text("由你选择。没选的地方，她不能访问。你直接交给她的文件只授权那一个文件。")
+            Text("选择文件工具可用的文件夹").font(.title2).fontWeight(.semibold)
+            Text("这里选的文件夹，只限定依米用文件工具时能碰哪些。她通过你的 Mac 账户操作时，仍可读取和修改账户里的其他文件，不受这里限制。你在对话里直接交给她的文件，只开放那一个文件。")
                 .multilineTextAlignment(.center).foregroundStyle(Yimi.ink2)
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(["Downloads", "Desktop", "Documents"], id: \.self) { key in

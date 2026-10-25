@@ -3,6 +3,32 @@ import XCTest
 @testable import HealthKitExporter
 
 final class AssistantActivityTests: XCTestCase {
+    func testCapabilityUnknownAndWaitingDecodeAndDisplay() throws {
+        for state in ["unknown", "waiting"] {
+            var value = try XCTUnwrap(fixtures()["single_running"])
+            var card = try XCTUnwrap(value["card"] as? [String: Any])
+            card["state"] = state
+            var items = try XCTUnwrap(card["items"] as? [[String: Any]])
+            items[0]["state"] = state
+            if state == "unknown" {
+                card["completed_at"] = card["observed_at"]
+                items[0]["completed_at"] = card["observed_at"]
+            }
+            var counts = try XCTUnwrap(card["counts"] as? [String: Any])
+            counts["running"] = 0
+            counts[state] = 1
+            card["counts"] = counts
+            card["items"] = items
+            value["card"] = card
+            let decoded = try JSONDecoder().decode(CentralActivityUpdate.self, from: packet(value).bytes)
+            let presentation = ActivityPresentation(update: decoded, arrivedAt: Date(timeIntervalSince1970: 0))
+            XCTAssertEqual(decoded.card.state.rawValue, state)
+            XCTAssertEqual(decoded.card.items[0].state.rawValue, state)
+            XCTAssertEqual(presentation.heading, state == "unknown" ? "结果待核对" : "正在等待")
+            let roundTrip = try JSONSerialization.jsonObject(with: JSONEncoder().encode(decoded)) as? NSDictionary
+            XCTAssertEqual(roundTrip, value as NSDictionary)
+        }
+    }
     private func fixtures() throws -> [String: [String: Any]] {
         #if SWIFT_PACKAGE
         let url = Bundle.module.url(forResource: "activity-update.fixtures", withExtension: "json", subdirectory: "Fixtures")
@@ -266,4 +292,36 @@ final class AssistantActivityTests: XCTestCase {
         XCTAssertThrowsError(try packet(tooMany))
     }
 
+}
+
+
+extension AssistantActivityTests {
+    func testExt13PendingPromotionPreservesAllLiveActivityRevisions() throws {
+        let fixture = try CentralTextTestFixture()
+        var consumer = try fixture.consumer()
+        let firstChunk = try XCTUnwrap(fixture.chunks().first)
+        try consumer.accept(firstChunk)
+        _ = try consumer.beginSubmit(eventID: "next", capturedAt: "2026-10-17T00:00:00.000Z", text: "next")
+        for name in ["parallel_six", "succeeded", "failed_timeout"] {
+            var activity = try XCTUnwrap(fixtures()[name]); activity["session_id"] = fixture.binding.sessionID
+            try consumer.accept(packet(activity))
+        }
+        let expected = consumer.activities
+        XCTAssertGreaterThan(expected.cards.count, 1)
+        var accepted = try XCTUnwrap(fixture.values["accepted"] as? [String: Any])
+        accepted["event_id"] = "next"; accepted["processed_event_id"] = "d-next"
+        accepted["admission"] = ["state": "accepted", "run_id": "run-next", "idempotency_key": "next", "run_order": 2]
+        try consumer.accept(packet(accepted))
+        var header = try XCTUnwrap(fixture.values["result_header"] as? [String: Any])
+        header["event_id"] = "next"; header["processed_event_id"] = "d-next"; header["run_id"] = "run-next"; header["text_replay"] = "pending"
+        try consumer.accept(packet(header))
+        for chunk in try fixture.chunks().dropFirst() { try consumer.accept(chunk) }
+        _ = try consumer.consumedByUI(XCTUnwrap(consumer.presentation), observedAt: "2026-10-17T00:00:01.000Z")
+        try consumer.accept(packet(accepted))
+        XCTAssertEqual(consumer.eventID, "next")
+        XCTAssertEqual(consumer.activities, expected)
+        var duplicate = try XCTUnwrap(fixtures()["succeeded"]); duplicate["session_id"] = fixture.binding.sessionID
+        try consumer.accept(packet(duplicate))
+        XCTAssertEqual(consumer.activities, expected, "Duplicate terminal revisions must keep their original arrival and the other cards")
+    }
 }

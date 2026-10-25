@@ -851,3 +851,63 @@ test('notification delivery preserves old voice journal bindings while fresh ope
   assert.equal((await out.readSealedText(fresh)).result.delivery_status,'unknown');
   assert.deepEqual(ctx.target,capturedTarget);assert.deepEqual(fresh.target,capturedTarget);
 });
+
+test('small provider frames and played ACKs settle within the output journal budget', {timeout:180000}, async t => {
+  const {storage,ctx}=await fixture(t);ctx.target.output_modes=['voice'];
+  const journal=new Map<string,Uint8Array>(),read=storage.read.bind(storage),publish=storage.publish.bind(storage);
+  storage.read=async(kind,key)=>{if(kind!=='output-journal')return read(kind,key);const value=journal.get(key);if(value)return value;throw Object.assign(Error('missing'),{code:'ENOENT'});};
+  storage.publish=async(kind,key,bytes)=>{if(kind!=='output-journal')return publish(kind,key,bytes);if(!journal.has(key))journal.set(key,bytes);return journal.get(key)!;};
+  let calls=0,played=0,pcmBytes=0;
+  const out=new OutputAuthority(storage,{tts:{synthesize:async()=>wavFixture(),stream:async function*(){calls++;for(let n=0;n<530;n++)yield wavFixture();}}});
+  const done=Promise.withResolvers<void>();
+  out.setVoiceOwner(async(context,error)=>{
+    if(error){done.reject(error);return;}
+    const snapshot=await out.readFinalized(context);
+    const legacy=[...journal.values()].map(bytes=>JSON.parse(Buffer.from(bytes).toString())).filter(entry=>entry.voice).at(-1).voice;
+    if(snapshot.result.voice_status==='pending')assert.equal(legacy.chunk.seq,1);
+    for(const chunk of snapshot.voice_chunks)if(chunk.seq>played){pcmBytes+=(await out.getAudio(context,chunk.audio.ref)).bytes.length-44;await out.ack(context,ack(chunk,chunk.seq,'played'));played=chunk.seq;}
+    if(snapshot.result.voice_status!=='pending')done.resolve();
+  });
+  void done.promise.catch(()=>undefined);
+  await out.open(ctx,{reply_mode:'voice'});await out.seal(ctx,native);await done.promise;await out.close();
+  const restarted=new OutputAuthority(storage),final=await restarted.readFinalized(ctx);
+  assert.equal(final.result.voice_status,'ready');assert.equal(final.result.delivery_status,'played');
+  assert.deepEqual(final.voice_chunks,[]);assert.equal(calls,1);assert.ok(played>0);assert.ok(journal.size<1024);assert.equal(pcmBytes,530*200);
+  const legacy=[...journal.values()].map(bytes=>JSON.parse(Buffer.from(bytes).toString())).filter(entry=>entry.voice).at(-1).voice;
+  assert.equal(legacy.status,'ready');assert.equal(legacy.chunks.length,played);assert.equal(legacy.chunks.at(-1).final,true);
+});
+
+for (const failedKind of ['derived-audio','output-journal']) test(`voice publication failure (${failedKind}) settles durably and restart refuses partial paid synthesis replay`,async t=>{
+  const {storage,ctx}=await fixture(t);ctx.target.output_modes=['voice'];
+  const publish=storage.publish.bind(storage);let audioWrites=0,calls=0;
+  storage.publish=async(kind,key,bytes)=>{if(kind===failedKind&&(kind==='derived-audio'||JSON.parse(Buffer.from(bytes).toString()).operation?.startsWith('voice-chunk:'))&&++audioWrites===2)throw Error('synthetic disk failure');return publish(kind,key,bytes);};
+  const tts={synthesize:async()=>wavFixture(),stream:async function*(){calls++;yield wavFixture();yield wavFixture();}};
+  const out=new OutputAuthority(storage,{tts});await out.open(ctx,{reply_mode:'voice'});
+  await assert.rejects(settledSeal(out,ctx,native),/synthetic disk failure/);
+  assert.equal((await out.readFinalized(ctx)).result.voice_status,'failed');
+  const legacy=(await Reflect.get(out,'state').call(out,ctx)).entries.filter((entry:{voice?:unknown})=>entry.voice).at(-1).voice;
+  assert.equal(legacy.status,'failed');assert.equal(legacy.chunks.length,1);
+  await out.close();const restarted=new OutputAuthority(storage,{tts});
+  assert.equal((await restarted.readFinalized(ctx)).result.voice_status,'failed');
+  await assert.rejects(restarted.retryVoice(ctx,native),/OUTPUT_VOICE_PARTIAL_RETRY_UNSAFE/);
+  assert.equal(calls,1);assert.equal((await restarted.readFinalized(ctx)).voice_chunks.length,1);
+});
+
+test('voice settlement and cancellation retain slots when ACKs reach journal capacity',async t=>{
+  const {storage,ctx}=await fixture(t);ctx.target.output_modes=['voice'];
+  const release=Promise.withResolvers<void>(),published=Promise.withResolvers<void>(),done=Promise.withResolvers<void>();
+  const tts={synthesize:async()=>wavFixture(),stream:async function*(){yield wavFixture();await release.promise;}};
+  const out=new OutputAuthority(storage,{tts,maxJournalEntries:9});
+  out.setVoiceOwner(async(context,error)=>{if(error){done.reject(error);return;}const state=await out.readFinalized(context);
+    if(state.result.voice_status==='pending')published.resolve();else done.resolve();});
+  await out.open(ctx,{reply_mode:'voice'});await out.seal(ctx,native);await published.promise;
+  const chunk=(await out.readFinalized(ctx)).voice_chunks[0]!;
+  await out.ack(ctx,ack(chunk,1,'played'));
+  await assert.rejects(out.ack(ctx,{...ack(chunk,1,'played'),observed_at:'2026-10-01T00:00:01.000Z'}),/OUTPUT_JOURNAL_FULL/);
+  release.resolve();await done.promise;await out.close();
+  assert.equal((await out.readFinalized(ctx)).result.voice_status,'ready');
+  await out.cancel(ctx,1);
+  const restarted=new OutputAuthority(storage,{tts,maxJournalEntries:9});
+  assert.equal((await restarted.readFinalized(ctx)).result.reply_phase,'interrupted');
+  assert.deepEqual((await restarted.readFinalized(ctx)).voice_chunks,[]);
+});

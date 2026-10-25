@@ -1,4 +1,5 @@
 import Foundation
+import LiveKit
 import VoiceWake
 import Security
 import HealthKit
@@ -603,18 +604,19 @@ actor AssistantSessionCoordinator {
 
     private var centralObserver: (@Sendable (AssistantCentralTextConsumer) -> Void)?
     private(set) var textOwner = AssistantTextOwner.legacy
-    private let contactsSync = AssistantContactsSync()
+    private let contactsSync: AssistantContactsSync
+    private let ownerDataPairing: @Sendable () throws -> RealtimeDevicePairing?
     private var contactsTask: Task<Void, Never>?
     private var contactsTaskID: UUID?
     private var contactsDirty = false
     private var contactsStatus = "尚未开启联系人同步"
     private var contactsChangeObserver: NSObjectProtocol?
     func contactsSnapshot() async -> (enabled: Bool, status: String) {
-        guard let pairing = try? PairedRealtimeRequestBodyProvider().pairing() else { return (false, "请先配对你的 Mac") }
+        guard let pairing = try? ownerDataPairing() else { return (false, "请先配对你的 Mac") }
         return ((try? await contactsSync.isEnabled(identity: CentralOwnerDataIdentity.pairing(pairing))) ?? false, contactsStatus)
     }
     func setContactsEnabled(_ enabled: Bool) async throws {
-        guard let pairing = try PairedRealtimeRequestBodyProvider().pairing() else { throw CentralTextError.unavailable }
+        guard let pairing = try ownerDataPairing() else { throw CentralTextError.unavailable }
         cancelContactsRun()
         try await contactsSync.setEnabled(enabled, identity: CentralOwnerDataIdentity.pairing(pairing))
         contactsStatus = enabled ? "读取已开启。连接 Mac 后同步。" : "联系人同步已关闭"
@@ -646,7 +648,7 @@ actor AssistantSessionCoordinator {
             }
         }
         do {
-            guard let pairing = try PairedRealtimeRequestBodyProvider().pairing(), pairing.deviceID == binding.deviceID else { return }
+            guard let pairing = try ownerDataPairing(), pairing.deviceID == binding.deviceID else { return }
             let identity = CentralOwnerDataIdentity.pairing(pairing)
             guard try await contactsSync.isEnabled(identity: identity) else { return }
             var repeatRun = true
@@ -657,7 +659,7 @@ actor AssistantSessionCoordinator {
                 guard centralConsumer.binding == binding, case .active(true) = state else { throw CancellationError() }
                 let outcome = try await contactsSync.sync(identity: identity, maximumBytes: binding.maxPacketBytes) { [weak self] batch in
                     guard let self else { throw CancellationError() }
-                    try await self.sendOwnerDataChunk(batch, binding: binding, identity: identity)
+                    try await self.sendOwnerDataChunk(batch, binding: binding, identity: identity, contactsRunID: taskID)
                 }
                 switch outcome {
                 case .busy: repeatRun = true; try await Task.sleep(nanoseconds: 200_000_000)
@@ -697,7 +699,7 @@ actor AssistantSessionCoordinator {
     private var healthWasPaused = false
     private var healthObserverWake: Task<Void, Never>?
     private var ownerDataReceipts: [String: (chunk: CentralOwnerDataBatch, binding: CentralTransportBinding,
-        continuation: CheckedContinuation<Void, Error>, timeout: Task<Void, Never>)] = [:]
+        continuation: CheckedContinuation<Void, Error>, timeout: Task<Void, Never>, publisher: Task<Void, Never>?)] = [:]
     private var healthStatus = "尚未开启健康同步"
     private var healthObserverIdentity: String?
 
@@ -810,8 +812,12 @@ actor AssistantSessionCoordinator {
             healthStatus = "同步未完成。保留读取进度，重连或点同步后重试。"
         }
     }
-    func sendOwnerDataChunk(_ chunk: CentralOwnerDataBatch, binding: CentralTransportBinding, identity: String, healthUrgent: Bool = false) async throws {
-        guard let pairing = try PairedRealtimeRequestBodyProvider().pairing(), CentralOwnerDataIdentity.pairing(pairing) == identity,
+    func sendOwnerDataChunk(_ chunk: CentralOwnerDataBatch, binding: CentralTransportBinding, identity: String, healthUrgent: Bool = false, contactsRunID: UUID? = nil) async throws {
+        try Task.checkCancellation()
+        if chunk.operation == "contacts_batch" {
+            guard let contactsRunID, contactsTaskID == contactsRunID else { throw CancellationError() }
+        }
+        guard let pairing = try ownerDataPairing(), CentralOwnerDataIdentity.pairing(pairing) == identity,
               pairing.deviceID == binding.deviceID else { throw CancellationError() }
         guard ["health_batch", "contacts_batch"].contains(chunk.operation), ownerDataReceipts[chunk.operation] == nil, centralConsumer.binding == binding else { throw CentralTextError.contextChanged() }
         let publisher = try centralPublisher()
@@ -820,8 +826,8 @@ actor AssistantSessionCoordinator {
                 do { try await Task.sleep(nanoseconds: 20_000_000_000) } catch { return }
                 await self?.finishOwnerDataReceipt(operation: chunk.operation, controlID: chunk.controlID, error: AssistantHealthFailure(code: "HEALTH_ACK_TIMEOUT"))
             }
-            ownerDataReceipts[chunk.operation] = (chunk, binding, continuation, timeout)
-            Task { [weak self] in
+            ownerDataReceipts[chunk.operation] = (chunk, binding, continuation, timeout, nil)
+            let publication = Task { [weak self] in
                 do {
                     guard let self else { throw CancellationError() }
                     try await self.publishOwnerDataChunk(chunk, binding: binding, publisher: publisher, healthUrgent: healthUrgent)
@@ -829,6 +835,7 @@ actor AssistantSessionCoordinator {
                 catch is CancellationError { await self?.finishOwnerDataReceipt(operation: chunk.operation, controlID: chunk.controlID, error: CancellationError()) }
                 catch { await self?.finishOwnerDataReceipt(operation: chunk.operation, controlID: chunk.controlID, error: CentralTextError.unavailable) }
             }
+            ownerDataReceipts[chunk.operation]?.publisher = publication
         }
     }
     private func publishOwnerDataChunk(_ chunk: CentralOwnerDataBatch, binding: CentralTransportBinding,
@@ -843,7 +850,7 @@ actor AssistantSessionCoordinator {
     }
     private func finishOwnerDataReceipt(operation: String, controlID: String, error: Error?) {
         guard let pending = ownerDataReceipts[operation], pending.chunk.controlID == controlID else { return }
-        ownerDataReceipts.removeValue(forKey: operation); pending.timeout.cancel()
+        ownerDataReceipts.removeValue(forKey: operation); pending.timeout.cancel(); pending.publisher?.cancel()
         if let error { pending.continuation.resume(throwing: error) }
         else { pending.continuation.resume() }
     }
@@ -1011,6 +1018,7 @@ actor AssistantSessionCoordinator {
     private var wakePcmSending = false
     private var wakePcmClosing = false
     private var wakePcmDrainWaiters: [CheckedContinuation<Void, Never>] = []
+    private let localWakeCapture: (start: @Sendable () throws -> Void, stop: @Sendable () throws -> Void)
     private lazy var wakeListening = AssistantWakeListening(onWake: { [weak self] generation in
         Task { await self?.wakeFromKeyword(generation) }
     }, onState: { [weak self] phase, error in
@@ -1019,7 +1027,7 @@ actor AssistantSessionCoordinator {
         Task { await self?.drainWakePcm() }
     }, onPcmFailure: { [weak self] code in
         Task { await self?.wakePcmCaptureFailed(code) }
-    })
+    }, startCapture: localWakeCapture.start, stopCapture: localWakeCapture.stop)
     /// 随身模式 (see AssistantMediaHolder.ambient), and whether the live call is muted: 静音 silences the ambient hold too.
     private var ambientWanted = false
     private var callMuted = false
@@ -1039,6 +1047,10 @@ actor AssistantSessionCoordinator {
         cyclingWatchOriginBinding: CyclingWatchOriginBinding? = nil,
         watchControl: (any AssistantWatchControlSending)? = nil,
         moveSensors: MoveSessionSensors? = nil,
+        contactsSync: AssistantContactsSync = AssistantContactsSync(),
+        ownerDataPairing: @escaping @Sendable () throws -> RealtimeDevicePairing? = { try PairedRealtimeRequestBodyProvider().pairing() },
+        localWakeCapture: (start: @Sendable () throws -> Void, stop: @Sendable () throws -> Void) =
+            ({ try AudioManager.shared.startLocalRecording() }, { try AudioManager.shared.stopLocalRecording() }),
         realtimeEventCapacity: Int = AssistantRealtimeEventIngress.maximumQueuedEvents,
         voiceSendConfirmationWait: UInt64 = 10_000_000_000,
         voiceTurnSleep: @escaping @Sendable (UInt64) async throws -> Void = { try await Task.sleep(nanoseconds: $0) },
@@ -1053,6 +1065,7 @@ actor AssistantSessionCoordinator {
             return (CentralOwnerDataIdentity.pairing(pairing), pairing.deviceID)
         }
     ) {
+        self.contactsSync = contactsSync; self.ownerDataPairing = ownerDataPairing; self.localWakeCapture = localWakeCapture
         self.callDialTimeout = callDialTimeout
         self.ringback = ringback
         self.artc = artc
@@ -1799,8 +1812,11 @@ actor AssistantSessionCoordinator {
             guard dial?.id == attempt else { throw AssistantSessionCoordinatorError.superseded }
             step = "pending_call_close"
             try await drainPendingCallClose()
-            guard dial?.id == attempt else { throw AssistantSessionCoordinatorError.superseded }
-            guard pendingCallClose == nil else { throw CentralTextError.unavailable }
+            // Publication is not the terminal receipt. Keep this dial under its existing deadline until it arrives.
+            while pendingCallClose != nil, dial?.id == attempt, !Task.isCancelled {
+                try await Task.sleep(nanoseconds: 50_000_000)
+            }
+            guard dial?.id == attempt, !Task.isCancelled else { throw AssistantSessionCoordinatorError.superseded }
         } catch {
             logCallStartFailure(step: step, error: error)
             if dial?.id == attempt {
@@ -3057,6 +3073,8 @@ actor AssistantSessionCoordinator {
         guard let state = moveSession.lastRideState else { return nil }
         let metrics = moveSession.ride?.metrics(at: Date(), cadence: nil)
         let summary = state.summary
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return WatchYimiRideMetrics(ride_id: state.ride_id,
             workout_id: moveSession.watchWorkoutID ?? moveSession.lastRideWorkoutID, ended: summary != nil,
             speed_kmh: metrics?.speed_kmh, avg_kmh: metrics?.avg_kmh ?? summary!.avg_kmh,
@@ -3064,7 +3082,9 @@ actor AssistantSessionCoordinator {
             elapsed_s: metrics?.elapsed_s ?? summary!.elapsed_s,
             moving_s: metrics?.moving_s ?? summary!.moving_s, hr_bpm: metrics?.hr_bpm,
             hr_avg: summary?.hr_avg, hr_max: summary?.hr_max, kcal: metrics?.kcal ?? summary?.kcal,
-            elev_gain_m: metrics?.elev_gain_m ?? summary?.elev_gain_m)
+            elev_gain_m: metrics?.elev_gain_m ?? summary?.elev_gain_m,
+            hr_sample_at: (metrics?.hr_sample_at).map { formatter.string(from: $0) },
+            speed_sample_at: (metrics?.speed_sample_at).map { formatter.string(from: $0) })
     }
 
     private var moveSession = MoveSession()
@@ -3579,8 +3599,8 @@ actor AssistantSessionCoordinator {
     @discardableResult
     func stop(reasonCode: String = "user_stop") async
         -> AssistantRemoteStopResult {
-        if ["user_stop", "pairing_changed"].contains(reasonCode), let dial, dial.generation == nil { self.dial = nil }
-        if wakeWanted, ["user_stop", "pairing_changed"].contains(reasonCode) { try? await setWakeEnabled(false) }
+        if ["user_stop", "pairing_changed", "desktop_unpaired"].contains(reasonCode), let dial, dial.generation == nil { self.dial = nil }
+        if wakeWanted, ["user_stop", "pairing_changed", "desktop_unpaired"].contains(reasonCode) { try? await setWakeEnabled(false) }
         if state.canStart, pendingStopRestoration != nil || sessionStart != nil {
             generationCounter &+= 1
             callGeneration &+= 1
@@ -3865,7 +3885,7 @@ actor AssistantSessionCoordinator {
                 catch { centralConsumer.reportWireFailure(error); centralObserver?(centralConsumer) }
                 return
             }
-            if operation?.hasPrefix("payment_") == true || operation == "owner_override_status",
+            if operation?.hasPrefix("payment_") == true || operation == "owner_override_status" || operation?.hasPrefix("model_settings_") == true,
                case .active(true) = state, encryptionActive, await paymentChannel.accept(packet) { return }
             guard textOwner == .centralCandidate, case .active(true) = state, encryptionActive else {
                 #if DEBUG

@@ -11,14 +11,31 @@ import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from datetime import datetime, timezone
 
+if __name__ == '__main__' and not __package__:
+    import runpy
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+    runpy.run_module('integrations.hermes.personal_aios.workshop_builder', run_name='__main__')
+    raise SystemExit
+
 
 if __package__:
-    from .workshop_sandbox import BuilderRefusal, test_tool, prepare_server, authorized
+    from .workshop_sandbox import BuilderRefusal, test_tool, check_capability, invoke_capability, prepare_server, authorized
 else:
-    from workshop_sandbox import BuilderRefusal, test_tool, prepare_server, authorized
+    from workshop_sandbox import BuilderRefusal, test_tool, check_capability, invoke_capability, prepare_server, authorized
+
+
+def _admit_build():
+    if __package__:
+        from .model_task_admission import require_new_task
+    else:
+        from model_task_admission import require_new_task
+    require_new_task('build')
 
 
 def build_tool(request):
+    _admit_build()
+    capability = request.pop('_capability', False) if isinstance(request, dict) else False
     if (not isinstance(request, dict) or set(request) not in ({'input', 'name'}, {'input', 'name', 'files'}) or not isinstance(request['input'], str)
             or not 1 <= len(request['input']) <= 16000
             or not isinstance(request['name'], str)
@@ -37,13 +54,29 @@ def build_tool(request):
 
     class Tools:
         def register_tool(self, name, toolset, schema, handler):
-            schema['parameters']['properties']['action']['enum'] = ['search', 'inspect', 'install']
+            if name == 'skills_hub':
+                schema['parameters']['properties']['action']['enum'] = ['find', 'search', 'inspect', 'install']
+                if capability:
+                    schema['parameters']['properties']['action']['enum'] += ['package_write', 'package_read']
+                    schema['parameters']['properties']['files'] = {'type': 'object', 'additionalProperties': {'type': 'string'}}
+                    schema['description'] = ('Find and inspect reusable tools. package_write updates the supplied '
+                        'package-relative files in your isolated draft, preserving other files. package_read '
+                        'returns the draft. Use terminal for isolated regression tests from /package; outputs go to /work.')
+                    original = handler
+                    def handler(args, **kwargs):
+                        if args['action'] in {'package_write', 'package_read'}:
+                            from .workshop_capability import draft_files
+                            return json.dumps(draft_files(request['name'], args.get('files') if args['action'] == 'package_write' else None))
+                        return original(args, **kwargs)
             registry.register(name=name, toolset=toolset, schema=schema, handler=handler)
 
     run_id = uuid.uuid4().hex
     with runtime_scope('build'):
         register(Tools())
-        if request.get('files'):
+        if request.get('files') and capability:
+            from .workshop_capability import draft_files
+            draft_files(request['name'], request['files'])
+        elif request.get('files'):
             if __package__:
                 from .tool_lifecycle import ToolLifecycle, _apply, _operations, _files
             else:
@@ -53,7 +86,8 @@ def build_tool(request):
         config = load_config()
         model = config['model']
         native = config['agent']
-        instructions = (Path(__file__).parent / 'shared-skills/engineering-handbook/SKILL.md').read_text()
+        handbook = (Path(__file__).parent / 'shared-skills/engineering-handbook/SKILL.md').read_text()
+        instructions = handbook
         instructions += (
             '\nYou are the isolated builder. Find reusable tools first in skills_hub, MCP registries, '
             'GitHub, npm and PyPI using terminal HTTP requests. Record candidates and why you reused '
@@ -83,10 +117,53 @@ def build_tool(request):
             'workspace. The release lifecycle publishes the complete approved package in one native atomic '
             'batch with the same locks, snapshots and rollback; never split a publication.'
         )
-        agent = AIAgent(model=model['default'], provider=model['provider'], base_url=model['base_url'],
-            api_key=os.environ['PAIOS_BUILDER_API_KEY'], api_mode='chat_completions',
-            request_overrides={'extra_headers': {'x-opencode-session': run_id}},
-            enabled_toolsets=['skills', 'terminal', 'file', 'code_execution', 'skills_hub', 'todo'],
+        if capability:
+            template = Path(os.environ.get('PAIOS_APP_ROOT', Path(__file__).parents[3])) / 'capability/templates/yimi-capability-template'
+            instructions = handbook + ('\nYou are the isolated builder. Find reusable tools first in skills_hub, '
+                'MCP registries, GitHub, npm and PyPI. Record candidates and why you reused or rejected them. '
+                'The product is a standard Agent Plugins v1 capability PACKAGE. '
+                'Use capability_find before building (skills_hub action=find on the legacy build profile). '
+                'Build the smallest useful interface; do not add independent operations that were not requested. '
+                'Keep a short business regression script and a few representative contract cases. '
+                'The platform already validates manifests, receipts, security and effects after export; '
+                'do not reimplement those validators or repeat meta-checks in this build. '
+                'Each contract case is independent: its fixture bytes need not match another case. '
+                'Once your business regression passes and package files are saved, finish and return the candidate. '
+                'Write package files with skills_hub(action="package_write", value="draft", files={...}); '
+                'later calls update supplied files and preserve the rest. '
+                'read it with action="package_read". This editor owns only this isolated package draft. '
+                'Native skill_manage restricts supporting paths and cannot write standard package roots. '
+                'The root SKILL.md is scratch metadata supplied by the editor. '
+                'In the exported directory save plugin.json, mcp.json, '
+                'skills/<name>/SKILL.md, server/, fake/, scripts/test.py and tests/contract.yaml. '
+                'Copy the template shapes below, then implement the requested behavior. Import the shared SDK '
+                'from capability.sdk.python.yimi_receipt (available at /opt/yimi); never copy its code. '
+                'Set maintainer=yimi and a new semver; declare every tool effect and all egress. '
+                'Manifest scopes describe the callers, not the build environment: include owner for an '
+                'owner-requested capability; never add guest or care without that requirement. Never declare '
+                'spend or self_change, including argument branches. Tests run offline in a credential-free '
+                'namespace with the package read-only at /package and writable outputs under /work. '
+                'Budgets: 32 files, 131072 UTF-8 bytes per file and 524288 total. Reduce scope on overruns. '
+                'No dependency downloads during use. The real and fake server must speak MCP JSON lines. '
+                'The MCP entry is a protocol adapter: declare it in provenance.adapter_modules and keep that '
+                'entire file under 200 lines. Put the actual business operations in a separate module. '
+                'return receipt v1. Contract YAML version=1 has cases [{tool,args,files,expect}]. '
+                'files keys are RELATIVE paths: {"sample.pdf":{"base64":"..."}} stages /work/sample.pdf; '
+                'never use /work/sample.pdf as the files key. Tool args may use absolute /work paths. '
+                'Every case supplies its own inputs; no runtime sample files are implicit during registration. '
+                'expect maps dotted receipt paths to exact expected values. '
+                'Registration checks are automatic and blocking. Passing packages ship directly through '
+                'test/promote, without staging or a new confirmation. External effects remain under gateway decide.\n')
+            for path in sorted(template.rglob('*')):
+                if path.is_file():
+                    instructions += '\nTEMPLATE ' + path.relative_to(template).as_posix() + '\n' + path.read_text()
+        from gateway.run import _resolve_runtime_agent_kwargs
+        from hermes_cli.fallback_config import get_fallback_chain
+        runtime = _resolve_runtime_agent_kwargs()
+        selected_model = runtime.pop('model', model['default'])
+        runtime.pop('_fallback_notice', None)
+        agent = AIAgent(model=selected_model, **runtime, fallback_model=get_fallback_chain(config),
+            enabled_toolsets=['terminal', 'skills_hub', 'todo'] if capability else ['skills', 'terminal', 'file', 'code_execution', 'skills_hub', 'todo'],
             # Same rule as native cron: no turn limit unless configured; the shared max_tool_calls cap bounds the run.
             max_iterations=resolve_turn_limit(native.get('max_turns')),
             session_id=run_id, skip_context_files=True, load_soul_identity=False,
@@ -97,15 +174,26 @@ def build_tool(request):
         finally:
             agent.close()
         if result.get('failed') or not result.get('completed'):
-            raise RuntimeError('Builder did not complete: ' + str(result.get('error', 'tool-call budget exhausted')))
-        candidate = export_tool(request['name'], get_hermes_home() / 'skills/workshop' / request['name'],
-                                request.get('files', {}))
+            raise RuntimeError('Builder did not complete: ' + str(result.get('error') or result.get('turn_exit_reason') or 'no completed result'))
+        root = get_hermes_home() / 'skills/workshop' / request['name']
+        if capability:
+            from tools.skill_manager_tool import _find_skill
+            skill = _find_skill(request['name'])
+            if skill is None:
+                raise BuilderRefusal('Builder did not save the package scratch skill')
+            root = Path(skill['path'])
+        candidate = export_tool(request['name'], root,
+                                request.get('files', {}), capability=capability)
         if 'scripts/test.py' not in candidate['files']:
             raise BuilderRefusal('Builder must save its regression test')
         return {**candidate, 'run_id': run_id, 'output': result['final_response']}
 
 
-def export_tool(name, root, previous=()):
+def build_capability(request):
+    return build_tool({**request, '_capability': True})
+
+
+def export_tool(name, root, previous=(), capability=False):
     if __package__:
         from .tool_lifecycle import package_budget
     else:
@@ -121,6 +209,12 @@ def export_tool(name, root, previous=()):
             files[relative] = path.read_text()
     if 'SKILL.md' not in files:
         raise BuilderRefusal('Hub or builder must save a native skill')
+    if capability:
+        if 'plugin.json' not in files or 'tests/contract.yaml' not in files or 'mcp.json' not in files:
+            raise BuilderRefusal('Builder must export a standard capability package')
+        manifest = json.loads(files['plugin.json'])
+        if manifest['name'] != name or manifest['extensions']['ai.yimi.capability']['maintainer'] != 'yimi':
+            raise BuilderRefusal('Builder package identity mismatch')
     return {'name': name, 'files': files, 'budget': package_budget(files, previous)}
 
 
@@ -130,6 +224,7 @@ REPAIR_PATHS = ('01-product-half-finished/backend', 'integrations', 'scripts', '
 
 def repair_product(request):
     """Repair product source on the build host's accepted base; queue the patch for the host release runner."""
+    _admit_build()
     if (not isinstance(request, dict) or set(request) != {'input', 'origin'} or not isinstance(request['input'], str)
             or not 1 <= len(request['input']) <= 16000):
         raise BuilderRefusal('Expected a data-free repair request with its admitted origin')
@@ -147,8 +242,12 @@ def repair_product(request):
     from run_agent import AIAgent
     from tools.terminal_tool import ensure_task_env, _evict_environment_for_task
     spool = Path(os.environ['PAIOS_RELEASE_REQUESTS'])
-    base = json.loads((spool / 'base.json').read_text())['commit']
     request_id = uuid.uuid4().hex[:12]
+    if __package__:
+        from .release_preflight import prepare
+    else:
+        from release_preflight import prepare
+    base = prepare(spool, request_id)['base']
     captured_at = datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
     workspace = '/workshop/repair-' + request_id
     instructions = (Path(__file__).parent / 'shared-skills/engineering-handbook/SKILL.md').read_text() + (
@@ -184,10 +283,16 @@ def repair_product(request):
     with runtime_scope('build'):
         config = load_config()
         model, native = config['model'], config['agent']
-        repair_model = config.get('workshop', {}).get('repair_model', model['default'])
-        agent = AIAgent(model=repair_model, provider=model['provider'], base_url=model['base_url'],
-            api_key=os.environ['PAIOS_BUILDER_API_KEY'], api_mode='chat_completions',
-            request_overrides={'extra_headers': {'x-opencode-session': run_id}},
+        repair = config['workshop']['repair']
+        from gateway.run import _runtime_agent_kwargs
+        from hermes_cli.runtime_provider import resolve_runtime_with_fallback
+        from hermes_cli.fallback_config import get_fallback_chain, scoped_fallback_chain, resolve_entry_api_key
+        chain = scoped_fallback_chain(get_fallback_chain(config), repair['fallback_providers'], pinned=True, owner='build.repair')
+        selected = {**config, 'model': {**repair, 'default': repair['model']}, 'fallback_providers': chain or []}
+        resolved, fallback = resolve_runtime_with_fallback(selected, requested=repair['provider'],
+            target_model=repair['model'], explicit_base_url=repair['base_url'], explicit_api_key=resolve_entry_api_key(repair))
+        runtime = _runtime_agent_kwargs(resolved)
+        agent = AIAgent(model=fallback['model'] if fallback else repair['model'], **runtime, fallback_model=chain,
             enabled_toolsets=['terminal', 'file', 'code_execution', 'todo'],
             max_iterations=resolve_turn_limit(native.get('max_turns')),
             session_id=run_id, skip_context_files=True, load_soul_identity=False,
@@ -298,7 +403,9 @@ def builder_server(address, token, tls, read_timeout=30):
             self.wfile.write(body)
 
         def do_POST(self):
-            if self.path not in {'/build', '/test', '/hub', '/repair', '/release-status'} or not authorized(self.headers, token):
+            activation = self.path == '/api/model-settings/activate'
+            credential = Path(os.environ['PAIOS_MODEL_SETTINGS_TOKEN_FILE']).read_text().strip() if activation else token
+            if self.path not in {'/build', '/capability-build', '/test', '/capability-check', '/capability-invoke', '/hub', '/repair', '/release-status', '/api/model-settings/activate'} or not authorized(self.headers, credential):
                 self.send_error(403)
                 return
             # Status reads a receipt only; it never waits behind a running build or repair.
@@ -308,12 +415,31 @@ def builder_server(address, token, tls, read_timeout=30):
                 return
             try:
                 size = int(self.headers.get('Content-Length', '0'))
-                if size <= 0 or self.path not in {'/build', '/test'} and size > 1048576:
+                limit = 4194304 if self.path in {'/capability-build', '/capability-check', '/capability-invoke'} else 1048576
+                if size <= 0 or self.path not in {'/build', '/test'} and size > limit:
                     self.send_error(413)
                     return
                 request = json.loads(self.rfile.read(size))
-                output = {'/build': build_tool, '/test': test_tool, '/hub': hub_request, '/repair': repair_product,
-                          '/release-status': release_status}[self.path](request)
+                def activate_models(body):
+                    if __package__:
+                        from .model_transport import activate
+                    else:
+                        from model_transport import activate
+                    if any(item['group'] != 'build' for item in body['projections']):
+                        raise ValueError('Builder requires its own build projection')
+                    return activate(Path(os.environ['HERMES_HOME']), body['projections'])
+                if __package__:
+                    from .model_task_admission import remote_context
+                else:
+                    from model_task_admission import remote_context
+                if self.path in {'/build', '/capability-build', '/repair'}:
+                    with remote_context(request):
+                        output = {'/build': build_tool, '/capability-build': build_capability, '/repair': repair_product}[self.path](request)
+                else:
+                    output = {'/api/model-settings/activate': activate_models, '/test': test_tool, '/hub': hub_request,
+                              '/capability-check': check_capability,
+                              '/capability-invoke': invoke_capability,
+                              '/release-status': release_status}[self.path](request)
             except TimeoutError:
                 self.respond(408, {'error': 'timeout'})
             except BuilderRefusal as error:

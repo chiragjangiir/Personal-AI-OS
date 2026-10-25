@@ -1,12 +1,17 @@
 import { constants, promises as fs, type StatsFs } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {AsyncLocalStorage} from 'node:async_hooks';
+import {spawn} from 'node:child_process';
+import {Readable} from 'node:stream';
+import {pipeline} from 'node:stream/promises';
 import { check, sha256 } from './contracts.ts';
 import {ColdStorage,type ColdRecord,type ColdConfig} from './cold-storage.ts';
 import {SessionRecords,type FinalSession,type SessionRecordRef,type CallAudioTrack} from './session-records.ts';
 
 export interface StoragePort {
+  publishObjectStream?(chunks:AsyncIterable<Uint8Array>,beforePublish?:(key:string)=>Promise<void>):Promise<{object_hash:string;bytes:number}>;
+  readObjectRange?(key:string,offset:number,bytes:number):AsyncIterable<Uint8Array>;
   removeSessions?(rawRefs:string[]):Promise<void>;
   bindCallTrack?(rawRef:string,group:CallAudioTrack):Promise<void>;
   callTrack?(rawRef:string):Promise<CallAudioTrack|null>;
@@ -14,9 +19,13 @@ export interface StoragePort {
   publishFinal?(record:FinalSession):Promise<FinalSession>;
   readFinal?(rawRef:string):Promise<FinalSession|null>;
   trackSessionRecords?(rawRef:string,records:SessionRecordRef[]):Promise<void>;
-  sessionRecords?(rawRef:string):Promise<SessionRecordRef[]>;
+  sessionRecords?(rawRef:string,publicationOrder?:boolean):Promise<SessionRecordRef[]>;
+  sessionRecordCount?(rawRef:string):Promise<number>;
+  activeSessionRefs?():Promise<string[]>;
   hasLiveSessionOwner?(record:SessionRecordRef):Promise<boolean>;
+  hasSessionRecord?(record:SessionRecordRef):Promise<boolean>;
   pendingFinals?():Promise<string[]>;
+  resumeFinalCleanup?(rawRef:string):Promise<void>;
   completeFinal?(rawRef:string):Promise<void>;
   prepareCapture?():Promise<void>;
   setAlert?(listener:(error:unknown)=>void):void;
@@ -41,6 +50,8 @@ export interface StoragePort {
   hotKeys?(namespace:string,max_keys?:number):AsyncIterable<string>;
   modifiedAt?(namespace:string,key:string):Promise<number>;
   objectSize?(namespace:string,key:string):Promise<number>;
+  /** Compare verified metadata with the current original without a cold HTTP read. */
+  matchesMetadata?(namespace:string,key:string,bytes:Uint8Array):Promise<boolean>;
   hotSize?(namespace:string,key:string):Promise<number>;
   moveCold?(records:ColdRecord[],beforeUpload?:(bytes:number)=>void):Promise<{pack:string;bytes:number}>;
   removeOriginals?(records:Pick<ColdRecord,'namespace'|'key'>[]):Promise<void>;
@@ -87,9 +98,13 @@ export class PosixStorage implements StoragePort {
   publishFinal(record:FinalSession){return this.sessions.publishFinal(record);}
   readFinal(rawRef:string){return this.sessions.readFinal(rawRef);}
   trackSessionRecords(rawRef:string,records:SessionRecordRef[]){return this.sessions.trackSessionRecords(rawRef,records);}
-  sessionRecords(rawRef:string){return this.sessions.sessionRecords(rawRef);}
+  sessionRecords(rawRef:string,publicationOrder=false){return this.sessions.sessionRecords(rawRef,publicationOrder);}
+  sessionRecordCount(rawRef:string){return this.sessions.sessionRecordCount(rawRef);}
+  activeSessionRefs(){return this.sessions.activeSessionRefs();}
   hasLiveSessionOwner(record:SessionRecordRef){return this.sessions.hasLiveSessionOwner(record);}
+  hasSessionRecord(record:SessionRecordRef){return this.sessions.hasSessionRecord(record);}
   pendingFinals(){return this.sessions.pendingFinals();}
+  resumeFinalCleanup(rawRef:string){return this.sessions.resumeFinalCleanup(rawRef);}
   completeFinal(rawRef:string){return this.sessions.completeFinal(rawRef);}
   private reportReserve(error:unknown){
     const reason=error instanceof Error?error.message:String(error),window=Math.floor(Date.now()/(60*60*1000));
@@ -133,6 +148,31 @@ export class PosixStorage implements StoragePort {
   async moveCold(records:ColdRecord[],beforeUpload?:(bytes:number)=>void){check(this.cold,'COLD_STORAGE_NOT_CONFIGURED',503);
     // Pack payloads stay in memory and HTTP; SQLite reports its actual local allocation failure.
     return this.cold.move(records,beforeUpload);}
+  /** Startup only: the caller holds the product process lock before opening any storage owners. */
+  async recoverPending():Promise<void>{
+    await this.directory('objects');
+    const temporary=/^\.pending-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/u;
+    for await(const entry of await fs.opendir(this.root)){
+      if(!entry.isDirectory()||entry.isSymbolicLink())continue;
+      if(entry.name==='.snapshots'){
+        const parent=join(this.root,entry.name);let changed=false;
+        for await(const snapshot of await fs.opendir(parent)){
+          if(!/^\.pending-[a-f0-9]{64}$/u.test(snapshot.name)||!snapshot.isDirectory()||snapshot.isSymbolicLink())continue;
+          // rm unlinks entries without following symlinks. Published snapshots and their dependency pins stay intact.
+          await fs.rm(join(parent,snapshot.name),{recursive:true});changed=true;
+        }
+        if(changed)await this.syncDirectory(parent);
+      }else if(/^[a-z][a-z0-9-]{0,40}$/u.test(entry.name)){
+        const directory=await this.directory(entry.name,false);let changed=false;
+        for await(const object of await fs.opendir(directory)){
+          if(!temporary.test(object.name)||!object.isFile()||object.isSymbolicLink())continue;
+          // A published object or snapshot may share this inode; unlink only the unpublished name.
+          await fs.unlink(join(directory,object.name));changed=true;
+        }
+        if(changed)await this.syncDirectory(directory);
+      }
+    }
+  }
   async close(){await this.reserveWork;await this.cold?.close();await this.sessions.close();}
   async removeOriginals(records:Pick<ColdRecord,'namespace'|'key'>[]){
     const changed=new Set<string>();
@@ -149,6 +189,15 @@ export class PosixStorage implements StoragePort {
     const location=(await this.cold?.locations([{namespace,key}]))?.[0];
     if(location)return location.size;
     throw Object.assign(new Error('storage object absent'),{code:'ENOENT'});
+  }
+  async matchesMetadata(namespace:string,key:string,bytes:Uint8Array):Promise<boolean>{
+    check(namespace!=='objects','METADATA_RECORD_REQUIRED');
+    try{return Buffer.from(await this.readHot(namespace,key)).equals(bytes);}
+    catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
+    const folded=await this.sessions.read(namespace,key);
+    if(folded){check(folded instanceof Uint8Array,'METADATA_RECORD_REQUIRED');return Buffer.from(folded).equals(bytes);}
+    const location=(await this.cold?.locations([{namespace,key}]))?.[0];
+    return !!location&&location.size===bytes.length&&location.hash===sha256(bytes);
   }
   async hotSize(namespace:string,key:string){if(namespace==='session-finals'){const detail=await this.sessions.details(key);if(detail)return detail.size;}
     const stat=await fs.lstat(this.filename(await this.directory(namespace,false),key));
@@ -188,17 +237,56 @@ export class PosixStorage implements StoragePort {
   }
   private async readFolded(namespace:string,key:string):Promise<Uint8Array|null>{
     const folded=await this.sessions.read(namespace,key);if(!folded||folded instanceof Uint8Array)return folded;
-    let bytes:Uint8Array,handle:Awaited<ReturnType<typeof fs.open>>|undefined;
-    try{handle=await fs.open(this.filename(await this.directory('objects',!this.readOnly),folded.object_hash),constants.O_RDONLY|constants.O_NOFOLLOW);}
-    catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
-    if(handle){try{const stat=await handle.stat();check(stat.isFile()&&stat.size>=folded.offset+folded.bytes,'FINAL_OBJECT_INTEGRITY',500);
-      bytes=Buffer.allocUnsafe(folded.bytes);let offset=0;
-      while(offset<bytes.length){const result=await handle.read(bytes,offset,bytes.length-offset,folded.offset+offset);
-        check(result.bytesRead>0,'FINAL_OBJECT_INTEGRITY',500);offset+=result.bytesRead;}
-    }finally{await handle.close();}}
-    else{const whole=await this.read('objects',folded.object_hash);check(whole.length>=folded.offset+folded.bytes,'FINAL_OBJECT_INTEGRITY',500);
-      bytes=whole.subarray(folded.offset,folded.offset+folded.bytes);}
+    const bytes=Buffer.allocUnsafe(folded.bytes);let offset=0;
+      for await(const block of this.readObjectRange(folded.object_hash,folded.offset,folded.bytes)){
+        check(offset+block.length<=bytes.length,'FINAL_OBJECT_INTEGRITY',500);bytes.set(block,offset);offset+=block.length;
+      }
+      check(offset===bytes.length,'FINAL_OBJECT_INTEGRITY',500);
     check(sha256(bytes)===key,'FINAL_OBJECT_INTEGRITY',500);return bytes;
+  }
+  /** Stream one immutable object to disk; only its digest and length survive publication. */
+  async publishObjectStream(chunks:AsyncIterable<Uint8Array>,beforePublish?:(key:string)=>Promise<void>):Promise<{object_hash:string;bytes:number}>{
+    const directory=await this.directory('objects'),temporary=join(directory,`.pending-${randomUUID()}`);
+    const handle=await fs.open(temporary,constants.O_CREAT|constants.O_EXCL|constants.O_WRONLY|constants.O_NOFOLLOW,0o600);
+    const hash=createHash('sha256');let bytes=0;
+    try{
+      const command=process.platform==='linux'?'ionice':'nice',priority=process.platform==='linux'?['-c','3','nice','-n','15']:['-n','15'];
+      const child=spawn(command,[...priority,'cat'],{stdio:['pipe',handle.fd,'pipe']});let errors='';
+      child.stderr.on('data',block=>{errors+=String(block).slice(0,4096-errors.length);});
+      const completed=new Promise<void>((resolve,reject)=>{child.once('error',reject);child.once('close',code=>{
+        if(code===0)resolve();else reject(new Error(`SESSION_AUDIO_WRITE_FAILED: ${code}: ${errors}`));});});
+      const storage=this;
+      async function* blocks(){for await(const chunk of chunks){await storage.reserve(chunk.length);hash.update(chunk);bytes+=chunk.length;yield chunk;}}
+      try{await Promise.all([pipeline(Readable.from(blocks()),child.stdin),completed]);
+        await handle.sync();}finally{await handle.close();}
+      const object_hash=hash.digest('hex'),target=this.filename(directory,object_hash);
+      return await this.withOriginalWrite(async()=>{
+        await beforePublish?.(object_hash);
+        try{await fs.link(temporary,target);}catch(error){if((error as NodeJS.ErrnoException).code!=='EEXIST')throw error;}
+        await this.refreshOriginal(target);await this.syncDirectory(directory);return {object_hash,bytes};
+      });
+    }finally{await fs.unlink(temporary);}
+  }
+  /** Hot ranges stream; cold objects materialize through the existing bounded, verified cold reader. */
+  async *readObjectRange(key:string,offset:number,bytes:number):AsyncGenerator<Uint8Array>{
+    check(Number.isSafeInteger(offset)&&offset>=0&&Number.isSafeInteger(bytes)&&bytes>=0,'INVALID_OBJECT_RANGE');
+    let handle:Awaited<ReturnType<typeof fs.open>>;
+    try{handle=await fs.open(this.filename(await this.directory('objects',false),key),constants.O_RDONLY|constants.O_NOFOLLOW);}
+    catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;
+      const folded=await this.sessions.read('objects',key);
+      if(folded&&!(folded instanceof Uint8Array)){
+        check(offset+bytes<=folded.bytes,'FINAL_OBJECT_INTEGRITY',500);
+        yield* this.readObjectRange(folded.object_hash,folded.offset+offset,bytes);return;
+      }
+      if(!this.cold)throw error;
+      const whole=await this.cold.read('objects',key);if(!whole)throw error;
+      check(offset+bytes<=whole.length,'FINAL_OBJECT_INTEGRITY',500);
+      for(let p=offset;p<offset+bytes;p+=65536)yield whole.subarray(p,Math.min(p+65536,offset+bytes));return;}
+    try{const stat=await handle.stat();check(stat.isFile()&&offset+bytes<=stat.size,'FINAL_OBJECT_INTEGRITY',500);
+      let position=offset;while(position<offset+bytes){const buffer=Buffer.allocUnsafe(Math.min(65536,offset+bytes-position));
+        const {bytesRead}=await handle.read(buffer,0,buffer.length,position);check(bytesRead>0,'FINAL_OBJECT_INTEGRITY',500);
+        position+=bytesRead;yield buffer.subarray(0,bytesRead);}
+    }finally{await handle.close();}
   }
   async readHot(namespace:string,key:string):Promise<Uint8Array>{
     const path=this.filename(await this.directory(namespace, false),key);

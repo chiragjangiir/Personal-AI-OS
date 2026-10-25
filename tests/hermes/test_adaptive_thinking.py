@@ -84,15 +84,17 @@ async def test_api_server_binds_tool_metrics_and_forwards_real_native_events(cap
     adapter = object.__new__(namespace['PersonalAIOSAPIServer'])
     adapter._run_statuses = {'run-test': {'status': 'running', 'session_id': 'native-session',
         'conversation_session_id': 'conversation'}}
-    queue = asyncio.Queue()
-    adapter._run_event_listeners = {'run-test': {queue}}
+    from gateway.platforms.api_server_runs import _RunStream
+    stream = _RunStream()
+    queue, _ = stream.attach()
+    adapter._run_streams = {'run-test': stream}
     adapter._run_idempotency_ids = {}
     adapter._active_run_agents = {}
     callback = adapter._make_run_event_callback('run-test', asyncio.get_running_loop())
     callback('tool.started', 'web_search', args={'query': 'private-content'}, tool_call_id='search-call')
     callback('reasoning.available', '_thinking', 'private-thinking')
     await asyncio.sleep(0)  # native call_soon_threadsafe queue publications
-    event = await asyncio.wait_for(queue.get(), 1)
+    _, event = await asyncio.wait_for(queue.get(), 1)
     assert event['event'] == 'tool.started' and event['tool_call_id'] == 'search-call'
     assert queue.empty(), 'reasoning is not a public run event'
     agent = SimpleNamespace(model='configured-model', provider='configured-provider', reasoning_config={'enabled': True},

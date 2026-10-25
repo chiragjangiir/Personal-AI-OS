@@ -7,7 +7,7 @@ import type { L3Assertion } from './memory/contracts.ts';
 
 /** What the live call's realtime front knows about its owner when the call opens: who they are, what they prefer, when and
  *  where they are, and what was said lately. A bounded, read-only projection of the authorities the main agent itself
- *  reads — L2 native memory (USER.md profile / MEMORY.md notes in its profile home, plus its configured time zone),
+ *  reads — platform core-profile views (USER.md profile / MEMORY.md notes in its profile home, plus its configured time zone),
  *  current L3 assertions and L4 cross-terminal native session history — never a second fact store.
  *  Built fresh for every call. Owner-authorized sources: the principal's scoped L3, sessions this principal owns, and only
  *  owner-scope turns in them. */
@@ -16,8 +16,10 @@ const BUDGET = {profile: 350, notes: 200, facts: 300};
 const ENTRY_LIMIT = 160, LINE_LIMIT = 90;
 const MEMORY_ENTRY = '\n§\n'; // the native memory store's entry delimiter
 export interface CallContextSources extends TimelineContextSources {
-  /** The main agent's profile home (L2 native memory files, its time zone). */
+  /** The main agent's profile home (platform-generated read-only memory files, its time zone). */
   profile_home?: string;
+  /** Configuration stays in the native home when generated memory uses a separate volume. */
+  configuration_home?: string;
   l3?: {query(owner: {authenticated: true; principal_id: string}, assertion_id: undefined, status: 'active',
     options: {limit: number}): Promise<{assertions: L3Assertion[]}>};
   /** Owner-principal projection from the health store; absent or unavailable data adds no claim. */
@@ -74,7 +76,7 @@ export async function buildCallContext(sources: CallContextSources, request: {pr
     settle(async () => sources.l3 ? (await sources.l3.query({authenticated: true, principal_id: request.principal_id}, undefined, 'active',
       {limit: 40})).assertions : [], [] as L3Assertion[], ms),
     settle(() => buildTimelineContext(sources, request.principal_id, request.session), '【同一条时间线】暂不可读取，不能据此认定此前没有对话。', ms),
-    settle(async () => sources.time_zone ?? fixZone(request.location) ?? timeZone(sources.profile_home), Intl.DateTimeFormat().resolvedOptions().timeZone, ms),
+    settle(async () => sources.time_zone ?? fixZone(request.location) ?? timeZone(sources.configuration_home ?? sources.profile_home), Intl.DateTimeFormat().resolvedOptions().timeZone, ms),
     settle(async () => sources.recentHealth?.(request.principal_id), undefined, ms)]);
   const recordTime=sources.time_zone?new Intl.DateTimeFormat('sv-SE',{timeZone:zone,dateStyle:'short',timeStyle:'short'}):undefined;
   const facts = fit(assertions.filter(a => a.scope.principal_id === request.principal_id && a.status === 'active' && a.applicability_status === 'applicable' &&

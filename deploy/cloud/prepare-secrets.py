@@ -28,7 +28,8 @@ def role_file(role):
     return 'role-' + role.lower().replace('_', '-') + '.key'
 if args.bootstrap:
     for role in roles:
-        if role != 'BRAIN' and not os.environ.get(f'PAIOS_{role}_MODEL'):
+        # Editable native credentials are validated by the settings authority on its first import.
+        if role in ('BRAIN', 'VISION', 'WORKSHOP_REPAIR') or not os.environ.get(f'PAIOS_{role}_MODEL'):
             continue
         key = args.secrets_dir / role_file(role)
         if not os.environ.get(f'PAIOS_{role}_API_KEY', '').strip() and not (key.is_file() and key.read_text().strip()):
@@ -65,8 +66,15 @@ def missing(name, content):
     os.chmod(path, 0o600)
 # Host-local credentials have one authority. Existing files retain their bytes.
 for name in ('postgres.password', 'proxy-attestation', 'livekit-api-key', 'livekit-api-secret',
-             'hermes-api.key', 'hermes-internal.key', 'frp-token', 'e2ee-root-key'):
+             'hermes-api.key', 'hermes-internal.key', 'frp-token', 'e2ee-root-key', 'model-settings-service.key'):
     missing(name, secrets.token_urlsafe(32))
+master = args.secrets_dir / 'model-settings-master.key'
+if not master.exists():
+    fd = os.open(master, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, 'wb') as stream:
+        os.fchown(stream.fileno(), owner_uid, owner.st_gid)
+        stream.write(secrets.token_bytes(32))
+os.chmod(master, 0o600)
 for name in ('payment-executor.key', 'voiceprint.key'):
     missing(name, base64.b64encode(secrets.token_bytes(32)).decode('ascii') + '\n')
 if args.bootstrap:
@@ -74,8 +82,11 @@ if args.bootstrap:
         value = os.environ.get(f'PAIOS_{role}_API_KEY', '')
         if '\n' in value or '\r' in value:
             parser.error(f'PAIOS_{role}_API_KEY must be a single line')
-        if value:
-            missing(role_file(role), value + '\n')
+        path = args.secrets_dir / role_file(role)
+        if value and path.is_file() and not path.read_bytes():
+            protected(role_file(role), value + '\n')
+        else:
+            missing(role_file(role), value + '\n' if value else '')
 if args.tls_dir:
     tls = args.tls_dir
     directory(tls)

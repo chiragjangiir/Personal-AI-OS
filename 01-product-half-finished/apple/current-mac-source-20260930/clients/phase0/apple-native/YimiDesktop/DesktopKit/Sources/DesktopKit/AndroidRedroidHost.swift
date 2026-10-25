@@ -21,7 +21,7 @@ public actor AndroidRedroidHost {
     private var installation: Task<Void, Error>?, startup: Task<Void, Error>?, stopping: Task<Void, Error>?
     private var guardian: (any AndroidChild)?, proxy: (any AndroidChild)?, adbServer: (any AndroidChild)?, viewer: (any AndroidChild)?
     private var ready = false, ownsVM = false, errandActive = false
-    private var lastError: String?, step = "installation"
+    private var lastError: String?, step = "安装"
     private var errandActivity: (any NSObjectProtocol)?
     public init(device: AndroidVirtualDevice, enabled: Bool = false, processes: any AndroidProcessRunning,
                 catalog: URL? = nil, installRuntime: (@Sendable () async throws -> Void)? = nil,
@@ -56,7 +56,7 @@ public actor AndroidRedroidHost {
         installation != nil || startup != nil || stopping != nil || ownsVM || [viewer, guardian, proxy, adbServer].contains { $0?.isRunning == true }
     }
     public func enable() async throws {
-        guard stopping == nil else { throw AndroidHostError.unavailable("手机执行器正在停止") }
+        guard stopping == nil else { throw AndroidHostError.unavailable("安卓手机正在停止") }
         let task: Task<Void, Error>
         if let installation { task = installation }
         else {
@@ -99,14 +99,14 @@ public actor AndroidRedroidHost {
         if startup == nil {
             let state = await readStatus()
             try validate(current)
-            guard enabled else { throw AndroidHostError.unavailable("手机执行器尚未开启") }
+            guard enabled else { throw AndroidHostError.unavailable("安卓手机尚未开启") }
             if startup == nil && (!ready || state.state != .running || proxy?.isRunning != true) { scheduleStart() }
         }
     }
     /// The control request never installs or recreates a persistent device.
     public func requestStart() async throws -> AndroidHostStatus {
         if !device.installed || installation != nil { return await status() }
-        guard enabled else { throw AndroidHostError.unavailable("手机执行器尚未开启") }
+        guard enabled else { throw AndroidHostError.unavailable("安卓手机尚未开启") }
         let current = generation
         try validate(current)
         try await prepareStart(current)
@@ -117,7 +117,7 @@ public actor AndroidRedroidHost {
         if let installation { try await installation.value }
         try validate(current)
         let response = try await requestStart()
-        guard response.state != .notInstalled else { throw AndroidHostError.unavailable("请先安装手机执行器") }
+        guard response.state != .notInstalled else { throw AndroidHostError.unavailable("请先安装安卓手机") }
         if let startup { try await startup.value }
         try validate(current)
     }
@@ -138,7 +138,7 @@ public actor AndroidRedroidHost {
             }
         }
     }
-    private func timeoutStartup() { lastError = "手机执行器启动超时：" + step; startup?.cancel() }
+    private func timeoutStartup() { lastError = "安卓手机启动超时：" + step; startup?.cancel() }
     private func vmState() async throws -> String {
         try await processes.output(device.lima(["list", "--format", "{{.Status}}", device.instance]), timeout: .seconds(5)).trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -155,22 +155,22 @@ public actor AndroidRedroidHost {
     }
     private func boot() async throws {
         try Task.checkCancellation()
-        step = "VM guardian"
+        step = "虚拟机守护进程"
         try attachGuardian()
-        step = "VM start"
+        step = "启动虚拟机"
         if try await vmState() != "Running" {
             try processes.checkPorts([UInt16(AndroidVirtualDevice.adbPort)])
             _ = try await processes.output(device.lima(["start", "--tty=false", "--timeout=170s", device.instance]), timeout: .seconds(170))
         }
         step = "modules → binderfs → permissions → Docker → Redroid"
         _ = try await processes.output(device.lima(["shell", device.instance, "--", "sudo", "systemctl", "start", "redroid.service"]), timeout: .seconds(60))
-        step = "HTTP proxy 127.0.0.1:18080"
+        step = "HTTP 代理 127.0.0.1:18080"
         if proxy?.isRunning != true {
             try processes.checkPorts([18080])
             proxy = try processes.launch(device.command("tools/gost/gost", ["-C", device.file("gost.yml").path]), log: device.file("logs/gost.log"))
             try await processes.waitForListener(port: 18080, child: proxy!)
         }
-        step = "private adb server 127.0.0.1:5039"
+        step = "ADB 服务 127.0.0.1:5039"
         if !(try processes.listenerAvailable(port: UInt16(AndroidVirtualDevice.adbServerPort))) {
             try processes.checkPorts([UInt16(AndroidVirtualDevice.adbServerPort)])
             var command = device.adb([])
@@ -185,7 +185,7 @@ public actor AndroidRedroidHost {
             if await androidReady() { break }
             try await Task.sleep(for: .seconds(1))
         }
-        step = "guest network"
+        step = "安卓网络"
         try await AndroidGuestNetwork(device: device, processes: processes).prepare()
         try Task.checkCancellation()
         ready = true; setErrandActive(errandActive)
@@ -234,7 +234,7 @@ public actor AndroidRedroidHost {
     public func showPhone() async throws {
         let current = generation
         try await start()
-        guard await status().state == .running else { throw AndroidHostError.unavailable("请先启动手机执行器") }
+        guard await status().state == .running else { throw AndroidHostError.unavailable("请先启动安卓手机") }
         try validate(current)
         if viewer?.isRunning == true { return }
         try await installViewer()
@@ -246,7 +246,7 @@ public actor AndroidRedroidHost {
         viewer = try processes.launch(command, log: device.file("logs/scrcpy.log"))
     }
     public func showLoginPhone(provision: @escaping @Sendable () async throws -> Void) async throws {
-        guard device.installed, enabled else { throw AndroidHostError.unavailable("请先开启手机执行器") }
+        guard device.installed, enabled else { throw AndroidHostError.unavailable("请先开启安卓手机") }
         let current = generation
         try await start()
         try validate(current)

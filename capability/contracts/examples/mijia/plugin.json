@@ -1,0 +1,74 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "mijia",
+  "version": "1.0.0",
+  "description": "mijia capability manifest fixture",
+  "extensions": {
+    "ai.yimi.capability": {
+      "schema": "yimi.capability.v1",
+      "receipt_schema": 1,
+      "compat": {
+        "hermes": ">=0.22.5 <0.24",
+        "gateway_api": 1
+      },
+      "maintainer": "lead",
+      "runtime": {
+        "server": "mijia",
+        "lazy": true,
+        "idle_timeout_seconds": 900,
+        "host": "dedicated"
+      },
+      "secrets": [
+        {
+          "name": "MIJIA_SESSION"
+        }
+      ],
+      "network": {
+        "egress": [
+          "api.io.mi.com",
+          "account.xiaomi.com"
+        ]
+      },
+      "scopes": [
+        "owner"
+      ],
+      "tools": {
+        "read_device": {
+          "effect": "observe",
+          "retry": "forbidden"
+        },
+        "control_device": {
+          "effect": "physical",
+          "retry": "after_check",
+          "target": "$.device",
+          "task_type": "mijia:control",
+          "check_with": "read_device",
+          "context_inject": []
+        },
+        "run_scene": {
+          "effect": "physical",
+          "retry": "after_check",
+          "target": "$.name",
+          "task_type": "mijia:scene",
+          "check_with": "read_device"
+        }
+      },
+      "staging": {
+        "fake": {
+          "command": "python3",
+          "args": [
+            "fake/server.py"
+          ]
+        }
+      },
+      "tests": {
+        "contract": "tests/contract.yaml"
+      },
+      "provenance": {
+        "source_commit": "027f2ef23",
+        "workshop_run": null,
+        "adapter_modules": []
+      }
+    }
+  }
+}

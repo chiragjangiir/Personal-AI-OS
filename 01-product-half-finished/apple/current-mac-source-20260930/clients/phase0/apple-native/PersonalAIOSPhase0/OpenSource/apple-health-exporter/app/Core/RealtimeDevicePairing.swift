@@ -88,9 +88,9 @@ struct RealtimeDevicePairing: Codable, Equatable, Sendable {
               Set(pairing.media).isSubset(of: ["audio", "video", "data"]),
               !pairing.pairedAt.isEmpty,
               (pairing.anchorOrigin == nil && pairing.fallbackOrigin == nil && pairing.canonicalSuccesses == nil)
-                || ([RealtimeAPIOriginMigration.legacyOrigin, RealtimeAPIOriginMigration.canonicalOrigin].contains(pairing.origin)
-                    && pairing.anchorOrigin == RealtimeAPIOriginMigration.legacyOrigin
-                    && pairing.fallbackOrigin == RealtimeAPIOriginMigration.legacyOrigin
+                // Proven routes belong to the pairing, independent of a newer build's discovery endpoints.
+                || (pairing.anchorOrigin.map { (try? EndpointResolver.canonicalRealtimeOrigin(from: $0)) == $0 } == true
+                    && pairing.fallbackOrigin == pairing.anchorOrigin
                     && (1...2).contains(pairing.canonicalSuccesses ?? 0)) else {
             throw RealtimeDevicePairingError.invalidPairing
         }

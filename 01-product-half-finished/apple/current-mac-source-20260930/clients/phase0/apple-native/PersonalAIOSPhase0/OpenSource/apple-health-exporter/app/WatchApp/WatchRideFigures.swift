@@ -14,8 +14,11 @@ struct WatchRideFigures: Equatable {
     let elapsedS: Double?
     let heartRate: Double?
     let kcal: Double?
-    /// The phone's heart-rate zone and alert text describe its own figures, so they show only while it is current.
+    /// Whether the phone relay is current for this workout. Each sensor still needs its own fresh sample.
     let phoneCurrent: Bool
+    var phoneHeartCurrent = false
+    /// The widget must stop showing these sensor numbers at this time, even without another app publication.
+    var sensorsExpireAt: Date? = nil
 
     static func live(phone: WatchYimiRideMetrics?, phoneAt: Date?, local: WatchCyclingMetricSnapshot?,
                      elapsed: TimeInterval?, now: Date) -> WatchRideFigures {
@@ -25,13 +28,20 @@ struct WatchRideFigures: Equatable {
         }
         let localSpeed = local.flatMap { WatchCyclingMetricMapper.fresh($0.cyclingSpeedMPS, at: $0.cyclingSpeedSampleAt, observedAt: now) }
         let localHeart = local.flatMap { WatchCyclingMetricMapper.fresh($0.heartRateBPM, at: $0.heartRateSampleAt, observedAt: now) }
+        let phoneSpeedAt = current?.speed_sample_at.flatMap(WatchStateReducer.date)
+        let phoneHeartAt = current?.hr_sample_at.flatMap(WatchStateReducer.date)
+        let phoneSpeed = WatchCyclingMetricMapper.fresh(current?.speed_kmh.map { $0 / 3.6 }, at: phoneSpeedAt, observedAt: now)
+        let phoneHeart = WatchCyclingMetricMapper.fresh(current?.hr_bpm, at: phoneHeartAt, observedAt: now)
+        let speedAt = phoneSpeed != nil ? phoneSpeedAt : localSpeed != nil ? local?.cyclingSpeedSampleAt : nil
+        let heartAt = phoneHeart != nil ? phoneHeartAt : localHeart != nil ? local?.heartRateSampleAt : nil
         return WatchRideFigures(
-            speedMPS: current?.speed_kmh.map { $0 / 3.6 } ?? localSpeed,
+            speedMPS: phoneSpeed ?? localSpeed,
             distanceM: current?.distance_m ?? local?.distanceM,
             elapsedS: current?.elapsed_s ?? elapsed ?? local?.elapsedS,
-            heartRate: current?.hr_bpm ?? localHeart,
+            heartRate: phoneHeart ?? localHeart,
             kcal: current?.kcal ?? local?.activeEnergyKcal,
-            phoneCurrent: current != nil)
+            phoneCurrent: current != nil, phoneHeartCurrent: phoneHeart != nil,
+            sensorsExpireAt: [speedAt, heartAt].compactMap { $0 }.min()?.addingTimeInterval(WatchCyclingMetricEnvelope.freshnessInterval))
     }
 }
 
@@ -81,13 +91,15 @@ struct WatchRideSummaryFigures: Equatable {
     let hrAvg: Double?
     let hrMax: Double?
     let elevationM: Double?
+    var commentary: String? = nil
 
-    static func resolve(phone: WatchYimiRideMetrics?, local: WatchRideSummary) -> WatchRideSummaryFigures {
-        let ended = phone.flatMap { $0.ended && $0.matches(workoutID: local.workoutID) ? $0 : nil }
+    static func resolve(phone: WatchYimiRide?, local: WatchRideSummary) -> WatchRideSummaryFigures {
+        let ended = phone?.metrics.flatMap { $0.ended && $0.matches(workoutID: local.workoutID) ? $0 : nil }
         return WatchRideSummaryFigures(
             distanceM: ended?.distance_m ?? local.distanceM, timeS: ended?.moving_s ?? local.durationS,
             avgKMH: ended?.avg_kmh ?? local.avgKMH, maxKMH: ended?.max_kmh ?? local.maxKMH,
             kcal: ended?.kcal ?? local.kcal, hrAvg: ended?.hr_avg ?? local.hrAvg, hrMax: ended?.hr_max ?? local.hrMax,
-            elevationM: ended?.elev_gain_m ?? local.elevationM)
+            elevationM: ended?.elev_gain_m ?? local.elevationM,
+            commentary: ended != nil ? phone?.text : nil)
     }
 }

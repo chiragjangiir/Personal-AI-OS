@@ -25,6 +25,8 @@ import type { VoiceWindowPurpose } from './personal-aios-formal-pcm.ts';
 import type { OwnerStatus } from '../../../services/personal-aios-integration/src/voiceprint/registry.ts';
 import type { HealthBatch } from '../../../services/personal-aios-integration/src/health/store.ts';
 import type { ContactsBatch } from '../../../services/personal-aios-integration/src/contacts/store.ts';
+import {mergeModelSettingsWire,isModelSettingsInput,dispatchModelSettings} from './personal-aios-model-settings-wire.ts';
+import {activityWire} from './activity-wire.ts';
 import {mergePaymentWire,isPaymentInput,dispatchPayment} from './personal-aios-payment-wire.ts';
 import type {MoveInput} from '../../../services/personal-aios-integration/src/movement.ts';
 export interface CallSink {state(call_id: string, state: string, extra?: CallStateExtra): void|Promise<void>;
@@ -38,11 +40,12 @@ interface FormalMessageContract {
   outputs: Record<string, {properties: Record<string, AnySchema>} & AnySchema>;
 }
 const contractBytes = readFileSync(new URL('../../../../../integrations/contracts/formal-message.v1.json', import.meta.url));
-check(createHash('sha256').update(contractBytes).digest('hex') === '3a27bce857c0d7c21e46f414c38e4c88504babf375621d1fe7eb60fe43808fde', 'FORMAL_MESSAGE_CONTRACT_CHANGED');
+check(createHash('sha256').update(contractBytes).digest('hex') === '1fb23153ccf4478d64c9cff3a969a97477504bcfa49685a41320b8428de0a8f1', 'FORMAL_MESSAGE_CONTRACT_CHANGED');
 const wire = JSON.parse(contractBytes.toString('utf8')) as FormalMessageContract;
 check(wire.version === 1, 'FORMAL_MESSAGE_CONTRACT_VERSION');
 const movementInputs = new Set(['ride_state','move_frame','nav_state','ride_control','nav_control']);
 mergePaymentWire(wire);
+mergeModelSettingsWire(wire);
 export const FORMAL_TEXT_INPUT_TOPIC = wire.input_topic;
 export const FORMAL_TEXT_OUTPUT_TOPIC = wire.output_topic;
 export const FORMAL_TEXT_ENVELOPE_SCHEMA = wire.schema;
@@ -69,11 +72,12 @@ const ingressReservations=new Map<string,{count:number;bytes:number;controls:num
 const ingressTotal={count:0,bytes:0,controls:0,controlBytes:0};
 const packetWork=new AsyncLocalStorage<{active:boolean}>();
 const reservedControls=new Set(['call_close','voice_close','voiceprint_cancel','errand_cancel','cancel_run','cancel_playback']);
-function reservePacket(key:string,bytes:number,control:boolean):(()=>void)|undefined {
+function reservePacket(key:string,bytes:number,control:boolean,pcm=false):(()=>void)|undefined {
   const terminal=ingressReservations.get(key)??{count:0,bytes:0,controls:0,controlBytes:0};
   const count=control?'controls':'count',size=control?'controlBytes':'bytes';
-  if(terminal[count]>=(control?4:32)||ingressTotal[count]>=(control?16:128)||
-    terminal[size]+bytes>(control?8192:128*1024)||ingressTotal[size]+bytes>(control?64*1024:512*1024))return;
+  // The PCM class holds the existing fifty 100 ms frames and its failure receipt; all classes share totals.
+  if(terminal[count]>=(control?4:pcm?64:32)||ingressTotal[count]>=(control?16:128)||
+    terminal[size]+bytes>(control?8192:pcm?256*1024:128*1024)||ingressTotal[size]+bytes>(control?64*1024:512*1024))return;
   terminal[count]++;terminal[size]+=bytes;ingressTotal[count]++;ingressTotal[size]+=bytes;
   ingressReservations.set(key,terminal);
   return ()=>{terminal[count]--;terminal[size]-=bytes;ingressTotal[count]--;ingressTotal[size]-=bytes;
@@ -140,7 +144,7 @@ export function createFormalTextIngress(options: {participant: LiveKitCloudParti
   const trace=(line:Record<string,unknown>)=>{try{process.stderr.write(`${JSON.stringify({...line,at:Date.now()})}\n`);}catch{}};
   const pending = new Set<Promise<unknown>>(); let closed = false; let closeFlight: Promise<void> | undefined;
   type CallContext={call_id:string;owner:number;pending:Set<Promise<unknown>>;refs:Set<string>;turn:number;identity:CallIdentity;
-    source:RegisteredDevice;session:string;enrollment?:string|undefined;sealDone?:PromiseWithResolvers<void>;sealing?:Promise<void>};
+    source:RegisteredDevice;session:string;capture:ReturnType<PersonalAIOSRuntime['captureCall']>;enrollment?:string|undefined;sealDone?:PromiseWithResolvers<void>;sealing?:Promise<void>};
   const retainedCalls=new Set<CallContext>();
   const enrollmentCalls=new Map<string,string>();
   const track = <T>(work: Promise<T>): Promise<T> => {
@@ -165,7 +169,7 @@ export function createFormalTextIngress(options: {participant: LiveKitCloudParti
     if (!current()) return;
     const identity = input.currentBinding.credentialIdentity; const session = input.currentBinding.continuityId;
     check(typeof identity === 'string' && typeof session === 'string', 'FORMAL_TEXT_BINDING_REQUIRED');
-    // A live authenticated rejoin may renew lifecycle metadata only. Original raw/mirror credentials stay unchanged.
+    // Rejoin renews lifecycle metadata. Server-owned finalization retains the call's opening provenance.
     for(const context of retainedCalls)if(context.session===session&&context.source.principal_id===device.principal_id&&
       context.source.device_id===device.device_id&&context.source.device_type===device.device_type)context.source=device;
     let attached = true,detachExtensions:(()=>void)|undefined;
@@ -246,7 +250,7 @@ export function createFormalTextIngress(options: {participant: LiveKitCloudParti
         timing.enter('authorize');source=await authorized();target.signal.throwIfAborted();
         if(body.operation!=='ambient_reply'||!realtimeBusy())break;
       }
-      const framed=extensions.output({...body,session_id:session},output),card=terminalDisplayCard(source,framed as typeof body);
+      const framed=extensions.output({...activityWire(body),session_id:session},output),card=terminalDisplayCard(source,framed as typeof body);
       const bytes = Buffer.from(JSON.stringify(card?output(card.operation,{...card,...replyPrivacy(body)}):framed));
       check(bytes.byteLength <= Math.min(options.max_packet_bytes,wire.output_limit), 'FORMAL_TEXT_OUTPUT_PACKET_TOO_LARGE', 413);
       timing.size(bytes.byteLength);if(sent?.header?.equals(bytes))return;
@@ -343,6 +347,10 @@ export function createFormalTextIngress(options: {participant: LiveKitCloudParti
     const reject = async (error:unknown, request:Record<string,unknown>, cameraFrameId?:string) => {
       options.onError(error);
       if(await failCallOpen(error,request))return;
+      if(attached&&current()&&isModelSettingsInput(request.operation)&&reference(request.control_id)){
+        await publish({operation:'model_settings_receipt',session_id:session,control_id:request.control_id,ok:false,
+          error_code:safeCode(error,'MODEL_SETTINGS_REQUEST_FAILED')});return;
+      }
       // Every valid payment control gets its typed receipt, including validation failures.
       if(attached&&current()&&isPaymentInput(request.operation)&&reference(request.control_id)){
         const raw=error instanceof ContractError&&error.code==='PAYMENT_PREREQUISITE_MISSING'?(error as ContractError&{missing?:unknown}).missing:undefined;
@@ -412,8 +420,8 @@ export function createFormalTextIngress(options: {participant: LiveKitCloudParti
     const callProgress=new Map<AbortController,string>();
     const mirror = async (t: CallTurn, context:CallContext, retry?:Awaited<ReturnType<PersonalAIOSRuntime['retryCallTurn']>>) => {
       const started=Date.now();
-      const source = await track(options.runtime.authenticate(credential));
-      const authenticated=Date.now(),location=await placed(source),located=Date.now();
+      const captured=await context.capture,source=captured.source;
+      const authenticated=Date.now(),fix=await captured.locate(),location=fix?{location:fix}:{},located=Date.now();
       const event_id=`voice-turn:${digest([session,t.call_id,t.turn])}`;
       const raw: RawEvent = {schema_version:EVENT_SCHEMA,event_id:t.phase==='handoff'?`${event_id}:handoff`:event_id,captured_at:t.audio?new Date(t.audio.start_ms).toISOString():new Date().toISOString(),
         device_id:source.device_id,device_type:source.device_type,source:{channel:source.channel,
@@ -422,18 +430,18 @@ export function createFormalTextIngress(options: {participant: LiveKitCloudParti
           ...(t.phase==='complete'?{handoff_event_id:`${event_id}:handoff`}:{})}))};
       // The call owns this delivery lane: a main-agent reply is spoken by the live front and shown as a main_agent line.
       // The call source attributes its own finished turn to the paired device's principal (memory subject / native write).
-      const {processed_event:d,admission}=retry??await options.runtime.submitCallTurn(raw,source,session);
+      const {processed_event:d,admission}=retry??await captured.turn(raw);
       context.refs.add(d.processed_event_id);
       emitRuntimeEvent({voice_call_stage:'turn_recorded',call_id:t.call_id,turn:t.turn,
         processed_event_id:d.processed_event_id,path:t.route??'handoff',handoff:t.handoff??null,phase:t.phase??'complete',
         authenticate_ms:authenticated-started,placed_ms:located-authenticated,submit_ms:Date.now()-located,at:Date.now()});
-      if(!admission)return;
+      if(!admission||!(attached&&current()))return;
       void track((async()=>{
         const progress=new AbortController();let progressStarted=false;
         callProgress.set(progress,t.call_id);
         const stopProgress=()=>{progress.abort();callProgress.delete(progress);};
         let unsubscribe:(()=>void)|undefined,settled=false;
-        unsubscribe=await options.runtime.subscribeResult(source,session,d.processed_event_id,async value=>{
+        unsubscribe=await options.runtime.subscribeResult(device,session,d.processed_event_id,async value=>{
           const text=value.chunks.map(chunk=>chunk.text).join('').trim();
           if(settled)return;
           if(value.result.reply_phase==='failed'){settled=true;stopProgress();unsubscribe?.();await options.voice_call?.thinkingStatus?.(t.call_id,'failed',d.processed_event_id);return;}
@@ -452,7 +460,7 @@ export function createFormalTextIngress(options: {participant: LiveKitCloudParti
             processed_event_id:d.processed_event_id,run_id:admission.run_id,handoff:t.handoff,observer_ms:Date.now()-started,at:Date.now()});
           if(settled)return;
           if(options.voice_call?.conversationMode?.(t.call_id)==='thinking'){await options.voice_call.thinkingStatus?.(t.call_id,'waiting',d.processed_event_id);return;}
-          track(options.runtime.watchCallProgress(source,session,d.processed_event_id,text=>{
+          track(options.runtime.watchCallProgress(device,session,d.processed_event_id,text=>{
             if(progress.signal.aborted||!(attached&&current()))return;
             track(options.voice_call!.respond(text,{call_id:t.call_id,identity:runScope(d),turn:t.turn,progress:true,signal:progress.signal}).catch(options.onError));
           },progress.signal).catch(error=>{if(!progress.signal.aborted)options.onError(error);}).finally(stopProgress));
@@ -470,15 +478,15 @@ export function createFormalTextIngress(options: {participant: LiveKitCloudParti
     let detachCall:(()=>void)|undefined;
     const releaseCallSink=()=>{if(!attached&&!calls.size){detachCall?.();detachCall=undefined;}};
     detachCall=options.voice_call?.attach({
-      state:(call_id,state,extra)=>{
+      state:async(call_id,state,extra)=>{
         if(!attached&&!calls.has(call_id))return;
         if(state==='failed'&&failedCalls.has(call_id))return;
         if(state==='failed')failedCalls.add(call_id);
         if(state==='opening'&&attached&&current()&&!calls.has(call_id)){
-          const context:CallContext={call_id,owner:expectedGeneration,pending:new Set(),refs:new Set(),turn:-1,source:device,session,
+          const context:CallContext={call_id,owner:expectedGeneration,pending:new Set(),refs:new Set(),turn:-1,source:device,session,capture:track(options.runtime.captureCall(device,session,call_id)),
             identity:extra?.mode==='manual'&&device.device_type==='phone'&&hasTerminalCapability(device,'owner_unlock')?'owner':'pending',enrollment:enrollmentCalls.get(call_id)};
           if(context.enrollment){context.sealDone=Promise.withResolvers<void>();void context.sealDone.promise.catch(()=>{});}
-          calls.set(call_id,context);retainedCalls.add(context);}
+          calls.set(call_id,context);retainedCalls.add(context);await context.capture;}
         if((state==='connecting'||state==='live')&&attached&&current()&&!calls.has(call_id)&&options.voice_call?.pending?.()===call_id){
           const context=retainedCall(call_id);if(context&&!context.sealing){context.owner=expectedGeneration;calls.set(call_id,context);}}
         if(['closing','closed','failed'].includes(state))for(const [abort,id] of callProgress)if(id===call_id){abort.abort();callProgress.delete(abort);}if(liveCallId!==call_id){liveCallId=call_id;callIdentity=extra?.mode==='manual'&&device.device_type==='phone'&&hasTerminalCapability(device,'owner_unlock')?'owner':'pending';}liveCall=state==='live';options.runtime.terminalChanged(device);if(attached&&current()){
@@ -487,8 +495,8 @@ export function createFormalTextIngress(options: {participant: LiveKitCloudParti
       sealed:(call_id,reason,final_turn)=>{const context=calls.get(call_id);if(!context)return;
         context.sealing??=track((async()=>{try{
           const settled=await Promise.allSettled([...context.pending]);
-          if(context.enrollment)await publishEnrollment(await options.runtime.voiceEnrollmentControl(context.source,'pause',context.enrollment,call_id));
-          await options.runtime.closeCall(context.source,session,{call_id,reason,final_turn,
+          if(context.enrollment)settled.push(...await Promise.allSettled([options.runtime.voiceEnrollmentControl(context.source,'pause',context.enrollment,call_id).then(publishEnrollment)]));
+          await (await context.capture).close({reason,final_turn,
             processed_event_ids:reason==='false_wake'?[]:[...context.refs],closed_at:new Date().toISOString()});
           const failed=settled.find(result=>result.status==='rejected');if(failed?.status==='rejected')throw failed.reason;
         }finally{retainedCalls.delete(context);enrollmentCalls.delete(call_id);}})());
@@ -583,6 +591,7 @@ export function createFormalTextIngress(options: {participant: LiveKitCloudParti
       if(settled)unsubscribe();
     };
     // iOS alone owns local alarm sync. Every display terminal can receive the owner's live outreach.
+    let modelSettingsUnwatch:(()=>void)|undefined,modelSettingsWatchGeneration=0;
     const watchers:Promise<()=>void>[]=[];let shown='',careReady:Promise<()=>void>|undefined,turnsReady:Promise<()=>void>|undefined,ambientReady:Promise<()=>void>|undefined;
     const activityEnabled=hasTerminalCapability(device,'chat_ui')||hasTerminalCapability(device,'display');
     const deliverActivity=async(body:ActivityUpdate)=>{if(attached&&current())await extensions.publish({...body},device,publish);};
@@ -702,7 +711,7 @@ export function createFormalTextIngress(options: {participant: LiveKitCloudParti
         }}));
     }
     for(const watcher of watchers)watcher.catch(options.onError);
-    const unwatch=()=>{for(const abort of callProgress.keys())abort.abort();callProgress.clear();for(const watcher of watchers)track(watcher.then(stop=>stop(),()=>{}));};
+    const unwatch=()=>{modelSettingsWatchGeneration++;modelSettingsUnwatch?.();modelSettingsUnwatch=undefined;for(const abort of callProgress.keys())abort.abort();callProgress.clear();for(const watcher of watchers)track(watcher.then(stop=>stop(),()=>{}));};
     // "她了解你" → 录入我的声音: each sentence is a button window on the one PCM reader (archived only, never a request and
     // never a second upload path), measured centrally; the registry judges the set on commit.
     const voiceprint=async(body:Record<string,unknown>,source:Awaited<ReturnType<PersonalAIOSRuntime['authenticate']>>)=>{
@@ -802,6 +811,15 @@ export function createFormalTextIngress(options: {participant: LiveKitCloudParti
         await publish({operation:'wear_state_ack',session_id:session,control_id:body.control_id,...state});return;
       }
       const source=await authorized();
+      if(isModelSettingsInput(body.operation)){
+        const receipt=await dispatchModelSettings(options.runtime,source,body);
+        if(body.operation==='model_settings_watch'){
+          const watchGeneration=++modelSettingsWatchGeneration;modelSettingsUnwatch?.();modelSettingsUnwatch=undefined;
+          const stop=await options.runtime.modelSettingsWatch(source,state=>publish({operation:'model_settings_state',session_id:session,state}));
+          if(attached&&current()&&watchGeneration===modelSettingsWatchGeneration)modelSettingsUnwatch=stop;else stop();
+        }
+        await publish({...receipt,operation:receipt.operation as string,session_id:session});return;
+      }
       if(isPaymentInput(body.operation)){
         const projection=await dispatchPayment(options.runtime,source,body,session,paymentBinding);
         if(projection)await publish({...projection,operation:projection.operation as string,session_id:session});return;
@@ -876,20 +894,25 @@ export function createFormalTextIngress(options: {participant: LiveKitCloudParti
       }
       if(body.operation==='voice_enrollment_control'){
         const action=body.action as Parameters<PersonalAIOSRuntime['voiceEnrollmentControl']>[1];
-        if(['start','resume','pause','stop','check','preview','commit','discard'].includes(action)){
-          const active=await options.runtime.voiceEnrollmentControl(source,'status',body.enrollment_session_id as string|undefined);
-          if(action!=='start'){
-            check(!body.enrollment_session_id||active.session_id===body.enrollment_session_id,'VOICE_ENROLLMENT_SESSION_NOT_FOUND',404);
-            if(action==='resume')check(active.phase==='paused','VOICE_ENROLLMENT_PHASE_INVALID',409);
-            else check(!body.call_id||active.call_id===body.call_id,'VOICE_ENROLLMENT_CALL_REQUIRED',409);
-          }
-          const context=active.call_id?knownCall(active.call_id):undefined;
-          if(context?.enrollment===active.session_id){
-            await options.voice_call?.close(context.call_id,'button');await context.sealDone?.promise;
-          }
-        }
-        const enrollment=await options.runtime.formalVoice(source,'data',()=>options.runtime.voiceEnrollmentControl(source,action,
+        const control=()=>options.runtime.formalVoice(source,'data',()=>options.runtime.voiceEnrollmentControl(source,action,
           body.enrollment_session_id as string|undefined,body.call_id as string|undefined));
+        let enrollment:Awaited<ReturnType<PersonalAIOSRuntime['voiceEnrollmentControl']>>|undefined;
+        try{
+          if(['start','resume','pause','stop','check','preview','commit','discard'].includes(action)&&
+            (action!=='discard'||body.enrollment_session_id)){
+            const active=await options.runtime.voiceEnrollmentControl(source,'status',body.enrollment_session_id as string|undefined);
+            if(action!=='start'){
+              check(!body.enrollment_session_id||active.session_id===body.enrollment_session_id,'VOICE_ENROLLMENT_SESSION_NOT_FOUND',404);
+              if(action==='resume')check(active.phase==='paused','VOICE_ENROLLMENT_PHASE_INVALID',409);
+              else check(!body.call_id||active.call_id===body.call_id,'VOICE_ENROLLMENT_CALL_REQUIRED',409);
+            }
+            const context=active.call_id?knownCall(active.call_id):undefined;
+            if(context?.enrollment===active.session_id){
+              await options.voice_call?.close(context.call_id,'button');await context.sealDone?.promise;
+            }
+          }
+        }finally{if(action==='discard')enrollment=await control();}
+        enrollment??=await control();
         await publishEnrollment(enrollment,body.control_id);return;
       }
       if(String(body.operation).startsWith('voiceprint_')){await voiceprint(body,source);return;}
@@ -1046,7 +1069,7 @@ export function createFormalTextIngress(options: {participant: LiveKitCloudParti
 
     };
     // Only microphone intake and its close barrier share this lane. Reserve on receipt, before async authentication.
-    let audioInput=Promise.resolve(),audioQueuedBytes=0;
+    let audioInput=Promise.resolve(),enrollmentInput=Promise.resolve(),audioQueuedBytes=0,pcmRejection=false;
     const listener = (...args: readonly unknown[]) => {
       const [payload, participant, kind, topic] = args;
       if (topic === FORMAL_TEXT_INPUT_TOPIC) {
@@ -1056,33 +1079,37 @@ export function createFormalTextIngress(options: {participant: LiveKitCloudParti
       }
       if (!attached || !current() || !(payload instanceof Uint8Array) || kind !== DataPacketKind.KIND_RELIABLE || topic !== FORMAL_TEXT_INPUT_TOPIC ||
         !participant || typeof participant !== 'object' || (participant as {identity?:unknown}).identity !== identity) return;
-      let operation:unknown,pcmBytes=0,pcmFault:Record<string,unknown>|undefined,control=false;
+      let operation:unknown,pcmBytes=0,pcmFault:Record<string,unknown>|undefined,control=false,enrollmentControl=false;
       if(payload.byteLength<=wire.input_limit)try{const body=JSON.parse(new TextDecoder().decode(payload));operation=body?.operation;
         control=typeof operation==='string'&&reservedControls.has(operation)&&inputValidators[operation]!(body);
+        enrollmentControl=operation==='voice_enrollment_control'||operation==='voiceprint_enrol_request'&&body.purpose==='conversation';
         if(operation==='call_pcm'&&typeof body.pcm_s16le_base64==='string'){
           const text=body.pcm_s16le_base64;pcmBytes=Math.ceil(text.length*3/4)-(text.endsWith('==')?2:text.endsWith('=')?1:0);
           const candidate={operation,call_id:body.call_id,session_id:body.session_id};
           if(inputValidators.call_pcm!(body))pcmFault=candidate;}
       }catch{} // The ordinary parser below reports malformed input.
-      const release=operation==='call_pcm'?undefined:reservePacket(digest([device.principal_id,device.device_id]),payload.byteLength,control);
-      if(operation!=='call_pcm'&&!release){
+      const release=reservePacket(digest([device.principal_id,device.device_id]),payload.byteLength,control,operation==='call_pcm');
+      if(!release){
         // Do not start another authentication or SDK publication to report overload. No durable acceptance occurred.
         options.onError(new ContractError('FORMAL_TEXT_CAPACITY',429));return;
       }
-      const consume=()=>{
-        if(!release)return handle(payload);
+      const consume=(action=()=>handle(payload))=>{
         const ownership={active:true};
-        return packetWork.run(ownership,()=>handle(payload)).finally(()=>{ownership.active=false;release();});
+        return packetWork.run(ownership,action).finally(()=>{ownership.active=false;release();});
       };
       if(operation==='call_pcm'&&audioQueuedBytes+pcmBytes>16000*2*5){
+        if(pcmRejection){release();return;}pcmRejection=true;
         const request=pcmFault??{operation},failure=new ContractError('VOICE_CALL_PCM_CAPACITY',429);
-        const work=audioInput.then(async()=>{await authorized();await rejectPcm(failure,request,
-          request.session_id===session&&typeof request.call_id==='string'?request.call_id:undefined);});
+        const work=audioInput.then(()=>consume(async()=>{await authorized();await rejectPcm(failure,request,
+          request.session_id===session&&typeof request.call_id==='string'?request.call_id:undefined);})).finally(()=>{pcmRejection=false;});
         audioInput=work.catch(options.onError);track(audioInput);return;}
       if(operation==='call_pcm'||operation==='call_close'){
         audioQueuedBytes+=pcmBytes;
-        const work=audioInput.then(consume).finally(()=>{audioQueuedBytes-=pcmBytes;});
+        const work=audioInput.then(()=>consume()).finally(()=>{audioQueuedBytes-=pcmBytes;});
         audioInput=work.catch(options.onError);track(audioInput);
+      }else if(enrollmentControl){
+        // Preserve request/exit/re-entry order while the authority awaits source validation.
+        const work=enrollmentInput.then(consume);enrollmentInput=work.catch(options.onError);track(enrollmentInput);
       }else track(consume().catch(options.onError));
     };
     const cameraReaders=new Set<()=>void>();

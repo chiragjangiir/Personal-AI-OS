@@ -97,13 +97,13 @@ test('real MEM/PG authority errors survive authenticated HTTP and existing Pytho
     assert.deepEqual(await provider({assertion_id:'absent'},'inspect-missing','paios_l3_inspect'),
       {status:'not_found',assertion_id:'absent'});
     assert.deepEqual(await provider({assertion_id:'fixture-assertion',principal_id:'foreign'},'inspect-scope','paios_l3_inspect'),
-      {status:'rejected',error_code:'UNKNOWN_TOOL_ARGUMENT',http_status:400});
+      {status:'rejected',error_code:'UNKNOWN_TOOL_ARGUMENT',http_status:400,success:false,error:'UNKNOWN_TOOL_ARGUMENT'});
     assert.deepEqual(await provider({},'inspect-invalid','paios_l3_inspect'),
-      {status:'rejected',error_code:'INVALID_ID',http_status:400});
+      {status:'rejected',error_code:'INVALID_ID',http_status:400,success:false,error:'INVALID_ID'});
     const unknownTool=await provider({},'unknown-tool','paios_unimplemented');
-    assert.deepEqual(unknownTool,{status:'rejected',error_code:'TOOL_NOT_ENABLED',http_status:404});
+    assert.deepEqual(unknownTool,{status:'rejected',error_code:'TOOL_NOT_ENABLED',http_status:404,success:false,error:'TOOL_NOT_ENABLED'});
     const unknownArgument=await provider({reply_mode:'text',principal_id:'foreign'},'unknown-argument','paios_open_reply');
-    assert.deepEqual(unknownArgument,{status:'rejected',error_code:'UNKNOWN_TOOL_ARGUMENT',http_status:400});
+    assert.deepEqual(unknownArgument,{status:'rejected',error_code:'UNKNOWN_TOOL_ARGUMENT',http_status:400,success:false,error:'UNKNOWN_TOOL_ARGUMENT'});
     const wrong=command('wrong-basis');wrong.assertion.typed_scores.interpretation_support!.basis_refs=[d.raw_ref+'@'+d.archive_revision];
     assert.throws(()=>validateCommand(prepareMemoryCommand(wrong),'owner'),error=>error instanceof ContractError &&
       error.code==='L3_SCORE_WITHOUT_EVIDENCE' && error.status===422);
@@ -116,7 +116,7 @@ test('real MEM/PG authority errors survive authenticated HTTP and existing Pytho
       [malformed,'L3_INVALID_SCORE',422],
     ] as const) {
       const actual=await provider(args,code);
-      assert.deepEqual(actual,{status:'rejected',error_code:code,http_status:status});
+      assert.deepEqual(actual,{status:'rejected',error_code:code,http_status:status,success:false,error:code});
     }
     const committed=await pool.query(`SELECT r.receipt,p.command_payload FROM paios_l3_receipts r JOIN paios_l3_payloads p ON r.principal_id=p.principal_id AND r.command_id=p.command_payload->>'command_id'`);
     assert.equal(committed.rows.length,1);assert.deepEqual(committed.rows[0].receipt,normal);
@@ -159,9 +159,9 @@ test('real MEM/PG authority errors survive authenticated HTTP and existing Pytho
     assert.equal((await pool.query('SELECT count(*)::int AS n FROM paios_l3_receipts')).rows[0].n,beforeReads);
     await pool.end();ended=true;
     assert.deepEqual(await provider({assertion_id:'fixture-assertion'},'inspect-unavailable','paios_l3_inspect'),
-      {status:'rejected',error_code:'INTERNAL_ERROR',http_status:500});
+      {status:'rejected',error_code:'INTERNAL_ERROR',http_status:500,success:false,error:'INTERNAL_ERROR'});
     const unavailable=await provider(command('closed-database'),'database-unavailable');
-    assert.deepEqual(unavailable,{status:'rejected',error_code:'INTERNAL_ERROR',http_status:500});
+    assert.deepEqual(unavailable,{status:'rejected',error_code:'INTERNAL_ERROR',http_status:500,success:false,error:'INTERNAL_ERROR'});
     assert.equal('receipt_ref' in unavailable,false);
   } finally {
     await Promise.all([server.closeAndDrain(),runtime.close()]);

@@ -1,0 +1,402 @@
+{
+  "schema": "yimi.package.contract.v1",
+  "cases": [
+    {
+      "id": "paios_l5_read",
+      "tool": "paios_l5_read",
+      "args": {},
+      "raw": {
+        "status": "read",
+        "raw_ref": "l5:1111111111111111111111111111111111111111111111111111111111111111",
+        "archive_revision": "2222222222222222222222222222222222222222222222222222222222222222",
+        "bytes": 12,
+        "selected_bytes": 12,
+        "content": "recorded text",
+        "encoding": "utf-8"
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "paios_l5_locate",
+      "tool": "paios_l5_locate",
+      "args": {},
+      "raw": {
+        "status": "located",
+        "raw_ref": "l5:1111111111111111111111111111111111111111111111111111111111111111",
+        "archive_revision": "2222222222222222222222222222222222222222222222222222222222222222"
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "paios_l3_query",
+      "tool": "paios_l3_query",
+      "args": {},
+      "raw": {
+        "assertions": [],
+        "truncated": false,
+        "next_cursor": null
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "paios_l3_inspect",
+      "tool": "paios_l3_inspect",
+      "args": {
+        "assertion_id": "assertion"
+      },
+      "raw": {
+        "status": "not_found",
+        "assertion_id": "assertion"
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "paios_l3_commit",
+      "tool": "paios_l3_commit",
+      "args": {
+        "command_id": "command",
+        "operation": "create",
+        "expected_version": 0,
+        "assertion": {
+          "assertion_id": "assertion",
+          "kind": "inference",
+          "subject_ref": {
+            "type": "unknown_subject",
+            "id": "unknown"
+          },
+          "predicate": "role",
+          "value": "coordinator",
+          "scope": {
+            "principal_id": "owner",
+            "purpose": "advice",
+            "situation": "work",
+            "role": "unknown",
+            "evaluation_frame": "business"
+          },
+          "evidence_refs": [
+            {
+              "event_id": "event",
+              "processed_event_id": "processed",
+              "raw_ref": "l5:1111111111111111111111111111111111111111111111111111111111111111",
+              "archive_revision": "2222222222222222222222222222222222222222222222222222222222222222",
+              "time_range": {
+                "kind": "instant",
+                "timebase_id": "clock",
+                "at_ms": 0
+              }
+            }
+          ],
+          "evidence_status": "available",
+          "unknown_conditions": [
+            "identity unknown"
+          ],
+          "conflicts": [],
+          "status": "candidate",
+          "applicability_status": "applicable",
+          "relation_to_peers": "unknown",
+          "typed_scores": {},
+          "depends_on": []
+        },
+        "evidence_refs": [
+          {
+            "event_id": "event",
+            "processed_event_id": "processed",
+            "raw_ref": "l5:1111111111111111111111111111111111111111111111111111111111111111",
+            "archive_revision": "2222222222222222222222222222222222222222222222222222222222222222",
+            "time_range": {
+              "kind": "instant",
+              "timebase_id": "clock",
+              "at_ms": 0
+            }
+          }
+        ]
+      },
+      "raw": {
+        "status": "committed",
+        "receipt_ref": "l3:owner:command",
+        "command_id": "command",
+        "assertion_id": "assertion",
+        "version": 1,
+        "previous_version": null,
+        "authority_watermark": "1",
+        "committed_at": "2026-10-24T12:00:00.000Z",
+        "invalidated": []
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "paios_ambient_journal_search",
+      "tool": "paios_ambient_journal_search",
+      "args": {},
+      "raw": {
+        "entries": [],
+        "events": [],
+        "truncated": false
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "paios_visual_recall",
+      "tool": "paios_visual_recall",
+      "args": {
+        "query": "钥匙"
+      },
+      "raw": {
+        "frames": [],
+        "truncated": false,
+        "camera_statuses": []
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "paios_visual_analyze",
+      "tool": "paios_visual_analyze",
+      "args": {
+        "frame_id": "frame",
+        "question": "画面里是什么？"
+      },
+      "raw": "一把钥匙。",
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "paios_contacts_search",
+      "tool": "paios_contacts_search",
+      "args": {
+        "name": "小王"
+      },
+      "raw": {
+        "contacts": [],
+        "truncated": false
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "l3-waiting",
+      "tool": "paios_l3_commit",
+      "args": {
+        "command_id": "waiting-command",
+        "operation": "create",
+        "expected_version": 0,
+        "assertion": {
+          "assertion_id": "assertion",
+          "kind": "inference",
+          "subject_ref": {
+            "type": "unknown_subject",
+            "id": "unknown"
+          },
+          "predicate": "role",
+          "value": "coordinator",
+          "scope": {
+            "principal_id": "owner",
+            "purpose": "advice",
+            "situation": "work",
+            "role": "unknown",
+            "evaluation_frame": "business"
+          },
+          "evidence_refs": [
+            {
+              "event_id": "event",
+              "processed_event_id": "processed",
+              "raw_ref": "l5:1111111111111111111111111111111111111111111111111111111111111111",
+              "archive_revision": "2222222222222222222222222222222222222222222222222222222222222222",
+              "time_range": {
+                "kind": "instant",
+                "timebase_id": "clock",
+                "at_ms": 0
+              }
+            }
+          ],
+          "evidence_status": "available",
+          "unknown_conditions": [
+            "identity unknown"
+          ],
+          "conflicts": [],
+          "status": "candidate",
+          "applicability_status": "applicable",
+          "relation_to_peers": "unknown",
+          "typed_scores": {},
+          "depends_on": []
+        },
+        "evidence_refs": [
+          {
+            "event_id": "event",
+            "processed_event_id": "processed",
+            "raw_ref": "l5:1111111111111111111111111111111111111111111111111111111111111111",
+            "archive_revision": "2222222222222222222222222222222222222222222222222222222222222222",
+            "time_range": {
+              "kind": "instant",
+              "timebase_id": "clock",
+              "at_ms": 0
+            }
+          }
+        ]
+      },
+      "raw": {
+        "status": "pending_approval",
+        "proposal_ref": "proposal"
+      },
+      "expected": {
+        "state": "waiting"
+      }
+    },
+    {
+      "id": "l3-decision-only",
+      "tool": "paios_l3_commit",
+      "args": {
+        "command_id": "decision-command",
+        "operation": "create",
+        "expected_version": 0,
+        "assertion": {
+          "assertion_id": "assertion",
+          "kind": "inference",
+          "subject_ref": {
+            "type": "unknown_subject",
+            "id": "unknown"
+          },
+          "predicate": "role",
+          "value": "coordinator",
+          "scope": {
+            "principal_id": "owner",
+            "purpose": "advice",
+            "situation": "work",
+            "role": "unknown",
+            "evaluation_frame": "business"
+          },
+          "evidence_refs": [
+            {
+              "event_id": "event",
+              "processed_event_id": "processed",
+              "raw_ref": "l5:1111111111111111111111111111111111111111111111111111111111111111",
+              "archive_revision": "2222222222222222222222222222222222222222222222222222222222222222",
+              "time_range": {
+                "kind": "instant",
+                "timebase_id": "clock",
+                "at_ms": 0
+              }
+            }
+          ],
+          "evidence_status": "available",
+          "unknown_conditions": [
+            "identity unknown"
+          ],
+          "conflicts": [],
+          "status": "candidate",
+          "applicability_status": "applicable",
+          "relation_to_peers": "unknown",
+          "typed_scores": {},
+          "depends_on": []
+        },
+        "evidence_refs": [
+          {
+            "event_id": "event",
+            "processed_event_id": "processed",
+            "raw_ref": "l5:1111111111111111111111111111111111111111111111111111111111111111",
+            "archive_revision": "2222222222222222222222222222222222222222222222222222222222222222",
+            "time_range": {
+              "kind": "instant",
+              "timebase_id": "clock",
+              "at_ms": 0
+            }
+          }
+        ]
+      },
+      "raw": {
+        "status": "decision_recorded",
+        "decision": {}
+      },
+      "expected": {
+        "state": "unknown"
+      }
+    },
+    {
+      "id": "inspection-partial",
+      "tool": "paios_l3_inspect",
+      "args": {
+        "assertion_id": "assertion"
+      },
+      "raw": {
+        "status": "found",
+        "assertion": {
+          "assertion_id": "assertion",
+          "kind": "inference",
+          "subject_ref": {
+            "type": "unknown_subject",
+            "id": "unknown"
+          },
+          "predicate": "role",
+          "value": "coordinator",
+          "scope": {
+            "principal_id": "owner",
+            "purpose": "advice",
+            "situation": "work",
+            "role": "unknown",
+            "evaluation_frame": "business"
+          },
+          "evidence_refs": [
+            {
+              "event_id": "event",
+              "processed_event_id": "processed",
+              "raw_ref": "l5:1111111111111111111111111111111111111111111111111111111111111111",
+              "archive_revision": "2222222222222222222222222222222222222222222222222222222222222222",
+              "time_range": {
+                "kind": "instant",
+                "timebase_id": "clock",
+                "at_ms": 0
+              }
+            }
+          ],
+          "evidence_status": "available",
+          "unknown_conditions": [
+            "identity unknown"
+          ],
+          "conflicts": [],
+          "status": "candidate",
+          "applicability_status": "applicable",
+          "relation_to_peers": "unknown",
+          "typed_scores": {},
+          "depends_on": []
+        },
+        "provenance_status": "partial",
+        "unknown_conditions": [
+          "prior provenance missing"
+        ]
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "query-page",
+      "tool": "paios_l3_query",
+      "args": {
+        "limit": 1
+      },
+      "raw": {
+        "assertions": [],
+        "truncated": true,
+        "next_cursor": "next"
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    }
+  ]
+}

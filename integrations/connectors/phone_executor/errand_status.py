@@ -62,6 +62,7 @@ def job_status(spool: str | None, running: dict, principal_id: str, *, job_id: s
     now = time.time()
     jobs = {jid: {"job_id": jid, "app": job["app"], "task": job["goal"][:120], "state": job["state"],
                   "seconds": int(now - job["since"]), **step_trace.snapshot(job),
+                  **{key: job[key] for key in ("capability_receipt", "receipt_revision", "task_type") if key in job},
                   **({"self_check_of": job["self_check_of"]} if "self_check_of" in job else {})}
             for jid, job in running.items() if job["principal_id"] == principal_id and (job_id is None or jid == job_id)}
     if spool and Path(spool).exists():
@@ -73,5 +74,5 @@ def job_status(spool: str | None, running: dict, principal_id: str, *, job_id: s
                 jobs[jid] = {"job_id": jid, "app": record.get("app"), "task": record["task"][:120],
                              "state": reason or "finished", "success": record["success"], "terminal_reason": reason,
                              "answer": record["answer"][:300], "finished_at": record["finished_at"],
-                             **{key: record[key] for key in ("title", "evidence_ref", "trace", "self_check_of", "partial_findings") if key in record}}
+                             **{key: record[key] for key in ("title", "evidence_ref", "trace", "self_check_of", "partial_findings", "capability_receipt", "receipt_revision", "task_type") if key in record}}
     return {"jobs": list(jobs.values())}

@@ -52,7 +52,7 @@ final class YimiNavigationTests: XCTestCase {
 
     func testEveryRouteHasADestinationAndTheRootStackHasOnePathType() throws {
         let root = try XCTUnwrap(try sources()["YimiRootView.swift"])
-        let declaration = try XCTUnwrap(root.range(of: #"enum YimiRoute: Hashable, CaseIterable \{ case [a-z, ]+ \}"#, options: .regularExpression))
+        let declaration = try XCTUnwrap(root.range(of: #"enum YimiRoute: Hashable, CaseIterable \{ case [A-Za-z, ]+ \}"#, options: .regularExpression))
         let cases = String(root[declaration]).components(separatedBy: "case ")[1].dropLast(2)
             .components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
         XCTAssertTrue(cases.contains("health"))

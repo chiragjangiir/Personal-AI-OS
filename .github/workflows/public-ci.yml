@@ -35,6 +35,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes ffmpeg fonts-wqy-zenhei age
           bash ci/install.sh "$SUITE"
+      # Ubuntu 24.04 restricts unprivileged user namespaces by default.
+      # This disposable runner has read-only repository permissions and no product secrets.
+      # Allow the registration worker to create its namespaces; its sandbox checks still run.
+      - name: Enable registration worker user namespaces
+        if: matrix.suite == 'integration' || matrix.suite == 'hermes'
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          unshare --user --map-root-user --mount --net true
       - name: Run public suite
         env:
           SUITE: ${{ matrix.suite }}

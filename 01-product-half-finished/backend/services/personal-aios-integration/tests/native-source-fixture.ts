@@ -53,7 +53,7 @@ export function sourceClient(native:NativeClient | HermesClient):HermesClient {
     const run=path==='/v1/runs' ? await native.create(body,String((init?.headers as Record<string,string>)['Idempotency-Key']),init?.signal ?? undefined) :
       path.endsWith('/stop') ? await native.cancel(decodeURIComponent(path.split('/').at(-2)!)) : await native.status(decodeURIComponent(path.split('/').at(-1)!));
     // The patched producer acknowledges a restricted run scope on acceptance (memory writes off).
-    const scope=body?.run_scope?{run_scope:body.run_scope,memory_write:false}:{};
+    const scope=body?.run_scope?{run_scope:body.run_scope}:{};
     // Published source fields are explicit fixtures, not receipts fabricated from model prose.
     return new Response(JSON.stringify({schema:'hermes.run.v2',shape_sha256:NATIVE_RUN_SHAPE_SHA256,profile_home:'/fixture',...run,...scope,...(body?{granted_toolsets:body.grant_toolsets??[]}: {})}),
       {status:path==='/v1/runs'?202:200,headers:{'content-type':'application/json'}});
@@ -68,5 +68,3 @@ export class RunAdmission extends SourceAdmission {
 export class PersonalAIOSRuntime extends SourceRuntime {
   constructor(options:Omit<ConstructorParameters<typeof SourceRuntime>[0],'native'> & {native:NativeClient | HermesClient}){super({...options,native:sourceClient(options.native)});}
 }
-
-export function readSourceMemory(value:NativeRun,ctx:{run_id:string;session_id:string},profile:string){return sourceClient({status:async()=>value,create:async()=>{throw new Error('no create');},cancel:async()=>{throw new Error('no cancel');}}).memory(ctx.run_id,{conversation_session_id:ctx.session_id,profile_home:profile});}

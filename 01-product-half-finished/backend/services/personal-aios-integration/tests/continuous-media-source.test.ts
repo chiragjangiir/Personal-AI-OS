@@ -569,7 +569,8 @@ test('closing a call with no greeting audio finalizes raw acquisition before its
     assert.equal(boundary,'closed','raw acquisition end cannot wait for semantic work deferred by this closing call');
     assert.equal(await reopening,undefined,'manual reopen succeeds after the old call closes');assert.equal(call.pending(),'second');
     assert.ok(states.indexOf('first:closed')<states.indexOf('second:opening'));
-    assert.ok(await f.storage.readFinal(captured.event.raw_ref));
+    assert.equal(await f.storage.readFinal(captured.event.raw_ref),null,'the call close records acquisition end without physical folding');
+    assert.equal(JSON.parse(Buffer.from(await f.storage.read('session-ends',captured.event.raw_ref.slice(3))).toString()).ended_by,'call_closed');
     assert.equal(source.snapshot().streams,0);assert.equal(source.snapshot().pending_candidates,1);
     assert.equal(source.holds(captured.event.raw_ref),true);assert.equal(f.analyses(),0);
   } finally {closeRelease.resolve();releaseBusy=true;await closing;await reopening;await call.closeAll();}

@@ -128,20 +128,13 @@ export function createRealtimePublicControlT04OwnerWriter(
   let closed = false;
   let bound = false;
   let bridgeConsumer: ((event: ProductionOwnerEvent) => Promise<RealtimeSessionRecord>) | undefined;
-  const pending = new Map<string, ProductionOwnerEvent>();
   const source = options.source === undefined
     ? internalSource((consumer) => { bridgeConsumer = consumer; })
     : Object.freeze({
       ...options.source,
       subscribe: (consumer: (event: ProductionOwnerEvent) => Promise<RealtimeSessionRecord>) => {
         bridgeConsumer = consumer;
-        return options.source!.subscribe((event) => {
-          pending.set(event.activity.activityId, event);
-          const flight = consumer(event);
-          return Promise.resolve(flight).finally(() => {
-            if (pending.get(event.activity.activityId) === event) pending.delete(event.activity.activityId);
-          });
-        });
+        return options.source!.subscribe(consumer);
       },
     });
 
@@ -151,15 +144,7 @@ export function createRealtimePublicControlT04OwnerWriter(
     purpose,
     ...(options.now === undefined ? {} : { now: options.now }),
     sink: {
-      recordAcceptedUserActivity: (activity) => {
-        const event = pending.get(activity.activityId);
-        if (event === undefined) throw new Error("T04_OWNER_EVENT_CONTEXT_MISSING");
-        return options.service.recordAcceptedUserActivity(activity, {
-          actionReceipt: event.actionReceipt,
-          currentBinding: event.currentBinding,
-          authorityProjection: event.authorityProjection,
-        });
-      },
+      recordAcceptedUserActivity: (activity, ownerEvent) => options.service.recordAcceptedUserActivity(activity, ownerEvent),
     },
   });
 
@@ -187,16 +172,11 @@ export function createRealtimePublicControlT04OwnerWriter(
   const write = async (event: RealtimePublicControlT04OwnerEvent): Promise<RealtimeSessionRecord> => {
     ensureOpen();
     bind();
-    pending.set(event.activity.activityId, event);
     const consumer = bridgeConsumer;
     if (consumer === undefined) {
       throw new Error("T04_OWNER_WRITER_CONSUMER_UNAVAILABLE");
     }
-    try {
-      return await consumer(event);
-    } finally {
-      if (pending.get(event.activity.activityId) === event) pending.delete(event.activity.activityId);
-    }
+    return consumer(event);
   };
   const read = async (idempotencyKey: string): Promise<AcceptedActivityRecord | undefined> => {
     ensureOpen();
@@ -207,7 +187,6 @@ export function createRealtimePublicControlT04OwnerWriter(
     closed = true;
     await bridge.close();
     if (ownsStream) await stream?.close();
-    pending.clear();
   };
 
   return Object.freeze({

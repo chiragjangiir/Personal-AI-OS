@@ -30,6 +30,8 @@ export function hasFirstPersonCamera(device: {device_type: string; capabilities?
 
 // Product identity has no HTTP credential requirement. Only the explicit fixture owns token hashes.
 export interface RegisteredDevice extends Omit<TrustedContext, 'submission'> {
+  /** X25519 identity from the paired-device authority, never from a control body. */
+  recipient_public_key?:string;
   capabilities?: readonly TerminalCapability[]; route_version: string; output_modes: string[]; output_target?: {device_id:string;device_type:'phone'};
 }
 export interface FixtureRegisteredDevice extends RegisteredDevice {token_sha256: string}

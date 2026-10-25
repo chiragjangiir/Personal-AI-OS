@@ -76,9 +76,17 @@ class RollbackEndpointTests(unittest.TestCase):
 import {registerHooks} from 'node:module';
 import {fileURLToPath} from 'node:url';
 const archived=ARCHIVED, current=CURRENT;
+let resolvingDependencies=false;
 registerHooks({resolve(specifier,context,nextResolve){
   try{return nextResolve(specifier,context);}catch(error){
     if(!['ERR_MODULE_NOT_FOUND','MODULE_NOT_FOUND'].includes(error.code))throw error;
+    if(!resolvingDependencies&&!specifier.startsWith('.')&&!specifier.startsWith('/')&&!specifier.includes(':')){
+      resolvingDependencies=true;
+      try{for(const owner of ['qwen-embedded','personal-aios-integration','platform-data']){
+        try{return nextResolve(specifier,{...context,parentURL:current+'01-product-half-finished/backend/services/'+owner+'/package.json'});}
+        catch(missing){if(!['ERR_MODULE_NOT_FOUND','MODULE_NOT_FOUND'].includes(missing.code))throw missing;}
+      }}finally{resolvingDependencies=false;}
+    }
     if(!context.parentURL?.startsWith(archived))throw error;
     const parentURL=current+context.parentURL.slice(archived.length);
     if(specifier.startsWith('.')||specifier.startsWith('/')){
@@ -109,7 +117,7 @@ registerHooks({resolve(specifier,context,nextResolve){
             results = []
             for label, alias in (("state_a_rel26_renderer", US), ("state_b_n_expand", US), ("state_b_n_contract", "")):
                 if label == "state_b_n_expand":
-                    for relative in ("deploy/cloud/prepare-build.py", "deploy/cloud/cloud.json",
+                    for relative in ("deploy/cloud/prepare-build.py", "deploy/cloud/staging_config.py", "deploy/cloud/cloud.json",
                                      "deploy/cloud/front.conf.in", "deploy/cloud/paios_roaming_guard.js.in"):
                         target = scratch / relative
                         target.parent.mkdir(parents=True, exist_ok=True)
@@ -119,7 +127,7 @@ registerHooks({resolve(specifier,context,nextResolve){
                                env=env, check=True, capture_output=True)
                 result = subprocess.run(["node", str(scratch / "probe.ts"),
                                          str(scratch / "deploy/cloud/.build/production.json")],
-                                        cwd=scratch, env=env, text=True, capture_output=True)
+                                        cwd=scratch, env=env, text=True, capture_output=True, timeout=30)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 results.append(dict(state=label, **json.loads(result.stdout.splitlines()[-1])))
             if output:

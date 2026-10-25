@@ -245,3 +245,22 @@ extension YimiConversationTimeline {
             date: fractional ?? formatter.date(from: item.at) ?? .distantPast, via: item.via, seq: item.seq, attachments: item.attachments, ownerIdentity: ownerIdentity))
     }
 }
+
+/// Encoding and atomic replacement run outside the UI actor; delayed older tasks cannot replace newer caches.
+actor CentralTerminalCacheWriter {
+    private var written: UInt64 = 0
+
+    func write(_ state: CentralTerminalState, version: UInt64, to url: URL) throws {
+        guard version > written else { return }
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o700])
+        try state.encodedCache().write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        written = version
+    }
+
+    func remove(version: UInt64, at url: URL) throws {
+        guard version > written else { return }
+        written = version
+        if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
+    }
+}

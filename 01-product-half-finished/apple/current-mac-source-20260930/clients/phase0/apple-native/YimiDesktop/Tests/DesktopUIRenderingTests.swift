@@ -21,7 +21,7 @@ final class DesktopUIRenderingTests: XCTestCase {
             ("starting", .starting, true, nil),
             ("running", .running, true, nil),
             ("disabled", .stopped, false, nil),
-            ("network-error", .stopped, true, "手机网络不可用：安卓网络或代理未就绪。")
+            ("network-error", .stopped, true, "安卓手机还没联网：网络或代理尚未就绪。")
         ] {
             let files = try DesktopUIRenderer.export(model: model, pairing: pairing, directory: output,
                 variant: name, screens: ["settings-设备", "settings-phone"],
@@ -95,13 +95,13 @@ final class DesktopUIRenderingTests: XCTestCase {
         model.voiceFeedback = "没听清，再说一次"
         files += try DesktopUIRenderer.export(model: model, pairing: controller, directory: output, variant: "ptt-silence", screens: ["voice-hud"])
         let connectedScreens = ["chat", "menu", "unpair", "activity", "settings-通用", "settings-她的样子",
-                                "settings-权限", "settings-文件夹", "settings-设备", "settings-隐私"]
+                                "settings-权限", "settings-文件夹", "settings-设备", "settings-模型与密钥", "settings-隐私", "settings-微信与隐私"]
             + (0..<4).map { "onboarding-\($0)" }
         let screenVariants = connectedScreens.map { "connected-" + $0 }
             + ["offline", "paused", "revoked"].flatMap { variant in ["chat", "menu"].map { variant + "-" + $0 } }
             + ["ptt-chat", "ptt-voice-hud", "ptt-ended-voice-hud", "ptt-silence-voice-hud"]
         let expectedFiles = screenVariants.flatMap { screen in ["light", "dark"].map { screen + "-" + $0 + ".png" } }
-        XCTAssertEqual(files.count, 48)
+        XCTAssertEqual(files.count, 52)
         XCTAssertEqual(Set(files.map(\.lastPathComponent)), Set(expectedFiles))
         for file in files {
             let image = try XCTUnwrap(NSBitmapImageRep(data: Data(contentsOf: file)))

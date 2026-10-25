@@ -46,6 +46,7 @@ class AppearanceState(context: Context, private val scope: CoroutineScope,
     private val cache = AtomicFile(File(context.noBackupFilesDir, "avatar-display"))
     private val lock = Any()
     private var owner: String? = null
+    private var apiOrigin: String? = null
     private var selected: AvatarProfile? = null
     private var selectedVersion: Long? = null
     private var loadedVersion: Long? = null
@@ -55,6 +56,7 @@ class AppearanceState(context: Context, private val scope: CoroutineScope,
     private var loading: Job? = null
 
     fun bind(pair: JSONObject?) {
+        apiOrigin = pair?.getString("origin")
         val identity = pair?.let { it.getString("device_id") + ":" + it.getString("paired_at") }
         if (identity != null && identity == owner) return
         synchronized(lock) { owner = identity; selected = null; selectedVersion = null; loadedVersion = null; generation++ }
@@ -124,7 +126,10 @@ class AppearanceState(context: Context, private val scope: CoroutineScope,
                         try {
                             connection.connectTimeout = 10000; connection.readTimeout = 15000
                             connection.instanceFollowRedirects = false
-                            check(connection.responseCode == 200) { "Avatar image unavailable" }
+                            val status = connection.responseCode
+                            if (gatewayOrigin(URI(profile.imageUrl).resolve("/").toString()) == apiOrigin)
+                                ServerClock.shared.learn(connection)
+                            check(status == 200) { "Avatar image unavailable" }
                             connection.inputStream.use { input ->
                                 val data = java.io.ByteArrayOutputStream()
                                 val buffer = ByteArray(8192)

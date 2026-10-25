@@ -7,6 +7,7 @@ There is no timer and no separate payment ledger.
 """
 import json
 from pathlib import Path
+from errand_status import TERMINAL_STATES, _terminal_record
 
 
 def started(record):
@@ -18,13 +19,33 @@ def started(record):
     return record.get('state') != 'waiting' and bool(record.get('started_at') or record.get('finished_at'))
 
 
-_SPOOL_STATES = ('delivered', 'notified', 'done', 'running')
+_SPOOL_STATES = tuple(TERMINAL_STATES[key] for key in
+                      ('quarantined', 'delivered', 'delivery_failed', 'notified', 'pending')) + ('running',)
+
+
+def _read_record(path):
+    quarantined = path.name.endswith('.' + TERMINAL_STATES['quarantined'] + '.json')
+    try:
+        record = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        if quarantined:
+            return None
+        raise
+    if quarantined:
+        # Only validated delivery failures retain executor facts after quarantine.
+        # Malformed quarantines cannot establish or clear payment ownership.
+        if not isinstance(record, dict) or not isinstance(record.get('delivery_failure'), dict):
+            return None
+        _, verified_record, verified = _terminal_record(path.parent, path.name.split('.')[0], 0, recent_only=False)
+        if not verified or verified_record != record:
+            raise ValueError('ERRAND_TERMINAL_UNREADABLE')
+    return record
 
 
 def _read_spool_job(path):
     """GW may rename a terminal record while this snapshot is being read."""
     try:
-        return json.loads(path.read_text())
+        return _read_record(path)
     except FileNotFoundError as missing:
         vanished = missing
     job_id = path.name.split('.')[0]
@@ -38,7 +59,7 @@ def _read_spool_job(path):
             if candidate is None:
                 continue
             try:
-                return json.loads(candidate.read_text())
+                return _read_record(candidate)
             except FileNotFoundError as missing:
                 vanished = missing
                 break  # Re-list after a newer state moves; do not fall back to a stale running marker.
@@ -55,6 +76,8 @@ def unresolved(folder, principal_id, app):
         if path.suffixes[-2:] not in [['.' + state, '.json'] for state in _SPOOL_STATES]:
             continue
         record = _read_spool_job(path)
+        if record is None:
+            continue
         if record.get('principal_id') != principal_id or record.get('app') != app:
             continue
         jid = record['job_id']

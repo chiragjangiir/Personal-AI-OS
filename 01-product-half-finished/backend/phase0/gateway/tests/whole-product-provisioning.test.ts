@@ -28,7 +28,7 @@ const SKILL='controlled fixed skill: actual receipt required';
 test('expand renders guarded FRP loopback and contract preserves direct TLS routes',async t=>{
   const root=await fs.mkdtemp(join(tmpdir(),'cloud-expand-'));
   t.after(()=>fs.rm(root,{recursive:true,force:true}));
-  for(const path of ['prepare-build.py','cloud.json','front.conf.in','paios_roaming_guard.js.in']){
+  for(const path of ['prepare-build.py','staging_config.py','cloud.json','front.conf.in','paios_roaming_guard.js.in']){
     await fs.mkdir(join(root,'deploy/cloud'),{recursive:true});
     await fs.copyFile(new URL('../../../../../deploy/cloud/'+path,import.meta.url),join(root,'deploy/cloud',path));
   }
@@ -87,7 +87,7 @@ test('rendered cloud production and staging reach formal provisioning with optio
   await fs.mkdir(scratch,{recursive:true});
   const root=await fs.mkdtemp(join(scratch.pathname,'d5-cloud-'));
   t.after(()=>fs.rm(root,{recursive:true,force:true}));
-  for(const path of ['deploy/cloud/prepare-build.py','deploy/cloud/cloud.json','deploy/cloud/front.conf.in','deploy/cloud/paios_roaming_guard.js.in']){
+  for(const path of ['deploy/cloud/prepare-build.py','deploy/cloud/staging_config.py','deploy/cloud/cloud.json','deploy/cloud/front.conf.in','deploy/cloud/paios_roaming_guard.js.in']){
     await fs.mkdir(join(root,path,'..'),{recursive:true});
     await fs.copyFile(new URL('../../../../../'+path,import.meta.url),join(root,path));
   }
@@ -114,7 +114,7 @@ test('rendered cloud production and staging reach formal provisioning with optio
     PAIOS_MODEL_ROOT:join(root,'models'),PAIOS_POSTGRES_PORT:'5432',PAIOS_LIVEKIT_URL:'wss://entry.example:9443',
     PAIOS_PUBLIC_API_URL:'https://entry.example:9443',PAIOS_GATEWAY_PORT:'18787',PAIOS_LIVEKIT_SIGNAL_PORT:'7880',
     PAIOS_LIVEKIT_API_URL:'http://127.0.0.1:7880',
-    PAIOS_INTEGRATION_PORT:'18091',PAIOS_HERMES_PORT:'18191',PAIOS_DASHSCOPE_ENDPOINT:'wss://voice.invalid/realtime'};
+    PAIOS_INTEGRATION_PORT:'18091',PAIOS_HERMES_PORT:'18191',PAIOS_DASHSCOPE_ENDPOINT:'wss://voice.invalid/realtime',PAIOS_MODEL_SETTINGS_ENVIRONMENT:'test'};
   await fs.mkdir(environment.PAIOS_SECRET_ROOT,{recursive:true,mode:0o700});
   await fs.writeFile(join(environment.PAIOS_SECRET_ROOT,'vidu.key'),KEY,{mode:0o600});
   const previous=Object.fromEntries([...Object.keys(environment),'PAIOS_STAGE'].map(key=>[key,process.env[key]]));
@@ -129,6 +129,7 @@ test('rendered cloud production and staging reach formal provisioning with optio
     assert.ok(config.visual?.faces);
     assert.equal(config.product_resources.vidu_cleanup_key_file,stage==='production'?join(root,'secrets','vidu.key'):undefined);
     assert.equal(config.shutdown_drain_ms,105000);
+    assert.deepEqual(config.capability_packages,cloudFixture.capability_packages);
     assert.equal(config.product_resources.call_rejoin_window_s,120);
     assert.deepEqual(config.timeline,{enabled:true,fanout_classes:['iphone','mac'],retention_days:90,max_items:5000,sync_page_max:100});
     assert.deepEqual(config.desktop?.queue,{max_pending:8,default_ttl_min:720,max_ttl_min:1440});
@@ -147,10 +148,17 @@ async function listen(server:ReturnType<typeof createServer>) {
 }
 async function fixture(t:test.TestContext,memoryProfile?:string) {
   const root=await fs.mkdtemp(join(tmpdir(),'product-provision-'));
-  t.after(()=>fs.rm(root,{recursive:true,force:true}));
+  const handles:Awaited<ReturnType<typeof startConfiguredHermesProduct>>[]=[];
+  let native:ReturnType<typeof createServer>|undefined;
+  t.after(async()=>{
+    for(const handle of [...handles].reverse())await handle.close();
+    const server=native;
+    if(server)await new Promise<void>((resolve,reject)=>{server.close(error=>error?reject(error):resolve());server.closeAllConnections();});
+    await fs.rm(root,{recursive:true,force:true});
+  });
   await fs.writeFile(join(root,'key'),KEY,{mode:0o600});await fs.writeFile(join(root,'skill'),SKILL);
   const requests:any[]=[];let healthRequests=0,healthy=true,oversized=false,completed=false;
-  const native=createServer(async(req,res)=>{
+  native=createServer(async(req,res)=>{
     assert.equal(req.headers.authorization,`Bearer ${KEY}`);
     if(req.method==='GET'&&req.url?.startsWith('/api/sessions')){res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({data:[]}));return;}
     if(req.url==='/health/detailed') {
@@ -170,12 +178,9 @@ async function fixture(t:test.TestContext,memoryProfile?:string) {
     const session=requests[0]?.body.session_id??'continuity';
     res.writeHead(200,{'Content-Type':'application/json'});
     res.end(JSON.stringify({schema:'hermes.run.v2',shape_sha256:NATIVE_RUN_SHAPE_SHA256,profile_home:memoryProfile??'/fixture',granted_toolsets:requests[0]?.body.grant_toolsets??[],run_id:'native-controlled',session_id:session,conversation_session_id:session,status:completed&&req.method==='GET'?'completed':'running',
-      ...(completed&&req.method==='GET'?{output:'controlled native final 原文。'}:{}),
-      ...(memoryProfile&&req.method==='GET'?{memory_receipt_source:{schema:'hermes.memory_source.v2',source:'l2',profile_home:memoryProfile,run_id:'native-controlled',
-        session_id:session,status:'complete',error:null,receipts:[],unsettled_attempts:[]}}:{})}));
+      ...(completed&&req.method==='GET'?{output:'controlled native final 原文。'}:{})}));
   });
-  // Admission keeps polling over keep-alive; force-close so teardown cannot wait on a run left in flight by a failure.
-  const nativePort=await listen(native);t.after(()=>new Promise<void>(resolve=>{native.close(()=>resolve());native.closeAllConnections();}));
+  const nativePort=await listen(native);
   const reserve=createServer();const port=await listen(reserve);await new Promise<void>(resolve=>reserve.close(()=>resolve()));
   const productResources=makeMacProductResourceFixture(join(root,'public-resources'));
   const config:HermesProductConfiguration={executionOwner:'hermes_text',product_resources:productResources.config,storage_root:join(root,'storage'),lock_file:join(root,'lock'),port,
@@ -183,7 +188,7 @@ async function fixture(t:test.TestContext,memoryProfile?:string) {
     hermes_base_url:`http://127.0.0.1:${nativePort}`,hermes_key_file:join(root,'key'),internal_key_file:join(root,'key'),skill_file:join(root,'skill'),
     native_request_timeout_ms:1000,http_request_timeout_ms:1000,max_request_bytes:16384,max_event_bytes:8192,max_read_bytes:8192,
     admission:{max_pending_events:8,max_pending_bytes:100000,max_event_age_ms:10000,poll_interval_ms:5,native_idempotency_retention_ms:100000,policy_version:'provision-fixture'},
-    ...(memoryProfile?{native_memory_receipts:{enabled:true as const,profile_home:memoryProfile}}:{})};
+    ...(memoryProfile?{core_profile:{enabled:true as const,profile_home:memoryProfile}}:{})};
   let owned:Extract<Awaited<ReturnType<typeof createPersistentPublicExecutionOwner>>,{executionOwner:'hermes_text'}>|undefined;
   let ends=0;let storage:StoragePort|undefined;let ttsResource:DashScopeTts|undefined;let issuedSource:RegisteredDevice|undefined;
   const now=Date.now(),sessionRef={ref_type:'RealtimeSession',ref_id:'controlled-session'},leaseRef={ref_type:'DeviceLease',ref_id:'controlled-lease'};
@@ -241,12 +246,16 @@ async function fixture(t:test.TestContext,memoryProfile?:string) {
   async function http(path:string,body?:unknown,key=KEY){const res=await fetch(`http://127.0.0.1:${config.port}${path}`,{
     method:body===undefined?'GET':'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},
     ...(body===undefined?{}:{body:JSON.stringify(body)})});return {status:res.status,body:await res.json() as any};}
-  return {config,ports,requests,submit,http,packets,setHealthy:(value:boolean)=>{healthy=value;},setOversized:()=>{oversized=true;},get healthRequests(){return healthRequests;},get storage(){return storage!;},get owned(){return owned!;},get ends(){return ends;},get ttsResource(){return ttsResource;},setCompleted(){completed=true;},get issuedSource(){return issuedSource!;}};
+  async function start(configuration:Parameters<typeof startConfiguredHermesProduct>[0]=config,
+    overrides:Parameters<typeof startConfiguredHermesProduct>[1]=ports){
+    const handle=await startConfiguredHermesProduct(configuration,overrides);handles.push(handle);return handle;
+  }
+  return {config,ports,start,requests,submit,http,packets,setHealthy:(value:boolean)=>{healthy=value;},setOversized:()=>{oversized=true;},get healthRequests(){return healthRequests;},get storage(){return storage!;},get owned(){return owned!;},get ends(){return ends;},get ttsResource(){return ttsResource;},setCompleted(){completed=true;},get issuedSource(){return issuedSource!;}};
 }
 
 test('configured production start uses actual HermesClient, one source assembly, exact L5 bytes and OPEN receipt',async t=>{
-  const f=await fixture(t);const handle=await startConfiguredHermesProduct(f.config,f.ports);t.after(()=>handle.close());
-  assert.equal(f.owned.assembly.server.listening,true);assert.equal(handle.centralPort,f.config.port);assert.equal(f.healthRequests,1);assert.equal(Object.hasOwn(f.owned.bridge.centralTextTransport!,'voiceTransport'),false);
+  const f=await fixture(t);const handle=await f.start(f.config,f.ports);
+  assert.equal(f.owned.assembly.server.listening,true);assert.equal(handle.centralPort,f.config.port);assert.equal(f.healthRequests,0);assert.equal(Object.hasOwn(f.owned.bridge.centralTextTransport!,'voiceTransport'),false);
   const d=await f.submit();assert.equal(f.requests[0].body.session_id,'continuity');
   assert.deepEqual(f.owned.assembly.runtime.timeline!.page('owner').items.map(item=>item.item_id),['me-controlled-provision-event']);
   assert.ok(f.packets.some(packet=>packet.operation==='timeline_items'&&packet.items.some((item:any)=>item.item_id==='me-controlled-provision-event')));
@@ -277,7 +286,7 @@ test('configured production start uses actual HermesClient, one source assembly,
 });
 
 test('pending central tool handler is joined before pool end and central lock release',async t=>{
-  const f=await fixture(t);const handle=await startConfiguredHermesProduct(f.config,f.ports);t.after(()=>handle.close());await f.submit();
+  const f=await fixture(t);const handle=await f.start(f.config,f.ports);await f.submit();
   const gate=Promise.withResolvers<void>(),entered=Promise.withResolvers<void>();const tool=f.owned.assembly.runtime.tool.bind(f.owned.assembly.runtime);
   f.owned.assembly.runtime.tool=async(name,call)=>{entered.resolve();await gate.promise;return tool(name,call);};
   const request=f.http('/internal/hermes/tools/paios_l5_read',{context:{run_id:'native-controlled',session_id:'continuity',tool_call_id:'held'},args:{}}).catch(()=>undefined);
@@ -286,17 +295,23 @@ test('pending central tool handler is joined before pool end and central lock re
   assert.equal(f.ends,1);await assert.rejects(fs.stat(f.config.lock_file),{code:'ENOENT'});
 });
 
-for(const kind of ['occupied','empty-skill','unsafe-key','fixture-fields','native-unready','native-budget'] as const)test(`configured startup ${kind} preserves source cause and releases only acquired resources`,async t=>{
+for(const kind of ['native-unready','native-budget'] as const)test(`configured controls start while ${kind} without claiming model acceptance`,async t=>{
+  const f=await fixture(t);if(kind==='native-unready')f.setHealthy(false);else f.setOversized();
+  await f.start(f.config,f.ports);
+  assert.equal(f.owned.assembly.server.listening,true);assert.equal(f.healthRequests,0);
+  assert.equal((await f.http('/internal/hermes/tool-contracts')).status,200);
+  assert.equal(f.requests.length,0);
+});
+
+for(const kind of ['occupied','empty-skill','unsafe-key','fixture-fields'] as const)test(`configured startup ${kind} preserves source cause and releases only acquired resources`,async t=>{
   const f=await fixture(t);let calls=0;const ports={...f.ports,createHandoff:async(...args:Parameters<typeof f.ports.createHandoff>)=>{calls++;return f.ports.createHandoff(...args);}};
   let occupied:ReturnType<typeof createServer>|undefined;
   if(kind==='occupied'){occupied=createServer();await new Promise<void>(resolve=>occupied!.listen(f.config.port,'127.0.0.1',resolve));t.after(()=>new Promise<void>(resolve=>occupied!.close(()=>resolve())));}
-  if(kind==='native-unready')f.setHealthy(false);
-  if(kind==='native-budget')f.setOversized();
   if(kind==='empty-skill')await fs.writeFile(f.config.skill_file,'  ');
   if(kind==='unsafe-key')await fs.chmod(f.config.hermes_key_file,0o644);
   if(kind==='fixture-fields')Object.assign(f.config,{fixture_database:{}});
-  await assert.rejects(startConfiguredHermesProduct(f.config,ports),error=>kind==='occupied'?(error as NodeJS.ErrnoException).code==='EADDRINUSE':
-    error instanceof Error&&error.message===(kind==='empty-skill'?'FIXED_SKILL_EMPTY':kind==='unsafe-key'?'UNSAFE_KEY_FILE':kind==='native-unready'?'HERMES_NATIVE_API_NOT_READY':kind==='native-budget'?'HERMES_READINESS_TOO_LARGE':'HERMES_PRODUCT_CONFIGURATION_REQUIRED'));
+  await assert.rejects(f.start(f.config,ports),error=>kind==='occupied'?(error as NodeJS.ErrnoException).code==='EADDRINUSE':
+    error instanceof Error&&error.message===(kind==='empty-skill'?'FIXED_SKILL_EMPTY':kind==='unsafe-key'?'UNSAFE_KEY_FILE':'HERMES_PRODUCT_CONFIGURATION_REQUIRED'));
   await assert.rejects(fs.stat(f.config.lock_file),{code:'ENOENT'});assert.equal(calls,kind==='occupied'?1:0);
   if(kind==='occupied'){assert.equal(f.owned.assembly.server.listening,false);assert.equal(f.ends,1);}
 });
@@ -311,16 +326,16 @@ test('optional TTS rejects invalid config and constructor errors without leaking
   const f=await fixture(t);let calls=0;const ports={...f.ports,createHandoff:async(...args:Parameters<typeof f.ports.createHandoff>)=>{calls++;return f.ports.createHandoff(...args);}};
   for(const tts of [null,{provider:'qwen',voice:'x'},{provider:'mac_system',voice:1},{provider:'mac_system',voice:'x',output:{}},
     {provider:'mac_system',voice:''},{provider:'mac_system',voice:'x'.repeat(201)}]){
-    await assert.rejects(startConfiguredHermesProduct({...f.config,tts} as never,ports),/TTS_PROVIDER_NOT_CONFIGURED|TTS_INVALID_VOICE/);
+    await assert.rejects(f.start({...f.config,tts} as never,ports),/TTS_PROVIDER_NOT_CONFIGURED|TTS_INVALID_VOICE/);
     await assert.rejects(fs.stat(f.config.lock_file),{code:'ENOENT'});
   }
-  assert.equal(calls,0);const handle=await startConfiguredHermesProduct(f.config,ports);assert.equal(f.ttsResource,undefined);await handle.close();
+  assert.equal(calls,0);const handle=await f.start(f.config,ports);assert.equal(f.ttsResource,undefined);await handle.close();
 });
 test('configured TTS resource follows existing listener-failure cleanup without synthesis or native rerun',async t=>{
   const f=await fixture(t);f.config.tts={provider:'dashscope',model:'qwen-audio-3.0-tts-plus',voice:'longanlingxin',sample_rate:22050};f.config.voice_frontend={provider:'dashscope',model:'qwen3.8-omni-flash-realtime',region:'cn-beijing',endpoint:'wss://synthetic.invalid/realtime',key_file:f.config.hermes_key_file,voice:'Tina',instructions:'candidate'};f.config.pcm={media:{fixture_only:true},producer:{device_type:'phone',channel:'rtc_pcm_and_text'},receipt_clock:{uncertainty_ms:1000},budget:{max_frame_samples:1600,max_pending_frames:64,max_pending_bytes:262144,max_samples:9600000,archive_batch:{max_delay_ms:500,max_frames:20,max_bytes:65536}}};let calls=0;
   t.mock.method(DashScopeTts.prototype,'stream',async function*(){calls++;throw new Error('MUST_NOT_SYNTHESIZE');});
   const busy=createServer();await new Promise<void>(resolve=>busy.listen(f.config.port,'127.0.0.1',resolve));t.after(()=>new Promise<void>(resolve=>busy.close(()=>resolve())));
-  await assert.rejects(startConfiguredHermesProduct(f.config,f.ports),{code:'EADDRINUSE'});assert.equal(calls,0);assert.equal(f.ends,1);assert.equal(f.requests.length,0);
+  await assert.rejects(f.start(f.config,f.ports),{code:'EADDRINUSE'});assert.equal(calls,0);assert.equal(f.ends,1);assert.equal(f.requests.length,0);
   await assert.rejects(fs.stat(f.config.lock_file),{code:'ENOENT'});
 });
 
@@ -332,7 +347,7 @@ test('lower source owner rejects arbitrary central.output and structural TtsPort
       return f.ports.createHandoff({...selection,central:{...selection.central,
         [field]:field==='output'?{tts:{synthesize:async()=>controlledWav()}}:{synthesize:async()=>controlledWav()}}} as never);
     }};
-    await assert.rejects(startConfiguredHermesProduct(f.config,ports),field==='output'?/CENTRAL_OWNED_RESOURCES_REQUIRED/:/CENTRAL_TTS_RESOURCE_REQUIRED/);
+    await assert.rejects(f.start(f.config,ports),field==='output'?/CENTRAL_OWNED_RESOURCES_REQUIRED/:/CENTRAL_TTS_RESOURCE_REQUIRED/);
     await assert.rejects(fs.stat(f.config.lock_file),{code:'ENOENT'});
   }
 });
@@ -341,7 +356,7 @@ test('lower source owner rejects arbitrary central.output and structural TtsPort
 test('concrete provisioned TTS reaches same product OUT while formal route and bootstrap stay text-only',async t=>{
   const f=await fixture(t);f.config.tts={provider:'dashscope',model:'qwen-audio-3.0-tts-plus',voice:'longanlingxin',sample_rate:22050};f.config.voice_frontend={provider:'dashscope',model:'qwen3.8-omni-flash-realtime',region:'cn-beijing',endpoint:'wss://synthetic.invalid/realtime',key_file:f.config.hermes_key_file,voice:'Tina',instructions:'candidate'};f.config.pcm={media:{fixture_only:true},producer:{device_type:'phone',channel:'rtc_pcm_and_text'},receipt_clock:{uncertainty_ms:1000},budget:{max_frame_samples:1600,max_pending_frames:64,max_pending_bytes:262144,max_samples:9600000,archive_batch:{max_delay_ms:500,max_frames:20,max_bytes:65536}}};let synthesis=0;
   t.mock.method(DashScopeTts.prototype,'stream',async function*(){synthesis++;throw new Error('MUST_NOT_SYNTHESIZE_TEXT_ONLY');});
-  const handle=await startConfiguredHermesProduct(f.config,f.ports);t.after(()=>handle.close());const d=await f.submit();
+  const handle=await f.start(f.config,f.ports);const d=await f.submit();
   assert.ok(f.ttsResource instanceof DashScopeTts);
   assert.deepEqual([f.ttsResource.model,f.ttsResource.voice,f.ttsResource.sampleRate],['qwen-audio-3.0-tts-plus','longanlingxin',22050]);
   const output=Reflect.get(f.owned.assembly.runtime,'output') as OutputAuthority;
@@ -364,7 +379,7 @@ test('explicit optional L3 namespace is forwarded while malformed resource confi
   const f = await fixture(t);
   for (const l3 of [null, 'schema', {namespace: 42}, {namespace: 'bad;schema'},
     {namespace: 'test_l3', fixture_database: true}]) {
-    await assert.rejects(startConfiguredHermesProduct({...f.config, l3} as never, f.ports), /L3_CONFIGURATION_INVALID/);
+    await assert.rejects(f.start({...f.config, l3} as never, f.ports), /L3_CONFIGURATION_INVALID/);
   }
   let seen = 0;
   const ports = {...f.ports, createHandoff: async (selection?: WholeProductExecutionSelection) => {
@@ -374,29 +389,29 @@ test('explicit optional L3 namespace is forwarded while malformed resource confi
     assert.deepEqual(selection.l3, {namespace: 'test_l3'}); seen++;
     return f.ports.createHandoff(selection);
   }};
-  const handle = await startConfiguredHermesProduct({...f.config, l3: {namespace: 'test_l3'}}, ports);
+  const handle = await f.start({...f.config, l3: {namespace: 'test_l3'}}, ports);
   await handle.close(); assert.equal(seen, 1); assert.equal(f.ends, 1);
 });
 
-test('formal product threads the configured native L2 receipt source into the one central runtime (R2)',async t=>{
+test('formal product threads the generated core profile into the one runtime without native L2 receipts',async t=>{
   const profile=await fs.realpath(await fs.mkdtemp(join(tmpdir(),'hermes-profile-')));t.after(()=>fs.rm(profile,{recursive:true,force:true}));
-  const f=await fixture(t,profile);const handle=await startConfiguredHermesProduct(f.config,f.ports);t.after(()=>handle.close());
+  const f=await fixture(t,profile);const handle=await f.start(f.config,f.ports);
   await f.submit();
   const read=await f.owned.assembly.runtime.runReceipts({run_id:'native-controlled',session_id:'continuity'} as never);
-  assert.deepEqual(read.sources.map(source=>[source.source,source.status]),[['l3','not_configured'],['action','not_configured'],['l2','complete']]);
+  assert.deepEqual(read.sources.map(source=>[source.source,source.status]),[['l3','not_configured'],['action','not_configured']]);
   await handle.close();
 });
-test('formal product L2 source fails closed on an unresolved or malformed profile before taking the lock (R2)',async t=>{
+test('formal product core profile rejects unresolved or malformed paths before taking the lock',async t=>{
   const real=await fs.realpath(await fs.mkdtemp(join(tmpdir(),'hermes-profile-')));t.after(()=>fs.rm(real,{recursive:true,force:true}));
   const alias=join(real,'..',`alias-${process.pid}-${Date.now()}`);await fs.symlink(real,alias);t.after(()=>fs.rm(alias,{force:true}));
-  for(const [memory,code] of [[{enabled:true,profile_home:alias},/NATIVE_MEMORY_PROFILE_UNRESOLVED/],[{enabled:true,profile_home:join(real,'missing')},/NATIVE_MEMORY_PROFILE_UNRESOLVED/],
-    [{enabled:true,profile_home:'relative/home'},/NATIVE_MEMORY_CONFIG_INVALID/],[{enabled:true,profile_home:real,extra:1},/NATIVE_MEMORY_CONFIG_INVALID/]] as const){
+  for(const [memory,code] of [[{enabled:true,profile_home:alias},/CORE_PROFILE_HOME_UNRESOLVED/],[{enabled:true,profile_home:join(real,'missing')},/CORE_PROFILE_HOME_UNRESOLVED/],
+    [{enabled:true,profile_home:'relative/home'},/CORE_PROFILE_CONFIG_INVALID/],[{enabled:true,profile_home:real,extra:1},/CORE_PROFILE_CONFIG_INVALID/]] as const){
     const f=await fixture(t);
-    await assert.rejects(startConfiguredHermesProduct({...f.config,native_memory_receipts:memory as never},f.ports),code);
+    await assert.rejects(f.start({...f.config,core_profile:memory as never},f.ports),code);
     await assert.rejects(fs.stat(f.config.lock_file),{code:'ENOENT'});
   }
   const f=await fixture(t);
-  await assert.rejects(startConfiguredHermesProduct({...f.config,native_memory_receipt:{}} as never,f.ports),/HERMES_PRODUCT_CONFIGURATION_REQUIRED/);
+  await assert.rejects(f.start({...f.config,native_memory_receipt:{}} as never,f.ports),/HERMES_PRODUCT_CONFIGURATION_REQUIRED/);
 });
 
 test('production PCM configuration: frame_v1 by default; the ambient lane opts in with interval_v2, continuous and archive_batch',()=>{

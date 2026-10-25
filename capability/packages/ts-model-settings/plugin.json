@@ -1,0 +1,72 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "ts-model-settings",
+  "version": "1.0.0",
+  "description": "读取脱敏设置及准备待主人签名的草案",
+  "extensions": {
+    "ai.yimi.capability": {
+      "schema": "yimi.capability.v1",
+      "receipt_schema": 1,
+      "compat": {
+        "hermes": ">=0.22.5 <0.24",
+        "gateway_api": 1
+      },
+      "maintainer": "lead",
+      "runtime": {
+        "server": "platform_ts",
+        "lazy": true,
+        "idle_timeout_seconds": 900,
+        "host": "shared"
+      },
+      "secrets": [
+        {
+          "name": "HERMES_INTERNAL_KEY"
+        }
+      ],
+      "network": {
+        "egress": []
+      },
+      "scopes": [
+        "owner"
+      ],
+      "tools": {
+        "paios_model_settings_read": {
+          "effect": "observe",
+          "retry": "forbidden",
+          "check_with": "paios_model_settings_read",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:model_settings_read"
+        },
+        "paios_model_settings_draft": {
+          "effect": "workspace",
+          "retry": "forbidden",
+          "check_with": "paios_model_settings_read",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:model_settings_draft"
+        }
+      },
+      "staging": {
+        "fake": {
+          "command": "node",
+          "args": [
+            "fake/server.ts"
+          ]
+        }
+      },
+      "tests": {
+        "contract": "tests/contract.yaml"
+      },
+      "provenance": {
+        "source_commit": "decaff83c56b5e188b229a11e79b32106eeccf43",
+        "workshop_run": null,
+        "adapter_modules": [
+          "server/index.ts"
+        ]
+      }
+    }
+  }
+}

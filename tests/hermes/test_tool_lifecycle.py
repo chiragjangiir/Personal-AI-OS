@@ -333,12 +333,68 @@ def test_budget_approval_is_resumable_when_no_owner_surface_is_available(lifecyc
     assert lifecycle.status('fixture-tool')['pending'] == [staged['pending_id']]
 
 
-def test_concurrent_budget_approval_asks_once_for_the_same_candidate(lifecycle, monkeypatch):
+@pytest.mark.parametrize('first_attempt', ['timeout', 'notify_failed', 'deny'])
+def test_budget_approval_retries_only_unresolved_attempts_without_changing_the_candidate(lifecycle, monkeypatch, first_attempt):
+    from copy import deepcopy
+    from tools import approval, approval_context, approval_gateway_wait, write_approval
+    session, prompts = 'retry-tool-budget-owner', []
+    monkeypatch.setattr(approval_context, 'get_current_session_key', lambda: session)
+    poll = approval_gateway_wait._poll_event
+    def wait(*args, **kwargs):
+        return 'timeout' if len(prompts) == 1 and first_attempt == 'timeout' else poll(*args, **kwargs)
+    monkeypatch.setattr(approval_gateway_wait, '_poll_event', wait)
+    def notify(data):
+        prompts.append(data)
+        if len(prompts) == 1 and first_attempt == 'notify_failed':
+            raise RuntimeError('fixture notification failed')
+        if len(prompts) > 1 or first_attempt == 'deny':
+            choice = 'deny' if len(prompts) == 1 else 'once'
+            assert approval.resolve_gateway_approval(session, choice, request_id=data['request_id'])
+    approval.register_gateway_notify(session, notify)
+    try:
+        staged = lifecycle.stage('fixture-tool', budget_package(2.5))
+        pending, budget = staged['pending_id'], deepcopy(staged['budget'])
+        original = write_approval.get_pending(write_approval.SKILLS, pending)
+        first = lifecycle.approve(pending)
+        assert first['status'] == ('denied' if first_attempt == 'deny' else 'needs_approval')
+        with pytest.raises(ValueError, match='approval'):
+            lifecycle.test(pending)
+        with pytest.raises(ValueError, match='approval'):
+            lifecycle.promote(pending)
+        retried = lifecycle.approve(pending)
+        assert retried['status'] == ('denied' if first_attempt == 'deny' else 'approved')
+        assert len(prompts) == (1 if first_attempt == 'deny' else 2)
+        assert retried['pending_id'] == pending
+        stored = write_approval.get_pending(write_approval.SKILLS, pending)
+        assert stored['payload'] == original['payload']
+        assert {key: value for key, value in stored['tool_candidate'].items() if key != 'budget'} == {
+            key: value for key, value in original['tool_candidate'].items() if key != 'budget'}
+        assert {key: stored['tool_candidate']['budget'][key] for key in budget if key != 'status'} == {
+            key: value for key, value in budget.items() if key != 'status'}
+        assert all(p['allow_session'] is False and p['allow_permanent'] is False for p in prompts)
+        assert len({p['pattern_key'] for p in prompts}) == 1
+        if first_attempt != 'deny':
+            assert prompts[0]['request_id'] != prompts[1]['request_id']
+            assert first['budget']['approval_attempt']['resolved'] is False
+            assert 'approval' not in first['budget']
+            assert lifecycle.test(pending)['success']
+            assert lifecycle.promote(pending)['success']
+        else:
+            assert retried == first and not lifecycle.status('fixture-tool')['installed']
+    finally:
+        approval.unregister_gateway_notify(session)
+
+
+def test_concurrent_budget_approval_retries_a_legacy_unresolved_attempt_once(lifecycle, monkeypatch):
     from concurrent.futures import ThreadPoolExecutor
     from contextvars import copy_context
     import threading
     from tools import approval, approval_context
     pending = lifecycle.stage('fixture-tool', budget_package(2.5))['pending_id']
+    record = lifecycle._pending(pending)
+    record['tool_candidate']['budget']['approval'] = {
+        'request_id': 'expired-attempt', 'resolved': False, 'choice': None}
+    lifecycle._save(record)
     prompts, readers = [], set()
     barrier, guard = threading.Barrier(2), threading.Lock()
     original = lifecycle._pending
@@ -554,3 +610,68 @@ def test_adapter_module_contract_blocks_untested_release(lifecycle, declaration,
         with pytest.raises(ValueError, match='pass testing'):
             lifecycle.promote(pending)
         assert lifecycle.status('fixture-tool')['installed'] is False
+
+
+@pytest.mark.parametrize('action', ['build', 'install'])
+def test_workshop_promotes_directly_to_production_and_reverts_without_staging(lifecycle, tmp_path, monkeypatch, action):
+    from types import SimpleNamespace
+    monkeypatch.syspath_prepend(str(REPO / 'integrations/hermes'))
+    from personal_aios import workshop
+    from hermes_cli import config
+    from gateway import run_scope
+    from hermes_constants import get_hermes_home, set_hermes_home_override, reset_hermes_home_override
+    from tools import skill_ledger
+    production = get_hermes_home()
+    handlers, calls = {}, []
+    files = package()
+    monkeypatch.delenv('PAIOS_RELEASE_SPOOL', raising=False)
+    monkeypatch.setattr(run_scope, 'current_scope', lambda: 'build')
+    monkeypatch.setattr(config, 'load_config', lambda: {'personal_aios': {'builder_url': 'https://builder.invalid'}})
+
+    def remote(route, body, service):
+        calls.append(route)
+        if route in {'/build', '/hub'}:
+            if route == '/build':
+                assert body['files'] == ({} if files == package() else package())
+            else:
+                assert body == {'action': 'install', 'value': 'fixture/fixture-tool'}
+            return {'name': 'fixture-tool', 'files': files}
+        assert route == '/test', 'Package release must not invoke the product-release pipeline'
+        test_root = tmp_path / 'isolated-verifier'
+        for name, content in body.items():
+            target = test_root / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(content)
+        return lifecycle.verifier(test_root)
+
+    monkeypatch.setattr(workshop, 'builder_request', remote)
+    workshop.register(SimpleNamespace(register_tool=lambda name, toolset, schema, fn: handlers.update({name: fn})))
+    def hub(operation, value, **extra):
+        return json.loads(handlers['skills_hub']({'action': operation, 'value': value, **extra}))
+
+    token = set_hermes_home_override(production / 'workshop')
+    try:
+        candidate = hub(action, 'Build the fixture.' if action == 'build' else 'fixture/fixture-tool', name='fixture-tool')
+        pending = candidate['pending_id']
+        root = production / 'skills/workshop/fixture-tool'
+        assert candidate['promoted'] is False and not root.exists()
+        with pytest.raises(ValueError, match='pass testing'):
+            hub('promote', pending)
+        assert hub('test', pending)['success'] and not root.exists()
+        installed = hub('promote', pending)
+        assert installed['success'] and (root / 'SKILL.md').read_text() == files['SKILL.md']
+        assert hub('monitor', 'fixture-tool')['verification']['stdout'] == 'original\n'
+        files = package('upgraded')
+        changed = hub('build', 'Upgrade the fixture.', name='fixture-tool')['pending_id']
+        assert hub('test', changed)['success']
+        assert hub('promote', changed)['success']
+        assert hub('monitor', 'fixture-tool')['verification']['stdout'] == 'upgraded\n'
+        assert hub('revert', 'fixture-tool')['success']
+        assert hub('monitor', 'fixture-tool')['verification']['stdout'] == 'original\n'
+        assert hub('revert', 'fixture-tool')['success'] and not root.exists()
+    finally:
+        reset_hermes_home_override(token)
+    assert not (production / 'workshop/skills').exists()
+    assert not (tmp_path / 'staging').exists()
+    assert calls == [('/build' if action == 'build' else '/hub'), '/test', '/test', '/build', '/test', '/test', '/test']
+    assert [entry['action'] for entry in reversed(skill_ledger.list_entries())].count('tool-release') == 2

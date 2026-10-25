@@ -76,7 +76,8 @@
   "extra_extensions": [
     "owner-override-message.v1.json",
     "call-avatar.v1.json",
-    "appearance-message.v1.json"
+    "appearance-message.v1.json",
+    "model-settings.v1.json"
   ],
   "authority_extension_pins": {
     "payment-message.v1.json": "a48973e08dd595902339c775b8e648f3d7e6b04e274a7a361c42c43c5a85d1dc",

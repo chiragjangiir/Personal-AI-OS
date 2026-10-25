@@ -1578,6 +1578,7 @@ actor ProductionRealtimePublicControlProvider:
             var request = try await makeRequest(.watchBinding,
                 context: RealtimeCanonicalRequestContext(operation: .watchBinding, localBinding: requestID), preservedBody: body)
             request.url = request.url!.appendingPathComponent("credential")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             defer { request.httpBody = nil; request.setValue(nil, forHTTPHeaderField: "Authorization") }
             guard retainedBinding == snapshot, formalWatchRevision == revision, formalWatchOverride == formal, !formalWatchMutationPending,
                   try paired.store.loadPairingData() == pairingData else { throw WatchCredentialError.staleAuthority }

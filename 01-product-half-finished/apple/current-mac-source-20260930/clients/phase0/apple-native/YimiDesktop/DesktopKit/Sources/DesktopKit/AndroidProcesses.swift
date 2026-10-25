@@ -14,7 +14,7 @@ public enum AndroidHostError: LocalizedError {
     case verification(String), command(String, Int32, String), unavailable(String)
     public var errorDescription: String? {
         switch self {
-        case .verification(let name): return "手机执行器下载校验失败：\(name)"
+        case .verification(let name): return "安卓手机组件下载后校验失败：\(name)"
         case .command(let name, let code, let output): return "\(name) 退出（\(code)）：\(output)"
         case .unavailable(let reason): return reason
         }
@@ -45,7 +45,7 @@ public final class AndroidProcesses: AndroidProcessRunning, @unchecked Sendable 
         try spawn(command, log: log, guardChild: true)
     }
     public func watchVirtualMachine(_ stopCommand: AndroidCommand, log: URL) throws -> any AndroidChild {
-        guard let guardian else { throw AndroidHostError.unavailable("手机执行器缺少进程守护程序") }
+        guard let guardian else { throw AndroidHostError.unavailable("安卓手机缺少后台组件") }
         let command = AndroidCommand(guardian, ["--vm", String(getpid()), stopCommand.executable.path] + stopCommand.arguments,
                                      environment: stopCommand.environment)
         // Three helper commands each allow 65 seconds; give their complete shutdown five seconds to exit.
@@ -98,11 +98,11 @@ public final class AndroidProcesses: AndroidProcessRunning, @unchecked Sendable 
     public func waitForListener(port: UInt16, child: any AndroidChild) async throws {
         for _ in 0..<100 {
             try Task.checkCancellation()
-            guard child.isRunning else { throw AndroidHostError.unavailable("手机执行器进程在监听端口 \(port) 前退出") }
+            guard child.isRunning else { throw AndroidHostError.unavailable("安卓手机的一个后台进程在监听端口 \(port) 前退出") }
             if try listenerAvailable(port: port) { return }
             try await Task.sleep(for: .milliseconds(100))
         }
-        throw AndroidHostError.unavailable("手机执行器本地端口 \(port) 启动超时")
+        throw AndroidHostError.unavailable("安卓手机启动超时（端口 \(port)）")
     }
     public func listenerAvailable(port: UInt16) throws -> Bool {
         let descriptor = socket(AF_INET, SOCK_STREAM, 0)

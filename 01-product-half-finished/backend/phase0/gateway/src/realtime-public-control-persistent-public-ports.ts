@@ -1,3 +1,5 @@
+import { GATEWAY_SECRET_ROOT } from './gateway-runtime-paths.ts';
+import { resolve } from 'node:path';
 import { publicApiOrigins } from './public-api-origins.ts';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { lstatSync, readFileSync } from 'node:fs';
@@ -27,7 +29,6 @@ import type {
 
 const LOOPBACK_HOST = '127.0.0.1' as const;
 const TRUSTED_EDGE = 'tencent-nginx-loopback-v1' as const;
-const SECRET_ROOT = 'D:\\AI\\personal ai os\\.runtime\\phase0-roaming\\windows\\secrets' as const;
 const SHA256 = /^[0-9a-f]{64}$/u;
 const DEVICE_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 const SECRET_NAME = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$/u;
@@ -49,10 +50,10 @@ export const PERSISTENT_PUBLIC_SECRET_REFERENCES = Object.freeze({
 });
 
 export const PERSISTENT_PUBLIC_SECRET_PATHS = Object.freeze({
-  livekitApiKey: `${SECRET_ROOT}\\livekit-api-key`,
-  livekitApiSecret: `${SECRET_ROOT}\\livekit-api-secret`,
-  proxyAttestation: `${SECRET_ROOT}\\proxy-attestation`,
-  e2eeRootKey: `${SECRET_ROOT}\\e2ee-root-key`,
+  livekitApiKey: resolve(GATEWAY_SECRET_ROOT, 'livekit-api-key'),
+  livekitApiSecret: resolve(GATEWAY_SECRET_ROOT, 'livekit-api-secret'),
+  proxyAttestation: resolve(GATEWAY_SECRET_ROOT, 'proxy-attestation'),
+  e2eeRootKey: resolve(GATEWAY_SECRET_ROOT, 'e2ee-root-key'),
 });
 
 export type PersistentPublicSecretPaths = Readonly<Record<keyof typeof PERSISTENT_PUBLIC_SECRET_PATHS, string>>;

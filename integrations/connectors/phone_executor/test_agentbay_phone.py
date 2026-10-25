@@ -214,9 +214,12 @@ class AgentBayPhone(unittest.IsolatedAsyncioTestCase):
         self.client.delete.assert_called_once_with(self.session, sync_context=False)
         await provider.release(replacement, keep_warm=False)
 
-    async def test_login_uses_manual_release_and_cannot_be_left_idle(self):
+    async def test_login_has_the_runtime_cap_and_no_earlier_idle_release(self):
         phone = await provider.lease("login")
-        self.assertTrue(self.client.create.call_args.args[0].lifecycle_policy.manual_release)
+        policy = self.client.create.call_args.args[0].lifecycle_policy
+        self.assertFalse(policy.manual_release)
+        self.assertEqual((policy.max_runtime, policy.idle_release_timeout), (provider.MAX_RUNTIME_MIN, provider.MAX_RUNTIME_MIN))
+        self.assertEqual(provider.MAX_RUNTIME_MIN, 60)
         await provider.release(phone)
         self.client.delete.assert_called_once_with(self.session, sync_context=False)
         self.assertFalse(self.state.exists())

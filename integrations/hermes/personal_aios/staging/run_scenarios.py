@@ -390,7 +390,7 @@ def turn(session: str, text: str, timeout_s: float = 900, poll_s: float = 3) -> 
          "intent_class": "explicit_request", "reply_hint": "respond",
          "source": {"channel": "rtc_typed_text", "location": {**FIX, "observed_at": now()}}, "content": {"text": text}}
     run = call("/v1/runs", {"input": json.dumps(d, ensure_ascii=False, sort_keys=True), "instructions": SKILL,
-                            "session_id": session, "memory_write": False})
+                            "session_id": session})
     run_id = run.get("run_id") or run.get("id")
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:

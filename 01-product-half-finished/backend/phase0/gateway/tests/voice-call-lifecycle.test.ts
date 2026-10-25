@@ -8,6 +8,14 @@ import {realModelsPresent,realSpeechConfig,silence,synthesize} from '../../../se
 const settle=async()=>{for(let i=0;i<32;i++)await Promise.resolve();};
 const asset={path:'/synthetic',sha256:'0'.repeat(64)};
 const managedTurns={config:{enabled:true,model:asset,thinking_sound:{...asset,model:'test',voice:'test'}},score:async()=>1,thinking:new Int16Array(480)};
+function archivedSpeech(source:{principal_id:string;device_id:string;device_type:import('../../../services/personal-aios-integration/src/contracts.ts').DeviceType},seq:number):Promise<import('../src/personal-aios-formal-pcm.ts').PcmArchiveSnapshot> {
+  const at=new Date(Date.now()).toISOString(),range={kind:'interval' as const,timebase_id:'utc_unix_ms',start_ms:Date.now(),end_ms:Date.now()+32};
+  return Promise.resolve({event:{schema_version:'paios.event.v1',event_id:`speech-${seq}`,device_id:source.device_id,device_type:source.device_type,
+    principal_id:source.principal_id,consent_ref:'fixture',received_at:at,captured_at:at,origin:'device_observation',user_identity:'unknown',
+    source:{channel:'fixture'},media_type:'audio',mime:'audio/L16',representation:'received_decoded_sample',time_range:range,
+    raw_ref:'l5:'+seq.toString(16).padStart(64,'0'),archive_revision:'b'.repeat(64),archive_status:'durable',payload_sha256:'c'.repeat(64),bytes:1024},
+    chunk:{track_id:`speech-${source.device_id}`,stream_epoch:'fixture-epoch',seq,modality:'audio',source_range:range,format:'pcm_s16le_16000'}});
+}
 function harness(vad:boolean|'silent'=false,closing?:Promise<void>,disconnectOnAudio=false,immediate=false,pickup?:Promise<unknown>, speechOwner:import('../src/call-turn-manager.ts').CallSpeakerEvidence|(()=>Promise<import('../src/call-turn-manager.ts').CallSpeakerEvidence>)=true, speechText:string|((samples:Float32Array)=>string)="请帮我看看明天的天气", keyword?:string, keywordAt=18,draining?:Promise<void>,cancellation?:()=>Promise<void>,stopMeaning=false,resolveTurnAudio?:Parameters<typeof createVoiceCallSession>[0]['resolveTurnAudio'],overrides:Partial<Parameters<typeof createVoiceCallSession>[0]>={}) {
   const fronts:{emit:(e:Record<string,unknown>)=>void;disconnect:()=>void;instructions:string;audio:number[];sentAudio:string[];greetings:string[];cancelled:number;heard:(string|{audio:string})[];discarded:string[];responded:string[];images:number;requests:number;tool: ((name:string,args:unknown)=>unknown)|undefined}[]= [];
   const states:{state:string;reason?:string;mode?:string}[]=[],transcripts:{role:string;text:string;interrupted?:boolean}[]=[],turns:unknown[]=[],errors:unknown[]=[];
@@ -1027,16 +1035,16 @@ test('payment call binding: actual VAD commit carries archived samples for both 
     const accepted=Promise.withResolvers<Awaited<ReturnType<typeof f.authority.initiating>>>();
     let sink:import('../src/personal-aios-formal-text.ts').CallSink|undefined;
     const runtime={watchActivity:async()=>()=>{},replayActivity:async()=>{},authenticate:async()=>phone,cameraReady:async()=>{},movementReady:async()=>{},terminalChanged:()=>{},locate:async()=>undefined,watchReminders:async()=>()=>{},watchVoiceConfirmations:async()=>()=>{},watchPayments:async()=>()=>{},watchCare:async()=>()=>{},watchAmbientTurns:async()=>()=>{},
-      submitCallTurn:async(raw:Parameters<typeof sourceIngress.accept>[0])=>{
+      captureCall:async()=>({source:phone,locate:async()=>undefined,close:async()=>{},turn:async(raw:Parameters<typeof sourceIngress.accept>[0])=>{
         const d=await sourceIngress.accept(raw,{...phone,submission:'owner_call_turn'});
         accepted.resolve(await f.authority.initiating(phone,d));return {processed_event:d};
-      },subscribeResult:async()=>()=>{},paymentDetach:async()=>{}};
-    const formal=createFormalTextIngress({participant:{roomPort:{isConnected:true,on:()=>{},off:()=>{},localParticipant:{publishData:async()=>{},sendText:async()=>{}}},disconnect:async()=>{}} as never,
+      }}),subscribeResult:async()=>()=>{},paymentDetach:async()=>{}};
+    const formal=createFormalTextIngress({participant:{roomPort:{isConnected:true,remoteParticipants:new Map([['terminal',{identity:'terminal'}]]),on:()=>{},off:()=>{},localParticipant:{publishData:async()=>{},sendText:async()=>{}}},disconnect:async()=>{}} as never,
       authority:{credentialForBootstrap:()=>({})} as never,runtime:runtime as never,max_packet_bytes:12288,onError:error=>accepted.reject(error),
       voice_call:{attach:(value:import('../src/personal-aios-formal-text.ts').CallSink)=>{sink=value;return()=>{};}} as never});
     try{
       await formal.onBootstrapConnected({enabledMedia:{data:true},currentBinding:{credentialIdentity:'terminal',continuityId:'session'}} as never);
-      void sink!.state('payment-call','opening',{mode:'manual'});
+      await sink!.state('payment-call','opening',{mode:'manual'});
       await sink!.turn(h.turns[0] as import('../src/voice-call-session.ts').CallTurn);
       const initiating=await accepted.promise;
       assert.equal(initiating.kind,'voice');assert.deepEqual(initiating.utterance&&{
@@ -1079,6 +1087,24 @@ test('turn media prefix joining refuses over sixty seconds before allocating the
   h.manager.start();await h.speech(.5,40000);
   assert.deepEqual(h.errors,[]);
   assert.equal(h.manager.snapshot().closed,false);assert.deepEqual(h.commits,[]);await h.manager.close();
+});
+
+test('turn media prefix shedding releases permission work for the next authorized guest',async t=>{
+  t.mock.timers.enable({apis:['Date','setTimeout'],now:1000000});
+  let longSpeech=false;
+  const h=turnHarness({score:async()=>longSpeech?.1:1,
+    classify:async text=>({stop:false,guests:text==='grant'?'allow':'unchanged'})});
+  t.after(()=>h.manager.close());
+  h.text('grant');h.manager.start();await h.speech(.5);h.manager.replyEnded();await settle();
+  assert.equal(h.manager.guestsAllowed(),true);longSpeech=true;h.text('owner continuation');
+  for(let part=0;part<4;part++){
+    t.mock.timers.tick(128);h.manager.start();t.mock.timers.tick(19000);await h.speech(.5,19000);
+  }
+  h.manager.replyEnded();await settle();h.manager.replyEnded();
+  h.text('authorized guest');h.manager.start();await h.speech(-.5);
+  t.mock.timers.tick(1500);await settle();h.manager.replyEnded();await settle();
+  assert.equal(h.commits.filter(turn=>!turn.owner).length,1,'shed owner speech must not keep the guest permission fence occupied');
+  assert.deepEqual(h.errors,[]);
 });
 
 test('turn media reconnect commits retain each job until its own completion',async()=>{
@@ -1189,9 +1215,9 @@ test('call identity carries capture channel and holds biometric trust for explic
     ['phone','manual','automatic','video',false],
   ] as const){
     let samples=0,active=false;
-    const contexts:unknown[]=[],confirmations:unknown[]=[],errors:unknown[]=[];
+    const contexts:unknown[]=[],confirmations:unknown[]=[],classifications:unknown[]=[],errors:unknown[]=[];
     const source={principal_id:'owner',device_id:device_type,device_type} as never;
-    const call=createVoiceCallSession({room:()=>({}),greeting:{enabled:false},turns:managedTurns,classifySpeech:async()=>({stop:false,guests:'unchanged',directed:true}),
+    const call=createVoiceCallSession({room:()=>({}),greeting:{enabled:false},turns:managedTurns,classifySpeech:async(_text,_signal,context)=>{classifications.push(context);return {stop:false,guests:'unchanged',directed:true};},
       identifySpeech:async(_samples,_ms,_signal,_at,_cache,context)=>{contexts.push(context);return {verdict:'uncertain'};},
       confirmSpeech:async(_source,_session,turn)=>{confirmations.push(turn);return false;},transcribeSpeech:async()=> '请告诉我天气',
       openVad:async()=>({write:async pcm=>{const before=samples;samples+=pcm.length;const speech=pcm.some(v=>v!==0),changed=speech!==active;
@@ -1212,9 +1238,10 @@ test('call identity carries capture channel and holds biometric trust for explic
           assert.equal(await call.request('UNVERIFIED',{call_id:'capture',identity}),false);
         }
       }
-      for(let n=0;n<45;n++){call.pushPcm(new Int16Array(512).fill(1000));await settle();}
-      call.pushPcm(new Int16Array(512));await settle();await new Promise<void>(resolve=>setImmediate(resolve));
+      for(let n=0;n<45;n++){call.pushPcm(new Int16Array(512).fill(1000),archivedSpeech({principal_id:'owner',device_id:device_type,device_type},n));await settle();}
+      call.pushPcm(new Int16Array(512),archivedSpeech({principal_id:'owner',device_id:device_type,device_type},45));await settle();await new Promise<void>(resolve=>setImmediate(resolve));
       assert.ok(contexts.length>0);for(const context of contexts)assert.deepEqual(context,{source,call_id:'capture',trust_call});
+      assert.ok(classifications.length>0);for(const context of classifications)assert.deepEqual(context,{kind:'call',principal_id:'owner',device_id:device_type,call_id:'capture',continuity:'session',raw_ref:'l5:'+'0'.repeat(64),archive_revision:'b'.repeat(64)});
       assert.equal(confirmations.length,1);assert.deepEqual(confirmations.map(value=>{const turn=value as {channel:unknown;trust_call:unknown};return {channel:turn.channel,trust_call:turn.trust_call};}),[{channel,trust_call}]);
       if(mode==='ambient'){
         assert.equal(await call.identify('capture','owner',async()=>'VERIFIED_OWNER'),true);
@@ -1344,9 +1371,9 @@ function automaticConversationFixture(overrides:Partial<Parameters<typeof create
   const h=harness(true,undefined,false,true,pickup,async()=>evidence,()=>text,undefined,18,undefined,undefined,false,undefined,{
     classifySpeech:async words=>({stop:false,guests:words==='允许回答旁人'?'allow':'unchanged',directed:true}),
     createPlayout:()=>({open:async()=>{},push:pcm=>{played+=pcm.length;},playedSamples:()=>played,interrupt:()=>{played=0;},drain:()=>drain,close:async()=>{}}),...overrides});
-  const speech=async(value:typeof evidence,words='主人请求')=>{evidence=value;text=words;
-    for(let n=0;n<20;n++){h.call.pushPcm(new Int16Array(512).fill(1000));await settle();}
-    h.call.pushPcm(new Int16Array(512));for(let n=0;n<6;n++)await settle();
+  const speech=async(value:typeof evidence,words='主人请求',source?:Parameters<typeof archivedSpeech>[0])=>{evidence=value;text=words;
+    for(let n=0;n<20;n++){h.call.pushPcm(new Int16Array(512).fill(1000),source?archivedSpeech(source,n):undefined);await settle();}
+    h.call.pushPcm(new Int16Array(512),source?archivedSpeech(source,20):undefined);for(let n=0;n<6;n++)await settle();
   };
   const reply=async(t:test.TestContext,id:string,words='依米回答')=>{const front=h.fronts.at(-1)!;
     front.emit({type:'response.created',response:{id}});front.emit({type:'response.audio_transcript.delta',response_id:id,delta:words});
@@ -1462,11 +1489,12 @@ test('automatic uncertain speech archive cannot retain a call beyond its unverif
 test('biometric approval at twenty-four seconds renews the owner window before its old deadline',async t=>{
   t.mock.timers.enable({apis:['Date','setTimeout'],now:1000000});
   const approved=Promise.withResolvers<boolean>();let cards=0;
+  const source={principal_id:'owner',device_id:'phone',device_type:'phone' as const,channel:'fixture',consent_ref:'fixture',route_version:'fixture',output_modes:['text' as const]};
   const h=automaticConversationFixture({confirmSpeech:async()=>{cards++;return approved.promise;}}),drain=h.holdDrain();
   try{
     await h.call.open('late-confirmation',{mode:'ambient',intent:'automatic',continuity:'confirmed-source',
-      source:{principal_id:'owner',device_id:'phone',device_type:'phone',channel:'fixture',consent_ref:'fixture',route_version:'fixture',output_modes:['text']}});
-    await h.speech({verdict:'uncertain'},'请帮我看天气');assert.equal(cards,1);
+      source});
+    await h.speech({verdict:'uncertain'},'请帮我看天气',source);assert.equal(cards,1);
     t.mock.timers.tick(24000);approved.resolve(true);for(let n=0;n<8;n++)await settle();
     assert.equal(h.fronts.at(-1)!.requests,1);
     t.mock.timers.tick(1000);await settle();assert.equal(h.call.active(),'late-confirmation','approval replaces the old twenty-five-second deadline');

@@ -3,42 +3,8 @@
   "session_id": "transcript",
   "conversation_session_id": "fixed",
   "status": "completed",
-  "memory_write": true,
-  "memory_receipt_source": {
-    "schema": "hermes.memory_source.v2",
-    "source": "l2",
-    "profile_home": "/tmp/paios-fixture/native-profile",
-    "run_id": "run",
-    "session_id": "fixed",
-    "status": "complete",
-    "error": null,
-    "receipts": [
-      {
-        "receipt_ref": "memory-receipt:c666714aac5e4e2cbdc65c14108cd208",
-        "status": "committed",
-        "kind": "l2",
-        "summary": {
-          "schema": "hermes.memory_receipt.v1",
-          "receipt_ref": "memory-receipt:c666714aac5e4e2cbdc65c14108cd208",
-          "attempt_ref": "memory-attempt:2db941ea164f4d41a91ddf51257fd444",
-          "profile_home": "/tmp/paios-fixture/native-profile",
-          "run_id": "run",
-          "session_id": "fixed",
-          "tool_call_id": "tool",
-          "operation": "add",
-          "target": "memory",
-          "status": "committed",
-          "created_at": 1791185131.372023,
-          "settled_at": 1791185131.372564,
-          "pending_id": null,
-          "predecessor_ref": null
-        }
-      }
-    ],
-    "unsettled_attempts": []
-  },
   "approval_results": [],
   "schema": "hermes.run.v2",
-  "shape_sha256": "f5ecab354c673aa7354730b9d1fa03ccedcc3d47fdb1ccd3b8383b89d4c749e8",
+  "shape_sha256": "b725baece0ba60cdcf1789b5964224e94a08768c3cd252ed30a12a517ebda210",
   "profile_home": "/tmp/paios-fixture/native-profile"
 }

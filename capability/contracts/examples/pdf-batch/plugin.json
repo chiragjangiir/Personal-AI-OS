@@ -1,0 +1,65 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "pdf-batch",
+  "version": "1.0.0",
+  "description": "pdf-batch capability manifest fixture",
+  "extensions": {
+    "ai.yimi.capability": {
+      "schema": "yimi.capability.v1",
+      "receipt_schema": 1,
+      "compat": {
+        "hermes": ">=0.22.5 <0.24",
+        "gateway_api": 1
+      },
+      "maintainer": "yimi",
+      "runtime": {
+        "server": "pdf-batch",
+        "lazy": true,
+        "idle_timeout_seconds": 900,
+        "host": "shared"
+      },
+      "secrets": [],
+      "network": {
+        "egress": []
+      },
+      "scopes": [
+        "owner"
+      ],
+      "tools": {
+        "pdf_batch": {
+          "effect_by_arg": {
+            "$.output": {
+              "workspace": "workspace",
+              "owner_drive": "owner_data"
+            }
+          },
+          "target": "$.output",
+          "task_type": "pdf:batch",
+          "long_running": true,
+          "retry": "allowed",
+          "context_inject": [
+            "principal_id",
+            "job_id",
+            "origin_processed_event_id"
+          ]
+        }
+      },
+      "staging": {
+        "fake": {
+          "command": "python3",
+          "args": [
+            "fake/server.py"
+          ]
+        }
+      },
+      "tests": {
+        "contract": "tests/contract.yaml"
+      },
+      "provenance": {
+        "source_commit": "027f2ef23",
+        "workshop_run": null,
+        "adapter_modules": []
+      }
+    }
+  }
+}

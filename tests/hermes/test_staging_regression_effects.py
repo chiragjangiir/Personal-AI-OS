@@ -125,7 +125,7 @@ print('installed plugin: payment passed without bare package')
 '''
         env = {**MODULE.os.environ, 'HERMES_HOME': str(hermes_constants.get_hermes_home())}
         env.pop('PYTHONPATH', None)
-        result = subprocess.run([sys.executable, '-I', '-c', code,
+        result = subprocess.run([sys.executable, '-I', '-B', '-c', code,
             str(Path(hermes_constants.__file__).resolve().parent),
             str(ROOT / 'deploy/cloud/staging/regression_effects.py'), str(self.path)],
             env=env, capture_output=True, text=True)

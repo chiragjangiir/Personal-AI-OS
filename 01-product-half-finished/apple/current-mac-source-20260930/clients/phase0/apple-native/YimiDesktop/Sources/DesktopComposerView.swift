@@ -26,7 +26,7 @@ struct DesktopComposerView: View {
                         }
                     }
                 }
-                Text("原文件不改写，结果存到文稿/依米。").font(.caption).foregroundStyle(Yimi.ink2)
+                Text("不会改写原文件，结果存到“文稿 / 依米”。").font(.caption).foregroundStyle(Yimi.ink2)
             }
             HStack(alignment: .bottom, spacing: 10) {
                 Button { chooseFiles() } label: { Image(systemName: "plus") }.help("添加文件（⇧⌘A）")
@@ -94,12 +94,7 @@ private struct DesktopTextInput: NSViewRepresentable {
         editor.drawsBackground = false; editor.textContainerInset = NSSize(width: 5, height: 8)
         editor.autoresizingMask = [.width]; editor.isVerticallyResizable = true
         editor.textContainer?.widthTracksTextView = true
-        editor.filePaste = { pasteboard in
-            Task { @MainActor in
-                do { if try await paste(pasteboard) { return }; editor.insertText(pasteboard.string(forType: .string) ?? "", replacementRange: editor.selectedRange()) }
-                catch { report(DesktopUserFacingError.message(error)) }
-            }
-        }
+        editor.configurePaste(paste: paste, report: report)
         scroll.documentView = editor; scroll.drawsBackground = false
         return scroll
     }
@@ -109,6 +104,9 @@ private struct DesktopTextInput: NSViewRepresentable {
         // Marked (IME composing) text never reaches textDidChange, so the binding lags it; writing
         // the binding back during composition would erase what the owner is typing.
         if !editor.hasMarkedText(), editor.string != text { editor.string = text }
+    }
+    static func dismantleNSView(_ scroll: NSScrollView, coordinator: Coordinator) {
+        (scroll.documentView as? ComposerTextView)?.invalidatePaste()
     }
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: DesktopTextInput
@@ -124,7 +122,30 @@ private struct DesktopTextInput: NSViewRepresentable {
     }
 }
 
-private final class ComposerTextView: NSTextView {
+final class ComposerTextView: NSTextView {
     var filePaste: ((NSPasteboard) -> Void)?
+    private(set) var pasteTasks: [UUID: Task<Void, Never>] = [:]
+    func configurePaste(paste: @escaping @MainActor (NSPasteboard) async throws -> Bool, report: @escaping (String) -> Void) {
+        filePaste = { [weak self] pasteboard in
+            guard let self else { return }
+            let id = UUID(), text = pasteboard.string(forType: .string) ?? ""
+            pasteTasks[id] = Task { @MainActor [weak self] in
+                defer { self?.pasteTasks[id] = nil }
+                do {
+                    let handled = try await paste(pasteboard)
+                    guard !Task.isCancelled, let self else { return }
+                    if !handled { self.insertText(text, replacementRange: self.selectedRange()) }
+                } catch {
+                    guard !Task.isCancelled, self != nil else { return }
+                    report(DesktopUserFacingError.message(error))
+                }
+            }
+        }
+    }
+    func invalidatePaste() {
+        filePaste = nil; delegate = nil
+        for task in pasteTasks.values { task.cancel() }
+        pasteTasks.removeAll()
+    }
     override func paste(_ sender: Any?) { filePaste?(.general) }
 }

@@ -4,6 +4,7 @@ import {join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {tmpdir} from 'node:os';
 import {DatabaseSync} from 'node:sqlite';
+import {createHash} from 'node:crypto';
 import {PosixStorage} from '../../01-product-half-finished/backend/services/personal-aios-integration/src/storage.ts';
 import {RawArchive} from '../../01-product-half-finished/backend/services/personal-aios-integration/src/archive.ts';
 import {requireRawAvailable,streamManifestRevision} from '../../01-product-half-finished/backend/services/personal-aios-integration/src/stream-archive.ts';
@@ -13,7 +14,8 @@ import {prepareSessionIndex,transferSession,verifySession,type SessionStorage} f
 
 const namespaces=['manifests','stream-revisions','quarantine-manifests'];
 const budget={max_chunk_bytes:64*1024*1024,max_total_bytes:Number.MAX_SAFE_INTEGER,max_chunks:1000000,max_revisions:1000000,max_seq:Number.MAX_SAFE_INTEGER};
-const MAX_RECEIPT_ITEMS=20000,MAX_LANE_ROWS=4096;
+// Each revision has a content key and ordinal alias. Receipt capacity is a total transport allowance.
+const MAX_LANE_ROWS=2*budget.max_revisions,MAX_RECEIPT_ITEMS=20000;
 const absent=(e:unknown)=>(e as NodeJS.ErrnoException).code==='ENOENT';
 const json=(bytes:Uint8Array)=>JSON.parse(Buffer.from(bytes).toString('utf8'));
 type Item={namespace:string;key:string;size:number};
@@ -38,6 +40,26 @@ class FrozenStorage extends PosixStorage {
       }
       for(const row of index.prepare('SELECT key FROM keys WHERE namespace=? ORDER BY key').iterate(namespace))yield String(row.key);
     }finally{index.close();}
+  }
+  override async objectSize(namespace:string,key:string):Promise<number>{
+    check(/^[a-z][a-z0-9-]{0,40}$/u.test(namespace)&&/^[a-f0-9]{64}$/u.test(key),'UNSAFE_SNAPSHOT_KEY');
+    try{const directory=join(this.source,namespace),parent=await fs.lstat(directory);
+      check(parent.isDirectory()&&!parent.isSymbolicLink(),'UNSAFE_SNAPSHOT_NAMESPACE');
+      const stat=await fs.lstat(join(directory,key));check(stat.isFile()&&!stat.isSymbolicLink(),'UNSAFE_SNAPSHOT_OBJECT');return stat.size;
+    }catch(error){if(!absent(error))throw error;return super.objectSize(namespace,key);}
+  }
+  override async *readObjectRange(key:string,offset:number,bytes:number):AsyncGenerator<Uint8Array>{
+    check(/^[a-f0-9]{64}$/u.test(key)&&Number.isSafeInteger(offset)&&offset>=0&&Number.isSafeInteger(bytes)&&bytes>=0,'INVALID_OBJECT_RANGE');
+    const directory=join(this.source,'objects');let handle;
+    try{const stat=await fs.lstat(directory);check(stat.isDirectory()&&!stat.isSymbolicLink(),'UNSAFE_SNAPSHOT_NAMESPACE');
+      handle=await fs.open(join(directory,key),constants.O_RDONLY|constants.O_NOFOLLOW);
+    }catch(error){if(!absent(error))throw error;}
+    if(!handle){yield* super.readObjectRange(key,offset,bytes);return;}
+    try{const stat=await handle.stat();check(stat.isFile()&&offset+bytes<=stat.size,'SESSION_FINAL_RANGE_FAILED');
+      for(let position=offset;position<offset+bytes;){const buffer=Buffer.allocUnsafe(Math.min(65536,offset+bytes-position));
+        const read=await handle.read(buffer,0,buffer.length,position);check(read.bytesRead>0,'SESSION_FINAL_RANGE_FAILED');
+        position+=read.bytesRead;yield buffer.subarray(0,read.bytesRead);}
+    }finally{await handle.close();}
   }
   override async readHot(namespace:string,key:string){
     check(/^[a-z][a-z0-9-]{0,40}$/u.test(namespace)&&/^[a-f0-9]{64}$/u.test(key),'UNSAFE_SNAPSHOT_KEY');
@@ -64,14 +86,18 @@ async function validate(root:string,receipt:Receipt){
   try{
     const indexed=await prepareSessionIndex(root,scratch);
     check(!indexed||(disk as SessionStorage).readFinal,'SESSION_NATIVE_READER_REQUIRED');
+    const inventory=new Set(receipt.files.map(f=>`${f.namespace}/${f.key}`));
+    check(inventory.size===receipt.files.length,'L5_INVENTORY_DUPLICATE');
     if(indexed)for await(const key of disk.keys('session-finals')){
-      check(receipt.files.some(f=>f.namespace==='session-finals'&&f.key===key),'L5_FINAL_INVENTORY_MISSING');
+      check(inventory.has(`session-finals/${key}`),'L5_FINAL_INVENTORY_MISSING');
       await verifySession(disk,`l5:${key}`);
     }
-    const seen=new Set<string>();
-    for(const item of receipt.files){const id=`${item.namespace}/${item.key}`;
-      check(!seen.has(id),'L5_INVENTORY_DUPLICATE');seen.add(id);
+    for(const item of receipt.files){
       check(/^[a-z][a-z0-9-]{0,40}$/u.test(item.namespace),'L5_INVENTORY_NAMESPACE');
+      if(item.namespace==='objects'){check(await disk.objectSize(item.namespace,item.key)===item.size,'L5_INVENTORY_INTEGRITY');
+        const hash=createHash('sha256');let size=0;
+        for await(const chunk of disk.readObjectRange(item.key,0,item.size)){hash.update(chunk);size+=chunk.length;}
+        check(size===item.size&&hash.digest('hex')===item.key,'L5_INVENTORY_INTEGRITY');continue;}
       const bytes=await disk.read(item.namespace,item.key);check(bytes.length===item.size,'L5_INVENTORY_INTEGRITY');
       if(item.namespace==='source-clock-bases'){const basis=json(bytes);check(digest(basis)===item.key,'MEDIA_CLOCK_BASIS_DENIED');
         if(basis.anchor_ref)await disk.read('source-clock-bases',basis.anchor_ref.slice(13));}}
@@ -96,10 +122,14 @@ export async function exportL5(source:string,dest:string,asOf:string,cold?:ColdC
   check((await fs.lstat(source)).isDirectory()&&!(await fs.lstat(source)).isSymbolicLink(),'UNSAFE_SNAPSHOT_ROOT');
   await fs.mkdir(dest,{recursive:true,mode:0o700});
   check((await fs.readdir(dest)).length===0,'L5_DESTINATION_NOT_EMPTY');
-  const scratch=await fs.mkdtemp(join(dest,'.cold-read-'));
+  // Build only in an invocation-owned directory. A rejected snapshot leaves the destination retryable.
+  const output=await fs.mkdtemp(join(dest,'.l5-export-'));
+  const scratch=await fs.mkdtemp(join(output,'.cold-read-'));
   let disk:FrozenStorage|undefined,archive:RawArchive|undefined,index:DatabaseSync|undefined;
   const receipt:Receipt={schema:'paios.staging.l5.v1',as_of:new Date(end).toISOString(),since:new Date(start).toISOString(),files:[],sources:[],excluded_history:[],excluded_history_count:0,uncommitted_proposals:0,revoked_refs:0,external_attachments:[],
     closure_policy:'Any received_at in [since,as_of] selects the complete original or stream chain, including older parents and all objects. Other historical consumer references are intentionally unavailable. excluded_history is a sample of at most 128 refs; excluded_history_count is exact. External attachment paths and legacy visual originals are outside native L5.'};
+  let receiptItems=0;
+  const reserve=(items:number)=>{check(receiptItems+items<=MAX_RECEIPT_ITEMS,'L5_RECEIPT_BUDGET_EXCEEDED');receiptItems+=items;};
   try{
     try{const path=join(source,'cold.sqlite'),stat=await fs.lstat(path);check(stat.isFile()&&!stat.isSymbolicLink(),'UNSAFE_COLD_INDEX');
       // Even SQLite readOnly connections can create WAL sidecars. Open only a frozen copied index.
@@ -115,13 +145,15 @@ export async function exportL5(source:string,dest:string,asOf:string,cold?:ColdC
     index=new DatabaseSync(join(scratch,'snapshot-groups.sqlite'));
     index.exec('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-4096; PRAGMA temp_store=FILE; PRAGMA max_page_count=262144; CREATE TABLE rows(ref TEXT,namespace TEXT,key TEXT,received_at TEXT,recent INTEGER); CREATE INDEX by_ref ON rows(ref); CREATE TABLE copied(id TEXT PRIMARY KEY)');
     const insert=index.prepare('INSERT INTO rows VALUES(?,?,?,?,?)'),copied=index.prepare('SELECT id FROM copied WHERE id=?');
-    const put=async(namespace:string,key:string,bytes?:Uint8Array)=>{
+    const put=async(namespace:string,key:string,bytes?:Uint8Array|AsyncIterable<Uint8Array>)=>{
       const id=`${namespace}/${key}`;if(copied.get(id))return;
-      check(receipt.files.length<MAX_RECEIPT_ITEMS,'L5_RECEIPT_BUDGET_EXCEEDED');
-      const data=bytes??await disk!.read(namespace,key);await fs.mkdir(join(dest,namespace),{recursive:true,mode:0o700});
-      await fs.writeFile(join(dest,namespace,key),data,{flag:'wx',mode:0o600});index!.prepare('INSERT INTO copied VALUES(?)').run(id);
-      receipt.files.push({namespace,key,size:data.length});
-      if(namespace==='source-clock-bases'){const basis=json(data);check(digest(basis)===key,'MEDIA_CLOCK_BASIS_DENIED');
+      reserve(1);
+      const data=bytes??await disk!.read(namespace,key);await fs.mkdir(join(output,namespace),{recursive:true,mode:0o700});
+      let size=0;const handle=await fs.open(join(output,namespace,key),'wx',0o600);
+      try{if(data instanceof Uint8Array){await handle.writeFile(data);size=data.length;}
+        else for await(const chunk of data){await handle.writeFile(chunk);size+=chunk.length;}}finally{await handle.close();}
+      index!.prepare('INSERT INTO copied VALUES(?)').run(id);receipt.files.push({namespace,key,size});
+      if(namespace==='source-clock-bases'){check(data instanceof Uint8Array,'SNAPSHOT_METADATA_BYTES_REQUIRED');const basis=json(data);check(digest(basis)===key,'MEDIA_CLOCK_BASIS_DENIED');
         if(basis.anchor_ref)await put(namespace,basis.anchor_ref.slice(13));}
     };
     for(const namespace of namespaces)for await(const key of disk.keys(namespace)){
@@ -164,26 +196,37 @@ export async function exportL5(source:string,dest:string,asOf:string,cold?:ColdC
         chosen=rows.filter(row=>committed.has(row.key));receipt.uncommitted_proposals+=rows.length-chosen.length;
         if(!chosen.some(row=>recent.has(row.key))){receipt.excluded_history_count++;if(receipt.excluded_history.length<128)receipt.excluded_history.push({ref,received_at:first.received_at});continue;}
       }
-      const target=new PosixStorage(dest);
-      let final;
-      try{final=first.namespace==='stream-revisions'?await transferSession(disk,target,ref,put):false;}
-      finally{await target.close();}
-      const folded=new Set(final?final.records.map(r=>`${r.namespace}/${r.key}`):[]);
-      if(final)receipt.files.push({namespace:'session-finals',key:ref.slice(3),size:(await disk.read('session-finals',ref.slice(3))).length});
+      const records=[];
+      for(const row of chosen)records.push({...row,record:json(await disk.read(row.namespace,row.key))});
+      reserve(1+records.reduce((n,{record})=>n+(record.event.attachments?.length??0),0));
       receipt.sources.push({ref,principal,revision,kind:first.namespace==='quarantine-manifests'?'quarantine':first.namespace==='manifests'?'original':'stream',
         ...(first.namespace==='stream-revisions'?{revisions:chosen.map(r=>r.key)}:{})});
-      for(const {namespace,key} of chosen){const record=json(await disk.read(namespace,key));if(!folded.has(`${namespace}/${key}`))await put(namespace,key);
-        if(!final)for(const hash of namespace==='stream-revisions'?(record.chunk?[record.chunk.object_hash]:record.chunks.map((c:any)=>c.object_hash)):[record.payload_sha256])await put('objects',hash);
+      for(const {record} of records)for(const attachment of record.event.attachments??[])receipt.external_attachments.push(attachment);
+      const target=new PosixStorage(output);
+      let final;
+      try{final=first.namespace==='stream-revisions'?await transferSession(disk,target,ref,put,async()=>{
+        reserve(1);
+        receipt.files.push({namespace:'session-finals',key:ref.slice(3),size:(await disk!.read('session-finals',ref.slice(3))).length});
+      }):false;}
+      finally{await target.close();}
+      const folded=new Set(final?final.records.map(r=>`${r.namespace}/${r.key}`):[]);
+      const finalObjects=new Set(final?[final.object_hash,...final.objects.map(o=>o.key),...final.retained_objects?.map(o=>o.key)??[]]:[]);
+      for(const {namespace,key,record} of records){if(!folded.has(`${namespace}/${key}`))await put(namespace,key);
+        for(const hash of namespace==='stream-revisions'?(record.chunk?[record.chunk.object_hash]:record.chunks.map((c:any)=>c.object_hash)):[record.payload_sha256])
+          if(!finalObjects.has(hash))await put('objects',hash);
         for(const c of record.chunk?[record.chunk]:record.chunks??[])if(c.clock_basis_ref)await put('source-clock-bases',c.clock_basis_ref.slice(13));
         if(record.event.source.capture_timing)await put('source-clock-bases',record.event.source.capture_timing.basis_ref.slice(13));
-        if(record.event.attachments?.length)receipt.external_attachments.push(...record.event.attachments);
       }
     }
     for await(const key of disk.keys('owner-deletions'))await put('owner-deletions',key);
     receipt.files.sort((a,b)=>`${a.namespace}/${a.key}`.localeCompare(`${b.namespace}/${b.key}`));
-    await validate(dest,receipt);
-    await fs.writeFile(join(dest,'l5-inventory.json'),JSON.stringify(receipt,null,2)+'\n',{flag:'wx',mode:0o600});return receipt;
-  }finally{index?.close();await archive?.close();await disk?.close();await fs.rm(scratch,{recursive:true,force:true});}
+    await validate(output,receipt);
+    await fs.writeFile(join(output,'l5-inventory.json'),JSON.stringify(receipt,null,2)+'\n',{flag:'wx',mode:0o600});
+    index.close();index=undefined;await archive.close();archive=undefined;await disk.close();disk=undefined;
+    await fs.rm(scratch,{recursive:true,force:true});
+    for(const name of await fs.readdir(output))await fs.rename(join(output,name),join(dest,name));
+    return receipt;
+  }finally{index?.close();await archive?.close();await disk?.close();await fs.rm(output,{recursive:true,force:true});}
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
   const [mode,...argv]=process.argv.slice(2),args=Object.fromEntries(Array.from({length:argv.length/2},(_,i)=>[argv[i*2],argv[i*2+1]]));

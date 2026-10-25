@@ -234,11 +234,14 @@ final class FileStage: @unchecked Sendable {
         } catch { close(parent); throw error }
     }
     func replacementRecord() throws -> FileReplacement? {
-        guard target.info != nil else { return nil }
         let payload = try FileCapability.checkedStat(fd)
         return FileReplacement(directory: holding.path, device: holding.identity.dev, inode: holding.identity.ino,
                                payloadDevice: payload.st_dev, payloadInode: payload.st_ino,
-                               payloadSize: payload.st_size, payloadMtime: Desktop.mtime(payload))
+                               payloadSize: payload.st_size, payloadMtime: Desktop.mtime(payload),
+                               createdNodes: target.info == nil ? try nodes.map {
+                                   CreatedNode(path: String(try FileCapability.path($0.fd).dropFirst(holding.path.count + 1)),
+                                               device: $0.identity.dev, inode: $0.identity.ino, directory: $0.directory)
+                               } : nil)
     }
     func commit(checkpoint: (String) -> Void = { _ in }) throws -> stat {
         try target.validate(unchanged: true); try holding.validate()
@@ -280,6 +283,9 @@ final class FileStage: @unchecked Sendable {
 
     /// Shared by normal completion and launch recovery; the audit keeps the same undo retention policy.
     static func preserveBackup(source: Int32, holding: Int32, name: String, durable: String) throws {
+        // The durable replacement intent already owns this path. Allocate only when saving the captured original.
+        try FileManager.default.createDirectory(atPath: (durable as NSString).deletingLastPathComponent,
+                                                withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         let parent = open((durable as NSString).deletingLastPathComponent, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
         guard parent >= 0 else { throw GuardPath.posix(durable) }; defer { close(parent) }
         let temporary = ".backup-" + UUID().uuidString
@@ -292,12 +298,39 @@ final class FileStage: @unchecked Sendable {
         }
         let backup = openat(parent, temporary, O_RDONLY | O_NOFOLLOW | O_CLOEXEC)
         guard backup >= 0 else { throw GuardPath.posix(durable) }; defer { close(backup) }
-        guard fsync(backup) == 0, renameat(parent, temporary, parent, (durable as NSString).lastPathComponent) == 0,
-              fsync(parent) == 0 else { throw GuardPath.posix(durable) }
+        guard fsync(backup) == 0 else { throw GuardPath.posix(durable) }
+        if renameatx_np(parent, temporary, parent, (durable as NSString).lastPathComponent, UInt32(RENAME_EXCL)) != 0 {
+            guard errno == EEXIST else { throw GuardPath.posix(durable) }
+            // A crash can leave the durable copy alongside its captured source. Never replace an existing undo.
+            let existing = openat(parent, (durable as NSString).lastPathComponent, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK)
+            guard existing >= 0 else { throw GuardPath.posix(durable) }; defer { close(existing) }
+            guard try sameContents(source, existing) else { throw ToolFailure("GUARD_RECOVERY_REQUIRED", "持久备份已经改变，保留恢复原件") }
+        }
+        guard fsync(parent) == 0 else { throw GuardPath.posix(durable) }
+        let directory = URL(fileURLWithPath: durable).deletingLastPathComponent()
+        for ancestor in [directory.deletingLastPathComponent(), directory.deletingLastPathComponent().deletingLastPathComponent()] {
+            let fd = open(ancestor.path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
+            guard fd >= 0 else { throw GuardPath.posix(ancestor.path) }; defer { close(fd) }
+            guard fsync(fd) == 0 else { throw GuardPath.posix(ancestor.path) }
+        }
         var held = stat()
         guard fstatat(holding, name, &held, AT_SYMLINK_NOFOLLOW) == 0,
               FileIdentity(held) == FileIdentity(try FileCapability.checkedStat(source)) else { throw ToolFailure("GUARD_RECOVERY_REQUIRED", "备份身份已经改变") }
         guard unlinkat(holding, name, 0) == 0, fsync(holding) == 0 else { throw GuardPath.posix(durable) }
+    }
+
+    private static func sameContents(_ source: Int32, _ saved: Int32) throws -> Bool {
+        let original = try FileCapability.checkedStat(source), backup = try FileCapability.checkedStat(saved)
+        guard backup.st_mode & S_IFMT == S_IFREG, original.st_size == backup.st_size else { return false }
+        var offset: Int64 = 0, left = [UInt8](repeating: 0, count: 65536), right = left
+        while offset < original.st_size {
+            let count = Int(min(Int64(left.count), original.st_size - offset))
+            let first = pread(source, &left, count, offset), second = pread(saved, &right, count, offset)
+            guard first >= 0, second >= 0 else { throw GuardPath.posix("备份") }
+            guard first == count, second == count, left.prefix(count).elementsEqual(right.prefix(count)) else { return false }
+            offset += Int64(count)
+        }
+        return true
     }
 
     static func recoverPending(_ history: AuditStore) throws {
@@ -316,7 +349,9 @@ final class FileStage: @unchecked Sendable {
         }
     }
     private static func recover(_ row: inout AuditRecord) throws -> stat? {
-        guard let undo = row.undo, let replacement = undo.replacement else { return nil }
+        guard let undo = row.undo else { return nil }
+        if let creation = undo.creation { try recoverCreation(&row, undo: undo, replacement: creation); return nil }
+        guard let replacement = undo.replacement else { return nil }
         let parent = (undo.originalPath as NSString).deletingLastPathComponent
         let namespace = try FileCapability.open(root: parent, path: parent)
         var current = stat()
@@ -359,6 +394,40 @@ final class FileStage: @unchecked Sendable {
         row.undo?.replacement = nil
         if applied, let info, info.st_size == replacement.payloadSize, Desktop.mtime(info) == replacement.payloadMtime { return info }
         return nil
+    }
+    private static func recoverCreation(_ row: inout AuditRecord, undo: UndoRecord, replacement: FileReplacement) throws {
+        let parent = (undo.originalPath as NSString).deletingLastPathComponent
+        let target = try FileCapability.open(root: parent, path: undo.originalPath)
+        let applied = target.info.map(FileIdentity.init) == FileIdentity(dev: replacement.payloadDevice, ino: replacement.payloadInode)
+        let stage = try FileCapability.open(root: parent, path: replacement.directory)
+        if let fd = stage.fd {
+            guard stage.info.map(FileIdentity.init) == FileIdentity(dev: replacement.device, ino: replacement.inode) else {
+                throw ToolFailure("GUARD_RECOVERY_REQUIRED", "恢复目录身份已经改变")
+            }
+            if !applied {
+                for node in (replacement.createdNodes ?? []).reversed() {
+                    let held = try FileCapability.open(root: stage.path, path: stage.path + "/" + node.path)
+                    if held.info == nil { continue }
+                    guard held.info.map(FileIdentity.init) == FileIdentity(dev: node.device, ino: node.inode) else {
+                        throw ToolFailure("GUARD_RECOVERY_REQUIRED", "暂存文件身份已经改变")
+                    }
+                    try held.validate()
+                    guard unlinkat(held.parent, held.name, node.directory ? AT_REMOVEDIR : 0) == 0 else { throw GuardPath.posix(held.path) }
+                }
+            }
+            guard fsync(fd) == 0 else { throw GuardPath.posix(stage.path) }
+            try stage.validate()
+            guard unlinkat(stage.parent, stage.name, AT_REMOVEDIR) == 0, fsync(stage.parent) == 0 else { throw GuardPath.posix(stage.path) }
+        }
+        if applied, let info = target.info {
+            row.undo?.device = UInt64(UInt32(bitPattern: info.st_dev)); row.undo?.inode = info.st_ino
+            row.undo?.size = replacement.payloadSize; row.undo?.mtime = replacement.payloadMtime
+            row.result = "ok"; row.guardCode = nil; row.errorCode = nil
+        } else {
+            row.result = target.info == nil ? "cancelled" : "error"
+            row.errorCode = target.info == nil ? "DESKTOP_INTERRUPTED" : "GUARD_RECOVERY_REQUIRED"
+        }
+        row.undo?.creation = nil
     }
     private func place(_ payload: stat) throws {
         try holding.validate()

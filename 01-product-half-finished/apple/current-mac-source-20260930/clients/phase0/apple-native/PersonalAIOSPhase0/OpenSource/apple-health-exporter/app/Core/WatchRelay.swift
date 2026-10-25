@@ -42,7 +42,7 @@ struct WatchRelaySources {
             payment_pending: WatchYimiPaymentPending(count: count,
                 summary: count == 0 ? "" : "有\(count)笔付款等你确认。" + AssistantNotificationCenter.watchPaymentReadOnlyBody),
             ride: current && (ride != nil || rideMetrics != nil) ? WatchYimiRide(
-                hr_zone: ride?.hr_zone, text: ride?.text, max_hr_bpm: ride?.max_hr_bpm, metrics: rideMetrics) : nil)
+                hr_zone: ride?.hr_zone, text: ride?.text, max_hr_bpm: ride?.max_hr_bpm, metrics: rideMetrics, feedback_at: ride?.at) : nil)
     }
 
     private static func timestamp(_ date: Date) -> String {

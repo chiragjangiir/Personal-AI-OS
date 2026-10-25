@@ -16,96 +16,53 @@ def load_initializer():
     return module
 
 
-@pytest.mark.parametrize('repair_environment', [None, ''])
-def test_builder_profile_never_inherits_owner_configuration(tmp_path, monkeypatch, repair_environment):
-    monkeypatch.delenv('PAIOS_BUILDER_REPAIR_MODEL', raising=False)
-    if repair_environment is not None:
-        monkeypatch.setenv('PAIOS_BUILDER_REPAIR_MODEL', repair_environment)
+@pytest.fixture(autouse=True)
+def authority_projection(tmp_path, monkeypatch):
+    import json
+    value = {'environment_id': 'test-builder', 'profile': 'builder', 'revision': 3, 'group': 'build',
+        'configured': True, 'config': {'model': {'default': 'fixture-build', 'provider': 'fixture-provider',
+        'base_url': 'https://fixture.invalid/v1'}, 'providers': {'fixture-provider': {
+        'base_url': 'https://fixture.invalid/v1', 'key_env': 'TEST_BUILDER_KEY', 'api_mode': 'chat_completions'}},
+        'fallback_providers': [], 'workshop': {}},
+        'credentials': [{'name': 'TEST_BUILDER_KEY', 'handle': 'build-only-handle'}]}
+    path = tmp_path / 'projection.json'
+    path.write_text(json.dumps(value))
+    monkeypatch.setenv('PAIOS_MODEL_SETTINGS_PROJECTION', str(path))
+    return path
+
+
+def test_builder_consumes_only_revisioned_authority(tmp_path, monkeypatch, authority_projection):
+    import json
     initializer = load_initializer()
     monkeypatch.setattr(initializer.os, 'geteuid', lambda: 10000)
     home, access = tmp_path / 'home', tmp_path / 'access'
     home.mkdir()
-    (home / 'config.yaml').write_text('mcp_servers: {owner: {command: owner-command}}\n')
+    (home / 'config.yaml').write_text('model: {default: stale-owner}\nmcp_servers: {owner: {command: owner-command}}\n')
+    monkeypatch.setenv('PAIOS_BUILDER_MODEL', 'ignored-env-model')
+    monkeypatch.setenv('PAIOS_BUILDER_BASE_URL', 'https://ignored.invalid/v1')
     config = initializer.prepare_builder_home(home, access)
-    assert yaml.safe_load((home / 'config.yaml').read_text()) == config
-    assert yaml.safe_load((home / 'workshop/config.yaml').read_text()) == config
-    assert config['model'] == {'default': 'deepseek-v4.1-flash', 'provider': 'paios-builder',
-                              'base_url': 'https://opencode.ai/zen/go/v1'}
-    assert config['custom_providers'][0]['api_mode'] == 'chat_completions'
-    assert config['custom_providers'][0]['key_env'] == 'PAIOS_BUILDER_API_KEY'
-    assert config['workshop'] == {}
-    assert config['mcp_servers'] == {}
-    assert config['plugins'] == {'enabled': []}
+    assert config['model'] == json.loads(authority_projection.read_text())['config']['model']
+    assert config['model_settings']['revision'] == 3
+    assert config['mcp_servers'] == {} and config['plugins'] == {'enabled': []}
     assert config['skills']['external_dirs'] == []
     assert config['memory'] == {'memory_enabled': False, 'user_profile_enabled': False}
-    # Builds follow the product budget rule: a shared tool-call cap, no turn or time limit.
     assert (config['agent']['max_tool_calls'], config['agent']['tool_call_milestone_interval']) == (120, 20)
     assert not {'max_turns', 'background_max_turns', 'run_budget_seconds'} & config['agent'].keys()
     key = home / 'workshop-ssh/id_ed25519'
-    assert config['terminal']['ssh_key'] == str(key)
     assert (access / 'authorized_keys').read_bytes() == (
         b'restrict,command="/usr/local/bin/workshop-scope" ' + key.with_suffix('.pub').read_bytes())
     public_key = key.with_suffix('.pub').read_bytes()
-    initializer.prepare_builder_home(home, access)
+    assert initializer.prepare_builder_home(home, access) == config
     assert key.with_suffix('.pub').read_bytes() == public_key
-    monkeypatch.setenv('PAIOS_BUILDER_PROVIDER', 'owner-builder')
-    monkeypatch.setenv('PAIOS_BUILDER_MODEL', 'owner-model')
-    monkeypatch.setenv('PAIOS_BUILDER_BASE_URL', 'https://model.example/v1')
-    changed = initializer.prepare_builder_home(home, access)
-    assert changed['model'] == {'provider': 'owner-builder', 'default': 'owner-model',
-                                'base_url': 'https://model.example/v1'}
-    assert changed['workshop'] == {}
+    assert yaml.safe_load((home / 'workshop/config.yaml').read_text()) == config
 
 
-@pytest.mark.parametrize('repair_environment', [None, ''])
-def test_builder_preserves_only_repair_model_override(tmp_path, monkeypatch, repair_environment):
-    monkeypatch.delenv('PAIOS_BUILDER_REPAIR_MODEL', raising=False)
-    if repair_environment is not None:
-        monkeypatch.setenv('PAIOS_BUILDER_REPAIR_MODEL', repair_environment)
-    initializer = load_initializer()
-    monkeypatch.setattr(initializer.os, 'geteuid', lambda: 10000)
-    home = tmp_path / 'home'
-    home.mkdir()
-    (home / 'config.yaml').write_text(yaml.safe_dump({
-        'workshop': {'repair_model': 'stronger-fixture', 'owner_data': 'excluded'},
-        'model': {'default': 'owner-model'}, 'mcp_servers': {'owner': {}},
-    }))
-    config = initializer.prepare_builder_home(home, tmp_path / 'access')
-    assert config['workshop'] == {'repair_model': 'stronger-fixture'}
-    assert config['model']['default'] == 'deepseek-v4.1-flash'
-    assert config['mcp_servers'] == {}
-    monkeypatch.setenv('PAIOS_BUILDER_REPAIR_MODEL', 'benchmark-fixture')
-    changed = initializer.prepare_builder_home(home, tmp_path / 'access')
-    assert changed['workshop'] == {'repair_model': 'benchmark-fixture'}
-    assert changed['model'] == config['model']
-    assert changed['custom_providers'] == config['custom_providers']
-    assert yaml.safe_load((home / 'workshop/config.yaml').read_text()) == changed
-
-
-def test_builder_rejects_native_opencode_provider_before_writing(tmp_path, monkeypatch):
-    monkeypatch.setenv('PAIOS_BUILDER_PROVIDER', 'opencode-go')
-    with pytest.raises(ValueError, match='custom provider name'):
-        load_initializer().prepare_builder_home(tmp_path / 'home', tmp_path / 'access')
-    assert not (tmp_path / 'home').exists()
-
-
-@pytest.mark.parametrize('repair_model', ['', '   ', 123, {'provider': 'other'}])
-def test_builder_rejects_invalid_repair_model_without_replacing_profile(tmp_path, monkeypatch, repair_model):
-    initializer = load_initializer()
-    home = tmp_path / 'home'
-    home.mkdir()
-    path = home / 'config.yaml'
-    saved = yaml.safe_dump({'workshop': {'repair_model': repair_model}})
-    path.write_text(saved)
-    with pytest.raises(ValueError, match='nonempty model name'):
-        initializer.prepare_builder_home(home, tmp_path / 'access')
-    assert path.read_text() == saved
-    assert not (home / 'workshop-ssh').exists()
-
-
-def test_builder_rejects_whitespace_environment_before_writing(tmp_path, monkeypatch):
-    monkeypatch.setenv('PAIOS_BUILDER_REPAIR_MODEL', '   ')
-    with pytest.raises(ValueError, match='nonempty model name'):
+def test_unconfigured_builder_fails_before_writing_home(tmp_path, monkeypatch, authority_projection):
+    import json
+    value = json.loads(authority_projection.read_text())
+    value['configured'] = False
+    authority_projection.write_text(json.dumps(value))
+    with pytest.raises(ValueError, match='模型与密钥'):
         load_initializer().prepare_builder_home(tmp_path / 'home', tmp_path / 'access')
     assert not (tmp_path / 'home').exists()
 
@@ -118,11 +75,13 @@ def test_standalone_builder_has_no_owner_volumes_or_external_coding_cli():
     # Docker forwards to the container interface; the host publication stays loopback-only.
     assert builder['environment']['PAIOS_BUILDER_BIND'] == '0.0.0.0'
     assert 'PAIOS_BUILDER_BIND=127.0.0.1' in (CLOUD / 'workshop-build.env.example').read_text().splitlines()
-    assert builder['environment']['PAIOS_BUILDER_REPAIR_MODEL'] == '${PAIOS_BUILDER_REPAIR_MODEL:-}'
+    assert 'PAIOS_BUILDER_MODEL' not in builder['environment']
+    assert 'PAIOS_BUILDER_REPAIR_MODEL' not in builder['environment']
     assert builder['entrypoint'] == ['/opt/hermes/.venv/bin/python']
     assert builder['command'] == ['/opt/paios/integrations/hermes/personal_aios/workshop_builder.py']
     assert builder['volumes'] == ['workshop-access:/run/workshop-access',
-        '${PAIOS_SECRET_ROOT:?}/opencode.key:/run/secrets/opencode.key:ro',
+        '${PAIOS_MODEL_SETTINGS_PROJECTION_DIR:?}:/etc/paios/model-settings:ro',
+        '${PAIOS_SECRET_ROOT:?}/model-settings-service.key:/run/secrets/model-settings-service.key:ro',
         '${PAIOS_SECRET_ROOT:?}/workshop-builder.key:/run/secrets/workshop-builder.key:ro',
         '${PAIOS_SECRET_ROOT:?}/workshop-builder.crt:/run/secrets/workshop-builder.crt:ro',
         '${PAIOS_SECRET_ROOT:?}/workshop-builder.tls.key:/run/secrets/workshop-builder.tls.key:ro',
@@ -133,7 +92,7 @@ def test_standalone_builder_has_no_owner_volumes_or_external_coding_cli():
     assert '/workshop' in workshop['tmpfs']
     assert '/srv/owner' in workshop['tmpfs']
     assert "'{}' > /srv/owner/config.json" in workshop['command'][0]
-    assert builder['environment']['PAIOS_BUILDER_PROVIDER'] != 'opencode-go'
+    assert 'PAIOS_BUILDER_PROVIDER' not in builder['environment']
 
 
 def test_builder_and_both_clients_share_pinned_tls_certificate():

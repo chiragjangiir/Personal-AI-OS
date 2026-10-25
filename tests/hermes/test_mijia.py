@@ -13,8 +13,10 @@ import pytest
 import requests
 
 ROOT = Path(__file__).parents[2]
-sys.path.insert(0, str(ROOT / 'integrations/hermes/personal_aios/staging'))
-import fake_mijia as fake
+import importlib.util
+spec = importlib.util.spec_from_file_location('mijia_fake', ROOT / 'capability/packages/mijia/fake/server.py')
+fake = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(fake)
 from mijia import create_server, mijiaAPI
 from mijiaAPI.errors import APIError, LoginError
 
@@ -31,14 +33,14 @@ def offline(monkeypatch):
 async def invoke(server, tool, **args):
     result = await server.call_tool(tool, args)
     assert not result.is_error
-    return json.loads(result.content[0].text)
+    return result.structured_content["legacy"]
 
 
 def test_fake_stdio_contract_and_call_journal(tmp_path):
     async def run():
         log = tmp_path / 'fake.jsonl'
         params = StdioServerParameters(command=sys.executable,
-            args=[str(ROOT / 'integrations/hermes/personal_aios/staging/fake_mijia.py')],
+            args=[str(ROOT / 'capability/packages/mijia/fake/server.py')],
             env={**os.environ, 'HERMES_HOME': str(tmp_path), 'PAIOS_FAKE_MIJIA_LOG': str(log),
                  'PYTHONDONTWRITEBYTECODE': '1'})
         async with stdio_client(params) as (read, write), ClientSession(read, write) as client:
@@ -46,7 +48,7 @@ def test_fake_stdio_contract_and_call_journal(tmp_path):
             tools = {tool.name: tool for tool in (await client.list_tools()).tools}
             assert set(tools) == {'prepare_login', 'get_login_status', 'refresh_devices',
                                  'read_device', 'control_device', 'run_scene'}
-            assert set(tools['control_device'].input_schema['properties']) == {'device', 'home', 'room', 'service', 'property', 'value', 'action', 'arguments'}
+            assert set(tools['control_device'].input_schema['properties']) == {'device', 'home', 'room', 'service', 'property', 'value', 'action', 'arguments', 'owner_requested'}
             qr = await invoke(client, 'prepare_login')
             assert qr['qr_markdown'] == '![米家登录二维码](qr:https://example.invalid/staging-mijia-login)'
             assert (await invoke(client, 'get_login_status'))['status'] in {'connected', 'waiting_for_scan'}
@@ -58,8 +60,8 @@ def test_fake_stdio_contract_and_call_journal(tmp_path):
             assert (await invoke(client, 'control_device', **step))['status'] == 'succeeded'
             assert (await invoke(client, 'control_device', device='窗帘', service='curtain', property='motor-control', value=1))['status'] == 'succeeded'
             curtain = await invoke(client, 'read_device', device='窗帘')
-            assert curtain['properties'] == [{'service': 'curtain', 'property': 'motor-control', 'code': 0, 'value': 1}]
-            assert (await invoke(client, 'run_scene', name='到家', steps=[step]))['status'] == 'succeeded'
+            assert curtain['properties'] == [{'service': 'curtain', 'property': 'motor-control', 'unit': 'none', 'code': 0, 'value': 1}]
+            assert (await invoke(client, 'run_scene', name='到家', steps=[{**step, 'owner_requested': True}], owner_requested=True))['status'] == 'succeeded'
             rejected = await client.call_tool('run_scene', {'name': '不透明', 'steps': [{'scene_id': 'opaque'}]})
             assert rejected.is_error
         calls = [json.loads(line) for line in log.read_text().splitlines()]
@@ -391,7 +393,7 @@ def test_public_thirty_device_discovery_is_compact_and_specs_survive_restart(tmp
         server = create_server(api, load, tmp_path)
         wire = await server.call_tool('refresh_devices', {})
         assert not wire.is_error
-        discovery = json.loads(wire.content[0].text)
+        discovery = wire.structured_content["legacy"]
         wire_chars, wire_bytes = len(wire.content[0].text), len(wire.content[0].text.encode())
         print(f'MCP wire: chars={wire_chars} bytes={wire_bytes}')
         assert wire_chars < 35_000

@@ -1,0 +1,84 @@
+{
+  "schema": "yimi.package.contract.v1",
+  "cases": [
+    {
+      "id": "paios_open_reply",
+      "tool": "paios_open_reply",
+      "args": {
+        "reply_mode": "text"
+      },
+      "raw": {
+        "status": "opened",
+        "error_code": null
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "paios_terminal_question",
+      "tool": "paios_terminal_question",
+      "args": {
+        "options": [
+          {
+            "id": "yes",
+            "label": "是",
+            "lines": []
+          },
+          {
+            "id": "no",
+            "label": "否",
+            "lines": []
+          }
+        ]
+      },
+      "raw": {
+        "card_id": "card",
+        "options": [
+          {
+            "id": "yes",
+            "label": "是",
+            "lines": []
+          },
+          {
+            "id": "no",
+            "label": "否",
+            "lines": []
+          }
+        ],
+        "expires_at": "2026-10-24T12:00:00.000Z"
+      },
+      "expected": {
+        "state": "waiting"
+      }
+    },
+    {
+      "id": "paios_call_offer",
+      "tool": "paios_call_offer",
+      "args": {
+        "text": "一起看看？"
+      },
+      "raw": {
+        "offer_id": "offer",
+        "expires_at": "2026-10-24T12:00:00.000Z"
+      },
+      "expected": {
+        "state": "waiting"
+      }
+    },
+    {
+      "id": "silent",
+      "tool": "paios_open_reply",
+      "args": {
+        "reply_mode": "none"
+      },
+      "raw": {
+        "status": "silent",
+        "error_code": null
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    }
+  ]
+}

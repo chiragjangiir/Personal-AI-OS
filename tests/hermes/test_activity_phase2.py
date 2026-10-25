@@ -186,7 +186,7 @@ async def test_native_snapshots_recover_parallel_activity_and_offline_terminal(n
         assert snapshot['run']['output'] == 'durable result'
         assert snapshot['run']['updated_at'] == terminal_updated_at
         assert snapshot['seq'] > x['seq']
-        assert await response.content.read() == b'\n'
+        assert (await response.content.read()).replace(b': stream closed\n\n',b'') == b'\n'
 
 
 @pytest.mark.asyncio

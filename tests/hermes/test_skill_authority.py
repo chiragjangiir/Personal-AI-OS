@@ -86,7 +86,7 @@ def test_create_and_hub_cannot_take_product_name_or_frontmatter_alias(profile, p
     from tools.skills_hub_models import SkillBundle
     from tools.skills_guard import scan_skill
     from tools.skills_tool import skill_view
-    original = Path(json.loads(skill_view(product))['_source_path']).read_text()
+    original = (Path(json.loads(skill_view(product))['skill_dir']) / 'SKILL.md').read_text()
     for name, content in [(product, original), ('another-name', original)]:
         for category in (None, 'errands', 'workshop'):
             result = manage('create', name, content=content, category=category)
@@ -111,7 +111,7 @@ def test_wechat_linked_index_resolves_all_bundled_mac_sources(profile):
                for target in re.findall(r'\]\(([^)]+)\)', index['content'])}
     root = PRODUCT / 'errands/wechat'
     assert targets == {str(path.relative_to(root)) for path in (root / 'scripts').glob('*.swift')} | {
-        'references/wechat-bridge-mac-LICENSE'}
+        'scripts/install.py', 'references/cache-key.txt', 'references/wechat-bridge-mac-LICENSE'}
     for target in targets:
         loaded = json.loads(skill_view('wechat', file_path=target))
         assert loaded['success'], loaded
@@ -157,7 +157,7 @@ def test_product_improvements_are_applicable_release_patches(profile, tmp_path, 
 
 
 def test_all_product_skills_load_with_local_collisions_and_third_party_stays_ambiguous(profile):
-    from tools.skills_tool import skill_view, _find_all_skills
+    from tools.skills_tool import skill_view, find_all_skills
     from tools.skill_manager_tool import _find_skill
     from tools.skill_product import product_dirs
     products = [p for root in product_dirs() for p in root.rglob('SKILL.md')]
@@ -166,10 +166,10 @@ def test_all_product_skills_load_with_local_collisions_and_third_party_stays_amb
         local.parent.mkdir(parents=True, exist_ok=True)
         local.write_text(path.read_text().replace('description:', 'description: Local shadow ', 1) + '\nLocal shadow must not load.\n')
         result = json.loads(skill_view(path.parent.name))
-        assert result['success'] and Path(result['_source_path']) == path, result
+        assert result['success'] and (Path(result['skill_dir']) / 'SKILL.md') == path, result
         assert _find_skill('errands/' + path.parent.name)['path'] == path.parent
         assert 'Local shadow' not in result['content']
-    listed = {s['name']: s for s in _find_all_skills()}
+    listed = {s['name']: s for s in find_all_skills()}
     for path in products:
         name = yaml.safe_load(path.read_text().split('---')[1])['name']
         assert 'Local shadow' not in listed[name]['description'], listed[name]
@@ -214,7 +214,7 @@ def test_ordinary_learning_is_immediate_and_profile_bound(profile, tmp_path):
         assert manage('create', 'cloud-phone', content=content.replace('new-method', 'cloud-phone'))['success']
     finally:
         reset_hermes_home_override(token)
-    assert Path(json.loads(skill_view('cloud-phone'))['_source_path']).is_relative_to(PRODUCT)
+    assert (Path(json.loads(skill_view('cloud-phone'))['skill_dir']) / 'SKILL.md').is_relative_to(PRODUCT)
 
 
 def test_product_batch_rejects_clobber_and_invalid_shape_without_a_partial_proposal(profile):

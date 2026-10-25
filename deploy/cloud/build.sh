@@ -65,7 +65,13 @@ for image in "$PAIOS_GATEWAY_IMAGE" "$PAIOS_HERMES_IMAGE" "$PAIOS_FRONT_IMAGE" "
 done
 mirror=${PAIOS_BUILD_MAINLAND_MIRRORS:-0}
 case "$mirror" in 0|1) ;; *) echo "PAIOS_BUILD_MAINLAND_MIRRORS must be 0 or 1" >&2; exit 1 ;; esac
-if [ "$up" = 1 ]; then prepare python3 prepare-build.py; else python3 prepare-build.py; fi
+if [ "$up" = 1 ]; then
+    prepare python3 prepare-build.py
+    # The host owns the persistent loop mount; the unprivileged prepare container cannot create it.
+    python3 migrate.py prepare-workshop --compose compose.yaml --env-file "$env_file"
+else
+    python3 prepare-build.py
+fi
 started=$(date +%s)
 docker_build --build-arg PAIOS_BUILD_MAINLAND_MIRRORS="$mirror" -f .build/hermes-base.Dockerfile -t paios-hermes-base:locked "$(readlink -f .build/hermes)"
 printf 'build_wall_seconds image=%s seconds=%s\n' paios-hermes-base:locked "$(($(date +%s) - started))"
@@ -106,6 +112,16 @@ if [ "$up" = 1 ]; then
         compose --profile '*' stop $disabled_services
     fi
     compose up -d --wait front postgres livekit
+    prepare python3 single_host_models.py --keys "$PAIOS_SECRETS_DIR" | \
+        compose run -T --rm --no-deps gateway node deploy/cloud/model-settings-project.ts \
+            --directory /var/lib/paios/central-storage/model-settings \
+            --master /run/secrets/model-settings-master.key --environment production \
+            --output /var/lib/paios/model-projections --profile owner --revision current --group brain \
+            --import /etc/paios/model-settings-import.json --bootstrap --keys-stdin --publish
+    compose run -T --rm --no-deps gateway node deploy/cloud/model-settings-project.ts \
+        --directory /var/lib/paios/central-storage/model-settings \
+        --master /run/secrets/model-settings-master.key --environment production \
+        --output /var/lib/paios/model-projections --profile workshop --revision current --group build --publish
     compose run --rm --no-deps gateway node \
         01-product-half-finished/backend/phase0/gateway/tools/mac-product-provision.ts init \
         --root /var/lib/paios --config /etc/paios/cloud.json

@@ -2,6 +2,32 @@ import Foundation
 import XCTest
 
 final class DesktopCallTests: XCTestCase {
+    @MainActor
+    func testMacAvatarEnableAndRetryExplainPhoneOnlySupportWithoutChangingMedia() async throws {
+        let sensors = AvatarUnavailableSensors()
+        let coordinator = AssistantSessionCoordinator(bootstrapProvider: UnconfiguredAssistantBootstrapProvider(),
+            realtime: AvatarUnavailableTransport(), mediaPermissions: sensors, locationService: sensors,
+            receipts: AppleReceiptStore(), careIdentity: { nil })
+        let engine = DesktopCallEngine(coordinator: coordinator)
+        let before = await coordinator.presentationSnapshot()
+        for _ in 0..<2 {
+            do {
+                try await engine.setAvatar(true)
+                XCTFail("Mac cannot authorize avatar activation")
+            } catch {
+                XCTAssertEqual(error as? DesktopCallError, .avatarUnavailable)
+                XCTAssertEqual(DesktopUserFacingError.message(error),
+                    "Mac 上暂时不能开启数字人。请在 iPhone 通话里查看费用并确认开启。")
+            }
+        }
+        let after = await coordinator.presentationSnapshot()
+        XCTAssertEqual(after.videoCallRequested, before.videoCallRequested)
+        XCTAssertEqual(after.media.camera, before.media.camera)
+        XCTAssertEqual(after.media.microphone, before.media.microphone)
+        let consumer = await coordinator.centralTextSnapshot()
+        XCTAssertNil(consumer.call.id)
+    }
+
     private func packet(_ fields: [String: Any]) throws -> CentralTextPacket {
         var body = fields
         body["schema_version"] = AssistantCentralTextWire.schema
@@ -68,5 +94,33 @@ final class DesktopCallTests: XCTestCase {
         XCTAssertEqual(consumer.call.video, false)
         XCTAssertEqual(consumer.call.state, "live")
         XCTAssertEqual(consumer.call.id, id)
+    }
+}
+
+private actor AvatarUnavailableTransport: AssistantRealtimeTransporting {
+    func connect(_ request: AssistantRealtimeConnectRequest,
+                 events: @escaping @Sendable (AssistantRealtimeEvent) -> Void) async throws {
+        XCTFail("Unsupported avatar activation must not connect")
+        throw CentralTextError.unavailable
+    }
+    func setMedia(source: AssistantMediaSource, enabled: Bool, userInitiated: Bool, keepPublished: Bool) async throws {
+        XCTFail("Unsupported avatar activation must not change media")
+        throw CentralTextError.unavailable
+    }
+    func stop() async {}
+}
+
+@MainActor private final class AvatarUnavailableSensors: AssistantLocationProviding, MediaPermissionProviding {
+    func authorizationStatus() -> AssistantPermissionStatus { .unavailable }
+    func cachedFixAgeMilliseconds() -> Int? { nil }
+    func requestWhenInUseAuthorization(userInitiated: Bool) async throws -> AssistantPermissionStatus {
+        XCTFail("Unsupported avatar activation must not request location")
+        throw CentralTextError.unavailable
+    }
+    func requestOneShot(userInitiated: Bool) async throws -> AssistantLocationObservation { throw CentralTextError.unavailable }
+    func snapshot() async -> AssistantMediaPermissionSnapshot { .init(camera: .unavailable, microphone: .unavailable) }
+    func authorize(source: AssistantMediaSource, userInitiated: Bool) async throws -> AssistantPermissionStatus {
+        XCTFail("Unsupported avatar activation must not request media")
+        throw CentralTextError.unavailable
     }
 }

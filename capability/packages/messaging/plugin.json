@@ -1,0 +1,82 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "messaging",
+  "version": "1.0.0",
+  "description": "Existing messaging transports with gateway consent and receipt v1.",
+  "extensions": {
+    "ai.yimi.capability": {
+      "schema": "yimi.capability.v1",
+      "receipt_schema": 1,
+      "compat": {
+        "hermes": ">=0.22.5 <0.24",
+        "gateway_api": 1
+      },
+      "maintainer": "lead",
+      "runtime": {
+        "server": "messaging",
+        "lazy": true,
+        "idle_timeout_seconds": 900,
+        "host": "shared"
+      },
+      "secrets": [
+        {
+          "name": "API_SERVER_KEY"
+        }
+      ],
+      "network": {
+        "egress": []
+      },
+      "scopes": [
+        "owner"
+      ],
+      "tools": {
+        "send_message": {
+          "effect_by_arg": {
+            "$.action": {
+              "list": "observe",
+              "send": "send",
+              "react": "send",
+              "unreact": "send"
+            }
+          },
+          "target": "$.target",
+          "task_type": "send_message",
+          "retry": "after_check",
+          "check_with": "message_status",
+          "context_inject": [
+            "idempotency_key"
+          ]
+        },
+        "message_status": {
+          "effect": "observe",
+          "context_inject": [
+            "idempotency_key"
+          ],
+          "retry": "forbidden"
+        }
+      },
+      "staging": {
+        "fake": {
+          "command": "python3",
+          "args": [
+            "-m",
+            "capability.hosts.python",
+            "capability.packages.messaging.fake.server"
+          ]
+        }
+      },
+      "tests": {
+        "contract": "tests/contract.yaml"
+      },
+      "provenance": {
+        "source_commit": "decaff83c56b5e188b229a11e79b32106eeccf43",
+        "workshop_run": null,
+        "adapter_modules": [
+          "server/server.py",
+          "server/receipt.py",
+          "server/delivery.py"
+        ]
+      }
+    }
+  }
+}

@@ -94,13 +94,26 @@ export class PaymentLeases {
     await this.active(source,'phone');this.prune();
     return [...this.pending.values()].filter(a=>a.source.principal_id===source.principal_id).map(a=>({approval_id:a.approval_id,kind:a.kind,target_device_id:a.source.device_id,device_label:a.device_label,expires_in_ms:a.expires_at-this.now(),nonce:a.nonce}));
   }
+  /** Leaving enrollment cancels its pending approvals and any grant that beat the cancellation. */
+  async cancelApproval(source:RegisteredDevice,kind:GrantKind):Promise<void> {
+    await this.active(source,'glasses');
+    const pending=[...this.pending.values()].filter(a=>this.key(a.source)===this.key(source)&&a.kind===kind);
+    const grant=this.grants.get(this.grantKey(source,kind));
+    this.options.store.tx(()=>{
+      for(const a of pending)this.event(source,'approval_cancelled',{approval_id:a.approval_id,kind,target_device_id:source.device_id});
+      if(grant)this.event(source,'enrolment_grant_consumed',{device_id:source.device_id,kind,expires_at_ms:grant.expires_at_ms});
+    });
+    for(const a of pending)this.pending.delete(a.approval_id);
+    this.grants.delete(this.grantKey(source,kind));
+  }
   async decideApproval(source:RegisteredDevice,input:SignedInput&{approval_id:string;decision:'approve'|'deny'}):Promise<void> {
     await this.active(source,'phone');const a=this.pending.get(input.approval_id);
     check(a&&a.source.principal_id===source.principal_id,'APPROVAL_NOT_FOUND',404);
     check(a.expires_at>this.now(),'APPROVAL_EXPIRED',410);
     check(input.decision==='approve'||input.decision==='deny','PAYMENT_APPROVAL_DECISION_INVALID');
     const apply=()=>{
-      check(this.pending.get(a.approval_id)===a&&a.expires_at>this.now(),'APPROVAL_EXPIRED',410);
+      check(this.pending.get(a.approval_id)===a,'APPROVAL_NOT_FOUND',404);
+      check(a.expires_at>this.now(),'APPROVAL_EXPIRED',410);
       const approving=input.decision==='approve',binding=this.options.terminals.wearSession(a.source);
       if(approving)check(binding&&binding.connection===a.binding.connection&&binding.since===a.binding.since&&binding.wear===a.binding.wear&&binding.lock_cycle===a.binding.lock_cycle,'APPROVAL_WEAR_CHANGED',409);
       if(approving&&a.kind==='glasses_unlock')check(this.options.lock(a.source)?.enabled,'LOCK_NOT_ENABLED',409);
@@ -131,7 +144,7 @@ export class PaymentLeases {
   }
   async consumeEnrolment(source:RegisteredDevice,status:string,kind:GrantKind='voiceprint_enrol'):Promise<void> {
     const grant=await this.enrolment(source,true,kind);check(grant,'VOICEPRINT_ENROL_GRANT_EXPIRED',410);
-    if(status==='enrolled'){this.event(source,'enrolment_grant_consumed',{device_id:source.device_id,kind,expires_at_ms:grant.expires_at_ms});this.grants.delete(this.grantKey(source,kind));}
+    if(status==='enrolled'||status==='discarded'){this.event(source,'enrolment_grant_consumed',{device_id:source.device_id,kind,expires_at_ms:grant.expires_at_ms});this.grants.delete(this.grantKey(source,kind));}
   }
   nextDeadline():number|undefined {
     const deadlines=[...this.pending.values()].map(a=>a.expires_at).concat([...this.grants.values()].filter(g=>g.expires_at_ms>this.now()).map(g=>g.expires_at_ms));
@@ -150,7 +163,8 @@ export class PaymentLeases {
   }
   clear(source?:RegisteredDevice,reason='revoked'):void {
     if(!source){this.phones.clear();this.pending.clear();this.grants.clear();return;}
-    this.lock(source,reason);this.grants.delete(this.key(source));
+    this.lock(source,reason);
+    for(const kind of ['voiceprint_enrol','voice_enrollment'] as const)this.grants.delete(this.grantKey(source,kind));
     for(const [id,a] of this.pending)if(this.key(a.source)===this.key(source))this.pending.delete(id);
   }
 }

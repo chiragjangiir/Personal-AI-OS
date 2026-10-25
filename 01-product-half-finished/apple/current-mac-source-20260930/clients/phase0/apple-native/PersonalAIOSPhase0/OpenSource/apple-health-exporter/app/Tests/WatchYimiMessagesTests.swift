@@ -47,6 +47,21 @@ final class WatchYimiMessagesTests: XCTestCase {
         let decoded = try decode(["version": 1, "kind": "yimi_state", "rev": 0, "link": "watch_unregistered", "errands": [], "payment_pending": ["count": 0, "summary": ""]])
         XCTAssertNil(decoded.latest); XCTAssertNil(decoded.question); XCTAssertNil(decoded.care); XCTAssertNil(decoded.ride)
     }
+
+    func testRideSensorDatesRoundTripAndMalformedDatesAreRejected() throws {
+        let at = "2026-10-20T08:00:00.125Z"
+        let metrics = WatchYimiRideMetrics(ride_id: "r", workout_id: "w", ended: false, speed_kmh: 24, avg_kmh: 20,
+            max_kmh: 30, distance_m: 1000, elapsed_s: 180, moving_s: 180, hr_bpm: 140, hr_avg: nil, hr_max: nil, kcal: 20,
+            hr_sample_at: at, speed_sample_at: at)
+        let bytes = try JSONEncoder().encode(metrics)
+        XCTAssertEqual(try JSONDecoder().decode(WatchYimiRideMetrics.self, from: bytes), metrics)
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: bytes) as? [String: Any])
+        object["hr_sample_at"] = "today"
+        XCTAssertThrowsError(try JSONDecoder().decode(WatchYimiRideMetrics.self, from: data(object)))
+        object.removeValue(forKey: "hr_sample_at"); object.removeValue(forKey: "speed_sample_at")
+        let legacy = try JSONDecoder().decode(WatchYimiRideMetrics.self, from: data(object))
+        XCTAssertNil(legacy.hr_sample_at); XCTAssertNil(legacy.speed_sample_at)
+    }
     func testLatestHasSixHundredCharacterLimitIncludingUnicode() throws {
         var value = state, latest = try XCTUnwrap(state["latest"] as? [String: Any])
         latest["lines"] = [String(repeating: "米", count: 600)]; value["latest"] = latest; _ = try decode(value)

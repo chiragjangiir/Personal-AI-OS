@@ -118,8 +118,8 @@ export async function ownerActionGrant(d: ProcessedEvent,resolve?:OwnerOriginRes
     const kind=(d.content.app_event as {kind?:unknown}|undefined)?.kind;
     if(isBuildTask(d)||kind==='proactive_care'||kind==='place_transition')return [];
     // Errand continuation authorizes work, never a new per-request payment intent.
-    if((kind==='errand_result'||kind==='errand_delivery_failed'||kind==='camera_result'||kind==='task_failure'||kind==='release_approval_required')&&request?.payment_source)return [];
-    if(kind==='scheduled_task'||kind==='desktop_queue_task'||kind==='errand_result'||kind==='errand_delivery_failed'||kind==='camera_result'||kind==='task_failure'||kind==='release_approval_required'){
+    if((kind==='errand_result'||kind==='errand_delivery_failed'||kind==='camera_result'||kind==='task_failure'||kind==='release_approval_required'||kind==='capability_result')&&request?.payment_source)return [];
+    if(kind==='scheduled_task'||kind==='desktop_queue_task'||kind==='errand_result'||kind==='errand_delivery_failed'||kind==='camera_result'||kind==='task_failure'||kind==='release_approval_required'||kind==='capability_result'){
       const original=await resolve?.(d);
       if(!original||original.principal_id!==d.principal_id)return [];
       d=original;continue;

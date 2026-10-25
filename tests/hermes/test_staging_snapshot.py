@@ -58,7 +58,7 @@ def test_frozen_sqlite_wal_snapshot_encrypt_restore_checks(tmp_path, envelope):
     assert expected['sqlite']['hermes-home/state.db']['messages'] == 1
     assert not (bundle / 'data/hermes-home/.env').exists()
     model_config = (bundle / 'data/hermes-home/config.yaml').read_text()
-    assert 'fixture-model' in model_config and 'STAGING_MODEL_KEY' in model_config and 'must-not-export' not in model_config
+    assert json.loads(model_config) == {}
     assert not (bundle / 'data/hermes-home/skills/credential.key').exists()
     (bundle / 'files.json').write_text(json.dumps(expected))
     encrypted = tmp_path / 'snapshot-20261017T190500Z.age'
@@ -153,7 +153,8 @@ def test_busy_capture_never_stops_writers_or_creates_snapshot(tmp_path, monkeypa
     assert not list(tmp_path.glob('snapshot-*'))
 
 
-def test_capture_failure_restarts_only_previously_running_writers(tmp_path, monkeypatch):
+@pytest.mark.parametrize('failure_stage', ['counts', 'l5'])
+def test_capture_failure_restarts_only_previously_running_writers(tmp_path, monkeypatch, failure_stage):
     calls = []
     class Failed:
         def __init__(self, settings):
@@ -168,12 +169,24 @@ def test_capture_failure_restarts_only_previously_running_writers(tmp_path, monk
             calls.append(args)
             return SimpleNamespace(stdout='gateway\nhermes\n' if '--services' in args else 'id')
         def counts(self):
-            raise ValueError('fixture PG unavailable')
+            if failure_stage == 'counts':
+                raise ValueError('fixture PG unavailable')
+            return {}
+        def pg(self, *args):
+            pass
+        def tools(self, *args):
+            pass
+        def home_config(self, *args):
+            pass
+        def volume(self, name):
+            return name
+        def l5(self, *args):
+            raise ValueError('L5_RECEIPT_BUDGET_EXCEEDED')
     monkeypatch.setattr(snapshot, 'Stack', Failed)
     monkeypatch.setattr(snapshot, 'night', lambda: (datetime.now(timezone.utc) + timedelta(days=1)).replace(hour=3))
     monkeypatch.setattr(snapshot.shutil, 'which', lambda tool: '/fixture/' + tool)
     monkeypatch.setattr(snapshot.subprocess, 'run', lambda *args, **kwargs: SimpleNamespace(stdout='{"Status":"exited","ExitCode":0}'))
-    with pytest.raises(ValueError, match='PG unavailable'):
+    with pytest.raises(ValueError, match='PG unavailable|L5_RECEIPT_BUDGET_EXCEEDED'):
         snapshot.capture({'spool': str(tmp_path / 'spool'), 'scratch': str(tmp_path / 'scratch')})
     assert calls[-1] == ['start', 'gateway', 'hermes']
     assert not list((tmp_path / 'spool').glob('*.age'))
@@ -255,6 +268,8 @@ def test_daytime_capture_is_explicit_and_keeps_its_stop_budget(tmp_path, monkeyp
     with pytest.raises(ValueError, match='03:00'):
         snapshot.capture(settings)
     assert calls == []
+    Path(settings['spool']).mkdir()
+    (Path(settings['spool']) / 'snapshot-earlier.sent').write_text(daytime().isoformat())
     with pytest.raises(ValueError, match='PG unavailable'):
         snapshot.capture(settings, daytime=True)
     with pytest.raises(ValueError, match='PG unavailable'):
@@ -263,7 +278,7 @@ def test_daytime_capture_is_explicit_and_keeps_its_stop_budget(tmp_path, monkeyp
     assert calls[-1] == ['start', 'gateway', 'hermes']
 
 
-def test_structural_daytime_cut_omits_raw_l5_and_declares_window_zero(tmp_path, monkeypatch):
+def test_structural_cut_omits_raw_l5_day_or_night_and_declares_window_zero(tmp_path, monkeypatch):
     tools, l5, sealed = [], [], []
     config = tmp_path / 'cloud.json'; config.write_text('{}')
     class Fixture:
@@ -301,40 +316,68 @@ def test_structural_daytime_cut_omits_raw_l5_and_declares_window_zero(tmp_path, 
     monkeypatch.setattr(snapshot, 'encrypt', encrypt)
     monkeypatch.setattr(snapshot, 'transfer', lambda *args: None)
     settings = {'spool': str(tmp_path / 'spool'), 'scratch': str(tmp_path / 'scratch'), 'recipient_file': 'unused', 'destination': 'unused'}
-    with pytest.raises(ValueError, match='daytime'):
-        snapshot.capture(settings, raw=False)
     snapshot.capture(settings, daytime=True, raw=False)
+    # The timer takes the same structural cut inside the night window while folding stays off (10-23).
+    monkeypatch.setattr(snapshot, 'night', lambda: transport.night(datetime(2026, 10, 18, 19, 30, tzinfo=timezone.utc)))
+    snapshot.capture({**settings, 'spool': str(tmp_path / 'night-spool')}, raw=False)
     assert l5 == []
-    assert ['python3', '/opt/paios/deploy/cloud/staging_snapshot_data.py', 'auxiliary', '--omit-raw'] in tools
-    assert sealed[0]['window_hours'] == 0
+    assert tools.count(['python3', '/opt/paios/deploy/cloud/staging_snapshot_data.py', 'auxiliary', '--omit-raw']) == 2
+    assert [manifest['window_hours'] for manifest in sealed] == [0, 0]
 
 
-@pytest.mark.parametrize('window, verified', [(48, 1), (0, 0), (24, None)])
-def test_restore_verifies_raw_l5_only_when_the_cut_carries_it(tmp_path, monkeypatch, window, verified):
-    l5 = []
+@pytest.mark.parametrize('window, verified, replace', [(48, 1, False), (0, 0, False), (24, None, False),
+                                                     (48, 2, True), (0, 0, True)])
+def test_restore_verifies_raw_l5_only_when_the_cut_carries_it(tmp_path, monkeypatch, window, verified, replace):
+    l5, events = [], []
+    projection = {group: {'environment_id': 'staging-fixture', 'profile': profile, 'revision': 1,
+                         'group': group, 'configured': True} for group, profile in [('brain', 'owner'), ('build', 'workshop')]}
     class Fixture:
         def __init__(self, settings, stage=False):
-            self.definition = {'services': {'hermes-staging': {'image': 'fixture-image'}}}
+            self.definition = {'services': {name+'-staging': {'image': 'fixture-image', 'profiles': ['staging']}
+                for name in ('gateway', 'hermes', 'postgres', 'front', 'livekit', 'workshop')}}
         def maintenance(self, held=None):
             return nullcontext()
-        def tools(self, *args, **kwargs):
-            pass
+        def tools(self, args, *rest, **kwargs):
+            if '/opt/paios/deploy/cloud/staging_model_settings.py' in args:
+                events.append('projection-installed')
         def l5(self, *args, **kwargs):
             l5.append(args)
         def volume(self, name):
             return 'staging_' + name
+        def run(self, args, **kwargs):
+            if args[0] == 'up' and 'gateway-staging' in args:
+                assert 'hermes-staging' in args
+                assert '--wait' in args
+                events.append('models-started')
+            return SimpleNamespace(stdout='')
+        def pg(self, *args):
+            pass
+        def counts(self):
+            return {}
     def decrypt(snapshot_path, identity, destination):
         (Path(destination) / 'manifest.json').write_text(json.dumps({
             'schema': 'paios.staging-snapshot.v1', 'window_hours': window, 'consistency': 'all-application-writers-stopped',
-            'as_of': datetime.now(timezone.utc).isoformat()}))
+            'as_of': datetime.now(timezone.utc).isoformat(), 'postgres_rows': {}}))
+        (Path(destination) / 'postgres.dump').write_bytes(b'synthetic-dump')
+    def command(args, **kwargs):
+        if args == ['fixture-regression']:
+            events.append('regression')
+        return SimpleNamespace(returncode=0)
     monkeypatch.setattr(restore, 'Stack', Fixture)
-    monkeypatch.setattr(restore, 'preflight', lambda stack, settings: None)
+    monkeypatch.setattr(restore, 'preflight', lambda stack, settings: projection)
     monkeypatch.setattr(restore, 'decrypt', decrypt)
-    monkeypatch.setattr(restore.subprocess, 'run', lambda *args, **kwargs: SimpleNamespace(returncode=0))
+    monkeypatch.setattr(restore.subprocess, 'run', command)
+    monkeypatch.setattr(restore, 'retain', lambda *args, **kwargs: None)
     envelope = tmp_path / 'snapshot-20261018T080000Z.age'; envelope.write_bytes(b'age')
-    settings = {'evidence': str(tmp_path / 'evidence'), 'scratch': str(tmp_path), 'identity_file': 'unused'}
-    with pytest.raises(ValueError, match='Unsupported' if verified is None else 'staging volumes exist'):
-        restore.restore(settings, envelope, False)
+    settings = {'evidence': str(tmp_path / 'evidence'), 'scratch': str(tmp_path), 'identity_file': 'unused',
+                'model_settings_projection': 'synthetic-owner.json', 'model_settings_build_projection': 'synthetic-workshop.json',
+                'regression_command': ['fixture-regression'], 'accepted': str(tmp_path), 'incoming': str(tmp_path)}
+    if replace:
+        restore.restore(settings, envelope, True)
+        assert events == ['projection-installed', 'models-started', 'regression']
+    else:
+        with pytest.raises(ValueError, match='Unsupported' if verified is None else 'staging volumes exist'):
+            restore.restore(settings, envelope, False)
     assert len(l5) == (verified or 0)
 
 def test_transfer_cap_is_explicit(tmp_path, monkeypatch):
@@ -363,7 +406,8 @@ def test_snapshot_respects_the_existing_release_watchdog_lock(tmp_path):
         pass
 
 
-def test_restore_rejects_cross_name_production_volume_alias(tmp_path):
+@pytest.mark.parametrize('target', ['owner-data', 'model-settings-authority', 'model-settings-projections'])
+def test_restore_rejects_cross_name_production_volume_alias(tmp_path, target):
     config = tmp_path / 'staging.json'
     config.write_text(json.dumps({'payment': {'staging': True}, 'product_resources': {'staging_effect_sink_file': '/fixture/effects'}}))
     names = ('gateway', 'hermes', 'postgres', 'front', 'livekit', 'workshop')
@@ -371,9 +415,9 @@ def test_restore_rejects_cross_name_production_volume_alias(tmp_path):
                                    'profiles': ['staging'], 'environment': {'PAIOS_STAGE': 'staging'}} for name in names}
     stack = object.__new__(Stack); stack.suffix = '-staging'
     stack.definition = {'services': services}
-    stack.volumes = {key: {'name': 'project_' + key} for name in restore.TARGETS for key in (name, name + '-staging')}
+    stack.volumes = {key: {'name': 'project_' + key} for name in (*restore.TARGETS, *restore.PRESERVED) for key in (name, name + '-staging')}
     stack.config_mount = lambda: str(config)
-    stack.volumes['owner-data-staging']['name'] = stack.volumes['hermes-home']['name']
+    stack.volumes[target + '-staging']['name'] = stack.volumes['hermes-home']['name']
     with pytest.raises(ValueError, match='every production volume'):
         restore.preflight(stack, {'staging_secrets': str(tmp_path), 'regression_command': ['fixture-regression']})
 
@@ -490,6 +534,9 @@ def test_capacity_helper_streams_sources_and_budgets_cold_bytes(tmp_path, monkey
     cold.parent.mkdir()
     with sqlite3.connect(cold) as db:
         db.executescript('CREATE TABLE locations(size INTEGER); INSERT INTO locations VALUES(7)')
+    sessions = cold.parent / 'session-records.sqlite'
+    with sqlite3.connect(sessions) as db:
+        db.executescript('CREATE TABLE sessions(id TEXT); INSERT INTO sessions VALUES ("first"),("second")')
     objects = cold.parent / 'objects'; objects.mkdir()
     (objects / 'chunk').write_bytes(b'123456789')
     (roots['home'] / 'link').symlink_to(objects)
@@ -502,6 +549,7 @@ def test_capacity_helper_streams_sources_and_budgets_cold_bytes(tmp_path, monkey
         script = args[2].replace("'/work'", repr(str(work))).replace("'/work/capacity.json'", repr(str(work / 'capacity.json')))
         script = script.replace("'/opt/paios/deploy/cloud'", repr(str(TOOLS)))
         script = script.replace("'/source/owner/central-storage/cold.sqlite'", repr(str(cold)))
+        script = script.replace("'/source/owner/central-storage/session-records.sqlite'", repr(str(sessions)))
         for name, root in roots.items():
             script = script.replace(repr('/source/' + name), repr(str(root)))
         subprocess.run([sys.executable, '-B', '-c', script, args[3]], check=True)
@@ -510,7 +558,7 @@ def test_capacity_helper_streams_sources_and_budgets_cold_bytes(tmp_path, monkey
     monkeypatch.setattr(snapshot.os, 'statvfs', lambda path: SimpleNamespace(f_bavail=1 << 40, f_frsize=1, f_favail=10000))
     stack.preflight(work, work, 1800, raw)
     estimate = json.loads((work / 'capacity.json').read_text())
-    assert estimate == {'files': 5 if raw else 3, 'bytes': cold.stat().st_size + 7 + (16 if raw else 0)}
+    assert estimate == {'files': 10 if raw else 4, 'bytes': cold.stat().st_size + sessions.stat().st_size + 7 + (16 if raw else 0)}
 
 
 @pytest.mark.parametrize('builder_url', ['', 'https://builder.invalid'])

@@ -9,6 +9,8 @@ model:
   context_length: ${PAIOS_MODEL_CONTEXT_LENGTH}
 memory:
   provider: personal_aios
+  memory_enabled: false
+  user_profile_enabled: false
 cron:
   wrap_response: false
 plugins:

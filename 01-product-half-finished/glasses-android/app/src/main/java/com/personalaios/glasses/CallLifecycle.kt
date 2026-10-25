@@ -13,8 +13,9 @@ import java.util.UUID
 /** Owns the glasses' call presentation and capture intent. The gateway owns the recovery budget. */
 internal class CallLifecycle(private val scope: CoroutineScope, private val hud: MutableStateFlow<HudState>,
     private val capture: (Boolean) -> Unit, private val onEnd: () -> Unit,
-    private val now: () -> Long = System::currentTimeMillis, private val wait: suspend (Long) -> Unit = { delay(it) },
-    private val diagnose: (String) -> Unit = {}, private val onFailure: (String) -> Unit = {}) {
+    private val now: () -> Long = ::monotonicMillis, private val wait: suspend (Long) -> Unit = { delay(it) },
+    private val diagnose: (String) -> Unit = {}, private val onFailure: (String) -> Unit = {},
+    private val serverNow: () -> Long = ServerClock.shared::nowMillis) {
     var windowS: Long? = null
     private var closing: String? = null
     private var ended: String? = null
@@ -202,7 +203,7 @@ internal class CallLifecycle(private val scope: CoroutineScope, private val hud:
 
     private fun acceptDeadline(message: JSONObject) {
         if (!message.has("rejoin_deadline")) return
-        val deadline = Instant.parse(message.getString("rejoin_deadline")).toEpochMilli()
+        val deadline = now() + (Instant.parse(message.getString("rejoin_deadline")).toEpochMilli() - serverNow())
         val accepted = lossDeadline
         if (accepted == null) { announcedDeadline = deadline; return }
         if (lossQualified && deadline > accepted) {

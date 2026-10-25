@@ -47,6 +47,9 @@ test('simulator advertises the exact manifest and performs bounded scratch file 
   assert.equal((await fs.readdir(join(f.root,'.undo'))).length,1);
   assert.equal((JSON.parse(f.text(await f.call('find_files',{folder:f.root,kinds:['text']}))) as any[]).length,1);
   assert.equal((JSON.parse(f.text(await f.call('search_files',{path:f.root,pattern:'**/*.txt'}))) as any[]).length,1);
+  assert.equal((JSON.parse(f.text(await f.call('search_files',{path:f.root,pattern:join(f.root,'**/*.txt')}))) as any[]).length,1);
+  assert.equal((JSON.parse(f.text(await f.call('search_files',{path:f.root,pattern:'**/*.txt',excludePatterns:['*.txt']}))) as any[]).length,0);
+  assert.equal((JSON.parse(f.text(await f.call('search_files',{path:f.root,pattern:'*.txt',excludePatterns:['invoice.*']}))) as any[]).length,0);
   assert.equal(JSON.parse(f.text(await f.call('get_file_info',{path:file}))).isFile,true);
   assert.equal(JSON.parse(f.text(await f.call('list_directory',{path:f.root}))).length,1);
   assert.equal(JSON.parse(f.text(await f.call('list_directory_with_sizes',{path:f.root,sortBy:'size'})))[0].size,16);

@@ -63,6 +63,52 @@ def test_release_waits_for_real_native_decision_and_replays_without_new_prompt(t
         approval_context._approval_tool_call_id.reset(token)
 
 
+@pytest.mark.parametrize('first_attempt', ['timeout', 'notify_failed'])
+@pytest.mark.parametrize('choice', ['once', 'deny'])
+def test_release_retries_unresolved_attempt_without_saving_a_final_decision(tmp_path, monkeypatch, first_attempt, choice):
+    monkeypatch.syspath_prepend(str(Path(__file__).parents[2] / 'integrations/hermes'))
+    from personal_aios.release_consent import release_decide
+    from gateway import run_scope, session_context
+    from tools import approval, approval_context, approval_gateway_wait
+    session, cards = 'retry-release-owner', []
+    monkeypatch.setattr(run_scope, 'current_scope', lambda: 'owner')
+    monkeypatch.setattr(session_context, 'get_api_run_id', lambda _: 'run-owner')
+    monkeypatch.setattr(approval_context, 'get_current_session_key', lambda: session)
+    token = approval_context._approval_tool_call_id.set('tool-owner')
+    status = tmp_path / 'status/0123456789ab.json'
+    status.parent.mkdir()
+    binding = {'state': 'awaiting_owner', 'base': 'b' * 40, 'commit': 'c' * 40,
+               'protected_paths': ['protected.py'], 'origin': {'principal_id': 'owner'}}
+    status.write_text(json.dumps(binding))
+    poll = approval_gateway_wait._poll_event
+    monkeypatch.setattr(approval_gateway_wait, '_poll_event', lambda *args, **kwargs:
+        'timeout' if len(cards) == 1 and first_attempt == 'timeout' else poll(*args, **kwargs))
+    def notify(card):
+        cards.append(card)
+        if len(cards) == 1 and first_attempt == 'notify_failed':
+            raise RuntimeError('fixture notification failed')
+        if len(cards) > 1:
+            assert approval.resolve_gateway_approval(session, choice, request_id=card['request_id'],
+                confirmation={'confirmation_id': 'native-retry-card', 'confirmed_by': 'owner', 'surface': None}) == 1
+    monkeypatch.setattr(approval, '_gateway_notify_cb', lambda _: notify)
+    provider = SimpleNamespace(_request=lambda *args: {'allow_owner_mutation': True, 'principal_id': 'owner'})
+    try:
+        assert release_decide(tmp_path, '0123456789ab', provider, 'session') == {
+            'request_id': '0123456789ab', 'state': 'awaiting_owner'}
+        assert not (tmp_path / 'decisions/0123456789ab.json').exists()
+        decided = release_decide(tmp_path, '0123456789ab', provider, 'session')
+        assert decided['decision'] == ('approved' if choice == 'once' else 'denied')
+        assert (decided['base'], decided['commit']) == (binding['base'], binding['commit'])
+        assert json.loads(status.read_text()) == binding
+        replay = release_decide(tmp_path, '0123456789ab', provider, 'session')
+        assert replay == {**decided, 'reused': True, 'lifecycle': 'saved_decision_replay'}
+        assert len(cards) == 2 and cards[0]['request_id'] != cards[1]['request_id']
+        assert cards[0]['pattern_key'] == cards[1]['pattern_key']
+        assert all(card['allow_session'] is False and card['allow_permanent'] is False for card in cards)
+    finally:
+        approval_context._approval_tool_call_id.reset(token)
+
+
 def test_completion_projects_same_resolved_contract_without_editing_child_summary():
     from gateway.platforms.api_run_reporting import confirmation_receipts, task_records
     decision = {'request_id': 'candidate', 'approved': False, 'decision_status': 'resolved',

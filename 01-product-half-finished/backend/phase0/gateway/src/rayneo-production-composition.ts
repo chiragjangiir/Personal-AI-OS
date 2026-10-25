@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto';
-import { spawn } from 'node:child_process';
 
 import type {
   FinalTranscriptEvidenceInput,
@@ -75,8 +74,6 @@ const MAX_RECALL_ITEMS = 128;
 const MAX_RECALL_CONTENT_BYTES = 65_536;
 const TTS_SAMPLE_RATE = 16_000;
 const TTS_CHANNELS = 1;
-const TTS_MAX_WAV_BYTES = 1_920_044;
-const TTS_DEADLINE_MS = 15_000;
 
 type PlainRecord = Record<string, unknown>;
 
@@ -203,7 +200,7 @@ export interface RayneoProductionCompositionOptions {
   readonly conversationTurn?: RayneoProductionConversationTurnPort;
   readonly fetchImpl?: typeof fetch;
   readonly now?: () => string;
-  readonly synthesizeSpeech?: (text: string, signal: AbortSignal) => Promise<Readonly<{
+  readonly synthesizeSpeech: (text: string, signal: AbortSignal) => Promise<Readonly<{
     pcm: Int16Array; sampleRate: 16_000; channels: 1;
   }>>;
 }
@@ -275,64 +272,6 @@ export interface RayneoProductionComposition {
 
 function failure(code: string): Error {
   return new Error(code);
-}
-
-const SAPI_SCRIPT = String.raw`$ErrorActionPreference='Stop'
-Add-Type -AssemblyName System.Speech
-$text=[Console]::In.ReadToEnd()
-$s=New-Object System.Speech.Synthesis.SpeechSynthesizer
-$voice=$s.GetInstalledVoices()|Where-Object {$_.Enabled -and $_.VoiceInfo.Culture.Name -eq 'zh-CN'}|Select-Object -First 1
-if($null -eq $voice){throw 'ZH_CN_VOICE_MISSING'}
-$s.SelectVoice($voice.VoiceInfo.Name)
-$format=New-Object System.Speech.AudioFormat.SpeechAudioFormatInfo(16000,[System.Speech.AudioFormat.AudioBitsPerSample]::Sixteen,[System.Speech.AudioFormat.AudioChannel]::Mono)
-$ms=New-Object System.IO.MemoryStream
-$s.SetOutputToAudioStream($ms,$format)
-$s.Speak($text)
-$pcm=$ms.ToArray();$out=[Console]::OpenStandardOutput();$bw=New-Object System.IO.BinaryWriter($out)
-$bw.Write([Text.Encoding]::ASCII.GetBytes('RIFF'));$bw.Write([int](36+$pcm.Length));$bw.Write([Text.Encoding]::ASCII.GetBytes('WAVEfmt '));$bw.Write([int]16);$bw.Write([int16]1);$bw.Write([int16]1);$bw.Write([int]16000);$bw.Write([int]32000);$bw.Write([int16]2);$bw.Write([int16]16);$bw.Write([Text.Encoding]::ASCII.GetBytes('data'));$bw.Write([int]$pcm.Length);$bw.Write($pcm);$bw.Flush();$s.Dispose();$ms.Dispose()`;
-
-function parseSapiWav(wav: Buffer): Readonly<{ pcm: Int16Array; sampleRate: 16_000; channels: 1 }> {
-  if (wav.length < 44 || wav.length > TTS_MAX_WAV_BYTES || wav.toString('ascii', 0, 4) !== 'RIFF' ||
-      wav.toString('ascii', 8, 12) !== 'WAVE' || wav.toString('ascii', 12, 16) !== 'fmt ' ||
-      wav.readUInt32LE(16) !== 16 || wav.readUInt16LE(20) !== 1 || wav.readUInt16LE(22) !== 1 ||
-      wav.readUInt32LE(24) !== TTS_SAMPLE_RATE || wav.readUInt16LE(34) !== 16 ||
-      wav.toString('ascii', 36, 40) !== 'data' || wav.readUInt32LE(40) !== wav.length - 44 ||
-      (wav.length - 44) % 2 !== 0) throw failure('RAYNEO_SAPI_WAV_INVALID');
-  const pcm = new Int16Array((wav.length - 44) / 2);
-  for (let index = 0; index < pcm.length; index += 1) pcm[index] = wav.readInt16LE(44 + index * 2);
-  return Object.freeze({ pcm, sampleRate: 16_000 as const, channels: 1 as const });
-}
-
-async function synthesizeWindowsSapi(
-  text: string, signal: AbortSignal,
-): Promise<Readonly<{ pcm: Int16Array; sampleRate: 16_000; channels: 1 }>> {
-  if (process.platform !== 'win32' || text.length === 0 || text.length > 1_024 || signal.aborted) {
-    throw failure('RAYNEO_SAPI_INPUT_INVALID');
-  }
-  return await new Promise((resolve, reject) => {
-    const child = spawn('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
-      ['-NoProfile', '-NonInteractive', '-Command', SAPI_SCRIPT],
-      { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
-    const chunks: Buffer[] = []; let bytes = 0; let settled = false;
-    const timer = setTimeout(() => { child.kill(); }, TTS_DEADLINE_MS);
-    const abort = (): void => { child.kill(); };
-    signal.addEventListener('abort', abort, { once: true });
-    child.stdout.on('data', (chunk: Buffer) => {
-      bytes += chunk.length;
-      if (bytes > TTS_MAX_WAV_BYTES) child.kill(); else chunks.push(Buffer.from(chunk));
-    });
-    child.on('error', () => { if (!settled) { settled = true; reject(failure('RAYNEO_SAPI_PROCESS_FAILED')); } });
-    child.on('close', (code) => {
-      clearTimeout(timer); signal.removeEventListener('abort', abort);
-      if (settled) return; settled = true;
-      const wav = Buffer.concat(chunks); chunks.forEach((chunk) => chunk.fill(0));
-      try {
-        if (code !== 0 || signal.aborted || bytes > TTS_MAX_WAV_BYTES) throw failure('RAYNEO_SAPI_PROCESS_FAILED');
-        resolve(parseSapiWav(wav));
-      } catch (error) { reject(error); } finally { wav.fill(0); }
-    });
-    child.stdin.end(text, 'utf8');
-  });
 }
 
 function isPlainRecord(value: unknown): value is PlainRecord {
@@ -741,7 +680,7 @@ function createTurn(
     pendingNegotiation.delete(inputId);
   };
   const turnAbort = new AbortController();
-  const synthesizeSpeech = config.synthesizeSpeech ?? synthesizeWindowsSapi;
+  const synthesizeSpeech = config.synthesizeSpeech;
   const withSpeech = async (text: string, signal: AbortSignal): Promise<RayneoSpokenReply> => {
     const speech = await synthesizeSpeech(text, signal);
     if (!(speech.pcm instanceof Int16Array) || speech.pcm.length === 0 ||
@@ -1714,7 +1653,8 @@ function assertConfiguration(options: RayneoProductionCompositionOptions): Reado
       typeof options.sourceMedia.issueVisualWithReceipt !== 'function' || typeof options.sourceMedia.readVisual !== 'function' ||
       !isPlainRecord(options.finalTranscript) || typeof options.finalTranscript.finalize !== 'function' ||
       !isPlainRecord(options.finalTranscriptEvidenceReader) ||
-      typeof options.finalTranscriptEvidenceReader.read !== 'function' || !isPlainRecord(options.memory) ||
+      typeof options.finalTranscriptEvidenceReader.read !== 'function' || typeof options.synthesizeSpeech !== 'function' ||
+      !isPlainRecord(options.memory) ||
       typeof options.memory.rememberExplicit !== 'function' || typeof options.memory.recallForAnswerContext !== 'function' ||
       options.conversationTurn !== undefined &&
       (typeof options.conversationTurn !== 'object' || options.conversationTurn === null ||

@@ -20,13 +20,14 @@ import UniformTypeIdentifiers
     enum InputError: LocalizedError {
         case folder, limit
         var errorDescription: String? {
-            switch self { case .folder: return "文件夹请在设置里授权"; case .limit: return "每条消息最多添加 10 个文件" }
+            switch self { case .folder: return "文件夹请到设置里添加"; case .limit: return "每条消息最多添加 10 个文件" }
         }
     }
     func checkAddition(count: Int) throws {
         guard files.count + pending + count <= 10 else { throw InputError.limit }
     }
     func attach(_ urls: [URL], via: FileGrant.Via) async throws {
+        try Task.checkCancellation()
         try checkAddition(count: urls.count)
         for url in urls {
             let values = try url.resourceValues(forKeys: [.isDirectoryKey])
@@ -35,7 +36,7 @@ import UniformTypeIdentifiers
         let generation = generation
         pending += urls.count; defer { pending -= urls.count }
         let grants = try await desktop.grant(files: urls, via: via)
-        guard self.generation == generation else {
+        guard self.generation == generation, !Task.isCancelled else {
             for grant in grants { try await desktop.revoke(grant: grant.id) }
             throw CancellationError()
         }

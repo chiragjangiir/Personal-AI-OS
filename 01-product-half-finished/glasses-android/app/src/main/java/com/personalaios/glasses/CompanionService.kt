@@ -246,7 +246,7 @@ class CompanionService : Service() {
             "SUPPLEMENT_TAP" -> { sendCurrent(voiceSupplement.tap()); snapshot() }
             "SUPPLEMENT_CANCEL" -> { sendCurrent(voiceSupplement.cancel()); snapshot() }
             "VOICE_TAP", "VOICE_FINISH", "VOICE_CANCEL" -> {
-                val now = System.currentTimeMillis()
+                val now = monotonicMillis()
                 val commands = if (unlock.state.locked) voiceEnrollment.cancel() else when (intent!!.action) {
                     "VOICE_TAP" -> voiceEnrollment.tap(now)
                     "VOICE_FINISH" -> voiceEnrollment.finish(now)
@@ -291,7 +291,7 @@ class CompanionService : Service() {
                         val live = checkNotNull(session)
                         live.connect(binding)
                         live.awaitReady()
-                        state.value = state.value.copy(ambientRequestedAt = System.currentTimeMillis())
+                        state.value = state.value.copy(ambientRequestedAt = monotonicMillis())
                         calls.ready()
                         live.send(JSONObject().put("operation", "turns_sync").put("request_id", UUID.randomUUID().toString()))
                         // The room is connected only now; microphone() skips a room still connecting.
@@ -369,15 +369,15 @@ class CompanionService : Service() {
             "avatar_state" -> appearance.accept(message)
             "payment_notice" -> { inbox!!.accept(message); snapshot() }
             "payment_lock_state" -> {
-                val commands = listOfNotNull(unlock.accept(message, System.currentTimeMillis()))
+                val commands = listOfNotNull(unlock.accept(message, monotonicMillis()))
                 capture.setWearPollMs(unlock.state.wearPollMs)
                 val voice = if (unlock.state.locked && voiceEnrollment.state.phase != VoiceEnrollmentPhase.AwaitingPhone)
-                    voiceEnrollment.cancel() else voiceEnrollment.grant(message, System.currentTimeMillis())
+                    voiceEnrollment.cancel() else voiceEnrollment.grant(message, monotonicMillis())
                 sendCurrent(commands + voice + voiceSupplement.grant(message)); snapshot()
             }
             "payment_receipt", "voiceprint_sample", "voiceprint_owner" -> {
                 if (message.getString("operation") == "payment_receipt") { unlock.receipt(message); voiceSupplement.receipt(message) }
-                voiceEnrollment.accept(message, System.currentTimeMillis()); snapshot()
+                voiceEnrollment.accept(message, monotonicMillis()); snapshot()
             }
             "voice_enrollment_state" -> {
                 voiceSupplement.accept(message)
@@ -435,7 +435,7 @@ class CompanionService : Service() {
                 }
                 if (voiceSupplement.rejected(message)) { snapshot(); return }
                 if (rejectedOperation.startsWith("voiceprint_")) {
-                    voiceEnrollment.accept(message, System.currentTimeMillis()); snapshot(); return
+                    voiceEnrollment.accept(message, monotonicMillis()); snapshot(); return
                 }
                 if (rejectedOperation == "turns_sync") return
                 if (inbox!!.replies.rejected(message)) return
@@ -455,7 +455,7 @@ class CompanionService : Service() {
                 snapshot(); inbox!!.accepted?.let(::queue); playback.update(state.value.callId != null)
                 if (message.getString("operation") == "result_header") inbox!!.replies.pendingReceipts(message.getString("processed_event_id")).forEach(::queue)
             }
-            "nav_route", "move_hud", "move_say", "ride_summary" -> state.value = state.value.move(message, System.currentTimeMillis())
+            "nav_route", "move_hud", "move_say", "ride_summary" -> state.value = state.value.move(message, monotonicMillis(), ServerClock.shared.nowMillis())
             // Alipay is launched from 依米's activity (its own task), so the owner lands back in 依米 when Alipay finishes.
             "pay_open" -> startActivity(packageManager.getLaunchIntentForPackage(packageName)!!.putExtra("pay", true)
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
@@ -547,7 +547,7 @@ class CompanionService : Service() {
     }
     private suspend fun setPrivatePause() {
         val request = enrollment.captureRequest() ?: JSONObject().put("control_id", UUID.randomUUID().toString()).put("private_paused", !privatePaused)
-        state.value = state.value.copy(ambientRequestedAt = System.currentTimeMillis())
+        state.value = state.value.copy(ambientRequestedAt = monotonicMillis())
         capture.setPrivacyPending(true); enrollment.saveCaptureRequest(request); sendPrivacy(request)
     }
     private suspend fun sendPrivacy(request: JSONObject) { send(JSONObject(request.toString()).put("operation", "camera_private_pause")) }
@@ -594,14 +594,14 @@ class CompanionService : Service() {
     }
     private fun snapshot() {
         state.value = state.value.copy(cards = inbox?.snapshot().orEmpty(), captions = inbox?.captions().orEmpty(),
-            activities = inbox?.activities().orEmpty(),
+            activities = inbox?.activities().orEmpty(), legacyProgressCovered = inbox?.legacyProgressCovered() ?: false,
             payment = inbox?.payment(), paymentLock = unlock.state, voiceEnrollment = voiceEnrollment.state, voiceSupplement = voiceSupplement.state)
         val until = voiceEnrollment.state.until
         if (enrolmentUntil != until) {
             enrolmentExpiry?.cancel(); enrolmentUntil = until
             enrolmentExpiry = until?.let { scope.launch {
-                delay((it - System.currentTimeMillis()).coerceAtLeast(0))
-                sendCurrent(voiceEnrollment.expire(System.currentTimeMillis())); snapshot()
+                delay((it - monotonicMillis()).coerceAtLeast(0))
+                sendCurrent(voiceEnrollment.expire(monotonicMillis())); snapshot()
             } }
         }
     }

@@ -1,0 +1,188 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "phone",
+  "version": "1.0.0",
+  "description": "Dedicated Android executor capability with durable revisioned receipts",
+  "extensions": {
+    "ai.yimi.capability": {
+      "schema": "yimi.capability.v1",
+      "receipt_schema": 1,
+      "compat": {
+        "hermes": ">=0.22.5 <0.24",
+        "gateway_api": 1
+      },
+      "maintainer": "lead",
+      "runtime": {
+        "server": "phone",
+        "lazy": true,
+        "idle_timeout_seconds": 900,
+        "host": "dedicated"
+      },
+      "secrets": [
+        {
+          "name": "HERMES_INTERNAL_KEY"
+        },
+        {
+          "name": "PHONE_FAST_MODEL_KEY"
+        },
+        {
+          "name": "PHONE_VISION_MODEL_KEY"
+        },
+        {
+          "name": "AGENTBAY_API_KEY"
+        }
+      ],
+      "network": {
+        "egress": [
+          "127.0.0.1",
+          "agentbay.aliyuncs.com",
+          "${PHONE_FAST_MODEL_HOST}",
+          "${PHONE_VISION_MODEL_HOST}",
+          "${PHONE_OBJECT_STORAGE_HOST}"
+        ]
+      },
+      "scopes": [
+        "owner"
+      ],
+      "tools": {
+        "phone_task": {
+          "effect_by_arg": {
+            "$.task_type": {
+              "read_app": "observe",
+              "purchase_errand": "physical",
+              "ride_request": "physical",
+              "send_message": "send",
+              "login": "account",
+              "file_edit": "owner_data",
+              "delete": "delete",
+              "pay_order": "spend",
+              "read": "observe",
+              "wechat_message": "send",
+              "send_file": "send"
+            }
+          },
+          "target": "$.recipient",
+          "long_running": true,
+          "retry": "after_check",
+          "check_with": "phone_status",
+          "context_inject": [
+            "principal_id",
+            "job_id",
+            "origin_processed_event_id",
+            "self_check_of",
+            "context"
+          ]
+        },
+        "phone_status": {
+          "effect": "observe",
+          "target": "$.job_id",
+          "retry": "after_check",
+          "check_with": "phone_status",
+          "context_inject": [
+            "principal_id",
+            "context",
+            "check_job_id",
+            "origin_processed_event_id",
+            "self_check_of"
+          ],
+          "long_running": true
+        },
+        "phone_control_link": {
+          "effect": "observe",
+          "retry": "after_check",
+          "check_with": "phone_status",
+          "context_inject": [
+            "principal_id",
+            "context"
+          ]
+        },
+        "phone_start": {
+          "effect": "workspace",
+          "task_type": "phone_start",
+          "long_running": true,
+          "retry": "after_check",
+          "check_with": "phone_status",
+          "context_inject": [
+            "principal_id",
+            "job_id",
+            "origin_processed_event_id",
+            "self_check_of",
+            "context"
+          ]
+        },
+        "phone_restore_apps": {
+          "effect": "owner_data",
+          "target": "$.apps",
+          "task_type": "phone_restore_apps",
+          "long_running": true,
+          "retry": "after_check",
+          "check_with": "phone_status",
+          "context_inject": [
+            "principal_id",
+            "job_id",
+            "origin_processed_event_id",
+            "self_check_of"
+          ]
+        },
+        "phone_save_apps": {
+          "effect": "owner_data",
+          "target": "$.apps",
+          "task_type": "phone_save_apps",
+          "long_running": true,
+          "retry": "after_check",
+          "check_with": "phone_status",
+          "context_inject": [
+            "principal_id",
+            "job_id",
+            "origin_processed_event_id",
+            "self_check_of"
+          ]
+        },
+        "phone_close": {
+          "effect": "workspace",
+          "task_type": "phone_close",
+          "long_running": true,
+          "retry": "after_check",
+          "check_with": "phone_status",
+          "context_inject": [
+            "principal_id",
+            "job_id",
+            "origin_processed_event_id",
+            "self_check_of"
+          ]
+        },
+        "phone_cancel": {
+          "effect": "workspace",
+          "target": "$.job_id",
+          "task_type": "phone_cancel",
+          "retry": "after_check",
+          "check_with": "phone_status",
+          "context_inject": [
+            "principal_id"
+          ]
+        }
+      },
+      "staging": {
+        "fake": {
+          "command": "python3",
+          "args": [
+            "fake/server.py"
+          ]
+        }
+      },
+      "tests": {
+        "contract": "tests/contract.yaml"
+      },
+      "provenance": {
+        "source_commit": "decaff83c56b5e188b229a11e79b32106eeccf43",
+        "workshop_run": null,
+        "adapter_modules": [
+          "server/host.py",
+          "server/receipts.py",
+          "server/payment.py",
+          "server/registration.py"
+        ]
+      }
+    }
+  }
+}

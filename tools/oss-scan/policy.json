@@ -2312,7 +2312,7 @@
     },
     {
       "rule": "domain",
-      "file": "integrations/hermes/personal_aios/mijia.py",
+      "file": "capability/packages/mijia/server/mijia.py",
       "line_pattern": "response\\ =\\ requests\\.get\\(\"https://miot\\-spec\\.org/miot\\-spec\\-v2/instance\",\\ params=\\{\"type\":\\ urn\\},\\ timeout=30\\)",
       "reason": "公开服务/下载/协议 namespace 或 TypeScript/Python/Swift 成员访问；不是私有部署。"
     },
@@ -2540,7 +2540,7 @@
     },
     {
       "rule": "key-literal",
-      "file": "integrations/hermes/personal_aios/staging/fake_mijia.py",
+      "file": "capability/packages/mijia/fake/server.py",
       "line_pattern": "self\\.auth_data\\ =\\ \\{\"expireTime\":\\ \\(time\\.time\\(\\)\\ \\+\\ 86400\\)\\ \\*\\ 1000,\\ \"serviceToken\":\\ \"synthetic\\-session\\-secret\"\\}",
       "reason": "标识符表达式或明确的本地测试凭证，不是运行时秘密。"
     },
@@ -2933,6 +2933,483 @@
       "file": "integrations/connectors/phone_executor/test_checkout_guard.py",
       "line_pattern": "d\\.text\\(\\(80,\\ 1900\\),\\ \"配送至\\ 示例市样例区示例路1号\",\\ fill=\"black\",\\ font=font\\)",
       "reason": "Explicit fictional delivery address rendered in a synthetic checkout image; no real person or workplace."
+    },
+    {
+      "rule": "domain",
+      "reason": "Public Xiaomi/MIoT vendor domains declared by the existing connector; no private instance address or credential.",
+      "scope": [
+        {
+          "file": "capability/contracts/examples/mijia/plugin.json",
+          "line_patterns": [
+            "\"api\\.io\\.mi\\.com\",",
+            "\"account\\.xiaomi\\.com\""
+          ]
+        },
+        {
+          "file": "capability/packages/mijia/plugin.json",
+          "line_patterns": [
+            "\"api\\.io\\.mi\\.com\",",
+            "\"account\\.xiaomi\\.com\",",
+            "\"miot\\-spec\\.org\""
+          ]
+        }
+      ]
+    },
+    {
+      "rule": "domain",
+      "reason": "Public test-provider endpoint used only by explicit opt-in model replays; credentials are supplied separately through a key file.",
+      "scope": [
+        {
+          "file": "tests/hermes/capability_model.py",
+          "line_patterns": [
+            "\"base_url\":\\ \"https://amr\\-link\\.open\\-design\\.ai/v1\"\\},",
+            "\"custom_providers\":\\ \\[\\{\"name\":\\ \"capability\\-test\",\\ \"base_url\":\\ \"https://amr\\-link\\.open\\-design\\.ai/v1\",",
+            "\"base_url\":\\ \"https://amr\\-link\\.open\\-design\\.ai/v1\",\\ \"max_concurrent_children\":\\ 1,"
+          ]
+        }
+      ]
+    },
+    {
+      "rule": "key-literal",
+      "reason": "Deliberately public synthetic loopback/device test tokens, not account credentials.",
+      "scope": [
+        {
+          "file": "01-product-half-finished/backend/services/personal-aios-integration/tests/capability-gateway.test.ts",
+          "line_patterns": [
+            "const\\ internal='synthetic\\-capability\\-internal\\-token',\\ token='synthetic\\-capability\\-device\\-token';"
+          ]
+        }
+      ]
+    },
+    {
+      "rule": "domain",
+      "scope": [
+        {
+          "file": "01-product-half-finished/backend/services/personal-aios-integration/tests/fixtures/model-settings-native-import.json",
+          "line_patterns": [
+            "\"api\":\\ \"https://opencode\\.ai/zen/go/v1\",",
+            "\"base_url\":\\ \"https://opencode\\.ai/zen/go/v1\","
+          ]
+        },
+        {
+          "file": "capability/contracts/examples/mijia/plugin.json",
+          "line_patterns": [
+            "\"\\$schema\":\\ \"https://agent\\-plugins\\.org/schemas/1\\.0\\.0/plugin\\.schema\\.json\",",
+            "\"api\\.io\\.mi\\.com\",",
+            "\"account\\.xiaomi\\.com\""
+          ]
+        },
+        {
+          "file": "capability/contracts/examples/pdf-batch/plugin.json",
+          "line_patterns": [
+            "\"\\$schema\":\\ \"https://agent\\-plugins\\.org/schemas/1\\.0\\.0/plugin\\.schema\\.json\","
+          ]
+        },
+        {
+          "file": "capability/contracts/examples/wechat-mac/plugin.json",
+          "line_patterns": [
+            "\"\\$schema\":\\ \"https://agent\\-plugins\\.org/schemas/1\\.0\\.0/plugin\\.schema\\.json\","
+          ]
+        },
+        {
+          "file": "capability/contracts/upstream/plugin-1.0.0.schema.json",
+          "line_patterns": [
+            "\"\\$id\":\\ \"https://agent\\-plugins\\.org/schemas/1\\.0\\.0/plugin\\.schema\\.json\",",
+            "\"const\":\\ \"https://agent\\-plugins\\.org/schemas/1\\.0\\.0/plugin\\.schema\\.json\","
+          ]
+        },
+        {
+          "file": "deploy/cloud/model-settings-import.example.json",
+          "line_patterns": [
+            "\"base_url\":\\ \"https://opencode\\.ai/zen/go/v1\","
+          ]
+        },
+        {
+          "file": "integrations/hermes/personal_aios/shared-skills/local-tools/SKILL.md",
+          "line_patterns": [
+            "\\-\\ 纸杯建模：库存有\\ Mac\\ Rhino\\ 8\\ 时，先核对尺寸、模型和导出格式，优先用它的脚本能力。官方确认\\ Rhino\\ \\*\\*8\\.11\\ 起\\*\\*有\\ `/Applications/Rhino\\ 8\\.app/Contents/Resources/bin/rhinocode`；连接运行实例需要先在\\ Rhino\\ 执行\\ `StartScriptServer`。核对实际安装路径、版本和帮助，再选\\ `list`／`script\\ <脚本绝对路径>`；修改启动设置另需授权。较早版本可核对\\ `ScriptEditor`\\ 或其他已验证入口，不能套用\\ Windows\\ 的\\ `Rhino\\.exe\\ /runscript`。见\\ \\[RhinoCode\\ 官方\\ CLI\\]\\(https://developer\\.rhino3d\\.com/guides/scripting/advanced\\-cli/\\)\\ 和\\ \\[Rhino\\ 8\\ 脚本能力\\]\\(https://www\\.rhino3d\\.com/en/features/developer/scripting/\\)。"
+          ]
+        },
+        {
+          "file": "tests/hermes/test_dispatcher_native.py",
+          "line_patterns": [
+            "parent\\ =\\ AIAgent\\(session_id='budget\\-owner',\\ api_key='k',\\ base_url='https://openrouter\\.ai/api/v1',"
+          ]
+        }
+      ],
+      "reason": "Public provider, protocol/schema or vendor documentation endpoint, scoped to its exact configuration or fixture line."
+    },
+    {
+      "rule": "email",
+      "scope": [
+        {
+          "file": "tests/hermes/test_plugin_startup.py",
+          "line_patterns": [
+            "yield\\ SimpleNamespace\\(_build_ssh_command=lambda:\\ \\['ssh',\\ 'owner@offline\\.invalid'\\]\\)"
+          ]
+        }
+      ],
+      "reason": "Reserved .invalid SSH address in a mocked startup test; not a real account or contact."
+    },
+    {
+      "rule": "home-path",
+      "scope": [
+        {
+          "file": "tests/hermes/test_owner_mac_computer.py",
+          "line_patterns": [
+            "binding\\ =\\ \\{'device_id':\\ 'actual\\-mac',\\ 'home':\\ '/Users/owner'\\}"
+          ]
+        }
+      ],
+      "reason": "Synthetic Mac home in a mocked per-device transport binding; not an installed user profile."
+    },
+    {
+      "rule": "key-literal",
+      "scope": [
+        {
+          "file": "01-product-half-finished/apple/current-mac-source-20260930/clients/phase0/apple-native/YimiDesktop/Tests/DesktopWeChatPreviewTests.swift",
+          "line_patterns": [
+            "userID:\\ \"01900000\\-0000\\-7000\\-8000\\-000000000002\",\\ token:\\ \"test\\-pairing\\-token\\-00000000\",\\ governance:\\ governance,"
+          ]
+        },
+        {
+          "file": "01-product-half-finished/backend/services/personal-aios-integration/tests/model-usage-http.test.ts",
+          "line_patterns": [
+            "const\\ token='fake\\-service\\-only\\-token\\-abcdefghijklmnop',server=createServer\\(async\\(req,res\\)=>\\{"
+          ]
+        },
+        {
+          "file": "01-product-half-finished/backend/services/personal-aios-integration/tests/model-usage-journal.test.ts",
+          "line_patterns": [
+            "let\\ serviceUrl='';const\\ serviceToken='fake\\-source\\-journal\\-token\\-abcdefghijklmnop';"
+          ]
+        },
+        {
+          "file": "01-product-half-finished/backend/services/personal-aios-integration/tests/native-producer-contract.test.ts",
+          "line_patterns": [
+            "const\\ serviceToken='producer\\-contract\\-private\\-service\\-token';"
+          ]
+        },
+        {
+          "file": "tests/hermes/test_model_transport.py",
+          "line_patterns": [
+            "service_token\\ =\\ 'fixture\\-private\\-inference\\-service\\-token'"
+          ]
+        },
+        {
+          "file": "tests/hermes/test_model_usage.py",
+          "line_patterns": [
+            "with\\ OpenAI\\(base_url='https://primary\\.invalid/v1',\\ api_key='fake\\-key\\-never\\-publish',\\ http_client=client,\\ max_retries=1\\)\\ as\\ sdk:"
+          ]
+        },
+        {
+          "file": "tests/hermes/test_provider_context.py",
+          "line_patterns": [
+            "service_token\\ =\\ 'synthetic\\-vision\\-authority\\-service\\-token'"
+          ]
+        }
+      ],
+      "reason": "Explicit synthetic credential in an isolated test or local proof server; never a deployed provider or service key."
+    },
+    {
+      "rule": "app-key",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/tests/capability-registry.test.ts",
+      "line_pattern": "\\['secret\\ value',\\ \\(f:\\ PackageFiles\\)\\ =>\\ \\{f\\['server/credentials\\.py'\\]\\ =\\ 'api_key\\ =\\ \"sk\\-synthetic\\-private\\-fixture\\-value\"';\\}\\],",
+      "reason": "Deliberately synthetic test credential, including a rejected package upload case; not an account secret."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/package-lock.json",
+      "line_pattern": "\"url\":\\ \"https://opencollective\\.com/express\"",
+      "reason": "Public npm dependency funding URL; no deployment or account data."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/package-lock.json",
+      "line_pattern": "\"url\":\\ \"https://opencollective\\.com/express\"",
+      "reason": "Public npm dependency funding URL; no deployment or account data."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/package-lock.json",
+      "line_pattern": "\"url\":\\ \"https://opencollective\\.com/express\"",
+      "reason": "Public npm dependency funding URL; no deployment or account data."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/package-lock.json",
+      "line_pattern": "\"url\":\\ \"https://opencollective\\.com/express\"",
+      "reason": "Public npm dependency funding URL; no deployment or account data."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/package-lock.json",
+      "line_pattern": "\"url\":\\ \"https://opencollective\\.com/express\"",
+      "reason": "Public npm dependency funding URL; no deployment or account data."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/package-lock.json",
+      "line_pattern": "\"url\":\\ \"https://opencollective\\.com/express\"",
+      "reason": "Public npm dependency funding URL; no deployment or account data."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/package-lock.json",
+      "line_pattern": "\"url\":\\ \"https://opencollective\\.com/express\"",
+      "reason": "Public npm dependency funding URL; no deployment or account data."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/package-lock.json",
+      "line_pattern": "\"url\":\\ \"https://opencollective\\.com/express\"",
+      "reason": "Public npm dependency funding URL; no deployment or account data."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/package-lock.json",
+      "line_pattern": "\"url\":\\ \"https://opencollective\\.com/express\"",
+      "reason": "Public npm dependency funding URL; no deployment or account data."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/package-lock.json",
+      "line_pattern": "\"url\":\\ \"https://opencollective\\.com/express\"",
+      "reason": "Public npm dependency funding URL; no deployment or account data."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/package-lock.json",
+      "line_pattern": "\"url\":\\ \"https://opencollective\\.com/express\"",
+      "reason": "Public npm dependency funding URL; no deployment or account data."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/package-lock.json",
+      "line_pattern": "\"url\":\\ \"https://opencollective\\.com/express\"",
+      "reason": "Public npm dependency funding URL; no deployment or account data."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/package-lock.json",
+      "line_pattern": "\"url\":\\ \"https://opencollective\\.com/express\"",
+      "reason": "Public npm dependency funding URL; no deployment or account data."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/package-lock.json",
+      "line_pattern": "\"url\":\\ \"https://opencollective\\.com/express\"",
+      "reason": "Public npm dependency funding URL; no deployment or account data."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/package-lock.json",
+      "line_pattern": "\"url\":\\ \"https://opencollective\\.com/express\"",
+      "reason": "Public npm dependency funding URL; no deployment or account data."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/package-lock.json",
+      "line_pattern": "\"url\":\\ \"https://opencollective\\.com/express\"",
+      "reason": "Public npm dependency funding URL; no deployment or account data."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/package-lock.json",
+      "line_pattern": "\"url\":\\ \"https://opencollective\\.com/express\"",
+      "reason": "Public npm dependency funding URL; no deployment or account data."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/package-lock.json",
+      "line_pattern": "\"url\":\\ \"https://opencollective\\.com/express\"",
+      "reason": "Public npm dependency funding URL; no deployment or account data."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/package-lock.json",
+      "line_pattern": "\"url\":\\ \"https://opencollective\\.com/express\"",
+      "reason": "Public npm dependency funding URL; no deployment or account data."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/package-lock.json",
+      "line_pattern": "\"url\":\\ \"https://opencollective\\.com/express\"",
+      "reason": "Public npm dependency funding URL; no deployment or account data."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/package-lock.json",
+      "line_pattern": "\"url\":\\ \"https://opencollective\\.com/express\"",
+      "reason": "Public npm dependency funding URL; no deployment or account data."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/src/model-usage.ts",
+      "line_pattern": "\\*\\ https://opencode\\.ai/docs/go/\\ \\(only\\ models\\ whose\\ Cached\\ Write\\ column\\ is\\ \"\\-\"\\)\\ \\*/",
+      "reason": "Public model-provider endpoints documented by the usage billing adapter; no account credentials."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/src/model-usage.ts",
+      "line_pattern": "if\\(\\(host==='api\\.deepseek\\.com'\\|\\|host==='amr\\-link\\.open\\-design\\.ai'\\)\\&\\&deepseekInputBilling\\.has\\(model\\)\\|\\|",
+      "reason": "Public model-provider endpoints documented by the usage billing adapter; no account credentials."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/src/model-usage.ts",
+      "line_pattern": "host==='opencode\\.ai'\\&\\&goInputBilling\\.has\\(model\\)\\)return\\ 'input';",
+      "reason": "Public model-provider endpoints documented by the usage billing adapter; no account credentials."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/tests/model-usage.test.ts",
+      "line_pattern": "for\\(const\\ \\[base_url,model_id\\]\\ of\\ \\[\\['https://opencode\\.ai/zen/go/v1','deepseek\\-v4\\.1\\-flash'\\],",
+      "reason": "Public model-provider endpoints in offline billing tests; no network calls or account credentials."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/tests/model-usage.test.ts",
+      "line_pattern": "\\['https://amr\\-link\\.open\\-design\\.ai/v1','deepseek\\-v4\\.1\\-flash'\\],\\['https://opencode\\.ai/zen/go/v1','glm\\-5\\.3\\-flash'\\]\\]\\ as\\ const\\)\\{",
+      "reason": "Public model-provider endpoints in offline billing tests; no network calls or account credentials."
+    },
+    {
+      "rule": "domain",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/tests/model-usage.test.ts",
+      "line_pattern": "assert\\.equal\\(defaultCacheWriteBilling\\(\\{wire_protocol:'anthropic_messages',base_url:'https://opencode\\.ai/zen/go/v1'\\},'qwen3\\.7\\-plus'\\),'separate'\\);",
+      "reason": "Public model-provider endpoints in offline billing tests; no network calls or account credentials."
+    },
+    {
+      "rule": "domain",
+      "file": "integrations/hermes/personal_aios/workshop_capability.py",
+      "line_pattern": "with\\ urlopen\\('https://registry\\.modelcontextprotocol\\.io/v0\\.1/servers\\?'\\ \\+",
+      "reason": "Public MCP registry discovery endpoint; no instance address."
+    },
+    {
+      "rule": "domain",
+      "file": "tests/hermes/replay_capability_consent.py",
+      "line_pattern": "response\\ =\\ client\\.post\\('https://amr\\-link\\.open\\-design\\.ai/v1/chat/completions',",
+      "reason": "Public provider endpoint in an opt-in replay; credentials come from a separate file."
+    },
+    {
+      "rule": "domain",
+      "file": "tests/hermes/workshop_capability_build_probe.py",
+      "line_pattern": "'base_url':\\ 'https://amr\\-link\\.open\\-design\\.ai/v1',\\ 'context_length':\\ 262144,",
+      "reason": "Public provider endpoint in an opt-in package probe; credentials come from a separate file."
+    },
+    {
+      "rule": "domain",
+      "file": "tests/hermes/workshop_capability_build_probe.py",
+      "line_pattern": "'providers':\\ \\{'opendesign\\-test':\\ \\{'api':\\ 'https://amr\\-link\\.open\\-design\\.ai/v1',",
+      "reason": "Public provider endpoint in an opt-in package probe; credentials come from a separate file."
+    },
+    {
+      "rule": "domain",
+      "file": "tests/hermes/workshop_capability_model_probe.py",
+      "line_pattern": "client\\ =\\ OpenAI\\(api_key=scratch_key\\.read_text\\(\\)\\.strip\\(\\),\\ base_url='https://amr\\-link\\.open\\-design\\.ai/v1',",
+      "reason": "Public provider endpoint in an opt-in package probe; credentials come from a separate file."
+    },
+    {
+      "rule": "domain",
+      "file": "tests/hermes/workshop_capability_stack.ts",
+      "line_pattern": "\"import\\ json,sys,urllib\\.request,urllib\\.parse;print\\(json\\.dumps\\(json\\.load\\(urllib\\.request\\.urlopen\\('https://registry\\.modelcontextprotocol\\.io/v0\\.1/servers\\?'\\+urllib\\.parse\\.urlencode\\(\\{'search':sys\\.argv\\[1\\],'limit':5\\}\\),timeout=15\\)\\)\\['servers'\\]\\)\\)\",\\ query\\],",
+      "reason": "Public MCP registry discovery endpoint used by the workshop probe."
+    },
+    {
+      "rule": "email",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/tests/capability-registry.test.ts",
+      "line_pattern": "assert\\.throws\\(\\(\\)\\ =>\\ inspectPackage\\(\\{\\.\\.\\.files,\\ 'server/creds':\\ 'https://account:private@api\\.example\\.com'\\}\\),\\ /secret_value/\\);",
+      "reason": "Negative upload test rejects a fictional example.com URL containing userinfo; not a real account."
+    },
+    {
+      "rule": "email",
+      "file": "01-product-half-finished/glasses-android/app/src/test/java/com/personalaios/glasses/GatewayClockTest.kt",
+      "line_pattern": "\\}\\.apply\\ \\{\\ date\\ =\\ this@GatewayClockTest\\.date;\\ calls\\ \\+=\\ this\\ \\}\\ \\},\\ openKey\\ =\\ \\{\\ _,\\ _,\\ _\\ \\->\\ ByteArray\\(32\\)\\ \\}\\)",
+      "reason": "Kotlin qualified this expression; no email address."
+    },
+    {
+      "rule": "email",
+      "file": "01-product-half-finished/glasses-android/app/src/test/java/com/personalaios/glasses/GatewayClockTest.kt",
+      "line_pattern": "\\}\\.apply\\ \\{\\ date\\ =\\ this@GatewayClockTest\\.date\\ \\}\\ \\}\\)",
+      "reason": "Kotlin qualified this expression; no email address."
+    },
+    {
+      "rule": "email",
+      "file": "01-product-half-finished/glasses-android/app/src/test/java/com/personalaios/glasses/ServerClockTest.kt",
+      "line_pattern": "val\\ connection\\ =\\ FakeControl\\(URL\\(\"http://example\\.test\"\\)\\)\\ \\{\\ 200\\ to\\ \"\\{\\}\"\\ \\}\\.apply\\ \\{\\ date\\ =\\ this@ServerClockTest\\.date\\ \\}",
+      "reason": "Kotlin qualified this expression; no email address."
+    },
+    {
+      "rule": "home-path",
+      "file": "capability/packages/owner-mac/tests/contract.yaml",
+      "line_pattern": "\"output\":\\ \"/Users/owner\"",
+      "reason": "Fictional generic owner home returned by offline pwd fixtures; no personal host path."
+    },
+    {
+      "rule": "home-path",
+      "file": "tests/hermes/test_mac_packages.py",
+      "line_pattern": "env\\.execute\\.return_value\\ =\\ \\{'output':\\ '/Users/owner',\\ 'returncode':\\ 0\\}",
+      "reason": "Fictional generic owner home returned by offline pwd fixtures; no personal host path."
+    },
+    {
+      "rule": "home-path",
+      "file": "tests/hermes/test_mac_packages.py",
+      "line_pattern": "yield\\ SimpleNamespace\\(execute=lambda\\ \\*args,\\ \\*\\*kwargs:\\ \\{'returncode':\\ 0,\\ 'output':\\ '/Users/owner'\\}\\)",
+      "reason": "Fictional generic owner home returned by offline pwd fixtures; no personal host path."
+    },
+    {
+      "rule": "home-path",
+      "file": "tests/hermes/test_mac_packages.py",
+      "line_pattern": "assert\\ json\\.loads\\(result\\.content\\[0\\]\\.text\\)\\ ==\\ \\{'returncode':\\ 0,\\ 'output':\\ '/Users/owner'\\}",
+      "reason": "Fictional generic owner home returned by offline pwd fixtures; no personal host path."
+    },
+    {
+      "rule": "key-literal",
+      "file": "01-product-half-finished/apple/current-mac-source-20260930/clients/phase0/apple-native/YimiDesktop/Tests/DesktopPairingTests.swift",
+      "line_pattern": "let\\ pairing\\ =\\ RealtimeDevicePairing\\(schema:\\ RealtimeDevicePairing\\.schema,\\ origin:\\ \"https://example\\.test\",\\ deviceID:\\ id,\\ userID:\\ id,\\ token:\\ \"test\\-pairing\\-token\\-00000000\",",
+      "reason": "Deliberately synthetic test credential, including a rejected package upload case; not an account secret."
+    },
+    {
+      "rule": "key-literal",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/tests/capability-registry.test.ts",
+      "line_pattern": "\\['secret\\ value',\\ \\(f:\\ PackageFiles\\)\\ =>\\ \\{f\\['server/credentials\\.py'\\]\\ =\\ 'api_key\\ =\\ \"sk\\-synthetic\\-private\\-fixture\\-value\"';\\}\\],",
+      "reason": "Deliberately synthetic test credential, including a rejected package upload case; not an account secret."
+    },
+    {
+      "rule": "key-literal",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/tests/capability-wiring.test.ts",
+      "line_pattern": "const\\ server=createPersonalAIOSServer\\(runtime,\\{internal_token:'synthetic\\-internal\\-token\\-abcdefghijklmnop',max_request_bytes:4<<20,",
+      "reason": "Deliberately synthetic test credential, including a rejected package upload case; not an account secret."
+    },
+    {
+      "rule": "key-literal",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/tests/capability-wiring.test.ts",
+      "line_pattern": "http:\\{internal_token:'synthetic\\-internal\\-token\\-abcdefghijklmnop',max_request_bytes:4<<20,request_timeout_ms:10000\\}\\}\\);",
+      "reason": "Deliberately synthetic test credential, including a rejected package upload case; not an account secret."
+    },
+    {
+      "rule": "key-literal",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/tests/model-usage-observer.test.ts",
+      "line_pattern": "const\\ token='fake\\-service\\-token\\-abcdefghijklmnop',notices:BudgetNotice\\[\\]=\\[\\];",
+      "reason": "Deliberately synthetic test credential, including a rejected package upload case; not an account secret."
+    },
+    {
+      "rule": "key-literal",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/tests/ts-packages.test.ts",
+      "line_pattern": "const\\ server\\ =\\ createPersonalAIOSServer\\(runtime,\\ \\{internal_token:\\ 'fixture\\-internal\\-key\\-abcdefghijklmn',\\ max_request_bytes:\\ 262144,",
+      "reason": "Deliberately synthetic test credential, including a rejected package upload case; not an account secret."
+    },
+    {
+      "rule": "key-literal",
+      "file": "tests/hermes/capability_wiring_model.ts",
+      "line_pattern": "const\\ token='synthetic\\-internal\\-token\\-abcdefghijklmnop';await\\ writeFile\\(join\\(folder,'internal\\.key'\\),token\\);",
+      "reason": "Deliberately synthetic test credential, including a rejected package upload case; not an account secret."
+    },
+    {
+      "rule": "ipv4",
+      "file": "ci/hermes-python312.requirements.txt",
+      "line_pattern": "brotlicffi==1\\.2\\.0\\.2",
+      "reason": "Locked Brotli Python dependency version; not a network address or instance identifier."
     }
   ],
   "public_namespaces": [
@@ -2940,6 +3417,11 @@
       "host": "personal-ai-os.local",
       "reason": "Project protocol/schema identifier on reserved local namespace; not a deployed service address",
       "evidence": "01-product-half-finished/backend/contracts/json-schema/common/common-envelope.v1.schema.json:3"
+    },
+    {
+      "host": "agent-plugins.org",
+      "reason": "Canonical Agent Plugins v1 schema namespace, not an instance service address.",
+      "evidence": "capability/contracts/upstream/plugin-1.0.0.schema.json:3"
     }
   ],
   "public_notice_contacts": [

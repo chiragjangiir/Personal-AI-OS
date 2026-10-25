@@ -4,7 +4,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import org.json.JSONObject
 
 /** Avatar intent only. CallLifecycle remains the authority for the call itself. Main-thread confined. */
-internal class AvatarStream(private val now: () -> Long = System::currentTimeMillis) {
+internal class AvatarStream(private val now: () -> Long = ServerClock.shared::nowMillis) {
     // Credentials must never appear in a generated data-class toString or HUD snapshot.
     class Media(val token: String, val user: String, val expires: Long)
     enum class Phase { Off, Waiting, Joining, Playing, Failed }

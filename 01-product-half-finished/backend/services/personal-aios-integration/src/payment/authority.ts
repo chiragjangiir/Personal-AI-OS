@@ -669,6 +669,7 @@ export class PaymentAuthority {
   async detach(source:RegisteredDevice):Promise<void>{await this.leases.detach(source);await this.after(source.principal_id);}
   async enrolmentAllowed(source:RegisteredDevice,kind:GrantKind='voiceprint_enrol'):Promise<boolean>{return !!await this.leases.enrolment(source,true,kind);}
   async consumeEnrolment(source:RegisteredDevice,status='enrolled',kind:GrantKind='voiceprint_enrol'):Promise<void>{await this.leases.consumeEnrolment(source,status,kind);await this.after(source.principal_id);}
+  async cancelApproval(source:RegisteredDevice,kind:GrantKind):Promise<void>{await this.leases.cancelApproval(source,kind);await this.after(source.principal_id);}
   private async windows(principal:string):Promise<void>{
     for(const [key,close] of this.payWindows)if(key.startsWith(principal+'\n')){close();this.payWindows.delete(key);}
     if(!this.ports?.openPayWindow||await this.ownerOverrideActive())return;

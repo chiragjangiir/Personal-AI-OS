@@ -8,11 +8,14 @@ struct WatchRidePresentation: Equatable {
     private(set) var expiresAt: Date?
     private(set) var explicitLimit: Int?
     private var lastOfflineAlert: Date?
+    private var lastFeedbackText: String?
+    private var lastFeedbackAt: String?
 
     mutating func receive(_ ride: WatchYimiRide?, now: Date) -> Bool {
         if let limit = ride?.max_hr_bpm { explicitLimit = limit }
         guard let text = ride?.text, !text.isEmpty else { return false }
-        guard banner != text || expiresAt.map({ $0 <= now }) ?? true else { return false }
+        guard lastFeedbackText != text || lastFeedbackAt != ride?.feedback_at else { return false }
+        lastFeedbackText = text; lastFeedbackAt = ride?.feedback_at
         banner = text
         expiresAt = now.addingTimeInterval(Self.bannerDuration)
         return true

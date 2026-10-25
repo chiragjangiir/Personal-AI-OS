@@ -1704,8 +1704,8 @@ function encodedPowerShell(value: string): string {
 
 function windowsPowerShellEnvironment(path: string): NodeJS.ProcessEnv {
   const environment: NodeJS.ProcessEnv = { ...process.env };
-  const systemRoot = environment.SystemRoot ?? environment.WINDIR ?? 'C:\\Windows';
-  environment.PSModulePath = `${systemRoot}\\System32\\WindowsPowerShell\\v1.0\\Modules`;
+  const systemRoot = environment.SystemRoot ?? environment.WINDIR;
+  if (systemRoot !== undefined) environment.PSModulePath = `${systemRoot}\\System32\\WindowsPowerShell\\v1.0\\Modules`;
   delete environment.PSModuleAnalysisCachePath;
   environment[CLI_OWNER_ACL_TARGET_ENV] = path;
   return environment;

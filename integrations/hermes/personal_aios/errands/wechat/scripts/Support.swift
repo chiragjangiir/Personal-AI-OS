@@ -26,20 +26,17 @@ func wechat() throws -> NSRunningApplication {
     }
     return app
 }
-func focusedPID() throws -> pid_t {
-    var focused: CFTypeRef?
-    let status = AXUIElementCopyAttributeValue(AXUIElementCreateSystemWide(), kAXFocusedApplicationAttribute as CFString, &focused)
-    guard status == .success, let focused else {
-        throw Failure.message("Cannot read focused application: \(status.rawValue)")
-    }
-    var pid: pid_t = 0
-    let result = AXUIElementGetPid(focused as! AXUIElement, &pid)
-    try require(result == .success, "Cannot read focused application PID: \(result.rawValue)")
-    return pid
+func frontmostPID() throws -> pid_t {
+    // WeChat 4.1.15 can make the system-wide AX focus query fail with -25204.
+    if let app = NSWorkspace.shared.frontmostApplication { return app.processIdentifier }
+    let visible = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] ?? []
+    if let window = visible.first(where: { ($0[kCGWindowLayer as String] as? Int) == 0 }),
+       let pid = window[kCGWindowOwnerPID as String] as? Int32 { return pid }
+    throw Failure.message("Cannot determine frontmost application")
 }
 func front() throws -> NSRunningApplication {
     let app = try wechat()
-    try require(try focusedPID() == app.processIdentifier,
+    try require(try frontmostPID() == app.processIdentifier,
                 "WeChat is not frontmost; no input posted")
     return app
 }
@@ -68,7 +65,7 @@ func process(_ path: String, _ args: [String]) throws {
     try require(task.terminationStatus == 0, "\(path) exited \(task.terminationStatus); inspect outcome")
 }
 
-// System consent can float above WeChat without changing AXFocusedApplication.
+// System consent can float above WeChat without changing the frontmost app.
 struct PermissionNode: Decodable {
     let role: String
     let subrole: String

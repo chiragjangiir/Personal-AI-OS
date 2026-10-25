@@ -28,7 +28,15 @@ struct UndoRecord: Codable {
     var size: Int64? = nil
     var mtime: Double? = nil
     var replacement: FileReplacement? = nil
+    var creation: FileReplacement? = nil
     var movement: FileMovement? = nil
+}
+
+struct CreatedNode: Codable {
+    let path: String
+    let device: Int32
+    let inode: UInt64
+    let directory: Bool
 }
 
 struct FileReplacement: Codable {
@@ -39,6 +47,7 @@ struct FileReplacement: Codable {
     let payloadInode: UInt64
     let payloadSize: Int64
     let payloadMtime: Double
+    var createdNodes: [CreatedNode]? = nil
 }
 
 struct AuditRecord: Codable {
@@ -178,7 +187,7 @@ final class AuditStore {
     }
 
     func unresolvedReplacements() throws -> [AuditRecord] {
-        try query("SELECT record FROM audit WHERE json_extract(record,'$.undo.replacement') IS NOT NULL ORDER BY at,id", [])
+        try query("SELECT record FROM audit WHERE json_extract(record,'$.undo.replacement') IS NOT NULL OR json_extract(record,'$.undo.creation') IS NOT NULL ORDER BY at,id", [])
     }
 
     func unresolvedMovements() throws -> [AuditRecord] {
@@ -196,7 +205,7 @@ final class AuditStore {
         let auditCutoff = now - Double(auditDays) * 86400
         let undoCutoff = now - Double(undoDays) * 86400
         var directories: [URL] = []
-        let pending = "json_extract(record,'$.undo.movement') IS NOT NULL OR json_extract(record,'$.undo.replacement') IS NOT NULL"
+        let pending = "json_extract(record,'$.undo.movement') IS NOT NULL OR json_extract(record,'$.undo.replacement') IS NOT NULL OR json_extract(record,'$.undo.creation') IS NOT NULL"
         let prunable = "NOT (\(pending)) AND id NOT IN (SELECT json_extract(record,'$.undoOf') FROM audit WHERE (\(pending)) AND json_extract(record,'$.undoOf') IS NOT NULL)"
         try execute("BEGIN IMMEDIATE")
         do {

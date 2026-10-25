@@ -1,0 +1,29 @@
+fixtures:
+  - name: listed
+    args: {action: list}
+    native: {targets: 'email:fixture@example.com'}
+    state: succeeded
+  - name: service_ack
+    args: {action: send, target: 'email:fixture@example.com', message: fixture}
+    native: {success: true, message_id: fixture-message}
+    state: succeeded
+  - name: attachment_partial
+    args: {action: send, target: 'email:fixture@example.com', message: fixture}
+    native: {success: false, partial_success: true, media_dropped: [fixture-file]}
+    state: partial
+  - name: interrupted
+    args: {action: send, target: 'email:fixture@example.com', message: fixture}
+    native: {error: transport disconnected}
+    state: unknown
+  - name: skipped
+    args: {action: send, target: 'email:fixture@example.com', message: fixture}
+    native: {success: true, skipped: true}
+    state: cancelled
+  - name: reaction
+    args: {action: react, target: 'telegram:12345678', emoji: '👍'}
+    native: {success: true}
+    state: succeeded
+  - name: removal
+    args: {action: unreact, target: 'telegram:12345678'}
+    native: {success: false}
+    state: unknown

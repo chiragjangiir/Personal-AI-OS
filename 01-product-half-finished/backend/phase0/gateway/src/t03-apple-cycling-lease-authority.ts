@@ -1,3 +1,5 @@
+import { GATEWAY_CONFIG_ROOT } from './gateway-runtime-paths.ts';
+import { resolve } from 'node:path';
 import { createHash, timingSafeEqual } from 'node:crypto';
 
 import type {
@@ -16,7 +18,7 @@ import type {
 } from './t03-governance-device-credential-runtime.ts';
 
 export const T03_APPLE_CYCLING_AUTHORITY_RECORD_PATH =
-  'D:\\AI\\personal ai os\\.runtime\\phase0-roaming\\windows\\config\\apple-cycling-governance-authority.v1.json' as const;
+  resolve(GATEWAY_CONFIG_ROOT, 'apple-cycling-governance-authority.v1.json');
 export const T03_APPLE_CYCLING_AUTHORITY_SCHEMA = 'paios.t03.apple_cycling_governance_authority.v1' as const;
 export const T03_APPLE_CYCLING_PURPOSE = 'cycling_assistant' as const;
 

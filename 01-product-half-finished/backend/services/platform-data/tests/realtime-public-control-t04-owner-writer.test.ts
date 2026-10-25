@@ -99,14 +99,24 @@ function eventFor(activityId = "owner-action-receipt-0001", action = "cycling_st
 const pool: AcceptedActivityStreamPool = { connect: async () => { throw new Error("NOT_USED"); } };
 const result = Object.freeze({ state: "active" }) as unknown as RealtimeSessionRecord;
 
-test("T04 writer validates, forwards the full owner event, and replays by activity id", async () => {
+function durableService() {
   const calls: Array<{ activity: AcceptedUserActivity; ownerEvent: unknown }> = [];
+  const records = new Map<string, string>();
   const service: RealtimePublicControlT04OwnerService = {
     recordAcceptedUserActivity: async (activity, ownerEvent) => {
       calls.push({ activity, ownerEvent });
+      const fingerprint = JSON.stringify({ activity, ownerEvent });
+      const previous = records.get(activity.activityId);
+      if (previous !== undefined && previous !== fingerprint) throw new Error("IDEMPOTENCY_CONFLICT");
+      records.set(activity.activityId, fingerprint);
       return result;
     },
   };
+  return {service, calls};
+}
+
+test("T04 writer validates, forwards the full owner event, and replays through the durable service", async () => {
+  const {service, calls} = durableService();
   const writer = createRealtimePublicControlT04OwnerWriter({
     pool,
     service,
@@ -120,15 +130,29 @@ test("T04 writer validates, forwards the full owner event, and replays by activi
   const event = eventFor();
   assert.equal(await writer.write(event), result);
   assert.equal(await writer.write(structuredClone(event)), result);
-  assert.equal(calls.length, 1);
+  assert.equal(calls.length, 2);
   assert.deepEqual(calls[0]!.ownerEvent, {
     actionReceipt: event.actionReceipt,
     currentBinding: event.currentBinding,
     authorityProjection: event.authorityProjection,
   });
-  await assert.rejects(writer.write(eventFor(event.activity.activityId, "cycling_pause")), /ACCEPTED_ACTIVITY_REPLAY_CONFLICT/u);
+  assert.deepEqual(calls[1], calls[0]);
+  await assert.rejects(writer.write(eventFor(event.activity.activityId, "cycling_pause")), /IDEMPOTENCY_CONFLICT/u);
   await writer.close();
   assert.equal(writer.readiness().ready, false);
+});
+
+test("concurrent activity ids retain each event's own receipt until durable admission", async () => {
+  const {service, calls} = durableService();
+  const writer = createRealtimePublicControlT04OwnerWriter({pool, service, now: () => Date.parse("2026-08-30T12:00:00.000Z")});
+  const first = eventFor("concurrent-owner-event"), second = eventFor("concurrent-owner-event", "cycling_pause");
+  try {
+    const settled = await Promise.allSettled([writer.write(first), writer.write(second)]);
+    assert.equal(settled[0]!.status, "fulfilled");
+    assert.equal(settled[1]!.status, "rejected");
+    if (settled[1]!.status === "rejected") assert.match(String(settled[1]!.reason), /IDEMPOTENCY_CONFLICT/u);
+    assert.deepEqual(calls.map(call => (call.ownerEvent as {actionReceipt: unknown}).actionReceipt), [first.actionReceipt, second.actionReceipt]);
+  } finally { await writer.close(); }
 });
 
 test("T04 writer removes a failed attempt so the durable transaction can retry", async () => {

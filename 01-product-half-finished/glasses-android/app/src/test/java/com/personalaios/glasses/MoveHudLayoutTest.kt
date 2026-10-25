@@ -3,6 +3,7 @@ package com.personalaios.glasses
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
+import java.time.Instant
 
 class MoveHudLayoutTest {
     private val ride = JSONObject("""{"speed_kmh":7.6,"avg_kmh":6.0,"max_kmh":9.8,"distance_m":1200,"elapsed_s":720,"hr_bpm":91,"hr_zone":1,"kcal":4}""")
@@ -81,6 +82,7 @@ class MoveHudLayoutTest {
             assertEquals(1, layout.texts.count { it.role == "call_status" })
             assertEquals(mode == "chat", layout.texts.any { it.role == "say" })
             assertEquals(mode == "thinking", layout.texts.any { it.role == "thinking_status" })
+            if (mode == "thinking") assertNull(layout.portrait)
             val regions = layout.texts.map { it.rect } + listOfNotNull(layout.portrait, layout.heartIcon,
                 layout.turnIcon, layout.miniMap, layout.turnRibbon, layout.turnDistance,
                 layout.directionHintLeft, layout.directionHintRight)
@@ -157,6 +159,40 @@ class MoveHudLayoutTest {
             assertNull(waiting.turnIcon); assertNull(waiting.turnRibbon); assertNull(waiting.miniMap)
             assertFalse(waiting.texts.any { it.role in setOf("navigation_road", "navigation_detail") })
         }
+    }
+
+    @Test fun navigationOnlyUpdatesRetainNumbersWithoutRenewingRideFreshnessAndReconnectRestoresThem() {
+        val start = navigationFix.sampleTime
+        fun update(at: Long) = JSONObject().put("operation", "move_hud").put("kind", "ride_nav")
+            .put("coordinate_system", "wgs84").put("seq", at - start)
+            .put("position", JSONObject().put("lat", 31.23).put("lng", 121.47).put("accuracy_m", 4)
+                .put("at", Instant.ofEpochMilli(at).toString()))
+            .put("nav", JSONObject(nav.toString()).put("nav_id", "n").put("revision", 1)
+                .put("maneuver_location", JSONObject().put("lat", 31.24).put("lng", 121.48))
+                .put("route_segment_index", 0).put("segment_fraction", 0.4))
+        val initial = HudState(paired = true).move(update(start).put("ride", ride), start)
+        for (age in listOf(9999L, 10000L, 59999L, 60000L)) {
+            val source = initial.move(update(start + age), start + age)
+            assertSame(initial.ride, source.ride)
+            assertEquals(start, source.rideAt)
+            val visible = visibleHud(source, start + age)
+            assertNotNull(visible.navigationFix)
+            val layout = moveHudLayout(visible)
+            assertEquals(if (age < 60000) "7.6" else "—", layout.texts.single { it.role == "speed" }.text)
+            assertEquals(if (age < 60000) "91" else "—", layout.texts.single { it.role == "heart" }.text)
+        }
+        val disconnected = visibleHud(initial, start + 10000)
+        assertNull(disconnected.navigationFix)
+        val waiting = moveHudLayout(disconnected)
+        assertEquals("等待定位", waiting.texts.single { it.role == "navigation" }.text)
+        assertEquals("7.6", waiting.texts.single { it.role == "speed" }.text)
+        assertNull(waiting.miniMap); assertNull(waiting.turnRibbon)
+        val reconnected = initial.move(update(start + 61000).put("ride", ride), start + 61000)
+        assertEquals(start + 61000, reconnected.rideAt)
+        val layout = moveHudLayout(visibleHud(reconnected, start + 61000))
+        assertEquals("7.6", layout.texts.single { it.role == "speed" }.text)
+        assertEquals("91", layout.texts.single { it.role == "heart" }.text)
+        assertNotNull(layout.miniMap); assertNotNull(layout.turnRibbon)
     }
 
     @Test fun phoneUnavailableHintIsSpecificAndInterruptsMovementWithoutAGenericError() {

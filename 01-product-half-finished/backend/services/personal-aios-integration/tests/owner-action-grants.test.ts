@@ -31,7 +31,7 @@ test('I17 native acceptance must echo the exact grant set; dropped/different ack
       if(String(input).endsWith('/stop'))stops++;
       return Response.json({schema:'hermes.run.v2',shape_sha256:NATIVE_RUN_SHAPE_SHA256,profile_home:'/fixture',run_id:'grant-run',session_id:'s',conversation_session_id:'s',status:'running',...(ack===undefined?{}:{granted_toolsets:ack})});
     });
-    const result=client.create({input:'owner request',instructions:'test',session_id:'s',memory_write:false,grant_toolsets:grants},'key');
+    const result=client.create({input:'owner request',instructions:'test',session_id:'s',grant_toolsets:grants},'key');
     if(ack===grants){await result;assert.equal(stops,0);}else{await assert.rejects(result,/HERMES_RUN_SCOPE_NOT_ENFORCED/u);assert.equal(stops,1);}
   }
 });

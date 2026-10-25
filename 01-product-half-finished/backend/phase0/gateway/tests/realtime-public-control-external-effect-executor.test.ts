@@ -135,7 +135,7 @@ test("executes each media stage against an authoritative binding", async () => {
   await executor.close();
 });
 
-test("deduplicates concurrent and completed stage replay, but permits a failed retry", async () => {
+test("deduplicates active stages and releases settled stages for durable reconciliation", async () => {
   let release!: () => void;
   let calls = 0;
   const h = harness({
@@ -151,8 +151,11 @@ test("deduplicates concurrent and completed stage replay, but permits a failed r
   assert.equal(calls, 1);
   release();
   await Promise.all([first, second]);
-  await executor.executeStage({ stage: "tracks_unpublished", intent: intent() });
-  assert.equal(calls, 1);
+  const replay = executor.executeStage({ stage: "tracks_unpublished", intent: intent() });
+  await setImmediate();
+  assert.equal(calls, 2);
+  release();
+  await replay;
   await executor.close();
 
   let failOnce = true;
@@ -186,13 +189,13 @@ test("times out an owner operation without claiming completion", async () => {
   await executor.close();
 });
 
-test("suppresses the old handoff participant, sanitizes output, and replays once", async () => {
+test("suppresses the old handoff participant, sanitizes output, and releases settled handoffs", async () => {
   const h = harness();
   const executor = createRealtimePublicControlExternalEffectExecutor({ owner: h.owner, binding: h.resolver });
   const request: JsonRecord = { request_id: "handoff-request-1" };
   const first = await executor.suppressAndClose({ request, authorityResult: { accepted: true } });
   const second = await executor.suppressAndClose({ request, authorityResult: { accepted: true } });
-  assert.equal(h.calls.handoff.length, 1);
+  assert.equal(h.calls.handoff.length, 2);
   assert.deepEqual(first, second);
   assert.equal((first as { readonly status: string }).status, "suppressed_and_closed");
   assert.equal(Object.isFrozen(first), true);
@@ -248,4 +251,21 @@ test("fails closed when an owner is not ready and closes exactly once", async ()
   assert.equal(h.calls.bindingClose, 1);
   assert.deepEqual(executor.readiness(), { ready: false, closed: true, owner: false, binding: false });
   assert.throws(() => executor.assertReady(), /EXTERNAL_EFFECT_OWNER_NOT_READY/);
+});
+
+test("active stage conflicts are rejected before the owner and settled intents are not retained", async () => {
+  let release!: () => void;
+  const h = harness({ unpublishTracks: async () => new Promise<void>((resolve) => { release = resolve; }) });
+  const executor = createRealtimePublicControlExternalEffectExecutor({ owner: h.owner, binding: h.resolver });
+  const first = executor.executeStage({ stage: "tracks_unpublished", intent: intent() });
+  await setImmediate();
+  const conflicting = { ...intent(), governance: { purpose: "changed" } };
+  await assert.rejects(executor.executeStage({ stage: "tracks_unpublished", intent: conflicting }), /EXTERNAL_EFFECT_INTENT_CONFLICT/);
+  release();
+  await first;
+  const next = executor.executeStage({ stage: "tracks_unpublished", intent: conflicting });
+  await setImmediate();
+  release();
+  await next;
+  await executor.close();
 });

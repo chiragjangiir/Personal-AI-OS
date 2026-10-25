@@ -128,3 +128,59 @@ private final class HeldDropProvider: @unchecked Sendable {
 }
 
 private extension FileGrant { var pathURL: URL { URL(fileURLWithPath: path) } }
+
+
+extension DesktopComposerDropTests {
+    func testExt13EditorPasteHandlerDoesNotRetainTheEditor() async throws {
+        weak var released: ComposerTextView?
+        autoreleasepool {
+            let editor = ComposerTextView()
+            editor.configurePaste(paste: { _ in false }, report: { _ in })
+            released = editor
+        }
+        // AppKit may finish text-input registration on the next main-loop turn.
+        for _ in 0..<200 {
+            if released == nil { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertNil(released)
+    }
+}
+
+
+extension DesktopComposerDropTests {
+    func testExt13DismantledEditorRejectsLatePasteResult() async throws {
+        let started = expectation(description: "paste entered"), release = AsyncStream<Void>.makeStream()
+        let editor = ComposerTextView(), clipboard = NSPasteboard.withUniqueName()
+        defer { clipboard.releaseGlobally() }
+        editor.string = "existing"; clipboard.setString("late", forType: .string)
+        editor.configurePaste(paste: { _ in
+            started.fulfill()
+            for await _ in release.stream { break }
+            return false
+        }, report: { _ in XCTFail("A detached editor must not publish a late error") })
+        editor.filePaste?(clipboard)
+        let tasks = Array(editor.pasteTasks.values)
+        await fulfillment(of: [started], timeout: 2)
+        editor.invalidatePaste(); release.continuation.yield(())
+        for task in tasks { await task.value }
+        XCTAssertEqual(editor.string, "existing")
+        XCTAssertNil(editor.filePaste); XCTAssertTrue(editor.pasteTasks.isEmpty)
+    }
+
+    func testExt13CancelledPasteRevokesGrantAfterItsAwait() async throws {
+        let (root, control, composer) = try fixture()
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let file = root.appendingPathComponent("input.txt"); try Data([1]).write(to: file)
+        let started = AsyncStream<Void>.makeStream(), release = AsyncStream<Void>.makeStream()
+        await control.setGrantBarrier { started.continuation.yield(()); for await _ in release.stream { break } }
+        let pending = Task { try await composer.attach([file], via: .paste) }
+        var iterator = started.stream.makeAsyncIterator(); _ = await iterator.next()
+        pending.cancel(); release.continuation.yield(())
+        do { try await pending.value; XCTFail("Cancelled paste must not attach") } catch is CancellationError { }
+        XCTAssertTrue(composer.files.isEmpty)
+        let grants = await control.grants(); XCTAssertTrue(grants.isEmpty)
+        XCTAssertEqual(try Data(contentsOf: file), Data([1]))
+    }
+}

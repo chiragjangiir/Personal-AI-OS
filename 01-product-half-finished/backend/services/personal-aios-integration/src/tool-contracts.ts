@@ -1,3 +1,4 @@
+import {readFileSync} from 'node:fs';
 import {SOUND_EVENTS} from './voiceprint/contracts.ts';
 // Central enabled-tool contract. Native providers fetch these declarations instead of copying them.
 import { MAX_READ_TRACK_IDS } from './stream-archive.ts';
@@ -6,7 +7,7 @@ import { HEALTH_QUERY_METRICS } from './health/query.ts';
 export interface ToolSchema {
   name: string;
   description: string;
-  parameters: {type: 'object'; properties: Record<string, unknown>; required: string[]; additionalProperties: false; oneOf?: unknown[]};
+  parameters: {type: 'object'; properties: Record<string, unknown>; required: string[]; additionalProperties: false; oneOf?: unknown[];$defs?:Record<string,unknown>};
 }
 type Schema = Record<string, unknown>;
 const text: Schema = {type: 'string', minLength: 1};
@@ -317,13 +318,21 @@ const payment:ToolSchema={name:'paios_payment',description:'Owner only. The paym
       {properties:{action:{enum:['cancel','status']}},required:['intent_id'],not:{anyOf:[{required:['purpose']},{required:['app']},{required:['budget_yuan']}]}}]}};
 const senses:ToolSchema={name:'paios_senses',description:'Owner request only. Explicit senses: phone_location requests a phone fix, or returns its own background fix up to 120 seconds old as last_known with age and reachability; never call a cached fix a new observation. heart_rate reads the latest synced sample with observation time and source, never claims a new watch measurement; phone_camera requests one current phone photo (camera back by default, front only when requested); if CAMERA_APP_INACTIVE with pending true, ask the owner to open the app within 20 seconds and wait for camera_result observation. glasses_photo requests one current glasses photo only if a one-shot capture port is supported. Use the returned visual_frame_id as paios_visual_analyze frame_id to inspect its content. Never enable capture or override privacy/pause switches. Unavailable is not a captured result. When phone_location returns phone_reason, the phone itself says why it has no fix (sharing_off, permission_denied, permission_restricted, permission_not_determined, reduced_accuracy, background_when_in_use, stale_fix, location_unknown, network, timeout, invalid_fix, location_failed): tell the owner exactly that and what to fix (turn on location sharing in 依米, allow location for 依米 in iPhone Settings, keep 依米 in the foreground, or move to better signal), never a generic check-permissions.',
   parameters:object({sense:{enum:['glasses_photo','phone_camera','heart_rate','phone_location']},camera:{enum:['back','front']}},['sense'])};
-export function enabledToolSchemas(options: {memory: boolean; actions?: boolean; ambient?: boolean; visual?:boolean;voiceprint?: boolean; health?: boolean; contacts?: boolean; places?: boolean;movement?:boolean;desktop_queue?:boolean}): ToolSchema[] {
+const settingsWire=JSON.parse(readFileSync(new URL('../../../../../integrations/contracts/model-settings.v1.json',import.meta.url),'utf8'));
+const settingsRead:ToolSchema={name:'paios_model_settings_read',description:'Owner chat only. Read the same redacted model/provider/credential pages as 模型与密钥, plus today cost and per-attempt fallback facts. Pin revision and follow next_offset. Unknown cost or subscription remains unknown. Never ask for or retrieve an API key; direct missing-key input to 模型与密钥.',
+  parameters:{...settingsWire.inputs.model_settings_read.definition.properties.request,required:[],$defs:settingsWire.$defs}};
+const settingsBranches=settingsWire.inputs.model_settings_draft.definition.properties.request.oneOf.filter(
+  (branch:{properties:{action:{const:string}}})=>branch.properties.action.const!=='authorize_mac');
+const settingsDraft:ToolSchema={name:'paios_model_settings_draft',description:'Owner chat request only. Prepare provider/role changes, undo, pause or resume as a full frozen draft. No settings change is applied by this tool. Return the draft_id entry for 模型与密钥; the owner reviews every draft page and signs with the existing paired-device formal confirmation. Never supply keys or signatures. Provider/role arrays contain changed rows; expected_revision is from the read tool.',
+  parameters:{...object(Object.assign({},...settingsBranches.map((branch:{properties:Record<string,unknown>})=>branch.properties),
+    {action:{enum:['commit','undo','pause','resume']}}),[]),$defs:settingsWire.$defs,oneOf:settingsBranches}};
+export function enabledToolSchemas(options: {memory: boolean; actions?: boolean; ambient?: boolean; visual?:boolean;voiceprint?: boolean; health?: boolean; contacts?: boolean; places?: boolean;movement?:boolean;desktop_queue?:boolean;model_settings?:boolean}): ToolSchema[] {
   // A returned schema can be serialized or inspected without mutating the authority's declarations.
   return structuredClone([read, locate, open, {name:'paios_task_amend',
     description:'Owner task follow-up: list running task requests and pending amendments, then amend the matching original run. Amendment forwards the exact current owner request to its running native task; never dispatch a duplicate. Reconcile a pending amendment by its exact amendment_id after transport uncertainty. Report delivered_to or a transport error, never claim delivery without a receipt.',
     parameters:object({action:{enum:['list','amend','reconcile']},run_id:identifier,amendment_id:hash},['action'])}, ...(options.memory ? [query, inspect, commit, forget] : []), ...(options.actions ? [action] : []),
     terminalQuestion,callOffer,glassesPay,visualDelete,payment,avatar,senses,...(options.ambient ? [journalSearch] : []), ...(options.visual?[visualRecall,visualAnalyze,capturePolicy]:[]),...(options.voiceprint ? [speakerName,people] : []), ...(options.health ? [healthQuery] : []),
-    ...(options.contacts ? [contactsSearch] : []), ...(options.places ? [placeHistory, geofences, placeForget] : []),...(options.movement?[ride,navigate]:[]),...(options.desktop_queue?[desktopQueue]:[])]);
+    ...(options.contacts ? [contactsSearch] : []), ...(options.places ? [placeHistory, geofences, placeForget] : []),...(options.movement?[ride,navigate]:[]),...(options.desktop_queue?[desktopQueue]:[]),...(options.model_settings?[settingsRead,settingsDraft]:[])]);
 
 }
 

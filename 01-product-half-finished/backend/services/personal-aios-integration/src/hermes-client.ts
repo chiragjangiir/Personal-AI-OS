@@ -1,16 +1,19 @@
 import Ajv2020Module from 'ajv/dist/2020.js';
 import {readFileSync} from 'node:fs';
 import { check, ContractError, sha256, principalAttribution, type ProcessedEvent } from './contracts.ts';
-import type {ReceiptSourceRead} from './output.ts';
 import type {StructuredVisionRequest} from './visual/models.ts';
+
+export type ModelSourceContext = {kind:'call';principal_id:string;device_id:string;call_id:string;continuity:string;raw_ref:string;archive_revision:string}|
+  {kind:'capture';raw_ref:string;archive_revision:string;principal_id:string;device_id:string};
+export type ModelExecutionContext = {run_id:string;session_id:string}|ModelSourceContext;
 
 export interface NativeRun {
   run_id: string; session_id?: string; conversation_session_id?: string; status: string; output?: string; replayed?: boolean; turn_exit_reason?: string;
-  schema?: 'hermes.run.v2'; shape_sha256?: string; profile_home?: string; memory_write?: boolean | null;
+  schema?: 'hermes.run.v2'; shape_sha256?: string; profile_home?: string;
   granted_toolsets?: string[]; updated_at?:number; seq?:number; activity_events?:NativeRunEvent[];
   run_scope?: 'owner' | 'owner_uncertain' | 'guest' | 'build';
   approval?: NativeApproval; approval_results?: NativeApprovalResult[];
-  memory_receipt_source?: unknown; native_memory_receipt_error?: string; native_final_response?: NativeFinalResponse | null; native_final_response_error?: unknown;
+  native_final_response?: NativeFinalResponse | null; native_final_response_error?: unknown;
 }
 export interface NativeApproval {request_id:string;question:string;expires_at_ms:number}
 export interface OwnerConfirmation {confirmation_id:string;confirmed_by:string;surface:{device_id:string;device_type:string};confirmed_at:string}
@@ -22,7 +25,7 @@ export interface NativeFinalResponse {
 }
 // One source-pinned primitive contract. Compile once; business qualification remains native.
 const shapeBytes=readFileSync(new URL('./native-run.shape.schema.json',import.meta.url));
-export const NATIVE_RUN_SHAPE_SHA256='f5ecab354c673aa7354730b9d1fa03ccedcc3d47fdb1ccd3b8383b89d4c749e8';
+export const NATIVE_RUN_SHAPE_SHA256='b725baece0ba60cdcf1789b5964224e94a08768c3cd252ed30a12a517ebda210';
 check(sha256(shapeBytes)===NATIVE_RUN_SHAPE_SHA256,'NATIVE_RUN_SCHEMA_PIN_MISMATCH');
 const shape=JSON.parse(shapeBytes.toString('utf8'));
 export const NATIVE_RUN_SCOPE_TOOLS: Readonly<Record<'care' | 'guest' | 'owner_uncertain' | 'build', readonly string[]>> =
@@ -33,7 +36,6 @@ ajv.addKeyword('x-paios-run-scope-tools');
 ajv.addSchema(shape);
 const runShape=ajv.getSchema(shape.$id+'#/$defs/run')!;
 const proofShape=ajv.getSchema(shape.$id+'#/$defs/proof')!;
-const memoryShape=ajv.getSchema(shape.$id+'#/$defs/memory')!;
 export interface NativeConsumerScope {conversation_session_id: string; profile_home?: string}
 export interface NativeRunEvent {
   event:string;run_id:string;timestamp:number;seq?:number;run?:NativeRun;activity_events?:NativeRunEvent[];
@@ -76,16 +78,6 @@ export function decodeNativeRun(value: unknown, profile?: string, expectedRun?: 
         typeof native.output!=='string' || proof.sha256!==sha256(native.output))
       native.native_final_response_error='NATIVE_FINAL_RESPONSE_BINDING_MISMATCH';
   }
-  if (native.memory_receipt_source!==undefined) {
-    const source=native.memory_receipt_source as {run_id:string;session_id:string;profile_home:string;
-      receipts:{receipt_ref:string;status:string;summary:Record<string,unknown>}[];unsettled_attempts:Record<string,unknown>[]};
-    if (!memoryShape(source) || source.run_id!==native.run_id || source.session_id!==native.conversation_session_id || source.profile_home!==native.profile_home ||
-        source.receipts.length+source.unsettled_attempts.length>256 ||
-        !source.receipts.every(receipt=>receipt.receipt_ref===receipt.summary.receipt_ref && receipt.status===receipt.summary.status) ||
-        ![...source.receipts.map(receipt=>receipt.summary),...source.unsettled_attempts].every(summary=>
-          ['run_id','session_id','profile_home'].every(key=>summary[key]===source[key as keyof typeof source])))
-      native.native_memory_receipt_error='NATIVE_MEMORY_SCOPE_OR_WIRE_INVALID';
-  }
   for(const event of native.activity_events??[])validateNativeEvent(event,native.run_id,Number.MAX_SAFE_INTEGER);
   return native;
 }
@@ -124,22 +116,30 @@ export class HermesClient {
     this.profile = profile; this.maximumBytes = maximumBytes; this.fetcher=fetcher;
     this.baseUrl = baseUrl.replace(/\/$/u, ''); this.token = token; this.timeoutMs = timeoutMs;
   }
-  async analyzeVision(bytes: Buffer, prompt: string | StructuredVisionRequest, signal?: AbortSignal): Promise<string> {
+  /** Authenticated package host operations use the same native transports, including live channel adapters. */
+  async capability(operation:string,body:unknown):Promise<any>{
+    const response=await this.fetcher(`${this.baseUrl}/v1/paios/capability/${operation}`,{method:'POST',redirect:'error',
+      headers:{Authorization:`Bearer ${this.token}`,'Content-Type':'application/json'},body:JSON.stringify(body),
+      signal:AbortSignal.timeout(this.timeoutMs)});
+    const result=await this.responseJSON(response,Math.max(this.maximumBytes,4<<20),'HERMES_CAPABILITY');
+    check(response.ok,`HERMES_HTTP_${response.status}`,response.status);return result;
+  }
+  async analyzeVision(bytes: Buffer, prompt: string | StructuredVisionRequest, signal?: AbortSignal, context?:ModelExecutionContext): Promise<string> {
     const response = await this.fetcher(`${this.baseUrl}/v1/paios/vision`, {
       method: 'POST', redirect: 'error',
       headers: {Authorization: `Bearer ${this.token}`, 'Content-Type': 'application/json'},
       body: JSON.stringify({image_url: `data:image/jpeg;base64,${bytes.toString('base64')}`,
-        ...(typeof prompt==='string'?{prompt}:prompt)}),
+        ...(typeof prompt==='string'?{prompt}:prompt),...(context?('kind' in context?{source_context:context}:{_model_context:context}):{})}),
       signal: AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(this.timeoutMs)])
     });
     const text = await this.responseText(response, this.maximumBytes, 'HERMES_VISION');
     check(response.ok, `HERMES_HTTP_${response.status}`, response.status);
     return text;
   }
-  async classifyCall(text:string,signal?:AbortSignal):Promise<CallIntent> {
+  async classifyCall(text:string,signal?:AbortSignal,context?:ModelExecutionContext):Promise<CallIntent> {
     check(typeof text==='string' && text.length>=1 && text.length<=4000,'INVALID_CALL_INTENT_REQUEST');
     const response=await this.fetcher(`${this.baseUrl}/v1/paios/call-intent`,{method:'POST',redirect:'error',
-      headers:{Authorization:`Bearer ${this.token}`,'Content-Type':'application/json'},body:JSON.stringify({text}),
+      headers:{Authorization:`Bearer ${this.token}`,'Content-Type':'application/json'},body:JSON.stringify({text,...(context?('kind' in context?{source_context:context}:{_model_context:context}):{})}),
       signal:AbortSignal.any([...(signal ? [signal] : []),AbortSignal.timeout(Math.min(this.timeoutMs,3000))])});
     const payload=await this.responseJSON(response,this.maximumBytes,'HERMES_CALL_INTENT');
     check(response.ok,`HERMES_HTTP_${response.status}`,response.status);
@@ -291,12 +291,12 @@ export class HermesClient {
       payload.readiness.checks.model?.status === 'ok';
   }
   /** A restricted run_scope must come back acknowledged: an accepted run that ignored it is stopped, never trusted. */
-  async create(body: {input: string; instructions: string; session_id: string; memory_write: boolean;
+  async create(body: {input: string; instructions: string; session_id: string;
     grant_toolsets?: string[]; run_scope?: 'owner_uncertain' | 'guest' | 'build'; guest_key?: string; care_decision?: true; turn_budget?: 'background';
     model_options?: {reasoning: {enabled: boolean}}}, key: string, signal?: AbortSignal): Promise<NativeRun> {
     const run = await this.request('/v1/runs', 'POST', body, key, signal, undefined, {conversation_session_id: body.session_id});
-    if (body.run_scope !== undefined && (run.run_scope !== body.run_scope || run.memory_write !== false) ||
-        body.care_decision && (run.session_id === body.session_id || run.memory_write !== false) ||
+    if (body.run_scope !== undefined && run.run_scope !== body.run_scope ||
+        body.care_decision && run.session_id === body.session_id ||
         body.grant_toolsets !== undefined && JSON.stringify(run.granted_toolsets?.slice().sort()) !== JSON.stringify(body.grant_toolsets.slice().sort())) {
       await this.cancel(run.run_id, {conversation_session_id: body.session_id}).catch(() => undefined);
       throw new ContractError('HERMES_RUN_SCOPE_NOT_ENFORCED', 502);
@@ -363,13 +363,5 @@ export class HermesClient {
     const payload = await this.responseJSON(response, HISTORY_READ_BYTES, 'HERMES_HISTORY');
     check(response.ok, `HERMES_HTTP_${response.status}`, response.status);
     return payload;
-  }
-  async memory(runId: string, scope: NativeConsumerScope & {profile_home: string}): Promise<ReceiptSourceRead> {
-    check(scope && typeof scope.conversation_session_id==='string' && scope.conversation_session_id.length>0 &&
-      typeof scope.profile_home==='string' && scope.profile_home.length>0, 'NATIVE_MEMORY_SCOPE_REQUIRED');
-    const native=await this.status(runId, scope);
-    check(!native.native_memory_receipt_error, 'NATIVE_MEMORY_SCOPE_DENIED',403);
-    check(native.memory_receipt_source, 'NATIVE_MEMORY_SOURCE_UNAVAILABLE');
-    return native.memory_receipt_source as ReceiptSourceRead;
   }
 }

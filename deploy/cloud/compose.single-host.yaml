@@ -3,17 +3,24 @@ services:
   gateway:
     profiles: [single-host]
     environment:
+      PAIOS_DEPLOYMENT: single-host
+      PAIOS_ENABLE_MIHOME: ${PAIOS_ENABLE_MIHOME:-0}
       PAIOS_OWNER_MAC_ROOT: ${PAIOS_SINGLE_HOST_MAC_ROOT:-}
       PERSONAL_AIOS_VOICE_ENROLLMENT_CONVERSATION: "0"
     volumes: !override
       - ${PAIOS_SECRETS_DIR:?}:/run/secrets:ro
+      - ${PAIOS_SECRETS_DIR:?}/owner-mac:/run/owner-mac
       - owner-data:/var/lib/paios
+      - core-profile:/var/lib/paios/core-profile/memories
+      - model-settings-authority:/var/lib/paios/central-storage/model-settings
+      - model-settings-projections:/var/lib/paios/model-projections
       - desktop-in:/var/lib/paios/desktop-in
       - desktop-out:/var/lib/paios/desktop-out:ro
       - errands:/var/lib/paios/state/errands
       - hermes-home:/opt/data:ro
       - models:/opt/models:ro
       - ./.build/production.json:/etc/paios/cloud.json:ro
+      - ./.build/model-settings-import.json:/etc/paios/model-settings-import.json:ro
     healthcheck:
       test: [CMD, python3, -c, "import os,urllib.request; [urllib.request.urlopen('http://127.0.0.1:'+os.environ[p]+path, timeout=3).read() for p,path in [('PAIOS_GATEWAY_PORT','/healthz'),('PAIOS_INTEGRATION_PORT','/health')]]"]
       interval: 10s
@@ -30,12 +37,27 @@ services:
       PAIOS_ENABLE_WECHAT: ${PAIOS_ENABLE_WECHAT:-0}
       PAIOS_RELEASE_SPOOL: ""
     volumes: !override
-      - ${PAIOS_SECRETS_DIR:?}:/run/secrets:ro
+      - ${PAIOS_SECRETS_DIR:?}/owner-mac:/run/owner-mac:ro
+      - ${PAIOS_SECRETS_DIR:?}/hermes-api.key:/run/secrets/hermes-api.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/hermes-internal.key:/run/secrets/hermes-internal.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/model-settings-service.key:/run/secrets/model-settings-service.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/payment-executor.key:/run/secrets/payment-executor.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/tavily.key:/run/secrets/tavily.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/amap.key:/run/secrets/amap.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/agentbay.key:/run/secrets/agentbay.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/agentbay.adbkey:/run/secrets/agentbay.adbkey:ro
+      - ${PAIOS_SECRETS_DIR:?}/agentbay.adbkey.pub:/run/secrets/agentbay.adbkey.pub:ro
+      - ${PAIOS_SECRETS_DIR:?}/deepseek.key:/run/secrets/deepseek.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/siliconflow.key:/run/secrets/siliconflow.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/role-executor-fast.key:/run/secrets/role-executor-fast.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/role-executor-thorough.key:/run/secrets/role-executor-thorough.key:ro
       - hermes-home:/opt/data
+      - core-profile:/opt/data/memories:ro
+      - model-settings-projections:/etc/paios/model-settings:ro
       - workshop-access:/run/workshop-access
       - errands:/var/lib/paios/state/errands
       - ./.build/production.json:/etc/paios/cloud.json:ro
-      - ./.build/models.json:/etc/paios/models.json:ro
+      - ./.build/executor-models.json:/etc/paios/executor-models.json:ro
   front:
     profiles: [single-host]
     healthcheck:
@@ -69,10 +91,3 @@ services:
     profiles: [owner-mac]
   release-watchdog:
     profiles: [self-repair]
-volumes:
-  desktop-out:
-    driver_opts: !reset {}
-  workshop-data:
-    driver_opts: !reset {}
-  workshop-snapshots:
-    driver_opts: !reset {}

@@ -17,6 +17,8 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from release_watchdog import compose_files
+from staging_snapshot_data import staging_private_path
+from staging_model_settings import load_projections, staging_environment
 
 
 def run(args, **kwargs):
@@ -186,6 +188,8 @@ PRODUCTION_ONLY_KEYS = {"voiceprint.key", "payment-executor.key",
 def excluded_owner_path(relative, linkname=None, exclusions=(), hermes=False, staging=False):
     """Image bindings are code; owner links are data and are never dereferenced."""
     relative = Path(relative)
+    if staging and staging_private_path(relative):
+        return True
     if any(relative.is_relative_to(path) for path in exclusions):
         return True
     if hermes and (any(relative.is_relative_to(path) for path in HERMES_IMAGE_PATHS) or
@@ -228,7 +232,7 @@ def owner_contract_script():
     return ("import os,sys,posixpath,sqlite3,tarfile,tempfile,json;from pathlib import Path\n" +
             "HERMES_IMAGE_PATHS=" + repr(HERMES_IMAGE_PATHS) + "\n" +
             "".join(inspect.getsource(function) for function in
-                    (excluded_owner_path, owner_paths, add_owner_tree)))
+                    (staging_private_path, excluded_owner_path, owner_paths, add_owner_tree)))
 
 
 def cloud_file_names(prefix):
@@ -243,19 +247,12 @@ def cloud_file_names(prefix):
 
 
 def staging_secret_names():
-    # Staging disables Bark, video calls and the cold tier (prepare-build removes archive_tiering; a restore that needs
-    # cold dependency packs adds the WebDAV password itself); Hermes adds its provider/search keys.
-    # Host-rendered LiveKit/Nginx configs are rebuilt.
-    return (cloud_file_names("${PAIOS_SECRET_ROOT}/") - {"bark-device", "bark-key", "vidu.key", "cold-webdav.password"}
-            - PRODUCTION_ONLY_KEYS) | {"deepseek.key", "siliconflow.key", "tavily.key"}
+    # Every staging credential is provisioned by the destination, never from a production bundle.
+    return set()
 
 
 def staging_secret_files(directory):
-    selected = staging_secret_names()
-    for name in selected - {"tavily.key"}:
-        if not (directory / name).is_file():
-            raise ValueError(f"missing required staging secret file: {name}")
-    return sorted(name for name in selected if (directory / name).is_file())
+    return []
 
 
 def validate_archive(path, forbidden=(), hermes=False, owner_links=False):
@@ -725,6 +722,10 @@ def _snapshot_cloud(args, archive_snapshot=None):
         snapshot_path = '/source/central-storage/.snapshots/' + archive_snapshot['snapshot_id']
     archives = (ONLINE_ARCHIVES if args.consistency == "online" else CLOUD_ARCHIVES) + owner_volumes
     for name in archives:
+        if name == 'secrets' and args.consistency == 'staging':
+            with tarfile.open(output / 'secrets.tar.gz', 'w:gz'):
+                pass
+            continue
         source = str(secrets) if name == "secrets" else names[name]
         command = ["docker", "run", "--rm", "--network", "none", "--read-only", "--user", "0:0",
                    "-v", f"{source}:/source:ro", *(consumer_mounts if name == 'owner-data' else []), args.utility_image, "tar", "-czf", "-", "-C", "/source"]
@@ -909,12 +910,12 @@ def verify_snapshot_closure(path, snapshot):
 def restore(args):
     bundle = Path(args.bundle).resolve()
     manifest = json.loads((bundle / "manifest.json").read_text())
-    selected_secrets = staging_secret_names() if args.staging else None
+    projection = load_projections(getattr(args, 'model_settings_projection', None),
+                                 getattr(args, 'model_settings_build_projection', None),
+                                 getattr(args, 'model_settings_environment', None), args.secrets_dir) if args.staging else None
     dependencies = manifest.get('raw_archive_snapshot', {}).get('dependency_packs', [])
     if dependencies and not getattr(args, 'archive_network', None):
         raise ValueError('remote-versioned restore requires --archive-network to reach configured cold authority')
-    if dependencies and selected_secrets is not None:
-        selected_secrets = selected_secrets | {'cold-webdav.password'}
     allowed = ("staging", "frozen", "online") if args.staging else ("frozen", "online")
     online = manifest['format'] in (3, 4)
     if manifest['format'] == 3 and (not args.staging or manifest.get('excluded_owner_paths') not in LEGACY_ONLINE_PRIVATE_PATHS):
@@ -942,6 +943,11 @@ def restore(args):
         raise ValueError("stop all target compose services before restore")
     definition = json.loads(run(compose + ["config", "--format", "json"], capture_output=True, text=True).stdout)
     names = {key: value["name"] for key, value in definition["volumes"].items()}
+    if args.staging:
+        for key in ('model-settings-authority', 'model-settings-projections'):
+            target=definition['volumes'][key+suffix]
+            if target['name']==names[key] or target.get('external') or target.get('driver_opts'):
+                raise ValueError('Staging requires separate local model-settings volumes')
     volumes = [name + suffix for name in ("postgres", "hermes-home", "owner-data", *owner_volumes)] + ["models"]
     gateway = definition['services']['gateway' + suffix]
     errands = next((m['source'] for m in gateway['volumes']
@@ -963,16 +969,12 @@ def restore(args):
     mounted = next(m["source"] for m in mounts if m["target"] == "/run/secrets/postgres.password")
     if Path(mounted).resolve().parent != secrets:
         raise ValueError("--secrets-dir must match the selected compose secret mount")
-    if manifest['format'] == 4 and selected_secrets is not None:
-        config_path = next(m['source'] for m in mounts if m['target'] == '/etc/paios/cloud.json')
-        if json.loads(Path(config_path).read_text()).get('archive_tiering', {}).get('cold'):
-            selected_secrets = selected_secrets | {'cold-webdav.password'}
     pg_env = definition["services"][pg_service]["environment"]
     pg_command = definition["services"][pg_service]["command"]
     pg_port = pg_command[pg_command.index("-p") + 1]
     if (pg_env["POSTGRES_USER"], pg_env["POSTGRES_DB"]) != (manifest["user"], manifest["database"]):
         raise ValueError("compose PostgreSQL user/database differs from snapshot")
-    if secrets.exists():
+    if secrets.exists() and not args.staging:
         raise ValueError("secrets destination already exists; use an empty new host directory")
     image_members = {}
     for name in manifest["archives"]:
@@ -983,11 +985,10 @@ def restore(args):
     if manifest['format'] == 4:
         verify_snapshot_closure(bundle / 'owner-data.tar.gz', manifest['raw_archive_snapshot'])
     if args.staging:
-        with tarfile.open(bundle / "secrets.tar.gz") as archive:
-            present = {member.name.removeprefix("./") for member in archive if member.isfile()}
-        missing = selected_secrets - {"tavily.key"} - present
-        if missing:
-            raise ValueError(f"missing required staging secret files: {', '.join(sorted(missing))}")
+        for name in manifest['archives']:
+            with tarfile.open(bundle / f'{name}.tar.gz') as archive:
+                image_members[name] += [member.name.removeprefix('./') for member in archive
+                                        if staging_private_path(member.name)]
     try:
         for key in volumes:
             options = definition['volumes'][key].get('driver_opts', {})
@@ -1008,16 +1009,22 @@ def restore(args):
                  *(['-v', f'{names[errands]}:/restore/state/errands'] if key == 'owner-data' and errands else []),
                  "-v", f"{bundle}:/bundle:ro", args.utility_image,
                  "sh", "-ec", "; ".join(commands + ([] if key in owner_volumes else ["chown -R 10000:10000 /restore"]))])
-        secrets.mkdir(mode=0o700)
-        with tarfile.open(bundle / "secrets.tar.gz") as archive:
-            members = [member for member in archive if member.isfile() and
-                       member.name.removeprefix("./") in selected_secrets] if args.staging else None
-            archive.extractall(secrets, members=members, filter="data")
-        for path in secrets.rglob("*"):
-            path.chmod(0o700 if path.is_dir() else 0o600)
-            identity = 1001 if path.relative_to(secrets).is_relative_to('openlist') else 10000
-            os.chown(path, identity, identity)
-        os.chown(secrets, 10000, 10000)
+        if not args.staging:
+            secrets.mkdir(mode=0o700)
+            with tarfile.open(bundle / "secrets.tar.gz") as archive:
+                archive.extractall(secrets, filter="data")
+            for path in secrets.rglob("*"):
+                path.chmod(0o700 if path.is_dir() else 0o600)
+                identity = 1001 if path.relative_to(secrets).is_relative_to('openlist') else 10000
+                os.chown(path, identity, identity)
+            os.chown(secrets, 10000, 10000)
+        else:
+            run(['docker', 'run', '--rm', '--interactive', '--network', 'none', '--user', '0:0',
+                 '-v', f"{names['hermes-home' + suffix]}:/restore",
+                 '-v', f"{names['model-settings-projections' + suffix]}:/restore-projections",
+                 '-v', str(Path(__file__).resolve().parent) + ':/opt/paios/deploy/cloud:ro',
+                 gateway['image'], 'python3', '/opt/paios/deploy/cloud/staging_model_settings.py',
+                 '-', '/restore', '/restore-projections'], input=json.dumps(projection), text=True)
         if manifest['format'] == 4:
             gateway = definition['services']['gateway' + suffix]
             config = next(m['source'] for m in gateway['volumes'] if m['target'] == '/etc/paios/cloud.json')
@@ -1094,6 +1101,9 @@ def main():
     target.add_argument("--secrets-dir", required=True)
     target.add_argument("--archive-network", help="existing private Docker network reaching the configured cold archive; required for remote-versioned dependencies")
     target.add_argument("--staging", action="store_true", help="restore isolated staging volumes; never starts production")
+    target.add_argument('--model-settings-environment', type=staging_environment, metavar='staging-NAME')
+    target.add_argument('--model-settings-projection', help='target authority projection inside --secrets-dir')
+    target.add_argument('--model-settings-build-projection', help='target workshop authority projection inside --secrets-dir')
     target.add_argument("--utility-image", default="alpine:3.22")
     args = parser.parse_args()
     {"snapshot": snapshot, "snapshot-cloud": snapshot_cloud, "restore": restore,

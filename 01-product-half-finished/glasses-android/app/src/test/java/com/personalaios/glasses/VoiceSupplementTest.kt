@@ -40,10 +40,25 @@ class VoiceSupplementTest {
         voice.accept(draft("checked", call, 31000))
         assertEquals(VoiceSupplementPhase.Checked, voice.state.phase)
         assertEquals("commit", voice.tap().single().getString("action")); assertEquals(VoiceSupplementPhase.Saving, voice.state.phase)
+        voice.grant(lock(false))
+        assertEquals("grant consumption can arrive before the save receipt", VoiceSupplementPhase.Saving, voice.state.phase)
         voice.accept(draft("committed", null, 31000))
         assertEquals(VoiceSupplementPhase.Saved, voice.state.phase)
         assertTrue(voice.grant(lock(false)).isEmpty()); assertEquals(VoiceSupplementPhase.Saved, voice.state.phase)
         assertTrue(voice.cancel().isEmpty())
+    }
+
+    @Test fun lostApprovalWhileSavingStillRequiresTheCommitResult() {
+        val voice = supplement(); voice.request(true, false)
+        val call = voice.grant(lock(true)).single().getString("call_id")
+        voice.accept(draft("checked", call, 31000))
+        val commit = voice.tap().single()
+        voice.grant(lock(false))
+        assertEquals(VoiceSupplementPhase.Saving, voice.state.phase)
+        assertTrue(voice.rejected(JSONObject().put("control_id", commit.getString("control_id"))))
+        assertEquals(VoiceSupplementPhase.Failed, voice.state.phase)
+        voice.accept(draft("committed", null, 31000))
+        assertEquals(VoiceSupplementPhase.Failed, voice.state.phase)
     }
 
     @Test fun shortPauseResumesOnANewCallAndLostApprovalOrRejectionFails() {
@@ -78,6 +93,22 @@ class VoiceSupplementTest {
         assertEquals("SUPPLEMENT_TAP", reduceHud(entry.screen, HudGesture.Click, talking, 0).action)
         assertEquals("SUPPLEMENT_CANCEL", reduceHud(entry.screen, HudGesture.DoubleClick, talking, 0).action)
         assertEquals(entry.screen, reconcileHud(entry.screen, talking.copy(callId = call)))
+    }
+
+    @Test fun leavingBeforePhoneApprovalCancelsAndReturningRequestsAgain() {
+        val voice = supplement()
+        val first = voice.request(true, false).single()
+        val cancel = voice.cancel().single()
+        assertEquals("voice_enrollment_control", cancel.getString("operation"))
+        assertEquals("discard", cancel.getString("action")); assertFalse(cancel.has("enrollment_session_id"))
+        assertEquals(VoiceSupplementPhase.Idle, voice.state.phase)
+        assertTrue(voice.grant(lock(true)).isEmpty())
+        val fresh = voice.request(true, false).single()
+        assertNotEquals(first.getString("control_id"), fresh.getString("control_id"))
+        assertEquals(VoiceSupplementPhase.AwaitingPhone, voice.state.phase)
+        assertEquals("start", voice.grant(lock(true)).single().getString("action"))
+        assertEquals("discard", voice.cancel().single().getString("action"))
+        assertTrue(voice.cancel().isEmpty())
     }
 
     @Test fun enrollmentCallOpenCarriesTheDraft() {

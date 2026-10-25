@@ -16,15 +16,22 @@ RUN mkdir classes && javac --release 8 -cp sdk/android-36/android.jar -d classes
 # Build paios-hermes-base first from the locked upstream Dockerfile.
 FROM paios-hermes-base:locked
 ARG PAIOS_BUILD_MAINLAND_MIRRORS=0
+# PM keeps uv internal and off PATH; resolve its installed launcher through the public API.
+RUN python3 -c 'from pathlib import Path; from pm import uv_launcher; Path("/usr/local/bin/uv").symlink_to(uv_launcher("uv"))'
+# Product bootstrap dependencies stay outside the sealed upstream environment.
+COPY deploy/cloud/hermes.requirements.lock.txt /opt/paios/hermes.requirements.lock.txt
+RUN uv --no-config pip install --python /opt/hermes/.venv/bin/python --target /opt/paios --index-url https://pypi.org/simple --only-binary :all: --no-deps --require-hashes -r /opt/paios/hermes.requirements.lock.txt
 RUN if [ "$PAIOS_BUILD_MAINLAND_MIRRORS" = "1" ]; then sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list.d/debian.sources; fi && apt-get update && apt-get install -y --no-install-recommends adb openssh-client age zsh fonts-wqy-zenhei && rm -rf /var/lib/apt/lists/*
 COPY integrations/connectors/phone_executor/requirements.lock.txt /opt/paios-phone-requirements.txt
 RUN if [ "$PAIOS_BUILD_MAINLAND_MIRRORS" = "1" ]; then export UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple; fi && uv venv --python /usr/bin/python3 /opt/paios-phone && uv --no-config pip sync --require-hashes --no-cache --python /opt/paios-phone/bin/python /opt/paios-phone-requirements.txt && uv pip check --python /opt/paios-phone/bin/python
 RUN install -d -o 10000 -g 10000 -m 700 /var/lib/paios /var/lib/paios/state /var/lib/paios/state/errands
 # PyPI wheels contain source and dist-info/licenses; installation retains both.
 COPY deploy/cloud/mijia.requirements.lock.txt /opt/paios/mijia.requirements.lock.txt
-RUN uv --no-config pip install --python /opt/hermes/.venv/bin/python --index-url https://pypi.org/simple --only-binary :all: --no-deps --require-hashes -r /opt/paios/mijia.requirements.lock.txt
+# The MCP script imports its own directory even with the native filtered subprocess environment.
+RUN uv --no-config pip install --python /opt/hermes/.venv/bin/python --target /opt/paios/capability/packages/mijia/server --index-url https://pypi.org/simple --only-binary :all: --no-deps --require-hashes -r /opt/paios/mijia.requirements.lock.txt
 COPY deploy/cloud/licenses/s6-overlay.COPYING /usr/share/licenses/s6-overlay/COPYING
 COPY --chmod=a+rX,go-w integrations /opt/paios/integrations
+COPY --chmod=a+rX,go-w capability /opt/paios/capability
 COPY --from=phone_observation_build --chmod=0644 /build/phone-observation.jar /opt/paios/integrations/connectors/phone_executor/phone-observation.jar
 COPY --chmod=a+rX,go-w 01-product-half-finished/backend/services/personal-aios-integration/src/hermes-client.ts /opt/paios/01-product-half-finished/backend/services/personal-aios-integration/src/
 COPY --chmod=a+rX,go-w 01-product-half-finished/backend/services/personal-aios-integration/src/native-run.shape.schema.json /opt/paios/01-product-half-finished/backend/services/personal-aios-integration/src/

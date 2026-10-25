@@ -268,6 +268,7 @@ export interface FormalSourceDeviceAuthority {
   readonly place?: import('./paired-device-authority.ts').PairedPlaceAuthority;
   readonly ownerContext: {resolve(input:Parameters<T11bOwnerContextPort['resolve']>[0],client?:CredentialFenceAdmissionClient):Promise<T11bOwnerContext>};
   readonly readCurrentAuthority?: (atSystemTime?: string) => Readonly<{ userId: string; deviceId: string; principal: unknown;
+    recipientPublicKey?:string;
     deviceType?: DeviceType; capabilities?: readonly TerminalCapability[]; policyDecisionRef: unknown; allowedMediaCapabilities: readonly string[]; governance: unknown }>;
   readonly formalWatchPrimaryAuthority: { readonly resolve: (bearer: unknown, client?:CredentialFenceAdmissionClient) => Promise<Readonly<{ userId: string; deviceId: string;
     principalRef: unknown; policyDecisionRef: unknown }>> };
@@ -301,6 +302,7 @@ export function createAppleCyclingTypedSourceResolver(options: {
     check(Array.isArray(refs) && refs.length === 1 && refs[0]?.ref_type === 'ConsentRecord' &&
       typeof refs[0].ref_id === 'string', 'SOURCE_T03_CONSENT_REQUIRED', 403);
     return {capabilities,device_type:producer.device_type,channel:producer.channel,consent_ref:refs[0].ref_id,
+      ...(authority.recipientPublicKey?{recipient_public_key:authority.recipientPublicKey}:{}),
       // Route identity follows the binding and producer; renewable permission is checked above.
       route_version:`route:v2:${digest({session:current.session.realtimeSessionRef,lease:current.lease.deviceLeaseRef,
         epoch:current.session.connectionEpoch,producer,capabilities,...(playback ? {playback} : {}),owner:{user_id:owner.userId,device_id:owner.deviceId,

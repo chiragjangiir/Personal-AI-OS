@@ -1,0 +1,177 @@
+{
+  "schema": "yimi.effect-classes.v1",
+  "classes": {
+    "observe": {
+      "legacy_effect_kind": "read",
+      "gates": [
+        {
+          "function": "tool_block",
+          "file": "integrations/hermes/personal_aios/native-context.patch"
+        },
+        {
+          "function": "CapabilityGateway.decide",
+          "file": "01-product-half-finished/backend/services/personal-aios-integration/src/capability/gateway.ts"
+        }
+      ],
+      "rule": "Read-only. Role scope only for every read, including phone app content; no requested or remembered consent gate."
+    },
+    "workspace": {
+      "legacy_effect_kind": null,
+      "gates": [
+        {
+          "function": "tool_block",
+          "file": "integrations/hermes/personal_aios/native-context.patch"
+        },
+        {
+          "function": "test_tool",
+          "file": "integrations/hermes/personal_aios/workshop_sandbox.py"
+        }
+      ],
+      "rule": "Workspace operations and phone start/close/cancel use role scope without effect confirmation; owner-data save/restore remain owner_data. Sandbox isolation is not a new consent store."
+    },
+    "owner_data": {
+      "legacy_effect_kind": "file_edit",
+      "gates": [
+        {
+          "function": "tool_block",
+          "file": "integrations/hermes/personal_aios/native-context.patch"
+        },
+        {
+          "function": "effectConsent",
+          "file": "01-product-half-finished/backend/services/personal-aios-integration/src/effect-consent.ts"
+        }
+      ],
+      "rule": "Explicitly requested owner changes are allowed; otherwise confirm per invocation."
+    },
+    "send": {
+      "legacy_effect_kind": "send",
+      "gates": [
+        {
+          "function": "tool_block",
+          "file": "integrations/hermes/personal_aios/native-context.patch"
+        },
+        {
+          "function": "effectConsent",
+          "file": "01-product-half-finished/backend/services/personal-aios-integration/src/effect-consent.ts"
+        }
+      ],
+      "rule": "First send per principal, stable recipient and task_type; requested sends remember that scope, unrequested sends confirm per invocation."
+    },
+    "account": {
+      "legacy_effect_kind": "login",
+      "gates": [
+        {
+          "function": "tool_block",
+          "file": "integrations/hermes/personal_aios/native-context.patch"
+        },
+        {
+          "function": "effectConsent",
+          "file": "01-product-half-finished/backend/services/personal-aios-integration/src/effect-consent.ts"
+        }
+      ],
+      "rule": "Preserve current requested semantics: explicit requests allow; otherwise confirm per invocation. Do not invent durable login consent."
+    },
+    "delete": {
+      "legacy_effect_kind": "delete",
+      "gates": [
+        {
+          "function": "tool_block",
+          "file": "integrations/hermes/personal_aios/native-context.patch"
+        },
+        {
+          "function": "effectConsent",
+          "file": "01-product-half-finished/backend/services/personal-aios-integration/src/effect-consent.ts"
+        }
+      ],
+      "rule": "Preserve current requested semantics: explicit requests allow; otherwise confirm per invocation."
+    },
+    "physical": {
+      "legacy_effect_kind": "external",
+      "gates": [
+        {
+          "function": "tool_block",
+          "file": "integrations/hermes/personal_aios/native-context.patch"
+        },
+        {
+          "function": "effectConsent",
+          "file": "01-product-half-finished/backend/services/personal-aios-integration/src/effect-consent.ts"
+        },
+        {
+          "function": "register.phone_source",
+          "file": "integrations/hermes/personal_aios/__init__.py"
+        },
+        {
+          "function": "_errand_task",
+          "file": "integrations/connectors/phone_executor/server.py"
+        },
+        {
+          "function": "CheckoutStop._checked_input",
+          "file": "integrations/connectors/phone_executor/payment_guard.py"
+        },
+        {
+          "function": "create_server.plan",
+          "file": "capability/packages/mijia/server/mijia.py"
+        }
+      ],
+      "rule": "Preserve ride_ok and bound run ride permission; staging forbids real rides. Mi Home door/entry controls remain read-only."
+    },
+    "spend": {
+      "legacy_effect_kind": null,
+      "gates": [
+        {
+          "function": "tool_block",
+          "file": "integrations/hermes/personal_aios/native-context.patch"
+        },
+        {
+          "function": "PaymentAuthority.request",
+          "file": "01-product-half-finished/backend/services/personal-aios-integration/src/payment/authority.ts"
+        },
+        {
+          "function": "PaymentAuthority.source",
+          "file": "01-product-half-finished/backend/services/personal-aios-integration/src/payment/authority.ts"
+        },
+        {
+          "function": "PaymentAuthority.tap",
+          "file": "01-product-half-finished/backend/services/personal-aios-integration/src/payment/authority.ts"
+        },
+        {
+          "function": "CheckoutStop._checked_input",
+          "file": "integrations/connectors/phone_executor/payment_guard.py"
+        },
+        {
+          "function": "PaymentCheckpoint._pay",
+          "file": "integrations/connectors/phone_executor/payment_checkpoint.py"
+        }
+      ],
+      "rule": "Per-request payment authorization plus live cashier identity/amount verification; never remember payment permission."
+    },
+    "self_change": {
+      "legacy_effect_kind": null,
+      "gates": [
+        {
+          "function": "tool_block",
+          "file": "integrations/hermes/personal_aios/native-context.patch"
+        },
+        {
+          "function": "release_decide",
+          "file": "integrations/hermes/personal_aios/release_consent.py"
+        }
+      ],
+      "rule": "Preserve the release pipeline and exact-candidate owner confirmation for protected baselines. Ordinary package publication follows the existing pipeline, without a new approval gate."
+    }
+  },
+  "owner_requested": {
+    "argument": "owner_requested",
+    "type": "boolean",
+    "reserved": true,
+    "consumed_by": "gateway",
+    "forwarded_to_tool": false,
+    "source": {
+      "function": "effectConsent",
+      "file": "01-product-half-finished/backend/services/personal-aios-integration/src/effect-consent.ts"
+    },
+    "meaning": "The model judges whether the owner explicitly requested this specific effect. This is exactly effect.requested, not owner identity, run scope, or who initiated the turn.",
+    "current_rule": "required = sending || !effect.requested; persistent = sending && effect.requested",
+    "compatibility_note": "Hermes modify shallow-merges args, so omission alone cannot remove this argument. The P1 plugin must demonstrate consumption before execution."
+  }
+}

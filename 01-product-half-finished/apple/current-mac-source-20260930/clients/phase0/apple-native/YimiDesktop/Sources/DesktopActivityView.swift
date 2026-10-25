@@ -30,8 +30,8 @@ struct DesktopActivityView: View {
             Divider()
             DesktopContentScroll(padding: EdgeInsets(top: 0, leading: 22, bottom: 0, trailing: 22)) {
                     if !model.grants.isEmpty {
-                        Text("临时文件授权").font(.headline).padding(.vertical, 12)
-                        Text("原文件不改写，结果存到文稿/依米。").font(.caption).foregroundStyle(Yimi.ink2)
+                        Text("临时交的文件").font(.headline).padding(.vertical, 12)
+                        Text("不会改写原文件，结果存到“文稿 / 依米”。").font(.caption).foregroundStyle(Yimi.ink2)
                         ForEach(model.grants) { grant in
                             HStack {
                                 VStack(alignment: .leading) {
@@ -80,14 +80,14 @@ struct DesktopActivityView: View {
                             Divider()
                         }
                     }
-                    Button("载入更早的活动") { Task { await model.loadOlderActivity() } }.padding(.vertical, 16)
+                    Button("查看更早的活动") { Task { await model.loadOlderActivity() } }.padding(.vertical, 16)
             }.background(Yimi.paper)
             if let error = model.error { Text(error).foregroundStyle(Yimi.danger).padding(10) }
         }.background(Yimi.ground).tint(Yimi.klein).foregroundStyle(Yimi.ink)
         .frame(minWidth: 540, minHeight: 560).navigationTitle("活动与确认")
         .searchable(text: $search, prompt: "搜索活动")
         .toolbar {
-            if let url = model.sshAuditURL { Button("账户命令记录") { NSWorkspace.shared.activateFileViewerSelecting([url]) } }
+            if let url = model.sshAuditURL { Button("命令记录") { NSWorkspace.shared.activateFileViewerSelecting([url]) } }
             Button(model.pause.paused ? "继续" : "暂停") { Task { await model.togglePause() } } }
         .task { if !rendering { await model.refreshActivity() } }
     }
@@ -98,8 +98,8 @@ struct DesktopActivityView: View {
     }
     private func title(_ entry: AuditEntry) -> String {
         let verbs = ["find_files": "查找文件", "read_text_file": "读取文件", "extract_text": "提取文字", "write_file": "写入文件",
-                     "edit_file": "修改文件", "move_file": "移动文件", "trash": "移到废纸篓", "save_from_workshop": "保存工坊文件",
-                     "window_capture": "查看共享窗口", "upload_to_workshop": "发送到离线工坊", "file_grant": "临时文件授权", "undo": "撤销操作"]
+                     "edit_file": "修改文件", "move_file": "移动文件", "trash": "移到废纸篓", "save_from_workshop": "保存处理结果",
+                     "window_capture": "查看共享窗口", "upload_to_workshop": "送去离线处理", "file_grant": "临时交的文件", "undo": "撤销操作"]
         return (entry.decision == "denied" ? "拦下：" : "") + (verbs[entry.tool] ?? entry.tool) + (entry.count > 1 ? " · \(entry.count) 项" : "")
     }
     private func operation(_ action: @escaping () async throws -> Void) {
@@ -119,13 +119,13 @@ struct DesktopMenuContents: View {
             Text(standby).accessibilityIdentifier("desktop.voice.standby")
         }
         if let count = model.voiceStatus.backgroundCount {
-            Text("后台事项 \(count) 件在办").accessibilityIdentifier("desktop.voice.background-count")
+            Text("后台有 \(count) 件事在办").accessibilityIdentifier("desktop.voice.background-count")
         } else {
-            Text("后台事项 · 读取中").accessibilityIdentifier("desktop.voice.background-count")
+            Text("正在读取后台事项…").accessibilityIdentifier("desktop.voice.background-count")
         }
         Button(model.call.isActive || model.callSnapshot?.isDialing == true ? "返回通话窗口" : "和依米通话…") { openWindow(id: "call") }
             .accessibilityIdentifier("desktop.voice.open-call")
-        Toggle("本地唤醒", isOn: Binding(get: { model.callSnapshot?.media.wakeArmed == true },
+        Toggle("语音唤醒", isOn: Binding(get: { model.callSnapshot?.media.wakeArmed == true },
                                      set: { enabled in Task { await model.setWakeEnabled(enabled) } }))
             .disabled(!model.connected).accessibilityIdentifier("desktop.voice.wake-toggle")
         ForEach(Array(model.errands.prefix(5))) { errand in

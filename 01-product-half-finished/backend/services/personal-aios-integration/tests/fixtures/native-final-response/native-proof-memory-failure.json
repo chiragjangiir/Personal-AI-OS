@@ -18,19 +18,8 @@
     "previous_message_role": "tool",
     "last_tool_message_id": 1
   },
-  "memory_receipt_source": {
-    "schema": "hermes.memory_source.v2",
-    "source": "l2",
-    "profile_home": "/tmp/paios-fixture/native-profile",
-    "run_id": "run",
-    "session_id": "conversation",
-    "status": "failed",
-    "error": "NATIVE_MEMORY_SOURCE_UNAVAILABLE",
-    "receipts": [],
-    "unsettled_attempts": []
-  },
   "approval_results": [],
   "schema": "hermes.run.v2",
-  "shape_sha256": "f5ecab354c673aa7354730b9d1fa03ccedcc3d47fdb1ccd3b8383b89d4c749e8",
+  "shape_sha256": "b725baece0ba60cdcf1789b5964224e94a08768c3cd252ed30a12a517ebda210",
   "profile_home": "/tmp/paios-fixture/native-profile"
 }

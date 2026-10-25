@@ -1,5 +1,5 @@
 import {canonical,check,digest,id,ownerActionGrant,type ProcessedEvent} from './contracts.ts';
-import type {RunAdmission} from './admission.ts';
+import type {AdmissionEntry,RunAdmission} from './admission.ts';
 import type {StoragePort} from './storage.ts';
 import type {ToolCall} from './runtime.ts';
 import type {OwnerConfirmation} from './hermes-client.ts';
@@ -19,6 +19,18 @@ export async function effectConsent(ports:{admission:Pick<RunAdmission,'find'>;s
   id(context.run_id);id(context.session_id);id(context.tool_call_id);
   const entry=ports.admission.find(context.run_id,context.session_id);
   check(entry&&!['completed','cancelled','expired','failed'].includes(entry.record.state),'RUN_BINDING_REQUIRED',409);
+  return decideEffectConsent(ports,entry,context,effect,approved,rideOk,approvalRequestId,confirmation);
+}
+
+/** A platform-frozen call outlives its native run. The card retains its original admission, never a new model call. */
+export async function confirmFrozenEffect(ports:Parameters<typeof effectConsent>[0],entry:AdmissionEntry,
+  context:ToolCall['context'],effect:Record<string,unknown>,rideOk:boolean,requestId:string,confirmation:OwnerConfirmation){
+  check(entry.record.run_id===context.run_id&&entry.record.session_id===context.session_id,'RUN_BINDING_REQUIRED',409);
+  return decideEffectConsent(ports,entry,context,effect,true,rideOk,requestId,confirmation);
+}
+
+async function decideEffectConsent(ports:Parameters<typeof effectConsent>[0],entry:AdmissionEntry,
+  context:ToolCall['context'],effect:Record<string,unknown>,approved:boolean,rideOk:boolean,approvalRequestId:string,confirmation?:OwnerConfirmation){
   const owner=(await ownerActionGrant(entry.d,d=>ports.ownerOrigin(d))).length>0;
   const approvedRide=rideOk&&effect.kind==='external'&&effect.requested===true&&ports.paymentSource(context.run_id).ride_allowed;
   check(owner||approvedRide,'OWNER_REQUEST_REQUIRED',403);

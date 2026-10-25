@@ -59,7 +59,7 @@ import UserNotifications
         guard version == snapshot else { return }
         for id in delivered + pending where deadlines[id] != nil { _ = await deduper.reserve(id) }
         for id in next.keys {
-            try await deliver(identifier: id, title: "等你在手机上确认", body: "有一件事等你回答。请在手机上查看。",
+            try await deliver(identifier: id, title: "等你在手机上确认", body: "有件事等你回答，请在手机上查看。",
                               eligible: { [weak self] in self.map { $0.snapshot == version && ($0.deadlines[id].map { $0 > Date() } ?? false) } ?? false })
         }
     }

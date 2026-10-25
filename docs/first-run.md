@@ -1,13 +1,14 @@
 # 单机首次部署
 
-0.0.1 服务端以公开源码和 Compose 发布。服务器本地构建镜像；此版本不提供 GHCR 镜像。
-0.0.1 不提供预编译客户端。手机、Mac、手表和眼镜均需从源码构建，并按各工程的构建说明另行取得供应商 SDK 和模型。
+0.0.2 服务端以公开源码和 Compose 发布。服务器本地构建镜像；此版本不提供 GHCR 镜像。
+0.0.2 不提供预编译客户端。手机、Mac、手表和眼镜均需从源码构建，并按各工程的构建说明另行取得供应商 SDK 和模型。
 
 ## 主机与网络
 
 使用 Linux、Docker Engine、Buildx 和 Docker Compose 2.36 或更新版本。不要使用只有 `docker-compose` v1 的环境。
+启动命令要在 Linux 部署主机的 root 会话中执行，并需要 Docker daemon 访问权限。工坊准备器会为工坊分配一块独立的 1 GiB ext4 容量卷并写好挂载配置，因此主机还需要 Python 3、e2fsprogs、util-linux 和 systemd。
 建议至少 4 vCPU、8 GiB 内存、80 GiB 可用磁盘；本地构建建议 16 GiB 内存。容量是部署预算，实际占用随依赖、媒体和模型增长。
-构建需要访问容器镜像仓库、Debian APT、npm、PyPI、GitHub 和 Google Android 仓库。宿主只需 Docker 工具链；准备镜像提供 Node、Python、Git 和 OpenSSL。
+构建需要访问容器镜像仓库、Debian APT、npm、PyPI、GitHub 和 Google Android 仓库。准备镜像提供 Node、Python、Git 和 OpenSSL；宿主除 Docker 工具链外，还需要上面列出的工坊卷工具。
 构建代理使用进程的 `HTTP_PROXY`、`HTTPS_PROXY`、`NO_PROXY`（也支持小写名称）。启动命令将它们传入构建和准备容器。Docker 客户端保持默认、不自动注入运行代理的配置；运行时的模型代理按服务单独配置。本地 RTC 信令需要直连。
 
 默认 `localhost` 供本机验证。远程客户端需要把 `PAIOS_PUBLIC_HOST` 改为可达的 DNS 名或 IPv4，把 `PAIOS_PUBLIC_IPV4` 改为该主机地址。
@@ -26,7 +27,7 @@ chmod 600 deploy/cloud/.env
 sh deploy/cloud/build.sh --up
 ```
 
-执行用户必须能访问 Docker daemon。准备容器会在工作树内创建 `deploy/cloud/.build`、`deploy/cloud/.local/secrets` 和 `deploy/cloud/.local/tls`；公开仓库的 `.gitignore` 已排除这些目录。
+执行用户必须是部署主机的 root，并能访问 Docker daemon。准备容器会在工作树内创建 `deploy/cloud/.build`、`deploy/cloud/.local/secrets` 和 `deploy/cloud/.local/tls`；公开仓库的 `.gitignore` 已排除这些目录。
 准备容器以 root 运行，只把新生成的运行文件交给容器 UID 10000。不要把这些目录加入 Git。
 
 该命令构建既有 Gateway、Hermes、Front 和工坊镜像，然后启动数据库、运行迁移、创建实例身份，最后启动七个核心服务。
@@ -41,9 +42,11 @@ docker compose --env-file .env --env-file .build/production.public.env \
   -f compose.yaml -f compose.single-host.yaml ps
 ```
 
-首次启动会生成数据库密码、内部 API 凭据、LiveKit 凭据、E2EE、付款和声纹密钥。
-生成器保留已有密钥的原字节。模型密钥写入 `role-*.key`；重启时这些文件是密钥来源。
-更换 `.env` 的密钥不会覆盖旧文件；轮换时需明确更新相应文件，并保持 UID 10000、权限 600，再重启服务。
+首次启动会生成数据库密码、内部 API 凭据、LiveKit 凭据、E2EE、付款和声纹密钥，以及模型设置的 master 与 service 密钥；已有密钥保留原字节。
+
+模型设置有唯一的权威存储（下称 authority）。首次启动时，`build.sh --up` 把 `.env` 中主脑、视觉和工坊的角色配置导入 authority：提供商密钥只经标准输入导入加密存储，随后明确发布主脑和工坊的启动投影。主脑的 `PAIOS_BRAIN_CONTEXT_LIMIT` 与 `PAIOS_BRAIN_MAX_OUTPUT_TOKENS` 也随这次导入生效。master 密钥只挂载到 Gateway；Hermes 通过独立的服务凭据，读取本次投影所需的提供商密钥。
+之后的启动沿用 authority 里的当前设置，再改 `.env` 也不会覆盖。主脑、视觉和工坊的模型与密钥，此后都到客户端的“模型与密钥”页面修改。
+执行器、Realtime 和 TTS 仍使用各自的只读部署配置，按下文的角色和组件开关设置。初始 `role-*.key` 文件既供首次导入，也供这些只读角色使用，权限 600、属主 UID 10000；未配置角色的空占位文件可在首次提供密钥时填写，已有的非空密钥保留原字节。
 不要删除 secrets 来解决启动错误。实例身份、配对记录和加密数据需要这些凭据。
 
 ## TLS
@@ -96,7 +99,7 @@ docker run --rm --network host --user 0:0 \
   -e NODE_EXTRA_CA_CERTS=/usr/local/share/ca-certificates/paios-local.crt \
   -v personal-ai-os_owner-data:/var/lib/paios \
   -v "$PWD/.local/tls:/run/tls:ro" \
-  --entrypoint sh paios-gateway:0.0.1 -ec '
+  --entrypoint sh paios-gateway:0.0.2 -ec '
     cp /run/tls/fullchain.pem /usr/local/share/ca-certificates/paios-local.crt
     chmod 644 /usr/local/share/ca-certificates/paios-local.crt
     update-ca-certificates > /dev/null
@@ -146,11 +149,11 @@ Realtime 和 TTS 使用现有 DashScope-compatible WebSocket 协议；它们不�
 | `PAIOS_ENABLE_WECHAT=1` | 启用现有 Mac 微信技能；要求 `PAIOS_ENABLE_OWNER_MAC=1`、已登录的 Mac 微信和发送授权。关闭后 Hermes 不列出或加载该技能；通用 Mac 工具仍按自身授权工作 |
 | `PAIOS_ENABLE_SELF_REPAIR` | 单机命令不接受设为 1；见下段 |
 
-0.0.1 单机入口不启用预发与自动自修复发布。现有发布链还需要独立预发数据、候选源码仓库、远程 builder 凭据、主机 release runner/systemd 单元、快照与回滚配置。
+0.0.2 单机入口不启用预发与自动自修复发布。现有发布链还需要独立预发数据、候选源码仓库、远程 builder 凭据、主机 release runner/systemd 单元、快照与回滚配置。
 只启动工坊不满足自动发布条件。`deploy/` 的受保护变更仍必须经过正式发布流程。
 
 ## 停止、备份与回退
 
 在 `deploy/cloud` 使用上述 `compose` 函数执行 `compose --profile '*' down`，停止该项目已启用的核心及可选服务；不加 `-v`，保留数据卷。
-同时备份 `.local/secrets`、`.local/tls`、数据库、实例数据卷和工坊数据。先在隔离目录验证恢复。
+同时备份 `.local/secrets`、`.local/tls`、数据库、实例数据卷、模型设置的 authority 与 projections 卷，以及工坊数据。模型设置的 master 密钥必须与 authority 一同恢复，缺一不可。先在隔离目录验证恢复。
 本地构建的旧镜像可保留并在 `.env` 中切换显式标签。镜像回退不自动撤销数据库迁移、客户端变更或外部操作。

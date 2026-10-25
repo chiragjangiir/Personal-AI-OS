@@ -142,7 +142,7 @@ def apply_patch(repo, base, patch, ref):
     git(repo, 'worktree', 'add', '--detach', str(work), base)
     try:
         identity = ['-c', 'user.name=Personal-AIOS release', '-c', 'user.email=release@paios.invalid', '-c', 'commit.gpgsign=false']
-        subprocess.run(['git', '-C', str(work), *identity, 'am', '--keep-cr', '--whitespace=nowarn', str(patch)],
+        subprocess.run(['git', '-C', str(work), *identity, 'am', '--3way', '--keep-cr', '--whitespace=nowarn', str(patch)],
                        check=True, capture_output=True)
         commit = git(work, 'rev-parse', 'HEAD', text=True).strip()
         git(repo, 'update-ref', 'refs/paios/' + ref, commit)

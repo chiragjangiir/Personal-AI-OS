@@ -17,7 +17,7 @@ struct DesktopChatView: View {
                 VStack(spacing: 18) {
                     Image(systemName: "desktopcomputer.trianglebadge.exclamationmark").font(.system(size: 42)).foregroundStyle(Yimi.ink2)
                     Text("这台电脑已解除配对").font(.title2).fontWeight(.semibold)
-                    Text("本机对话缓存已清除；活动记录、文件和文件夹设置保留。").foregroundStyle(Yimi.ink2).multilineTextAlignment(.center)
+                    Text("这台 Mac 上的对话副本已清除；活动记录、文件和文件夹设置仍保留。").foregroundStyle(Yimi.ink2).multilineTextAlignment(.center)
                     Button("重新添加这台电脑") { openWindow(id: "pairing") }.buttonStyle(.borderedProminent)
                 }.padding(28).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -50,7 +50,7 @@ struct DesktopChatView: View {
                 let viewport = viewportHeight
                 DesktopContentScroll(spacing: 14, padding: EdgeInsets(top: 20, leading: 20, bottom: 20, trailing: 20)) {
                     VStack(alignment: .leading, spacing: 14) {
-                        Button("载入更早的对话") { Task { await model.loadOlder() } }
+                        Button("查看更早的对话") { Task { await model.loadOlder() } }
                             .font(.caption).buttonStyle(.plain).foregroundStyle(Yimi.ink2)
                             .disabled(!model.canLoadOlder)
                         if entries.isEmpty {
@@ -140,7 +140,7 @@ struct DesktopMessageRow: View {
                 }
                 HStack {
                     Text(item.date, style: .time)
-                    if let via = item.via, via != "text" { Text(via == "ptt" ? "按住说话" : via) }
+                    if let via = item.via, via != "text", via != "proactive" { Text(via == "ptt" ? "按住说话" : via) }
                     if let status = item.deliveryStatus {
                         Text(status).accessibilityIdentifier(item.isQueued ? "desktop.message.queued" : "desktop.message.delivery")
                     }
@@ -175,7 +175,7 @@ struct DesktopConfirmationCard: View {
             }
             if let text = confirmation.text { Text(text).textSelection(.enabled) }
             Label("在手机上确认", systemImage: "iphone").font(.callout.weight(.semibold)).foregroundStyle(Yimi.klein)
-            Text("请在手机上回答，这里只显示状态。").font(.callout).foregroundStyle(Yimi.ink2)
+            Text("请到手机上回答，这里只显示进度。").font(.callout).foregroundStyle(Yimi.ink2)
             Text("付款只在手机上确认 · 电脑上不会出现付款按钮").font(.caption).foregroundStyle(Yimi.ink3)
         }.padding(16).frame(maxWidth: .infinity, alignment: .leading)
             .background(Yimi.tint, in: RoundedRectangle(cornerRadius: 14))

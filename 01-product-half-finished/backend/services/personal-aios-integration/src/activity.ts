@@ -3,8 +3,11 @@ import {safe} from './timeline.ts';
 import type {NativeRunEvent} from './hermes-client.ts';
 import type {ErrandProgress,ErrandResult} from './runtime.ts';
 import {activityTitle} from './activity-title.ts';
+import {aggregateReceipts} from './capability/gateway.ts';
+import {activitySentence} from './capability/renderer.ts';
+import type {ReceiptRecord} from './capability/ledger.ts';
 
-type ItemState='running'|'succeeded'|'failed'|'partial'|'cancelled';
+export type ItemState='running'|'succeeded'|'failed'|'partial'|'cancelled'|'unknown'|'waiting';
 export interface ActivityProgress {version:1;value:number;total:number}
 export interface ActivityItem {
   id:string;kind:'subagent'|'errand'|'task';state:ItemState;summary:string;step_summary?:string;progress?:ActivityProgress;
@@ -13,7 +16,7 @@ export interface ActivityItem {
 export interface ActivityCard {
   id:string;revision:number;state:ItemState|'partial';summary:string;step_summary?:string;progress?:ActivityProgress;
   summary_source:'agent_intent'|'subagent_goal'|'tool_status'|'generic';started_at:string;observed_at:string;
-  last_progress_at:string;elapsed_ms:number;completed_at?:string;counts:Record<'total'|'running'|'succeeded'|'failed'|'cancelled',number>&{partial?:number};
+  last_progress_at:string;elapsed_ms:number;completed_at?:string;counts:Record<'total'|'running'|'succeeded'|'failed'|'cancelled',number>&{partial?:number;unknown?:number;waiting?:number};
   items:ActivityItem[];omitted_items:number;failure_reason?:string;
 }
 export interface ActivityUpdate {operation:'activity_update';session_id:string;processed_event_id:string;card:ActivityCard}
@@ -32,6 +35,7 @@ export class ActivityProjection {
   private final:string|undefined;private finalAt:number|undefined;private intent='';
   private readonly tools=new Map<string,{intent:string;progress?:ActivityProgress}>();private activeTool:string|undefined;
   private timer:ReturnType<typeof setTimeout>|undefined;private lastSent=0;
+  private receiptRecords:ReceiptRecord[]=[];
   constructor(principal:string,session:string,processed:string,
     publish:(packet:ActivityUpdate)=>void,now:()=>number=Date.now,saved?:ActivitySaved){
     this.principal=principal;this.session=session;this.processed=processed;this.publish=publish;this.now=now;
@@ -41,7 +45,7 @@ export class ActivityProjection {
   }
   private itemId(kind:string,source:string){return `i:${digest([this.principal,this.session,this.processed,kind,source])}`;}
   event(event:NativeRunEvent):void {
-    if(this.card?.completed_at)return;
+    if(this.card?.completed_at&&!this.receiptRecords.length)return;
     if(event.event==='run.snapshot'){
       const progressAt=this.card?.last_progress_at;
       for(const [key,item] of this.items)if(item.kind!=='errand')this.items.delete(key);
@@ -114,7 +118,7 @@ export class ActivityProjection {
     this.changed(at,false);
   }
   settle(status:string,atMs=this.now()):void {
-    if(this.card?.completed_at)return;this.final=status;this.finalAt=atMs;
+    if(this.card?.completed_at&&!this.receiptRecords.length)return;this.final=status;this.finalAt=atMs;
     if(this.card){
       const at=new Date(atMs).toISOString();
       for(const item of this.items.values())if(status!=='completed'&&item.kind!=='errand'&&item.state==='running')
@@ -122,16 +126,29 @@ export class ActivityProjection {
       this.changed(new Date(this.now()).toISOString(),false);
     }
   }
+  receipts(records:ReceiptRecord[]):void {
+    if(!records.length)return;
+    this.receiptRecords=records;
+    if(this.card)this.changed(new Date(this.now()).toISOString(),true);
+  }
   private complete(item:ActivityItem,state:ItemState,at:string,status:string,reason?:string):void {
-    item.state=state;item.completed_at=at;delete item.step_summary;delete item.progress;
+    item.state=state;if(['running','waiting'].includes(state))delete item.completed_at;else item.completed_at=at;delete item.step_summary;delete item.progress;
     if(state==='failed'||state==='partial')item.failure_reason=publicLine(reason??'',96)||failure(status);
   }
   private changed(at:string,immediate:boolean,progressAt=at):void {
     const card=this.card!,items=[...this.items.values()],counts:ActivityCard['counts']={total:items.length||1,running:0,succeeded:0,failed:0,cancelled:0};
-    for(const item of items){if(item.state==='partial')counts.partial=(counts.partial??0)+1;else counts[item.state]++;
+    for(const item of items){
+      const own=item.kind==='subagent'?this.receiptRecords.filter(record=>this.itemId('subagent',record.task_id)===item.id):[];
+      if(own.length){
+        item.state=aggregateReceipts(own);item.summary=activitySentence(own.map(record=>record.receipt),item.state);
+        if(['failed','partial'].includes(item.state))item.failure_reason=failure(item.state);else delete item.failure_reason;
+        delete item.progress;delete item.step_summary;
+        if(['running','waiting'].includes(item.state))delete item.completed_at;else item.completed_at??=at;
+      }
+      if(['partial','unknown','waiting'].includes(item.state))counts[item.state]=(counts[item.state]??0)+1;else counts[item.state]++;
       item.elapsed_ms=Math.max(0,Date.parse(item.completed_at??at)-Date.parse(item.started_at));}
-    if(!items.length)counts[this.final?(this.final==='completed'?'succeeded':['cancelled','canceled','interrupted'].includes(this.final)?'cancelled':'failed'):'running']=1;
-    const terminal=!!this.final&&!counts.running;
+    if(!items.length)counts[this.receiptRecords.length?aggregateReceipts(this.receiptRecords):this.final?(this.final==='completed'?'succeeded':['cancelled','canceled','interrupted'].includes(this.final)?'cancelled':'failed'):'running']=1;
+    const terminal=!!this.final&&!counts.running&&!counts.waiting;
     card.state=!terminal?'running':counts.partial?'partial':counts.failed?(counts.failed===counts.total?'failed':'partial'):counts.cancelled?(counts.cancelled===counts.total?'cancelled':'partial'):'succeeded';
     if(terminal){card.completed_at=new Date(Math.max(this.finalAt??Date.parse(at),...items.map(item=>Date.parse(item.completed_at!)))).toISOString();immediate=true;}
     card.observed_at=at;card.last_progress_at=progressAt;card.elapsed_ms=Math.max(0,Date.parse(card.completed_at??at)-Date.parse(card.started_at));
@@ -139,16 +156,22 @@ export class ActivityProjection {
     const delegates=items.filter(item=>item.kind==='subagent');
     card.summary=this.intent||(delegates.length?`${delegates.length} 件事一起办`:items[0]?.summary)||'正在处理这件事';
     card.summary_source=this.intent?'agent_intent':delegates.length?'subagent_goal':items.length?'tool_status':'generic';
+    if(this.receiptRecords.length){
+      card.state=aggregateReceipts(this.receiptRecords);
+      card.summary=activitySentence(this.receiptRecords.map(record=>record.receipt),card.state);card.summary_source='tool_status';
+      if(['running','waiting'].includes(card.state))delete card.completed_at;
+      else card.completed_at??=at;
+    }
     const tool=!this.final?this.tools.get(this.activeTool!):undefined;
     const running=items.find(item=>item.state==='running'&&item.progress)??items.find(item=>item.state==='running'&&item.step_summary);
-    const progress=!terminal?(tool?.progress??running?.progress):undefined;
-    const step=tool?.progress?undefined:running?.step_summary;
+    const progress=!this.receiptRecords.length&&!terminal?(tool?.progress??running?.progress):undefined;
+    const step=this.receiptRecords.length||tool?.progress?undefined:running?.step_summary;
     if(progress){
       card.progress=progress;card.summary=tool?.progress?(tool.intent||'正在处理这件事'):running!.summary;
       card.summary_source=tool?.progress?(tool.intent?'agent_intent':'generic'):running!.kind==='subagent'?'subagent_goal':'tool_status';
     }else delete card.progress;
     if(step)card.step_summary=step;else delete card.step_summary;
-    if(['failed','partial'].includes(card.state))card.failure_reason=items.find(item=>item.failure_reason)?.failure_reason??failure(this.final!);
+    if(['failed','partial'].includes(card.state))card.failure_reason=items.find(item=>item.failure_reason)?.failure_reason??failure(this.final!);else delete card.failure_reason;
     if(immediate)this.flush();else if(!this.timer)this.timer=setTimeout(()=>this.flush(),Math.max(0,500-(this.now()-this.lastSent)));
   }
   snapshot():ActivitySaved|undefined {return this.card?{packet:{operation:'activity_update',session_id:this.session,processed_event_id:this.processed,card:structuredClone(this.card)},

@@ -25,7 +25,7 @@ data class GlassesLockState(val enabled: Boolean = false, val locked: Boolean = 
 }
 
 /** Server lease projection and process-local cycle; reconnect invalidates local authorization. */
-class UnlockLease(private val now: () -> Long = System::currentTimeMillis,
+class UnlockLease(private val now: () -> Long = ::monotonicMillis,
     private val id: () -> String = { UUID.randomUUID().toString() }) {
     var lockCycle = 0L
         private set

@@ -176,3 +176,50 @@ test('formal result subscription emits first playable WAV while synthesis is pen
  stop();const replacement=await runtime.subscribeResult(source,'session',d.processed_event_id,async()=>{},e=>errors.push(e),{voice_settlement:true});replacement();
  release.resolve();await complete.promise;assert.deepEqual(observed,[1,2]);assert.deepEqual(errors,[]);
 });
+
+for(const lifecycle of ['online','restart','close'] as const)
+test(`unavailable automatic outreach retains one admission obligation and resumes without native rerun: ${lifecycle}`,{timeout:30000},async t=>{
+  const root=await fs.mkdtemp(join(tmpdir(),'paios-outreach-recovery-')),storage=new PosixStorage(root);
+  const failed=Promise.withResolvers<void>(),bound=Promise.withResolvers<void>(),delivered=Promise.withResolvers<void>();
+  let creates=0,attempts=0;
+  const run:NativeRun={run_id:'outreach',session_id:'session',conversation_session_id:'session',status:'running',output:'fixture automatic result'};
+  const native={create:async()=>{creates++;return {...run};},status:async()=>{bound.resolve();return {...run};},cancel:async()=>({...run,status:'cancelled'})};
+  const devices=[{principal_id:'owner',device_id:'mac',device_type:'mac' as const,capabilities:['display','chat_ui'] as const,channel:'text',consent_ref:'c',route_version:'r',output_modes:['text'],token_sha256:sha256('fixture')}];
+  let admission:RunAdmission;
+  const errors:unknown[]=[],make=()=>new PersonalAIOSRuntime({storage,archive:new RawArchive(storage,8192),admission:(admission=new RunAdmission(storage,native,policy)),native,
+    output:new OutputAuthority(storage,{listRunReceipts:async()=>({sources:[]})}),devices,skill:'fixed',max_read_bytes:8192,
+    automatic_output:{onError:error=>{errors.push(error);failed.resolve();}}});
+  let runtime=make();t.after(async()=>{await runtime.close();await fs.rm(root,{recursive:true,force:true});});
+  await runtime.configureTimeline({directory:join(root,'timeline')});
+  const source=await runtime.authenticate('fixture');
+  const accepted=await runtime.submit({schema_version:EVENT_SCHEMA,event_id:'outreach',device_id:'mac',device_type:'mac',captured_at:now,
+    source:{channel:'text'},media_type:'app_event',mime:'application/json',representation:'uploaded_original',
+    payload:Buffer.from(JSON.stringify({kind:'scheduled_task',job_id:'fixture-job',task:'fixture task'}))},source,'session',false);
+  await bound.promise;
+  await runtime.tool('paios_open_reply',{context:{run_id:run.run_id,session_id:'session',tool_call_id:'open'},args:{reply_mode:'text'}});
+  run.status='completed';await failed.promise;
+  assert.match(String(errors[0]),/CARE_OUTREACH_UNAVAILABLE/);
+  for(let n=0;n<100&&admission!.find(run.run_id,'session');n++)await new Promise(resolve=>setTimeout(resolve,5));
+  assert.equal(admission!.find(run.run_id,'session'),undefined,'pending transport recovery releases the native execution barrier');
+  assert.equal((await storage.list('admission-inputs')).length,1);
+  if(lifecycle!=='online'){
+    await runtime.close();
+    if(lifecycle==='close'){
+      await new Promise(resolve=>setTimeout(resolve,1100));
+      assert.equal(errors.length,1,'closing cancels online recovery and retains the durable obligation');
+      assert.equal((await storage.list('admission-inputs')).length,1);return;
+    }
+    native.status=async()=>{throw new Error('NATIVE_RETENTION_EXPIRED');};runtime=make();
+    await runtime.configureTimeline({directory:join(root,'timeline')});
+  }
+  t.after(await runtime.watchCare(await runtime.authenticate('fixture'),async()=>{attempts++;delivered.resolve();return true;}));
+  // Recovery must use the retained terminal/output, even when Hermes is no longer available.
+  native.status=async()=>{throw new Error('NATIVE_RETENTION_EXPIRED');};
+  if(lifecycle==='restart')await admission!.recover();
+  await delivered.promise;
+  for(let n=0;n<100&&(await storage.list('admission-inputs')).length;n++)await new Promise(resolve=>setTimeout(resolve,5));
+  assert.equal((await storage.list('admission-inputs')).length,0);
+  assert.equal(creates,1);assert.equal(attempts,1);
+  assert.equal(runtime.timeline!.page('owner').items.filter(item=>item.kind==='yimi').length,1);
+  assert.equal((await runtime.event(await runtime.authenticate('fixture'),'session',accepted.processed_event.processed_event_id)).admission.state,'completed');
+});

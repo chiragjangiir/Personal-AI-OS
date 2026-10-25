@@ -115,7 +115,7 @@ private final class DesktopQRCodeCapture: NSObject, AVCaptureVideoDataOutputSamp
 
 enum DesktopPairingCameraError: LocalizedError {
     case unavailable
-    var errorDescription: String? { "摄像头不可用，请粘贴手机上的配对码。" }
+    var errorDescription: String? { "摄像头不可用。请用 iPhone 扫描 Mac 上的二维码。" }
 }
 
 // Core's permission coordinator uses the same public AVFoundation API on macOS.

@@ -18,11 +18,13 @@ async function fixture(t:test.TestContext,configured=false){
   const make=()=>{
     const storage=new PosixStorage(root),archive=new RawArchive(storage,8192);
     t.mock.method(archive,'recover',async()=>{});
+    t.mock.method(archive,'maintenance',async()=>{});
     const assembly=createPersonalAIOSAssembly({storage,archive,native:sourceClient(native),skill:'tier fixture',max_event_bytes:8192,max_read_bytes:8192,
       ...(configured?{archive_tiering:{hot_days:2}}:{}),
       devices:[{principal_id:'owner',device_id:'phone',device_type:'phone',channel:'formal',consent_ref:'owner-consent',route_version:'r1',output_modes:['text'],token_sha256:sha256(token)}],
       admission:{max_pending_events:4,max_pending_bytes:65536,max_event_age_ms:10000,poll_interval_ms:10,native_idempotency_retention_ms:86400000,policy_version:'tier-scheduler'},
       http:{internal_token:'synthetic-tier-internal-token',max_request_bytes:8192,request_timeout_ms:1000}});
+    t.mock.method(assembly.runtime,'monitorCapabilities',async()=>{});
     owners.push({assembly,storage});return {assembly,storage,archive};
   };
   t.after(async()=>{for(const owner of owners){await owner.assembly.close();await owner.storage.close();}await fs.rm(root,{recursive:true,force:true});});
@@ -51,7 +53,7 @@ test('configured tiering reports failures, skips overlapping ticks, and close jo
   t.mock.method(console,'error',()=>{});
   t.mock.method(storage,'monitorReserve',async()=>{checks++;return true;});
   t.mock.method(assembly.runtime,'archiveAlert',async(reason:string)=>{reasons.push(reason);});
-  t.mock.method(archive,'moveCold',async(days:number)=>{
+  t.mock.method(archive,'maintenance',async(days:number)=>{
     assert.equal(days,2);if(++moves===1)throw new Error('controlled cold failure');
     entered.resolve();await release.promise;return {segments:0,hot_bytes:0,cold_bytes:0};
   });

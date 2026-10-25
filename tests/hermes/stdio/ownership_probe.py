@@ -35,7 +35,7 @@ async def main():
         events=[]
         try:
             mijia=MCPServerTask('mijia')
-            bad={**config,'args':['-B','/opt/paios/integrations/hermes/personal_aios/staging/fake_mijia.py']}
+            bad={**config,'args':['-B','/opt/paios/capability/packages/mijia/fake/server.py']}
             starts=await asyncio.gather(server.start(config),mijia.start(bad),return_exceptions=True)
             events.append({'starts':[str(v) for v in starts], 'phone_pids':list(server._stdio_child_pids),'mijia_pids':list(mijia._stdio_child_pids),'orphans':list(lifecycle._orphan_stdio_pids)})
             await asyncio.sleep(2)

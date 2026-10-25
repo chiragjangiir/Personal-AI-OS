@@ -5,11 +5,11 @@ import { createQwenModelSupervisor, type QwenModelSupervisorAssets } from '../sr
 
 const MODEL = 'qwen38-orcarouter-uncensored-q6-262k-mtp4';
 const assets: QwenModelSupervisorAssets = Object.freeze({
-  runtimeRoot: 'D:\\fake-runtime', runtimeRootBytes: 1, runtimeTreeSha256: 'a'.repeat(64),
-  executablePath: 'D:\\fake-runtime\\llama-server.exe', executableBytes: 1, executableSha256: 'b'.repeat(64),
-  modelPath: 'H:\\fake\\model.gguf', modelBytes: 1, modelSha256: 'c'.repeat(64),
-  mmprojPath: 'H:\\fake\\mmproj.gguf', mmprojBytes: 1, mmprojSha256: 'd'.repeat(64),
-  templatePath: 'H:\\fake\\template.jinja', templateBytes: 1, templateSha256: 'e'.repeat(64),
+  runtimeRoot: '/opt/runtime', runtimeRootBytes: 1, runtimeTreeSha256: 'a'.repeat(64),
+  executablePath: '/opt/runtime/llama-server', executableBytes: 1, executableSha256: 'b'.repeat(64),
+  modelPath: '/opt/models/model.gguf', modelBytes: 1, modelSha256: 'c'.repeat(64),
+  mmprojPath: '/opt/models/mmproj.gguf', mmprojBytes: 1, mmprojSha256: 'd'.repeat(64),
+  templatePath: '/opt/models/template.jinja', templateBytes: 1, templateSha256: 'e'.repeat(64),
   model: MODEL, contextTokens: 262_144, frontOrigin: 'http://127.0.0.1:16001', frontPort: 16_001,
   backendPort: 15_811, idleMs: 2_700_000, maxActiveRequests: 3,
 });

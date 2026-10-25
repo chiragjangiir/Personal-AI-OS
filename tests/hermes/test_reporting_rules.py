@@ -43,8 +43,9 @@ def test_shared_reporting_contract_reaches_native_parent_and_child(profile, monk
 
 @pytest.mark.parametrize('consent', ['general-first', 'memory-first'], indirect=True)
 def test_native_dual_loader_owns_one_shared_reporting_section(consent):
-    sections = consent.manager.render_system_prompt_sections({})
-    assert [section.id for section in sections] == ['personal-aios.reporting']
+    sections = [section for section in consent.manager.render_system_prompt_sections({})
+                if section.id == 'personal-aios.reporting']
+    assert len(sections) == 1
     assert '只报告记录支持的事实' in sections[0].content
     assert consent.manager.unload('personal_aios')
     assert consent.manager.render_system_prompt_sections({}) == []

@@ -63,7 +63,7 @@ for(const removeOrigin of [false,true])test(`queued recovery resolves durable ow
   if(removeOrigin)await f.storage.removeOriginals([{namespace:'processed-events',key:digest({principal_id:'owner',processed_event_id:origin})}]);
   const runtime=await f.reopen();
   await runtime.desktopReady(await runtime.authenticate('mac'));await until(()=>f.requests.length===2);
-  assert.deepEqual(f.requests[1]!.grant_toolsets,removeOrigin?[]:['desktop','terminal','file']);
+  assert.deepEqual(f.requests[1]!.grant_toolsets,removeOrigin?['desktop']:['desktop','terminal','file']);
   assert.equal(f.created[1].content.app_event.kind,'desktop_queue_task');
 });
 
@@ -108,7 +108,7 @@ for(const origin of ['explicit','observation','missing'])test(`scheduled grants 
   }
   const task=await f.runtime.scheduledTask({principal_id:'owner',device_id:'phone',job_id:'job',occurrence_id:'once',captured_at:new Date().toISOString(),prompt:'owner work',skills:[],...(processed?{origin_processed_event_id:processed}:{})});
   await until(()=>f.created.length===(origin==='missing'?1:2));
-  assert.deepEqual(f.requests.at(-1)!.grant_toolsets,origin==='explicit'?['desktop','terminal','file']:[]);
+  assert.deepEqual(f.requests.at(-1)!.grant_toolsets,origin==='explicit'?['desktop','terminal','file']:['desktop']);
   if(origin==='explicit'){
     await until(()=>!!f.admission.get('owner',task.admission.session_id,task.processed_event.processed_event_id)?.run_id);
     const scheduled=f.created.at(-1),run=f.runs.get(`run-${f.created.length}`)!;

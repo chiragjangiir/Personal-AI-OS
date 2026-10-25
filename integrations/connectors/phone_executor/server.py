@@ -71,6 +71,9 @@ OFFLINE = "执行手机现在不在线（没有连上 Mac），这件事没有�
 ADB = os.environ.get("PAIOS_ADB", "adb")
 TASK_TIMEOUT_S = int(os.environ.get("PAIOS_PHONE_TASK_TIMEOUT", "600"))
 SPOOL = os.environ.get("PAIOS_ERRAND_SPOOL")  # finished background errands land here; the gateway delivers them
+_receipt_stamp = None  # Enabled by the capability host; legacy transport keeps its existing wire.
+_payment_check = None
+_before_phone_operation = None
 UNLOCK_FILE = os.environ.get("PAIOS_PHONE_UNLOCK_FILE")  # owner-only file with the agent phone's screen PIN
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)  # stdout carries the MCP protocol
@@ -518,6 +521,8 @@ async def _errand(latitude: float | None, longitude: float | None, payment_inten
         if (job := _jobs.get(_job_id.get() or "")) is not None and job["state"] == "waiting":
             job.update(state="running", since=time.time())
             job["payment_owner"] = payment_lineage.capture(SPOOL, job)
+            if _before_phone_operation is not None:
+                _before_phone_operation(job)
             _write_running(_job_id.get(), force=True)
         placed, ime = False, None
         try:
@@ -970,6 +975,8 @@ async def _agent(goal: str, max_steps: int, payment_intent: str | None, tier: st
         except _AppLoginRequired as exc:
             outcome = {"success": False, "status": "APP_LOGIN_REQUIRED", "login_app": exc.app,
                        "error_code": "APP_LOGIN_REQUIRED", "answer": str(exc), "steps": None}
+        except (ConnectionError, OSError):
+            outcome = {"success": False, "answer": "执行手机连接中断，结果未知。", "error_code": "PHONE_DISCONNECTED", "steps": None}
         except Exception as exc:  # noqa: BLE001
             outcome = {"success": False, "answer": f"执行手机出错：{type(exc).__name__}: {exc}"[:500], "steps": None}
         finally:
@@ -1087,6 +1094,8 @@ def _spool(job_id: str, record: dict, state: str) -> None:
     """Atomically write <job>.<state>.json (owner-only); a done file replaces the job's running marker."""
     folder = Path(SPOOL)
     folder.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if _receipt_stamp is not None and record.get("kind") != "sms":
+        _receipt_stamp(job_id, record, _jobs.get(job_id))
     tmp = folder / f"{job_id}.{state}.json.tmp"
     with os.fdopen(os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "w") as stream:
         json.dump(record, stream, ensure_ascii=False)
@@ -1231,14 +1240,18 @@ async def _count_steps(handler, max_steps: int) -> None:
 async def _job(job_id: str, task: dict) -> None:
     _job_id.set(job_id)
     try:
-        result = await _phone_operation(task) if "operation" in task else await _errand_task(**task)
+        result = (await _payment_check(task) if task.get("payment_check") else
+                  await _phone_operation(task) if "operation" in task else await _errand_task(**task))
     except asyncio.CancelledError:  # phone_cancel: the agent has stopped acting; report it like any other end
         result = {"success": False, "answer": STOPPED + (("\n" + " ".join(_repairs.get())) if _repairs.get() else "")}
     except TimeoutError:
         result = {"success": False, "answer": "执行手机任务超时，结果未知。", "terminal_reason": "timed_out"}
+    except (ConnectionError, OSError):
+        result = {"success": False, "answer": "执行手机连接中断，结果未知。", "error_code": "PHONE_DISCONNECTED"}
     except Exception as exc:  # noqa: BLE001 — every job must end with a delivered result
         result = {"success": False, "answer": f"执行手机出错：{type(exc).__name__}: {exc}"[:500]
-                  + (("\n" + " ".join(_repairs.get())) if _repairs.get() else "")}
+                  + (("\n" + " ".join(_repairs.get())) if _repairs.get() else ""),
+                  **({"error_code": exc.code} if _receipt_stamp is not None and hasattr(exc, "code") else {})}
     finally:
         job = _jobs.pop(job_id, None)
     if "operation" in task and not result.get("success"):
@@ -1250,12 +1263,12 @@ async def _job(job_id: str, task: dict) -> None:
               "completed" if result.get("success") else "timed_out" if result.get("terminal_reason") == "timed_out" or "仍未完成" in answer else "failed")
     _spool(job_id, step_trace.partial_result({"principal_id": job["principal_id"], "job_id": job_id, "task": task["goal"][:4000], "app": task["app"], "tier": task["tier"],
                     **({"payment_intent": task["payment_intent"]} if task.get("payment_intent") else {}),
-                    **{key: job[key] for key in ("payment_owner", "payment_binding", "phone_started_at", "payment_page_left", "started_at", "origin_processed_event_id", "self_check_of") if job and key in job},
+                    **{key: job[key] for key in ("payment_owner", "payment_binding", "phone_started_at", "payment_page_left", "started_at", "origin_processed_event_id", "self_check_of", "receipt_revision", "task_type") if job and key in job},
                     **payment_lineage.terminal(job or task, result),
                     "success": bool(result.get("success")), "answer": answer[:8000], "finished_at": _now(),
                     "title": job["title"], "evidence_ref": {"tool": "phone_status", "job_id": job_id},
                     **step_trace.snapshot(job, terminal=True),
-                    **{key: result[key] for key in ("status", "error_code", "login_app") if key in result},
+                    **{key: result[key] for key in ("status", "error_code", "login_app", "effect_evidence", "observed_values", "observed_content") if key in result},
                     "terminal_reason": reason, "retryable": reason in ("failed", "timed_out") and not task.get("payment_intent")
                     and result.get("error_code") != "APP_LOGIN_REQUIRED" and "operation" not in task}), TERMINAL_STATES["pending"])
 
@@ -1310,6 +1323,8 @@ async def _phone_operation(task):
     import agentbay_phone
     async with _one_phone:
         job = _jobs[_job_id.get()]
+        if _before_phone_operation is not None:
+            _before_phone_operation(job)
         job.update(state="running", since=time.time())
         _write_running(_job_id.get(), force=True)
         if task["operation"] == "start":
@@ -1334,7 +1349,10 @@ async def _phone_operation(task):
             work = asyncio.create_task(asyncio.to_thread(agentbay_phone.sync_data, _login_phone,
                 task["packages"], "download" if task["operation"] == "restore" else "upload"))
             await _join_cleanup(work)
-        return {"success": True, "answer": task["goal"] + "完成。"}
+        return {"success": True, "answer": task["goal"] + "完成。",
+                **({"effect_evidence": [{"kind": job["effect_kind"], "target": "执行手机", "action": task["goal"],
+                     "verification": "service_ack", "evidence": "云手机服务确认操作完成", "ref": None}]}
+                   if "effect_kind" in job else {})}
 
 
 @mcp.tool()
@@ -1701,7 +1719,8 @@ async def _errand_task(goal: str, max_steps: int, latitude: float | None, longit
     except mac_android.Unavailable as exc:
         result = {"success": False, "status": "unavailable", "answer": str(exc), "steps": None}
     except RuntimeError as exc:
-        result = {"success": False, "answer": str(exc), "steps": None}
+        result = {"success": False, "answer": str(exc), "steps": None,
+                  **({"error_code": exc.code} if _receipt_stamp is not None and hasattr(exc, "code") else {})}
     if login := re.match(r"APP_LOGIN_REQUIRED: (千问|淘宝|支付宝|米家)(?:[。\s]|$)", result["answer"]):
         result.update(success=False, status="APP_LOGIN_REQUIRED", error_code="APP_LOGIN_REQUIRED", login_app=login[1])
     result.update(payment_lineage.terminal(job or {}, result))

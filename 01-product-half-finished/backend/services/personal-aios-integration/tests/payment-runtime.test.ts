@@ -17,7 +17,7 @@ import {controlledEngine,transcriptionResult} from './speech-fixture.ts';
 import {PaymentAuthority} from '../src/payment/authority.ts';
 import type {Initiating,PaymentPorts} from '../src/payment/contracts.ts';
 import {StaticFixtureDeviceAuthority} from '../src/source-authority.ts';
-import {paymentFixture} from './payment-fixture.ts';
+import {paymentFixture,keyPair,signed} from './payment-fixture.ts';
 import {enabledToolSchemas} from '../src/tool-contracts.ts';
 import {VoiceprintRegistry} from '../src/voiceprint/registry.ts';
 import {isSealedRegistry} from '../src/voiceprint/cipher.ts';
@@ -25,7 +25,7 @@ import {parseErrandResult,errandNotice} from '../../../phase0/gateway/src/errand
 import type {ErrandResult} from '../src/runtime.ts';
 import {provisionCentralResources,type CentralProvisionConfiguration} from '../src/main.ts';
 
-async function fixture(t:test.TestContext,realPayment=false,enabled=true,pollInterval=realPayment?5:10000){
+async function fixture(t:test.TestContext,realPayment=false,enabled=true,pollInterval=realPayment?5:10000,withEnrollment=false){
   const directory=await mkdtemp(join(tmpdir(),'payment-runtime-')),storage=new PosixStorage(directory);
   let count=0,ports:PaymentPorts|undefined,lease=true,terminalChanges=0,authorityInputs=0,authorityWatches=0;
   const rejections:{source:unknown;error:unknown}[]=[];
@@ -48,11 +48,13 @@ async function fixture(t:test.TestContext,realPayment=false,enabled=true,pollInt
   const device={principal_id:'owner',device_id:'phone',device_type:'phone' as const,channel:'fixture',consent_ref:'c',route_version:'r',output_modes:['text'],token_sha256:sha256('phone-token')};
   let paired:Parameters<PaymentPorts['revalidate']>[0][]=[device,{...device,device_id:'glasses',device_type:'glasses',capabilities:['display','microphone','wear_state']}];
   const rejectedSources=new WeakSet<object>(),registry=new StaticFixtureDeviceAuthority([device,{...device,device_id:'glasses',device_type:'glasses',capabilities:['display','microphone','wear_state'],token_sha256:sha256('glasses-token')}]);
+  const speech=withEnrollment?controlledEngine():undefined,voiceprint=speech?new VoiceprintRegistry(storage,{...speech.speaker_model,dim:16}):undefined;
   const runtime=new PersonalAIOSRuntime({storage,archive:new RawArchive(storage,10000),admission,native,output:new OutputAuthority(storage),
+    ...(speech?{voiceprint,speech:async()=>speech}:{}),
     payment_devices:async principal=>paired.filter(d=>d.principal_id===principal),
     sourceAuthority:{authenticate:c=>registry.authenticate(c),revalidate:async s=>{if(rejectedSources.has(s))throw new ContractError('SOURCE_BINDING_INACTIVE',403);return registry.revalidate(s);}},skill:'test',max_read_bytes:10000,payment});
   const source=await runtime.authenticate('phone-token');
-  t.after(async()=>{await runtime.close();await rm(directory,{recursive:true,force:true});});
+  t.after(async()=>{await runtime.close();await voiceprint?.close();await rm(directory,{recursive:true,force:true});});
   async function submit(event_id:string,prompt:boolean,app?:object,call=false){
     const raw:RawEvent={schema_version:'paios.event.v1',event_id,device_id:source.device_id,device_type:'phone',captured_at:new Date().toISOString(),
       source:{channel:'fixture'},media_type:prompt?'text':'app_event',mime:prompt?'text/plain;charset=utf-8':'application/json',representation:'uploaded_original',
@@ -128,6 +130,44 @@ test('glasses ordinary voice supplement passes the device gate only with its own
   await assert.rejects(f.runtime.voiceEnrollmentControl(glasses,'status'),/VOICEPRINT_DEVICE_REQUIRED/,'the payment sentence grant does not open ordinary enrollment');
   payment.enrolmentAllowed=async(_s,kind)=>kind==='voice_enrollment';
   await assert.rejects(f.runtime.voiceEnrollmentControl(glasses,'status'),/VOICE_ENROLLMENT_UNAVAILABLE/,'past the device gate');
+});
+
+test('leaving ordinary glasses enrollment cancels the phone card before Face ID and returning requires a fresh approval',async t=>{
+  const f=await fixture(t,true,true,10000,true),glasses=await f.runtime.authenticate('glasses-token');
+  t.after(await f.runtime.watchCare(glasses,async()=>false,undefined,undefined,undefined,undefined,undefined,{session:'session',deliver:async()=>{}}));
+  await f.runtime.wearState(glasses,true,0);
+  const dev=keyPair(),user=keyPair();
+  for(const [key,role] of [[dev,'device'],[user,'user']] as const){
+    const {nonce}=await f.payment.keys.challenge(f.source,'keys_register');
+    const statement={purpose:'keys_register',role,device_id:f.source.device_id,nonce,key_sha256:sha256(Buffer.from(key.public_x963_b64,'base64'))};
+    await f.payment.keys.register(f.source,{role,public_x963_b64:key.public_x963_b64,...signed(key,statement),
+      ...(role==='user'?{device_signature_b64:signed(dev,statement).signature_b64}:{})});
+  }
+  const frames:Record<string,unknown>[]=[],shown=Promise.withResolvers<void>(),removed=Promise.withResolvers<void>();let oldId:string|undefined;
+  t.after(await f.runtime.watchPayments(f.source,async frame=>{
+    frames.push(frame);
+    if(frame.operation==='payment_approvals'&&(frame.approvals as unknown[]).length)shown.resolve();
+    if(oldId&&frame.operation==='payment_approvals'&&!(frame.approvals as {approval_id:string}[]).some(a=>a.approval_id===oldId))removed.resolve();
+  }));
+  const request=()=>f.runtime.paymentInput(glasses,{operation:'voiceprint_enrol_request',purpose:'conversation'});
+  await request();
+  const old=(await f.payment.leases.approvals(f.source))[0]!;oldId=String(old.approval_id);await shown.promise;
+  const approve={operation:'payment_approval_decide',approval_id:oldId,decision:'approve',...signed(user,{purpose:'approval',device_id:f.source.device_id,
+    nonce:old.nonce,approval_id:oldId,kind:'voice_enrollment',target_device_id:glasses.device_id,decision:'approve'})};
+  let exitError:unknown;
+  try{await f.runtime.voiceEnrollmentControl(glasses,'discard');}catch(error){exitError=error;}
+  await assert.rejects(f.runtime.paymentInput(f.source,approve),{message:'APPROVAL_NOT_FOUND',status:404});
+  assert.ifError(exitError);await removed.promise;
+  assert.ok(frames.some(frame=>frame.operation==='payment_approvals'&&(frame.approvals as {approval_id:string}[]).some(a=>a.approval_id===oldId)));
+  assert.equal(await f.payment.enrolmentAllowed(glasses,'voice_enrollment'),false);
+  await request();const fresh=(await f.payment.leases.approvals(f.source))[0]!;
+  assert.notEqual(fresh.approval_id,oldId);assert.notEqual(fresh.nonce,old.nonce);
+  await assert.rejects(f.runtime.paymentInput(f.source,{...approve,approval_id:fresh.approval_id}),/PAYMENT_SIGNATURE_INVALID/);
+  await f.runtime.paymentInput(f.source,{operation:'payment_approval_decide',approval_id:fresh.approval_id,decision:'approve',...signed(user,{
+    purpose:'approval',device_id:f.source.device_id,nonce:fresh.nonce,approval_id:fresh.approval_id,kind:'voice_enrollment',target_device_id:glasses.device_id,decision:'approve'})});
+  assert.equal(await f.payment.enrolmentAllowed(glasses,'voice_enrollment'),true);
+  await f.runtime.voiceEnrollmentControl(glasses,'discard');
+  assert.equal(await f.payment.enrolmentAllowed(glasses,'voice_enrollment'),false,'an approval that won the race leaves no dangling grant');
 });
 
 test('I11 shipped production payment/voiceprint configuration (payments on) provisions real sealed registry with payments disabled and enabled',async t=>{
@@ -272,7 +312,7 @@ test('a spoken pay phrase without a card reaches native unchanged and may reques
   const native=f.nativeInputs[0]!,d=JSON.parse(native.input);
   assert.deepEqual(d.content.app_event,turn);
   assert.equal(principalAttribution(d),'owner_call_turn');assert.equal(native.run_scope,undefined);
-  assert.equal(native.memory_write,true);
+  assert.equal(Object.hasOwn(native,'memory_write'),false);
   const ignored=f.payment.store.events().filter(e=>e.kind==='voice_ignored');
   assert.equal(ignored.length,1);assert.equal(ignored[0]!.data.reason,'NO_PENDING_PAYMENT');
   assert.equal(f.payment.store.principalPayments('owner').length,0);
@@ -385,7 +425,7 @@ test('uncertain directed phone PTT cannot request a payment intent before Face I
  const accepted=await admit.admitProcessed(d,f.source,'session');
  let run=accepted.admission;
  for(let n=0;!run.run_id&&n<100;n++){await new Promise(r=>setTimeout(r,5));run=(await f.runtime.event(f.source,'session',d.processed_event_id)).admission;}
- assert.ok(run.run_id);assert.deepEqual(f.nativeInputs[0]!.grant_toolsets,[]);assert.equal(f.nativeInputs[0]!.memory_write,false);
+ assert.ok(run.run_id);assert.deepEqual(f.nativeInputs[0]!.grant_toolsets,[]);assert.equal(Object.hasOwn(f.nativeInputs[0]!,'memory_write'),false);
  assert.deepEqual(await f.runtime.tool('paios_payment',{context:{run_id:run.run_id,session_id:'session',tool_call_id:'unverified-purchase'},args}),{status:'rejected',error_code:'PAYMENT_SOURCE_NOT_OWNER'});
  assert.equal(f.requests.length,0,'unverified PTT never reaches the payment intent producer');
  const [pending]=await f.runtime.voiceConfirmations(f.source);assert.ok(pending);

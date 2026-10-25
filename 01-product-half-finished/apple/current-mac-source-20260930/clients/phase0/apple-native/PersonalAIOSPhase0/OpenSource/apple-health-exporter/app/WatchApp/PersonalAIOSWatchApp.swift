@@ -23,7 +23,11 @@ struct PersonalAIOSWatchApp: App {
         _notifications = StateObject(
             wrappedValue: WatchNotificationCoordinator()
         )
-        let talk = WatchTalkClient(credential: { [weak connectivity] in connectivity?.yimiStore.validCredential }, refreshCredential: { [weak connectivity] in connectivity?.yimiStore.refreshCredential() })
+        let talk = WatchTalkClient(
+            credential: { [weak connectivity] in connectivity?.yimiStore.validCredential },
+            refreshCredential: { [weak connectivity] in connectivity?.yimiStore.refreshCredential() },
+            recorder: WatchUtteranceRecorder()
+        )
         connectivity.yimiStore.onScopeChange = { [weak talk] in talk?.reset() }
         _talk = StateObject(wrappedValue: talk)
         widgetPublisher = WatchWidgetPublisher(store: connectivity.yimiStore, workout: workout)

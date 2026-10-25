@@ -54,7 +54,7 @@ async function fixture(t:test.TestContext, enable=true) {
   }
   assert.equal((await assembly.runtime.event(source,'fixture-session',submitted.processed_event.processed_event_id)).admission.run_id,'fixture-run');
   assert.equal(creates,1);
-  const context={schema:'hermes.run.v2',profile_home:join(root,'native-profile'),memory_write:false,run_id:'fixture-run',session_id:'fixture-session',tool_call_id:'fixture-open'};
+  const context={schema:'hermes.run.v2',profile_home:join(root,'native-profile'),run_id:'fixture-run',session_id:'fixture-session',tool_call_id:'fixture-open'};
   async function open() {return assembly.runtime.tool('paios_open_reply',{context,args:{reply_mode:'text_and_voice'}});}
   async function result(){return assembly.runtime.result(source,'fixture-session',submitted.processed_event.processed_event_id);}
   async function settledVoice(dId: string) {

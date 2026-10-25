@@ -79,6 +79,8 @@ def test_environment():
     env = dict(os.environ)
     source = ROOT / '.scratch/hermes-source'
     hermes_python = ROOT / '.scratch/hermes-venv/bin/python'
+    phone_locks = ROOT / '.scratch/phone-locks'
+    phone_locks.mkdir(parents=True, exist_ok=True)
     env.update(PYTHONDONTWRITEBYTECODE='1', HERMES_DISABLE_LAZY_INSTALLS='1',
                GIT_CEILING_DIRECTORIES=str(ROOT.parent),
                NODE_COMPILE_CACHE=str(ROOT / '.scratch/node-compile-cache'),
@@ -88,7 +90,8 @@ def test_environment():
                PAIOS_HERMES_UPSTREAM_SOURCE=str(source), PAIOS_NATIVE_CONTRACT_SOURCE_ROOT=str(source),
                PAIOS_NATIVE_SOURCE_TEST_ROOT=str(source), PAIOS_HERMES_REBUILD_DIR=str(source),
                PAIOS_NATIVE_TEST_PYTHON=str(hermes_python), PAIOS_HERMES_PYTHON=str(hermes_python),
-               PAIOS_VISION_PYTHON=str(hermes_python),
+               PAIOS_VISION_PYTHON=env.get('PAIOS_VISION_PYTHON', str(hermes_python)),
+               PAIOS_PHONE_LOCK_DIR=str(phone_locks),
                PAIOS_MODEL_ROOT=str(ROOT / '.scratch/no-model-assets'))
     return env
 

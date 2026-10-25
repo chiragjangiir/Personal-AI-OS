@@ -1,4 +1,5 @@
 import {handlePaymentExecutor} from './payment/executor-api.ts';
+import {handleModelSettingsHttp} from './model-settings-http.ts';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import {HttpBodyBudget,readBody} from './http-body.ts';
 import { check, ContractError, EVENT_SCHEMA, type RawEvent, type Json } from './contracts.ts';
@@ -11,6 +12,7 @@ import {monitorEventLoopDelay} from 'node:perf_hooks';
 import {getHeapStatistics} from 'node:v8';
 import {speechResourcesSnapshot} from './voiceprint/engine.ts';
 import {emitRuntimeEvent} from './self-events.ts';
+import {createTSMcpHost, type CapabilityToolCatalog} from './capability/ts/host.ts';
 
 function send(response: ServerResponse, status: number, body: unknown): void {
   response.writeHead(status, {'Content-Type': 'application/json;charset=utf-8', 'Cache-Control': 'no-store'});
@@ -88,8 +90,10 @@ function mediaRaw(body: Record<string, unknown>, device: RegisteredDevice): RawE
 }
 // Only HTTP framing and authenticated route selection. Business ownership lives in runtime/ING/MEM/HBR/OUT.
 export function createPersonalAIOSServer(runtime: PersonalAIOSRuntime, options: {
-  internal_token: string; payment_key?:string; max_request_bytes: number; request_timeout_ms: number;
+  internal_token: string; payment_key?:string; model_settings_key?:string; max_request_bytes: number; request_timeout_ms: number;
   model_route?: {provider: string; model: string; base_url: string};
+  capability_catalog?: CapabilityToolCatalog;
+  capability_ready?:Promise<void>;
   desktop?:(request:IncomingMessage,response:ServerResponse)=>Promise<void>;
   ownerMac?:(runtime:PersonalAIOSRuntime,input:Record<string,unknown>)=>Promise<unknown>;
   self?:{handle:(runtime:PersonalAIOSRuntime,request:IncomingMessage,response:ServerResponse)=>Promise<void>;close:()=>Promise<void>};
@@ -98,7 +102,9 @@ export function createPersonalAIOSServer(runtime: PersonalAIOSRuntime, options: 
   check(options.internal_token.length >= 24 && options.max_request_bytes > 0 && options.request_timeout_ms > 0,
     'INVALID_SERVER_CONFIG');
   check(options.payment_key===undefined||options.payment_key!==options.internal_token,'PAYMENT_EXECUTOR_KEY_NOT_SEPARATE');
+  check(options.model_settings_key===undefined||options.model_settings_key!==options.internal_token&&options.model_settings_key!==options.payment_key,'MODEL_SETTINGS_SERVICE_KEY_NOT_SEPARATE');
   const active = new Set<Promise<void>>();
+  const tsPackages = createTSMcpHost(runtime, options.capability_catalog ?? (() => runtime.capabilityGateway.tools as ReturnType<CapabilityToolCatalog>), options.max_request_bytes);
   let originalUpload=false;
   const bodyBudget=new HttpBodyBudget(Math.max(options.max_request_bytes,64*1024*1024));
   const loopDelay=monitorEventLoopDelay({resolution:20});loopDelay.enable();
@@ -106,10 +112,20 @@ export function createPersonalAIOSServer(runtime: PersonalAIOSRuntime, options: 
   const handle = async (request: IncomingMessage, response: ServerResponse) => {
     let releaseBody:(()=>void)|undefined;
     try {
+      await options.capability_ready;
       const url = new URL(request.url ?? '/', 'http://127.0.0.1');
       if(['POST','PUT','PATCH'].includes(request.method??''))releaseBody=bodyBudget.acquire(request,
-        request.method==='PUT'&&url.pathname.startsWith('/v1/archive/backups/')?64*1024*1024:url.pathname==='/internal/self/mcp'?262144:options.max_request_bytes);
+        request.method==='PUT'&&url.pathname.startsWith('/v1/archive/backups/')?64*1024*1024:
+          /^\/internal\/hermes\/gateway\/(find|check|publish|rollback|status|monitor)$/u.test(url.pathname)?4<<20:
+          url.pathname==='/internal/self/mcp'?262144:options.max_request_bytes);
+      if(url.pathname.startsWith('/internal/model-settings/')){
+        await handleModelSettingsHttp(request,response,runtime,options.model_settings_key??'',options.max_request_bytes);return;
+      }
       if(runtime.paymentAuthority&&await handlePaymentExecutor(request,response,runtime.paymentAuthority,options.payment_key,options.max_request_bytes))return;
+      if(url.pathname==='/internal/capability/mcp'){
+        check(bearer(request)===options.internal_token,'INTERNAL_AUTHENTICATION_REQUIRED',401);
+        await tsPackages.handle(request,response);return;
+      }
       if(url.pathname==='/internal/desktop/mcp'&&options.desktop){check(request.headers.authorization===`Bearer ${options.internal_token}`,'INTERNAL_AUTHENTICATION_REQUIRED',401);await options.desktop(request,response);return;}
       if(url.pathname==='/internal/self/mcp'&&options.self){check(request.headers.authorization===`Bearer ${options.internal_token}`,'INTERNAL_AUTHENTICATION_REQUIRED',401);await options.self.handle(runtime,request,response);return;}
       if(url.pathname==='/internal/owner-mac/resolve'&&options.ownerMac){
@@ -149,6 +165,22 @@ export function createPersonalAIOSServer(runtime: PersonalAIOSRuntime, options: 
         check(request.method==='GET','METHOD_NOT_ALLOWED',405);const data=await archive.downloadBackup(name);
         response.writeHead(200,{'Content-Type':'application/octet-stream','Content-Length':data.length,'Cache-Control':'no-store'});response.end(data);return;
       }
+      if (url.pathname.startsWith('/internal/hermes/gateway/')) {
+        check(bearer(request)===options.internal_token,'INTERNAL_AUTHENTICATION_REQUIRED',401);
+        const operation=url.pathname.slice('/internal/hermes/gateway/'.length);
+        if(operation==='catalog') {
+          check(request.method==='GET','METHOD_NOT_ALLOWED',405);
+          send(response,200,runtime.capabilityGateway.catalog());return;
+        }
+        check(request.method==='POST','METHOD_NOT_ALLOWED',405);
+        if(['find','check','publish','rollback','status','monitor'].includes(operation)){
+          send(response,200,await runtime.capabilityRegistryCall(operation as Parameters<PersonalAIOSRuntime['capabilityRegistryCall']>[0],await json(request,4<<20)));return;
+        }
+        check(operation==='decide'||operation==='receipt'||operation==='observe','ROUTE_NOT_FOUND',404);
+        const result=await runtime.capabilityCall(operation,await json(request,options.max_request_bytes));
+        if(operation==='observe'){response.writeHead(204);response.end();}else send(response,200,result);
+        return;
+      }
       if (url.pathname === '/internal/hermes/tool-contracts') {
         check(request.method === 'GET', 'METHOD_NOT_ALLOWED', 405);
         check(bearer(request) === options.internal_token, 'INTERNAL_AUTHENTICATION_REQUIRED', 401);
@@ -181,7 +213,7 @@ export function createPersonalAIOSServer(runtime: PersonalAIOSRuntime, options: 
         check(bearer(request)===options.internal_token,'INTERNAL_AUTHENTICATION_REQUIRED',401);
         const body=await json(request,options.max_request_bytes);
         check(body.context&&typeof body.context==='object'&&!Array.isArray(body.context),'TOOL_CONTEXT_REQUIRED');
-        send(response,200,await runtime.errandReportContext(body.context as {run_id:string;session_id:string},body.job_ids));return;
+        send(response,200,await runtime.receiptErrandReportContext(body.context as {run_id:string;session_id:string},body.job_ids));return;
       }
       if(['/internal/hermes/phone-task-context','/internal/hermes/schedule-context','/internal/hermes/reminders-changed','/internal/hermes/scheduled-delivery','/internal/hermes/scheduled-task'].includes(url.pathname)) {
         check(request.method==='POST','METHOD_NOT_ALLOWED',405);
@@ -313,6 +345,7 @@ export function createPersonalAIOSServer(runtime: PersonalAIOSRuntime, options: 
       try { await stopped; } catch (error) { errors.push(error); }
       while (active.size) await Promise.allSettled([...active]);
       try {await options.self?.close();} catch(error) {errors.push(error);}
+      try {await tsPackages.close();} catch(error) {errors.push(error);}
       if (errors.length === 1) throw errors[0];
       if (errors.length > 1) throw new AggregateError(errors, 'SERVER_CLOSE_FAILED');
     });

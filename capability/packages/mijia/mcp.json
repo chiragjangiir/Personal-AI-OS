@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "mijia": {
+      "command": "/opt/hermes/.venv/bin/python",
+      "args": ["server/mijia.py"],
+      "timeout": 120
+    }
+  }
+}

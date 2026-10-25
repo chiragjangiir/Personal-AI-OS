@@ -319,8 +319,7 @@ export function createRealtimePublicControlExternalEffectExecutor(
   const flights = new Set<Promise<unknown>>();
   const activeStages = new Map<string, { readonly intentDigest: string; readonly promise: Promise<void> }>();
   const activeHandoffs = new Map<string, { readonly inputDigest: string; readonly promise: Promise<unknown> }>();
-  const completedStages = new Map<string, string>();
-  const completedHandoffs = new Map<string, { readonly inputDigest: string; readonly result: unknown }>();
+  // The coordinator persists completed stages and results; retain only active owner calls here.
 
   const assertOpen = (): void => {
     if (closed) fail("EXTERNAL_EFFECT_EXECUTOR_CLOSED");
@@ -355,11 +354,6 @@ export function createRealtimePublicControlExternalEffectExecutor(
     assertIntent(input.intent);
     const intentDigest = digest(input.intent);
     const key = `${input.intent.fingerprint}:${input.stage}`;
-    const prior = completedStages.get(key);
-    if (prior !== undefined) {
-      if (prior !== intentDigest) fail("EXTERNAL_EFFECT_INTENT_CONFLICT");
-      return;
-    }
     const active = activeStages.get(key);
     if (active !== undefined) {
       if (active.intentDigest !== intentDigest) fail("EXTERNAL_EFFECT_INTENT_CONFLICT");
@@ -388,7 +382,6 @@ export function createRealtimePublicControlExternalEffectExecutor(
             : owner.verifyClosed;
       await invokeOwned(() => method.call(owner, context), timeoutMs, "EXTERNAL_EFFECT_OWNER_FAILED");
       if (closed) fail("EXTERNAL_EFFECT_EXECUTOR_CLOSED");
-      completedStages.set(key, intentDigest);
     })();
     const tracked = rememberFlight(flight);
     activeStages.set(key, { intentDigest, promise: tracked });
@@ -424,11 +417,6 @@ export function createRealtimePublicControlExternalEffectExecutor(
     }
     const key = `handoff:${createHash("sha256").update(requestFingerprint, "utf8").digest("hex")}`;
     const inputDigest = digest({ requestFingerprint });
-    const prior = completedHandoffs.get(key);
-    if (prior !== undefined) {
-      if (prior.inputDigest !== inputDigest) fail("EXTERNAL_EFFECT_INTENT_CONFLICT");
-      return prior.result;
-    }
     const active = activeHandoffs.get(key);
     if (active !== undefined) {
       if (active.inputDigest !== inputDigest) fail("EXTERNAL_EFFECT_INTENT_CONFLICT");
@@ -454,9 +442,7 @@ export function createRealtimePublicControlExternalEffectExecutor(
         "EXTERNAL_EFFECT_OWNER_FAILED",
       );
       if (closed) fail("EXTERNAL_EFFECT_EXECUTOR_CLOSED");
-      const safeResult = assertSafeResult(result);
-      completedHandoffs.set(key, { inputDigest, result: safeResult });
-      return safeResult;
+      return assertSafeResult(result);
     })();
     const tracked = rememberFlight(flight);
     activeHandoffs.set(key, { inputDigest, promise: tracked });

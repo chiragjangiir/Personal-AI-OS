@@ -1,0 +1,4 @@
+name: yimi-gateway
+version: "1.0.0"
+description: Capability admission, receipts and observations through the platform gateway
+provides_hooks: true

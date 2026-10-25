@@ -1,6 +1,12 @@
 import Foundation
 import LiveKit
 
+enum DesktopCallError: LocalizedError, Equatable {
+    case avatarUnavailable
+    static let avatarUnavailableMessage = "Mac 上暂时不能开启数字人。请在 iPhone 通话里查看费用并确认开启。"
+    var errorDescription: String? { Self.avatarUnavailableMessage }
+}
+
 /// Desktop controls share the iPhone coordinator's call, media holders and turn fences.
 /// No call state or transport is retained here.
 @MainActor
@@ -28,7 +34,8 @@ final class DesktopCallEngine {
     }
 
     func setAvatar(_ enabled: Bool) async throws {
-        try await coordinator.setCallVideo(enabled)
+        guard !enabled else { throw DesktopCallError.avatarUnavailable }
+        try await coordinator.setCallAvatar(false)
     }
 
     func setConversationMode(_ mode: CallConversationMode) async throws {

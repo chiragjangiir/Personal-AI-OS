@@ -141,7 +141,7 @@ export async function createPersistentPublicExecutionHost(options: Omit<Persiste
   const admissionFor = (trusted: TrustedContext) => {
     const source=trusted as TrustedContext & Pick<RegisteredDevice,'route_version'>;
     check(typeof source.route_version==='string','MEDIA_SOURCE_ROUTE_REQUIRED',503);
-    const admission=admissions.get(source.route_version);check(admission,'MEDIA_SOURCE_AUTHORITY_NOT_CONFIGURED',503);return admission;
+    const admission=admissions.get(source.device_id);check(admission,'MEDIA_SOURCE_AUTHORITY_NOT_CONFIGURED',503);return admission;
   };
   media = (options.pcm && clock ? await configureMediaReplay(options.central.storage,options.pcm.configuration,
     options.central.max_event_bytes,fetch,{
@@ -208,7 +208,7 @@ export async function createPersistentPublicExecutionHost(options: Omit<Persiste
     if(errands)central.runtime.setErrandRefresh(errands.refresh);
     if(options.ownerMac)centralResources.http.ownerMac=options.ownerMac.resolve;
     if(options.central.timeline)await central.runtime.configureTimeline(options.central.timeline);
-    desktopRelay=(desktop===undefined?undefined:await (await import('./desktop-relay.ts')).createDesktopRelay({config:desktop,analyzeVision:centralResources.native.analyzeVision.bind(centralResources.native),runtime:central.runtime,sources,pool:options.desktopPool!,http:centralResources.http,onError:options.onError}));
+    desktopRelay=(desktop===undefined?undefined:await (await import('./desktop-relay.ts')).createDesktopRelay({config:desktop,analyzeVision:centralResources.native.analyzeVision.bind(centralResources.native),runtime:central.runtime,sources,pool:options.desktopPool!,http:centralResources.http,onError:options.onError,capabilityCatalog:central.runtime.capabilityGateway.tools}));
     return {assembly,sources,terminals,admissions,media,errands,...(assistantVoice?{assistantVoice}:{}),...(desktopRelay?{desktop:desktopRelay}:{}),
       closeResources:async()=>{await Promise.all([errands?.close(),assistantVoice?.close()]);}};
   } catch(error) {
@@ -266,17 +266,18 @@ export async function createPersistentPublicExecutionOwner(options: PersistentPu
       ...(options.now ? {now:options.now} : {})});
     let pcmIngress:ReturnType<typeof createFormalPcmIngress>|undefined;
     const clock = options.pcm ? createSourceMediaClock(options.central.storage,options.pcm.clock!,async event=>{check(media,'MEDIA_NOT_CONFIGURED',503);return media.archive.readStreamHeader(event);}) : undefined;
-    const ownedAdmissionRoutes=new Set<string>();
+    let admissionRoute:string|undefined,ownedAdmission:ReturnType<typeof createSourceMediaAdmission>|undefined;
     const registerAdmission = (source:Awaited<ReturnType<FormalSourceAuthority['authenticate']>>) => {
       check(clock,'SOURCE_CLOCK_REQUIRED',503);
-      if(admissions.has(source.route_version))return;
-      ownedAdmissionRoutes.add(source.route_version);
-      admissions.set(source.route_version,createSourceMediaAdmission({clock,
+      if(admissionRoute===source.route_version&&admissions.get(source.device_id)===ownedAdmission)return;
+      // In-flight admissions retain their issued source. Durable archives replay without this terminal slot.
+      ownedAdmission=createSourceMediaAdmission({clock,
         permission:createSourceMediaPermission({readCurrentBinding:options.readCurrentBinding,
           readCurrentBindingInAdmission:options.readCurrentBindingInAdmission!,equality,
           credentialFence:options.credentialFence!,now:()=>new Date(options.now?.() ?? Date.now()).toISOString()}),
         source:{capture:()=>authority.captureSource(source)},
-        requestTeardown:async()=>{await pcmIngress?.stop('media_permission_denied',source.route_version);}}));
+        requestTeardown:async()=>{await pcmIngress?.stop('media_permission_denied',source.route_version);}});
+      admissionRoute=source.route_version;admissions.set(source.device_id,ownedAdmission);
     };
     const notify=options.stagingEffects?.notify??options.notify;
     // The live call is fed by this gateway's one PCM reader, so it hears this device's microphone; the call session is the
@@ -362,7 +363,7 @@ export async function createPersistentPublicExecutionOwner(options: PersistentPu
     const finishReply=(track:ReplyTrack,endedBy='call_hangup')=>observeArchive((async()=>{
       // A failed admission is already this call's coverage gap; what was admitted still ends as one session.
       await Promise.allSettled([track.previous,track.admission]);
-      if(track.rawRef)await central.runtime.existingArchive().finalizeSession(track.rawRef,endedBy);
+      if(track.rawRef)await central.runtime.existingArchive().endSession(track.rawRef,endedBy);
     })());
     const finishCallArchive=async(id:string)=>{
       const state=replyArchive?.id===id?replyArchive:undefined,track=state?.track;
@@ -602,7 +603,7 @@ export async function createPersistentPublicExecutionOwner(options: PersistentPu
       ...(call&&(options.pcm.continuous||capabilities.includes('microphone'))?{onCapture:(active:boolean)=>active&&!closing?call.prepare():call.unprepare()}:{}),
       // Acquisition ends every archived lane; detector presence and terminal shutdown do not change that fact.
       finishArchived:async(snapshot,endedBy)=>{await central.runtime.finalizeMediaSession(snapshot.event,snapshot.chunk,endedBy);},
-      finishUnpublished:async(rawRef,endedBy)=>{await central.runtime.existingArchive().finalizeSession(rawRef,endedBy);},
+      finishUnpublished:async(rawRef,endedBy)=>{await central.runtime.existingArchive().endSession(rawRef,endedBy);},
       ...(options.pcm.streamFactory ? {streamFactory:options.pcm.streamFactory} : {})});
     if (pcmIngress && call) pcmIngress.tap((pcm,archive)=>{if(!closing&&(options.pcm?.continuous||capabilities.includes('microphone')))call.prepare();call.pushPcm(pcm,archive);});
     const bridge:RealtimeBootstrapConnectedPort = Object.freeze({
@@ -639,7 +640,7 @@ export async function createPersistentPublicExecutionOwner(options: PersistentPu
           Promise.resolve().then(()=>options.retainAssembly || options.sharedExecution ? undefined : assistantVoice?.close())]);
         await Promise.allSettled([...pendingCallArchive]);
         const consumer=await Promise.allSettled([Promise.resolve().then(()=>options.retainAssembly || options.sharedExecution ? undefined : central.close())]);
-        for(const route of ownedAdmissionRoutes)admissions.delete(route);ownedAdmissionRoutes.clear();
+        if(admissions.get(options.deviceId)===ownedAdmission)admissions.delete(options.deviceId);
         const settled=[...calls,...producers,...consumer];
         const failures=settled.flatMap(result=>result.status==='rejected'?[result.reason]:[]);
         if(failures.length)throw new AggregateError(failures,'PERSISTENT_PUBLIC_EXECUTION_CLEANUP_FAILED');

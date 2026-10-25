@@ -1,5 +1,8 @@
 """Native delegated experience review, with a scripted model and real skill storage."""
 import json
+from pathlib import Path
+import threading
+from types import SimpleNamespace
 import weakref
 
 import pytest
@@ -34,7 +37,7 @@ def run(tmp_path, monkeypatch):
             targets.append(target)
         def start(self):
             pass
-    monkeypatch.setattr('run_agent.threading.Thread', DeferredThread)
+    monkeypatch.setattr('run_agent.threading', SimpleNamespace(**(vars(threading) | {'Thread': DeferredThread})))
     try:
         yield root, child, queue, clock, targets
     finally:
@@ -43,12 +46,12 @@ def run(tmp_path, monkeypatch):
         reset_hermes_home_override(token)
 
 
-def finish(child):
+def finish(child, evidence='verified task evidence'):
     from agent.turn_finalizer import finalize_turn
     return finalize_turn(child, final_response='work done', api_call_count=10,
         interrupted=False, failed=False, messages=[
             {'role': 'user', 'content': 'learn from this work'},
-            {'role': 'tool', 'tool_call_id': 'work', 'content': 'verified task evidence'},
+            {'role': 'tool', 'tool_call_id': 'work', 'content': evidence},
             {'role': 'assistant', 'content': 'work done'}],
         conversation_history=[], effective_task_id='work', turn_id='turn',
         user_message='work', original_user_message='work', _should_review_memory=False,
@@ -61,6 +64,104 @@ def dispatch(queue, clock):
     item = queue._pop_dispatchable()
     assert item is not None, 'eligible delegated work never entered native review'
     item.agent._spawn_background_review_now(**item.kwargs)
+
+
+@pytest.fixture
+def product_review_context(run, monkeypatch):
+    from hermes_cli import plugins
+    from hermes_constants import get_hermes_home
+    monkeypatch.syspath_prepend(str(Path(__file__).parents[2] / 'integrations/hermes'))
+    import personal_aios
+    manager = plugins.PluginManager()
+    manager._discovered = True
+    monkeypatch.delenv('PAIOS_WORKSHOP_HOST', raising=False)
+    monkeypatch.setattr(plugins, '_plugin_manager', manager)
+    (get_hermes_home() / 'config.yaml').write_text(
+        'plugins:\n  allow_deprecated_imports: true\n  entries:\n    personal_aios:\n      allow_tool_override: true\n')
+    try:
+        from plugins.memory import _load_provider_from_dir
+        source = Path(personal_aios.__file__).parent
+        assert _load_provider_from_dir(source) is not None
+        manager._load_plugin(plugins.PluginManifest(
+            name='personal_aios', key='personal_aios', source='user', path=str(source)))
+        assert manager._plugins['personal_aios'].enabled
+        yield personal_aios.EXPERIENCE_REVIEW_CONTEXT
+    finally:
+        manager.unload()
+
+
+@pytest.mark.parametrize('routed', [False, True], ids=['same-model', 'routed'])
+@pytest.mark.parametrize('case, facts, target', [
+    ('qualifying', {'seconds': 75, 'calls': 8, 'verified': True,
+                    'owner_rescue': False, 'repeated_trials': False, 'safe': True}, 'mac-messaging'),
+    ('slow', {'seconds': 1800, 'calls': 90, 'verified': True}, 'engineering-handbook'),
+    ('unverified', {'seconds': 75, 'calls': 8, 'verified': False}, 'engineering-handbook'),
+    ('owner-rescued', {'seconds': 75, 'calls': 8, 'owner_rescue': True}, 'engineering-handbook'),
+    ('trial-and-error', {'seconds': 75, 'calls': 8, 'repeated_trials': True}, 'engineering-handbook'),
+    ('unsafe', {'seconds': 75, 'calls': 8, 'safe': False}, 'engineering-handbook'),
+    ('unknown-measurement', {'seconds': None, 'calls': None}, 'engineering-handbook'),
+])
+def test_review_receives_product_bar_and_persists_scripted_learning(
+        run, monkeypatch, product_review_context, routed, case, facts, target):
+    """Transport/storage contract with prescribed model replies; live brain replay tests judgment."""
+    from agent.system_prompt import build_system_prompt
+    from tools.skill_manager_tool import skill_manage
+    from tools.skill_provenance import set_current_write_origin, reset_current_write_origin
+    from tools.skills_tool import skill_view
+    root, child, queue, clock, targets = run
+    origin = set_current_write_origin('background_review')
+    try:
+        for name in ('mac-messaging', 'engineering-handbook'):
+            result = json.loads(skill_manage('create', name, content=(
+                f'---\nname: {name}\ndescription: Reusable execution guidance.\n---\nBaseline.\n')))
+            assert result['success'], result
+    finally:
+        reset_current_write_origin(origin)
+    baseline = json.loads(skill_view('mac-messaging'))['content']
+    facts = {'family': 'Mac WeChat text', 'date': '2026-10-23',
+             'device': 'Mac', 'app_version': 'WeChat 4.1.15', **facts}
+    evidence = json.dumps(facts, sort_keys=True)
+    # The fixture supplies a model response, rather than implementing a second success classifier.
+    replacements = {
+        'mac-messaging': 'Fast path: prepare → consent → send → verify. 75s, 8 calls; '
+                         '2026-10-23; Mac; WeChat 4.1.15; visible message evidence.',
+        'engineering-handbook': f'Lesson ({case}): keep the failed qualification evidence; '
+                                'do not reuse this run as a successful how-to.',
+    }
+    operation = {'action': 'patch', 'name': target, 'old_string': 'Baseline.',
+                 'new_string': replacements[target]}
+    child._cached_system_prompt = build_system_prompt(child)
+    assert product_review_context in child._cached_system_prompt
+    monkeypatch.setattr(review, '_parent_can_emit_tool_calls', lambda _: True)
+    monkeypatch.setattr(review, '_resolve_review_runtime', lambda *_: {
+        'model': 'test-review' if routed else child.model, 'provider': child.provider,
+        'base_url': child.base_url, 'api_key': 'test-key', 'routed': routed})
+    received = []
+    def scripted_review(self, *, user_message, conversation_history):
+        from hermes_cli.plugins import get_pre_tool_call_block_message
+        prompt = self._cached_system_prompt or build_system_prompt(self)
+        assert prompt.count(product_review_context) == 1
+        assert 'Mac WeChat text' in str(conversation_history)
+        assert get_pre_tool_call_block_message('terminal', {}) is not None
+        received.append(prompt)
+        origin = set_current_write_origin(self._memory_write_origin)
+        try:
+            assert json.loads(skill_view(target))['success']
+            saved = skill_manage(**operation)
+            assert json.loads(saved)['success'], saved
+        finally:
+            reset_current_write_origin(origin)
+        self._session_messages = conversation_history + [
+            {'role': 'tool', 'name': 'skill_manage', 'content': saved}]
+    monkeypatch.setattr(AIAgent, 'run_conversation', scripted_review)
+    finish(child, evidence)
+    dispatch(queue, clock)
+    targets.pop()()
+    assert len(received) == 1
+    assert replacements[target] in json.loads(skill_view(target))['content']
+    if target == 'engineering-handbook':
+        assert json.loads(skill_view('mac-messaging'))['content'] == baseline
+    assert root._background_review_run is None
 
 
 def test_child_experience_survives_close_and_native_review_saves_skill(run, monkeypatch):

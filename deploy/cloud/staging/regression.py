@@ -13,6 +13,7 @@ import uuid
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from staging_snapshot_stack import Stack
 from staging_snapshot_restore import preflight
+from staging_model_settings import receipt as projection_receipt
 
 CORE = ('front', 'gateway', 'hermes', 'postgres', 'livekit', 'workshop', 'workshop-link')
 BUSINESS = ('chat.accepted', 'chat.timeline', 'call.playback', 'call.closed', 'call.settlement',
@@ -44,7 +45,7 @@ def plan():
 
 
 def isolation(stack, source):
-    preflight(stack, stack.settings)
+    projection = preflight(stack, stack.settings)
     if not source.get('stores_verified'):
         raise ValueError('Restore store verification is required')
     for name in ('gateway', 'hermes'):
@@ -59,7 +60,21 @@ def isolation(stack, source):
         raise ValueError('Payment must stay disabled and staged')
     if not cloud['product_resources'].get('staging_effect_sink_file'):
         raise ValueError('Staging effect sink is required')
-    return {'stores_verified': True, 'payment_enabled': False, 'stage': 'staging'}
+    if source.get('model_settings') != projection_receipt(projection):
+        raise ValueError('Target model settings changed after restore; restore again before regression')
+    script = """import json,os,pathlib,yaml
+home=pathlib.Path(os.environ['HERMES_HOME'])
+print(json.dumps({group:yaml.safe_load((path/'config.yaml').read_text())['model_settings']
+ for group,path in [('brain',home),('build',home/'workshop')]}))
+"""
+    native = json.loads(stack.run(['exec', '-T', 'hermes-staging', '/opt/hermes/.venv/bin/python', '-c', script],
+                                 capture_output=True, text=True).stdout)
+    expected = {group: {key: value for key, value in receipt.items() if key != 'configured'}
+                for group, receipt in source['model_settings'].items()}
+    if native != expected:
+        raise ValueError('Running Hermes model-settings generation differs from the restored target authority')
+    return {'stores_verified': True, 'payment_enabled': False, 'stage': 'staging',
+            'model_settings': source['model_settings']}
 
 
 PRODUCTION_ONLY = ('frp-token', 'bark-key', 'bark-device', 'vidu.key', 'agentbay.key')

@@ -16,7 +16,6 @@ import { createRayneoPersistentProductionHandoff, startRayneoPersistentProductio
   type WholeProductOwnerPorts } from '../src/rayneo-persistent-production-entrypoint.ts';
 import { makePublicControl } from './whole-product-public-owner-fixture.ts';
 
-const SECRET = Buffer.alloc(32, 1).toString('base64url');
 test('L3 product handoff borrows the one ready pool, reaches the same lower assembly and closes once after joins', async t => {
   const resources = makeMacProductResourceFixture();
   t.after(() => resources.cleanup());
@@ -41,8 +40,6 @@ test('L3 product handoff borrows the one ready pool, reaches the same lower asse
   let release!: () => void;
   const joined = new Promise<void>(resolve => {release = resolve;});
   const ports: Partial<WholeProductOwnerPorts> = {
-    readPolicy: () => ({} as never), readPostgresPassword: () => 'controlled',
-    readLiveKit: () => ({livekitApiKey: 'controlled', livekitApiSecret: 'controlled', proxyAttestationSecret: SECRET}),
     createPool: () => {calls.push('pool.create'); return pool;},
     inspectPostgres: async actual => {assert.equal(actual, pool); calls.push('pg.ready'); return true;},
     createPublicOwner: async input => {
@@ -94,8 +91,6 @@ test('L3 schema or readiness startup failure preserves its cause and releases on
   const pool = {end: async () => {ends++;}} as never;
   t.mock.method(L3Service, 'openExisting', async () => {opens++; throw failure;});
   const ports: Partial<WholeProductOwnerPorts> = {
-    readPolicy: () => ({} as never), readPostgresPassword: () => 'controlled',
-    readLiveKit: () => ({livekitApiKey: 'controlled', livekitApiSecret: 'controlled', proxyAttestationSecret: SECRET}),
     createPool: () => pool, inspectPostgres: async () => true,
     createPublicOwner: async () => {throw new Error('SHOULD_NOT_ALLOCATE');},
   };
@@ -116,16 +111,12 @@ test('default Hermes handoff does not allocate L3 and retired legacy handoff rej
   let ends = 0;
   const pool = {end: async () => {ends++;}} as never;
   const ports: Partial<WholeProductOwnerPorts> = {
-    readPolicy: () => ({} as never), readPostgresPassword: () => 'controlled',
-    readLiveKit: () => ({livekitApiKey: 'controlled', livekitApiSecret: 'controlled', proxyAttestationSecret: SECRET}),
     createPool: () => pool, inspectPostgres: async () => true,
     createPublicOwner: async input => {assert.equal(input.central?.l3, undefined); return base.handoff;},
     createFinalTranscript: () => ({reader: {read: async () => undefined}} as never),
     createSourceMedia: () => ({inspectRuntime: async () => ({runtimeRootExists: true, casRootExists: true,
       metadataRootExists: true, catalogExists: true, runtimeRootNonReparse: true, casRootNonReparse: true,
       metadataRootNonReparse: true, catalogNonReparse: true}), close: async () => undefined}) as never,
-    createQwenSupervisor: () => ({start: async () => undefined, close: async () => undefined}) as never,
-    inspectQwen: async () => true,
   };
   const hermes = await createRayneoPersistentProductionHandoff({executionOwner: 'hermes_text', product_resources: resources.config,
     central: {} as CentralTextResources, inputReadiness: {owner: 'controlled', isReady: () => true}}, ports);

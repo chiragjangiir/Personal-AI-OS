@@ -437,8 +437,7 @@ export class MediaProcessor {
     const revision=original.revision+1,key=digest([original.raw_ref,original.segment_id,revision]);
     const record={...input,reused_audio,revision,replaces:original.processed_event_id,
       selected_input_sha256:digest({input_contract:input.input_contract,views:input.selected_views})};
-    await this.storage.trackSessionRecords?.(original.raw_ref,[{namespace:'processed-media-inputs',key}]);
-    const saved=await this.storage.publish('processed-media-inputs',key,Buffer.from(canonical(record)));
+    const saved=await publishRawRecord(this.storage,original.raw_ref,'processed-media-inputs',key,Buffer.from(canonical(record)));
     check(Buffer.from(saved).toString()===canonical(record),'MEDIA_REQUEST_REVISION_CONFLICT',409);
     return this.publishFinalized({...structuredClone(original),revision,replaces_processed_event_id:original.processed_event_id,
       processed_event_id:`processed:${digest([original.processed_event_id,'owner_override'])}`,

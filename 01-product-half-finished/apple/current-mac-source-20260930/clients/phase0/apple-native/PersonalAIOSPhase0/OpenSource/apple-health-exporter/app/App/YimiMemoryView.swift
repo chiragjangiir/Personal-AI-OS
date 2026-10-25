@@ -27,7 +27,11 @@ struct YimiMemoryView: View {
                 Text("录入后，依米听得出哪句是你说的。")
             }
 
-            Section { NavigationLink("支付与安全", value: YimiRoute.payment) }
+            Section {
+                NavigationLink("支付与安全", value: YimiRoute.payment)
+                NavigationLink("模型与密钥", value: YimiRoute.modelSettings)
+                    .accessibilityIdentifier("modelSettings.entry")
+            } header: { Text("设置") }
 
             if let placeSensing {
                 YimiPlaceSettings(service: placeSensing, backgroundLocationNeeded: vm.backgroundLocationNeeded)

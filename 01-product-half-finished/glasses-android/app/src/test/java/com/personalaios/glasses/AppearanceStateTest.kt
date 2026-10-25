@@ -55,7 +55,7 @@ class AppearanceStateTest {
     private class Fixture {
         val context: Context = RuntimeEnvironment.getApplication()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
-        val pair = JSONObject().put("device_id", "glasses").put("paired_at", "pair-1")
+        val pair = JSONObject().put("device_id", "glasses").put("paired_at", "pair-1").put("origin", DEFAULT_GATEWAY)
         val receipts = mutableListOf<Long>()
         var shown: AvatarPortrait? = null
         val appearance = AppearanceState(context, scope) { shown = it }

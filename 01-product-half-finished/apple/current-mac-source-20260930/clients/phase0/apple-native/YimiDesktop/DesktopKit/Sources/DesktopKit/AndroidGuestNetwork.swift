@@ -41,7 +41,7 @@ struct AndroidGuestNetwork {
     func verify() async throws {
         let status = try await processes.output(device.adb(["shell", Self.connectivity]), timeout: .seconds(15))
         guard Self.healthy(status) else {
-            throw AndroidHostError.unavailable("手机网络不可用：安卓网络或代理未就绪。")
+            throw AndroidHostError.unavailable("安卓手机还没联网：网络或代理尚未就绪。")
         }
     }
 

@@ -1,13 +1,14 @@
+import { GATEWAY_DATA_ROOT } from './gateway-runtime-paths.ts';
 import { spawnSync } from 'node:child_process';
 import {
   closeSync, existsSync, fstatSync, fsyncSync, lstatSync, mkdirSync, openSync,
   readFileSync, readdirSync, realpathSync, renameSync, unlinkSync, writeSync,
 } from 'node:fs';
-import { posix, win32 } from 'node:path';
+import { posix, resolve, win32 } from 'node:path';
 import { assertAppleEnrollmentOwnerProtectedPath } from './apple-production-enrollment-owner.ts';
 
 export const RAYNEO_PAIRING_REGISTRY_PATH =
-  'D:\\AI\\personal ai os\\.runtime\\phase0-rayneo\\pairing\\paired-device.v1.json';
+  resolve(GATEWAY_DATA_ROOT, 'resources/pairing/paired-device.v1.json');
 
 const SCHEMA = 'paios.rayneo.pairing.registry.v1' as const;
 const HOSTNAME = 'paios-gateway.local' as const;

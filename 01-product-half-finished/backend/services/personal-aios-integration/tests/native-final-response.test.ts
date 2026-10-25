@@ -6,7 +6,6 @@ import {tmpdir} from 'node:os';
 import {OutputAuthority, type OutputContext,type OutputConfig,type OpenReplyRequest} from '../src/output.ts';
 import {PosixStorage} from '../src/storage.ts';
 import {RawArchive} from '../src/archive.ts';
-import {readSourceMemory} from './native-source-fixture.ts';
 import {UnifiedIngress} from '../src/ingress.ts';
 import {EVENT_SCHEMA,sha256} from '../src/contracts.ts';
 import {inspectWav} from '../src/tts.ts';
@@ -85,11 +84,11 @@ test('sealed replay rejects changed evidence and body, even if new body has matc
  await assert.rejects(out.seal(ctx,run),/OUTPUT_REPLAY_CONFLICT/);
 });
 
-test('MEM receipt read failure preserves actual native proof and body independently',async t=>{
+test('platform receipt read failure preserves actual native proof and body independently',async t=>{
  const {ctx,storage}=await fixture(t);const run=decodeNativeRun(JSON.parse(await fs.readFile(new URL('./fixtures/native-final-response/native-proof-memory-failure.json',import.meta.url),'utf8')));
- const out=new OutputAuthority(storage,{listRunReceipts:async()=>({sources:[await readSourceMemory(run,ctx,run.profile_home!)]})});
+ const out=new OutputAuthority(storage,{listRunReceipts:async()=>({sources:[{source:'l3',status:'failed',error:'L3_UNAVAILABLE',receipts:[]}]})});
  const result=await out.seal(ctx,run);assert.equal(result.receipt_status,'unknown');assert.equal(result.receipt_sources[0]!.status,'failed');assert.equal(result.reply_text,run.output);assert.equal(result.reply_status,'complete');assert.ok(result.native_final_response);
- assert.deepEqual(result.l3_updates,[]);assert.deepEqual(result.actions,[]);assert.ok(run.memory_receipt_source);
+ assert.deepEqual(result.l3_updates,[]);assert.deepEqual(result.actions,[]);assert.equal('memory_receipt_source' in run,false);
 });
 test('E15 silent completed ignores all real API proof shapes, retains pending receipts, and makes no body/TTS',async t=>{
  let calls=0;const f=await fixture(t,{synthesize:async()=>{calls++;throw new Error('silent must not synthesize');}},'none');

@@ -7,7 +7,7 @@ import addFormats from 'ajv-formats';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {Server} from '@modelcontextprotocol/sdk/server/index.js';
 import {WebStandardStreamableHTTPServerTransport} from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
-import {CallToolRequestSchema,ElicitRequestSchema,ListToolsRequestSchema,JSONRPCMessageSchema,McpError,ErrorCode,isInitializeRequest,type JSONRPCMessage,type RequestId,type CallToolRequest} from '@modelcontextprotocol/sdk/types.js';
+import {CallToolRequestSchema,ElicitRequestSchema,ListToolsRequestSchema,JSONRPCMessageSchema,McpError,ErrorCode,isInitializeRequest,type JSONRPCMessage,type RequestId,type CallToolRequest,type CallToolResult} from '@modelcontextprotocol/sdk/types.js';
 import type {Transport} from '@modelcontextprotocol/sdk/shared/transport.js';
 import {RoomEvent} from '@livekit/rtc-node';
 import {check,ContractError,digest} from '../../../services/personal-aios-integration/src/contracts.ts';
@@ -19,6 +19,7 @@ import {readActivePairedDevices} from './paired-device-authority.ts';
 import {createTerminalWire,type WireExtension,type WireAttachment} from './personal-aios-terminal-wire.ts';
 import {createDesktopFiles,DESKTOP_FILE_TOPIC,type DesktopTransfer} from './desktop-files.ts';
 import {consumeBoundedByteStream} from './sdk-room.ts';
+import {desktopPackage,type PackageCatalogPort} from '../../../../../capability/packages/desktop/server/package.ts';
 
 // SDK 1.25.3 expects this fetch alias; Node exposes RequestInit but omits the alias.
 declare global {type HeadersInit=NonNullable<RequestInit['headers']>}
@@ -42,8 +43,9 @@ const toolsHash=digest(manifest.tools),messages:Record<string,string>={DESKTOP_C
 type Files=Awaited<ReturnType<typeof createDesktopFiles>>;
 type Call={key:string;tool:string;id:RequestId;server:Server;abort:AbortController;timer?:ReturnType<typeof setTimeout>;input:number;output:number;delivery?:Promise<void>;upload?:ReturnType<ReturnType<Files['attach']>['expectUpload']>;download?:Awaited<ReturnType<Files['prepareDownload']>>};
 type Peer={ctx:WireAttachment;client:Client;active:boolean;paused:boolean;state:'initializing'|'ready'|'version_mismatch';listHash?:string;ids:Map<RequestId,{method:string;call?:Call}>;calls:Set<Call>;file:ReturnType<Files['attach']>;stop:(code:string,reason:string)=>void;setPaused:(paused:boolean)=>void};
-export async function createDesktopRelay(options:{config:unknown;analyzeVision:HermesClient['analyzeVision'];runtime:Pick<PersonalAIOSRuntime,'terminals'|'desktopReady'>;sources:Pick<FormalTerminalSources,'revalidate'>;pool:Parameters<typeof readActivePairedDevices>[0];http:Parameters<typeof import('../../../services/personal-aios-integration/src/server.ts').createPersonalAIOSServer>[1];onError:(error:unknown)=>void;files?:Files}) {
+export async function createDesktopRelay(options:{config:unknown;analyzeVision:HermesClient['analyzeVision'];runtime:Pick<PersonalAIOSRuntime,'terminals'|'desktopReady'>;sources:Pick<FormalTerminalSources,'revalidate'>;pool:Parameters<typeof readActivePairedDevices>[0];http:Parameters<typeof import('../../../services/personal-aios-integration/src/server.ts').createPersonalAIOSServer>[1];onError:(error:unknown)=>void;files?:Files;capabilityCatalog?:PackageCatalogPort}) {
   const config=desktopConfiguration(options.config);if(!config?.enabled)return undefined;
+  const capability=desktopPackage(options.capabilityCatalog);
   const files=options.files??await createDesktopFiles({...config.files,inbox:'/var/lib/paios/desktop-in',workshop:'/var/lib/paios/desktop-out',onError:options.onError});
   const peers=new Map<string,Peer>(),calls=new Map<string,Call>(),watchers=new Set<(principal:string)=>void>(),sessions=new Map<string,{server:Server;transport:WebStandardStreamableHTTPServerTransport;calls:Map<RequestId,Call>;at:number}>();let dropped=0;
   const changed=(principal:string)=>{for(const watcher of watchers)watcher(principal);};
@@ -182,7 +184,15 @@ export async function createDesktopRelay(options:{config:unknown;analyzeVision:H
     if(!session){if(id!==undefined||!isInitializeRequest(body)){reject(404,ErrorCode.InvalidRequest,'Unknown desktop session',body?.id);return;}if(sessions.size>=config!.relay.max_sessions){reject(503,ErrorCode.InternalError,'DESKTOP_BUSY',(body as {id?:RequestId}).id);return;}
       const sid=randomUUID(),server=new Server({name:'paios-desktop',version:'1'},{capabilities:{tools:{listChanged:false}},instructions:'电脑上的文件操作先阅读「电脑助手」技能。'}),transport=new WebStandardStreamableHTTPServerTransport({sessionIdGenerator:()=>sid});
       session={server,transport,calls:new Map(),at:Date.now()};sessions.set(sid,session);const owner=session;
-      server.setRequestHandler(ListToolsRequestSchema,async()=>({tools:manifest.tools}));server.setRequestHandler(CallToolRequestSchema,(request,extra)=>callTool(owner,request,extra));
+      server.setRequestHandler(ListToolsRequestSchema,async()=>({tools:capability.tools(manifest.tools)}));
+      server.setRequestHandler(CallToolRequestSchema,async(request,extra)=>{
+        const args=capability.arguments(request.params.arguments??{}),wire={...request,params:{...request.params,arguments:args}};
+        let result:CallToolResult;
+        try{result=await callTool(owner,wire,extra) as CallToolResult;}
+        catch(error){if(!capability.enabled()||error instanceof McpError&&error.code===ErrorCode.InvalidParams)throw error;
+          result={isError:true,content:[],structuredContent:{error:{code:'DESKTOP_TRANSPORT_UNKNOWN'}}};}
+        return capability.result(request.params.name,args,result);
+      });
       server.onclose=()=>{sessions.delete(sid);for(const call of owner.calls.values())call.abort.abort(new ContractError('DESKTOP_CANCELLED',409));};await server.connect(transport);
     }
     session.at=Date.now();const owner=session;response.once('close',()=>{if(!response.writableEnded)owner.calls.get(body?.id)?.abort.abort(new ContractError('DESKTOP_CANCELLED',409));});

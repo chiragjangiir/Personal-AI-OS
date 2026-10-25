@@ -34,6 +34,11 @@ def main():
                   "mcp_servers": {"self": {"url": mcp_url, "headers": {"Authorization": "Bearer " + token},
                                              "trust": "full", "timeout": 10, "connect_timeout": 10}}}
         (home / "config.yaml").write_text(yaml.safe_dump(config))
+        # Native recall now opens an existing history read-only, as a managed run does.
+        from hermes_state import SessionDB
+        seeded = SessionDB(home / "state.db")
+        seeded.ensure_session(session_id, "api_server")
+        seeded.close()
         from model_tools import get_tool_definitions, handle_function_call
         from tools.mcp_tool_discovery import discover_mcp_tools
         from tools.mcp_tool_lifecycle import shutdown_mcp_servers

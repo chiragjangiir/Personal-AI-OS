@@ -39,7 +39,10 @@ def release_decide(spool, request_id, provider, session_id):
     binding = {'request_id': request_id, 'base': status['base'], 'commit': status['commit']}
     path = spool / 'decisions' / (request_id + '.json')
     if path.exists():
-        return decision_receipt(json.loads(path.read_text()), True)
+        saved = json.loads(path.read_text())
+        if all(saved[key] == value for key, value in binding.items()):
+            return decision_receipt(saved, True)
+        path.rename(path.with_name(request_id + '-' + saved['commit'] + '.json'))
     session_key = get_current_session_key()
     notify = _gateway_notify_cb(session_key)
     if notify is None:

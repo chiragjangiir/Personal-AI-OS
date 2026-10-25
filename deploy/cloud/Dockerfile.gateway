@@ -17,6 +17,8 @@ ADD --chmod=0644 --checksum=sha256:e090e126f3fb5c0b0b2d84ee644b17e42a70b2e45a906
 WORKDIR /opt/paios
 COPY --chmod=a+rX,go-w 01-product-half-finished/backend 01-product-half-finished/backend
 COPY --chmod=a+rX,go-w integrations integrations
+COPY --chmod=a+rX,go-w capability capability
+COPY --chmod=a+rX,go-w deploy/cloud/model-settings-project.ts deploy/cloud/model-settings-project.ts
 # The terminal simulator reads the same endpoint contract as the native clients.
 COPY --chmod=a+rX,go-w 01-product-half-finished/apple/current-mac-source-20260930/clients/phase0/apple-native/PersonalAIOSPhase0/OpenSource/apple-health-exporter/app/Contracts/client-endpoints.json 01-product-half-finished/apple/current-mac-source-20260930/clients/phase0/apple-native/PersonalAIOSPhase0/OpenSource/apple-health-exporter/app/Contracts/client-endpoints.json
 COPY --chmod=a+rX,go-w scripts/call-handoff-eval scripts/call-handoff-eval
@@ -27,7 +29,7 @@ RUN if [ "$PAIOS_BUILD_MAINLAND_MIRRORS" = "1" ]; then export npm_config_registr
     find node_modules/onnxruntime-node/bin/napi-v6/linux -mindepth 1 -maxdepth 1 ! -name "$(node -p process.arch)" -exec rm -rf {} + && \
     cd ../platform-data && pnpm install --prod --frozen-lockfile && \
     cd ../qwen-embedded && npm ci --omit=dev
-RUN groupadd -g 10000 paios && useradd -u 10000 -g 10000 -m paios && mkdir -p /var/lib/paios/state/errands /var/lib/paios/desktop-in && chown -R paios:paios /var/lib/paios
+RUN groupadd -g 10000 paios && useradd -u 10000 -g 10000 -m paios && mkdir -p /var/lib/paios/state/errands /var/lib/paios/desktop-in /var/lib/paios/central-storage/model-settings /var/lib/paios/model-projections /var/lib/paios/core-profile/memories && chown -R paios:paios /var/lib/paios
 # Libraries read this: LiveKit's logger otherwise writes debug lines to stdout, which also carries the sim client's JSON.
 ENV NODE_ENV=production
 USER paios

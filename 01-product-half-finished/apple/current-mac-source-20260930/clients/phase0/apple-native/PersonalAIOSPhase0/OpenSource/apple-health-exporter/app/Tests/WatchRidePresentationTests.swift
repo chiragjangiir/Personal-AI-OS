@@ -27,4 +27,15 @@ final class WatchRidePresentationTests: XCTestCase {
         presentation.expire(at: now.addingTimeInterval(6))
         XCTAssertNil(presentation.banner)
     }
+    func testMetricRelaysDoNotRepeatAnExpiredFeedbackHaptic() {
+        var presentation = WatchRidePresentation()
+        let now = Date(timeIntervalSince1970: 100)
+        let feedback = WatchYimiRide(hr_zone: 5, text: "慢一点", max_hr_bpm: 175, feedback_at: "2026-10-20T08:00:00Z")
+        XCTAssertTrue(presentation.receive(feedback, now: now))
+        presentation.expire(at: now.addingTimeInterval(6))
+        XCTAssertFalse(presentation.receive(feedback, now: now.addingTimeInterval(7)))
+        XCTAssertNil(presentation.banner)
+        let next = WatchYimiRide(hr_zone: 5, text: "慢一点", max_hr_bpm: 175, feedback_at: "2026-10-20T08:03:00Z")
+        XCTAssertTrue(presentation.receive(next, now: now.addingTimeInterval(180)))
+    }
 }

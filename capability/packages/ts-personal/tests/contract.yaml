@@ -1,0 +1,237 @@
+{
+  "schema": "yimi.package.contract.v1",
+  "cases": [
+    {
+      "id": "paios_speaker_name",
+      "tool": "paios_speaker_name",
+      "args": {
+        "speaker": "speaker:person",
+        "name": "小王"
+      },
+      "raw": {
+        "cluster_id": "person",
+        "display_name": "小王"
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "paios_people",
+      "tool": "paios_people",
+      "args": {},
+      "raw": {
+        "face_recognition": false,
+        "recognition_hints": true,
+        "nearby": [],
+        "people": []
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "paios_visual_capture_policy",
+      "tool": "paios_visual_capture_policy",
+      "args": {},
+      "raw": {
+        "enabled": false,
+        "private_paused": false,
+        "interval_ms": 30000,
+        "triggers": [
+          "user_request"
+        ],
+        "camera_statuses": []
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "paios_avatar",
+      "tool": "paios_avatar",
+      "args": {
+        "action": "list"
+      },
+      "raw": {
+        "looks": []
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "paios_action_request",
+      "tool": "paios_action_request",
+      "args": {
+        "business_intent_id": "note",
+        "parameter_version": 1,
+        "action_type": "write_local_note",
+        "target_device_id": "phone",
+        "expected_control_version": "local-note-v1",
+        "parameters": {
+          "text": "记事"
+        }
+      },
+      "raw": {
+        "status": "pending_approval",
+        "action_id": "action",
+        "proposal_ref": "proposal"
+      },
+      "expected": {
+        "state": "waiting"
+      }
+    },
+    {
+      "id": "avatar-current",
+      "tool": "paios_avatar",
+      "args": {
+        "action": "get"
+      },
+      "raw": {
+        "profile": null,
+        "profile_version": 0
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "avatar-ready",
+      "tool": "paios_avatar",
+      "args": {
+        "action": "change",
+        "look_id": "ready",
+        "expected_version": 0
+      },
+      "raw": {
+        "status": "ready",
+        "profile_version": 1,
+        "command_id": "avatar-ready"
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "avatar-pending",
+      "tool": "paios_avatar",
+      "args": {
+        "action": "change",
+        "look_id": "pending",
+        "expected_version": 0
+      },
+      "raw": {
+        "status": "pending",
+        "profile_version": 0,
+        "command_id": "avatar-pending"
+      },
+      "expected": {
+        "state": "accepted"
+      }
+    },
+    {
+      "id": "avatar-uncertain",
+      "tool": "paios_avatar",
+      "args": {
+        "action": "change",
+        "look_id": "uncertain",
+        "expected_version": 0
+      },
+      "raw": {
+        "status": "submission_uncertain",
+        "profile_version": 0,
+        "command_id": "avatar-uncertain"
+      },
+      "expected": {
+        "state": "unknown"
+      }
+    },
+    {
+      "id": "avatar-failed",
+      "tool": "paios_avatar",
+      "args": {
+        "action": "change",
+        "look_id": "failed",
+        "expected_version": 0
+      },
+      "raw": {
+        "status": "failed",
+        "profile_version": 0,
+        "command_id": "avatar-failed",
+        "error": "AVATAR_GENERATION_FAILED"
+      },
+      "expected": {
+        "state": "failed"
+      }
+    },
+    {
+      "id": "avatar-cancelled",
+      "tool": "paios_avatar",
+      "args": {
+        "action": "change",
+        "look_id": "cancelled",
+        "expected_version": 0
+      },
+      "raw": {
+        "status": "cancelled",
+        "profile_version": 0,
+        "command_id": "avatar-cancelled"
+      },
+      "expected": {
+        "state": "cancelled"
+      }
+    },
+    {
+      "id": "avatar-superseded",
+      "tool": "paios_avatar",
+      "args": {
+        "action": "change",
+        "look_id": "superseded",
+        "expected_version": 0
+      },
+      "raw": {
+        "status": "superseded",
+        "profile_version": 1,
+        "command_id": "avatar-old"
+      },
+      "expected": {
+        "state": "cancelled"
+      }
+    },
+    {
+      "id": "people-forget",
+      "tool": "paios_people",
+      "args": {
+        "forget": "all"
+      },
+      "raw": {
+        "forgotten": 3
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "action-reconcile",
+      "tool": "paios_action_request",
+      "args": {
+        "business_intent_id": "reconcile",
+        "parameter_version": 1,
+        "action_type": "write_local_note",
+        "target_device_id": "phone",
+        "expected_control_version": "local-note-v1",
+        "parameters": {
+          "text": "便笺"
+        }
+      },
+      "raw": {
+        "status": "reconcile_required",
+        "action_id": "action"
+      },
+      "expected": {
+        "state": "unknown"
+      }
+    }
+  ]
+}

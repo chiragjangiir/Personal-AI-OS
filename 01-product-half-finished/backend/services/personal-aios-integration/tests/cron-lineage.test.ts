@@ -76,7 +76,7 @@ for(const staging of [false,true])test(`actual cron lineage chain, ${staging?'st
   for(const [index,delivery] of proof.deliveries.entries()){
     const before=bodies.length,accepted=await runtime.scheduledTask(delivery);
     await until(()=>bodies.length>before);
-    assert.deepEqual(bodies.at(-1).grant_toolsets,index===0||index===3?['desktop','terminal','file']:[]);
+    assert.deepEqual(bodies.at(-1).grant_toolsets,index===0||index===3?['desktop','terminal','file']:['desktop']);
     if(index===1)assert.equal(delivery.origin_processed_event_id,undefined,'legacy origin was invented');
     if(index===3)assert.equal(delivery.origin_processed_event_id,owner_update.origin_processed_event_id);
     assert.equal(JSON.parse(bodies.at(-1).input).processed_event_id,accepted.processed_event.processed_event_id);

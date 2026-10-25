@@ -7,6 +7,15 @@ from urllib.parse import quote, urlsplit
 from urllib.request import Request, urlopen
 from agent.memory_provider import MemoryProvider
 from .effects import http_error_result, http_error_block
+from .ts_packages import legacy_schemas
+
+EXPERIENCE_REVIEW_CONTEXT = """【成功经验的保存门槛】
+复用原生后台复盘和 skill_manage，不另建成长回路。判断操作方法是否值得保存时，本产品门槛优先于复盘中“每次都应更新技能／不保存是 missed opportunity”的通用鼓励；不合格时不写 how-to 是正确结果。
+只有全部满足才写或更新 how-to：实际结果有工具收据、文件或应用状态等证据；该任务家族的整次运行耗时和工具调用数都有测量，且在预算内；无需主人救援，没有反复试错；发送确认及安全规则完整遵守；首次确认仍按同一主人、稳定收件地址和任务类型复用服务器记录，不另加每条消息确认。Mac 微信纯文本消息的初始参考预算是约120秒、约10次工具调用，覆盖准备、确认检查、发送和核验；主人等待确认的时间单独列出，不冒充执行耗时。其他家族预算从实测运行建立，不套微信数值；测量、家族预算或安全证据未知都不能认定成功经验。
+合格 how-to 记录准确快路径、实测时间和调用数、验证日期、设备／系统与应用版本及证据范围；这些是方法的验证元数据，不能因原生通用提示不存事故日期而删掉。既有路径后来失败或明显变慢，先标 stale，未经重新合格验证不当作可靠快路径使用。
+过慢、未核实、主人救援或反复试错的运行只保存避坑 lesson 到平台记忆或工程手册，不新建或更新成功 how-to；没有可复用教训可不保存。memory 不在当前复盘白名单时，不强行调用它，按工程手册的既有产品 patch 入口保存 lesson。
+慢运行中发现的修复立即保存为 unverified candidate／候选 patch，附已验证范围和缺口，并按既有入口提交产品修复；候选不是 how-to，不能宣称已学会可靠快路径。先保存候选再清临时目录，之后只有合格运行才能将它确认为成功方法。修改已有技能仍须先读，产品技能、工坊工具包与普通自有技能各沿原生权限和发布合同。
+"""
 
 
 class PersonalAIOSProvider(MemoryProvider):
@@ -18,12 +27,24 @@ class PersonalAIOSProvider(MemoryProvider):
         import yaml
         config_path = get_hermes_home() / "config.yaml"
         config = yaml.safe_load(config_path.read_text()) if config_path.exists() else {}
+        self.owner_mac_enabled = 'owner_mac' in (config or {}).get('mcp_servers', {})
         config = _expand_env_vars((config or {}).get("personal_aios", {}))
         self.base_url = config.get("internal_base_url", "")
         # One tool RPC may include a cold download and the bounded native vision call.
         self.timeout = float(config.get("timeout_seconds", 600))
         self.key_file = config.get("internal_key_file", "")
         self._schemas = None
+        self.capability_tools = frozenset(config.get('capability_tools', []))
+
+    def capability_enabled(self, package):
+        """Use the loader's active gateway catalog, including its rollback and single-host filtering."""
+        if not self.capability_tools:
+            return False
+        manifest=Path(__file__).resolve().parents[3]/'capability/packages'/package/'plugin.json'
+        if not manifest.is_file():
+            return False
+        server=json.loads(manifest.read_text())['extensions']['ai.yimi.capability']['runtime']['server']
+        return any(tool.startswith(f'mcp__{server}__') for tool in self.capability_tools)
 
     def is_available(self):
         url = urlsplit(self.base_url)
@@ -31,8 +52,16 @@ class PersonalAIOSProvider(MemoryProvider):
                 and not url.username and Path(self.key_file).is_file())
 
     def initialize(self, session_id, **kwargs):
-        # Every call carries native keys; central Admission owns their D binding.
-        pass
+        # The provider stays bound to the profile selected by the native loader.
+        self.profile_home = Path(kwargs["hermes_home"])
+
+    def prefetch(self, query, *, session_id=""):
+        from gateway.run_scope import current_scope
+        if current_scope() != "owner":
+            return ""
+        return '\n\n'.join(f"{name}（平台核心档案，只读）\n{text}"
+            for name in ('USER.md', 'MEMORY.md')
+            if (text := (self.profile_home / 'memories' / name).read_text()))
 
     def _request(self, path, body=None, max_bytes=1048576):
         if not self.is_available():
@@ -48,8 +77,8 @@ class PersonalAIOSProvider(MemoryProvider):
         return json.loads(payload)
 
     def errand_report_context(self, context, job_ids):
-        return self._request('/internal/hermes/errand-report-context',
-                             {'context': context, 'job_ids': job_ids})['prior_reports']
+        result = self._request('/internal/hermes/errand-report-context', {'context': context, 'job_ids': job_ids})
+        return result.get('prior_reports', [])
 
     def get_tool_schemas(self):
         if self._schemas is None:
@@ -64,36 +93,43 @@ class PersonalAIOSProvider(MemoryProvider):
                    for schema in schemas):
                 raise ValueError("invalid_tool_contract_snapshot")
             self._schemas = schemas
-        return copy.deepcopy(self._schemas)
+        return copy.deepcopy(legacy_schemas(self._schemas, self.capability_tools))
 
     def handle_tool_call(self, tool_name, args, **kwargs):
         context = {key: kwargs.get(key, "") for key in ("session_id", "run_id", "tool_call_id")}
         try:
             result = self._request("/internal/hermes/tools/" + quote(tool_name, safe=""), {"context": context, "args": args})
-            return json.dumps(result, ensure_ascii=False)
         except HTTPError as exc:
-            return json.dumps({"status": "rejected", **http_error_result(exc)})
+            result = {"status": "rejected", **http_error_result(exc)}
         except (URLError, TimeoutError, ValueError):
-            return json.dumps({"status": "failed", "error_code": "internal_service_unavailable"})
+            result = {"status": "failed", "error_code": "internal_service_unavailable"}
+        if isinstance(result, dict) and result.get("status") in {"rejected", "failed"}:
+            result = {**result, "success": False, "error": result["error_code"]}
+        return json.dumps(result, ensure_ascii=False)
 
 
 def register(ctx):
+    from .model_transport import register_source
+    register_source()
     heading = '### 只报告记录支持的事实'
     rules = (Path(__file__).parent / 'skills/personal-aios-main/SKILL.md').read_text()
     section = heading + rules.split(heading, 1)[1].split('\n### ', 1)[0]
     ctx.register_system_prompt_section('personal-aios.reporting', section, max_chars=4000)
     provider = PersonalAIOSProvider()
     ctx.register_memory_provider(provider)
+    ctx.register_system_prompt_section('personal-aios.experience-review', EXPERIENCE_REVIEW_CONTEXT)
     from .self_tools import register as register_self_tools
     register_self_tools(ctx, provider)
     from .owner_mac_tools import register as register_owner_mac_tools
-    register_owner_mac_tools(ctx)
+    register_owner_mac_tools(ctx, provider)
     from .cron import register as register_cron
     register_cron(ctx, provider)
     from .effects import register as register_effects, register_execution_gate
     register_effects(ctx, provider)
     lifecycle = {"phone_start", "phone_restore_apps", "phone_save_apps", "phone_close"}
     def phone_source(tool_name, args, session_id="", **kwargs):
+        if tool_name.removeprefix('mcp__phone__') in {'phone_task','phone_status','phone_control_link',*lifecycle} and provider.capability_enabled('phone'):
+            return None
         if tool_name.removeprefix("mcp__phone__") in {"phone_status", "phone_control_link"}:
             from gateway.session_context import get_api_run_id
             run = get_api_run_id(session_id)
@@ -152,4 +188,7 @@ def register(ctx):
     register_execution_gate(ctx, phone_source)
     if __import__('os').environ.get('PAIOS_WORKSHOP_HOST'):
         from .workshop import register as register_workshop
-        register_workshop(ctx, provider)
+        from .workshop_capability import registry_client
+        config = __import__('hermes_cli.config', fromlist=['load_config']).load_config().get('personal_aios', {})
+        register_workshop(ctx, provider, registry_factory=(lambda kwargs: registry_client(provider, kwargs))
+                          if config.get('capability_registry') else None)

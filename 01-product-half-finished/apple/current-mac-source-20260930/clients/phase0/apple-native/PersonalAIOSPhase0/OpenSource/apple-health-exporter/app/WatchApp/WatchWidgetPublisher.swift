@@ -33,6 +33,7 @@ final class WatchWidgetPublisher {
         let snapshot = WatchWidgetSnapshot.make(state: state, ride: ride(state, workoutState, metric, now), now: now)
         let changed = written.map { Self.content($0) != Self.content(snapshot) } ?? true
         let steadyRide = snapshot.items.first?.kind == .ride && written?.items.first?.kind == .ride
+            && snapshot.items.first?.header == written?.items.first?.header
         let age = now.timeIntervalSince(writtenAt)
         guard steadyRide ? age >= (changed ? Self.rideInterval : Self.keepAlive) : changed else { return }
         snapshot.write(to: defaults)
@@ -47,7 +48,7 @@ final class WatchWidgetPublisher {
         let speed = WatchCyclingDisplayFormatter.speedText(figures.speedMPS)
         let heart = WatchCyclingDisplayFormatter.valueText(figures.heartRate, unit: "").trimmingCharacters(in: .whitespaces)
         return WatchWidgetRide(paused: workoutState == .paused, figures: "\(speed) km/h · ♥ \(heart)",
-                               startedAt: figures.elapsedS.map { now.addingTimeInterval(-$0) })
+                               startedAt: figures.elapsedS.map { now.addingTimeInterval(-$0) }, sensorsExpireAt: figures.sensorsExpireAt)
     }
 
     /// What the card says, without the moments it is valid from (those move with every write).

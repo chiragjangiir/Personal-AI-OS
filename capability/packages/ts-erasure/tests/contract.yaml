@@ -1,0 +1,103 @@
+{
+  "schema": "yimi.package.contract.v1",
+  "cases": [
+    {
+      "id": "paios_l3_forget",
+      "tool": "paios_l3_forget",
+      "args": {
+        "command_id": "forget",
+        "assertion_id": "assertion",
+        "expected_version": 1,
+        "scope": "l3_live_payloads_all_versions",
+        "retention": "audit_metadata"
+      },
+      "raw": {
+        "status": "committed",
+        "receipt_ref": "l3:owner:forget",
+        "erased_versions": 2,
+        "committed_at": "2026-10-24T12:00:00.000Z",
+        "residual": {
+          "audit": "retained",
+          "l2": "not_run",
+          "l5": "not_run"
+        }
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "paios_visual_delete",
+      "tool": "paios_visual_delete",
+      "args": {
+        "raw_refs": [
+          "l5:1111111111111111111111111111111111111111111111111111111111111111"
+        ]
+      },
+      "raw": {
+        "status": "deleted",
+        "frames": 2,
+        "originals": 2,
+        "raw_cleanup_pending": false,
+        "local_cleanup_pending": false,
+        "remote_cleanup_pending": 0
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "paios_place_forget",
+      "tool": "paios_place_forget",
+      "args": {
+        "confirm": true
+      },
+      "raw": {
+        "status": "forgotten",
+        "deleted_events": 7
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "cleanup-pending",
+      "tool": "paios_visual_delete",
+      "args": {
+        "raw_refs": [
+          "l5:3333333333333333333333333333333333333333333333333333333333333333"
+        ]
+      },
+      "raw": {
+        "status": "pending",
+        "frames": 1,
+        "raw_cleanup_pending": true,
+        "local_cleanup_pending": false,
+        "remote_cleanup_pending": 1
+      },
+      "expected": {
+        "state": "accepted"
+      }
+    },
+    {
+      "id": "remote-cleanup-pending",
+      "tool": "paios_visual_delete",
+      "args": {
+        "raw_refs": [
+          "l5:4444444444444444444444444444444444444444444444444444444444444444"
+        ]
+      },
+      "raw": {
+        "status": "deleted",
+        "frames": 1,
+        "originals": 1,
+        "raw_cleanup_pending": false,
+        "local_cleanup_pending": false,
+        "remote_cleanup_pending": 1
+      },
+      "expected": {
+        "state": "partial"
+      }
+    }
+  ]
+}

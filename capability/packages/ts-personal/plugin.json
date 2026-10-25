@@ -1,0 +1,107 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "ts-personal",
+  "version": "1.0.0",
+  "description": "人物标签、相机策略、外观及本地便笺提案",
+  "extensions": {
+    "ai.yimi.capability": {
+      "schema": "yimi.capability.v1",
+      "receipt_schema": 1,
+      "compat": {
+        "hermes": ">=0.22.5 <0.24",
+        "gateway_api": 1
+      },
+      "maintainer": "lead",
+      "runtime": {
+        "server": "platform_ts",
+        "lazy": true,
+        "idle_timeout_seconds": 900,
+        "host": "shared"
+      },
+      "secrets": [
+        {
+          "name": "HERMES_INTERNAL_KEY"
+        }
+      ],
+      "network": {
+        "egress": []
+      },
+      "scopes": [
+        "owner"
+      ],
+      "tools": {
+        "paios_speaker_name": {
+          "effect": "owner_data",
+          "retry": "forbidden",
+          "check_with": "paios_people",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:speaker_name",
+          "target": "$.speaker"
+        },
+        "paios_people": {
+          "effect_by_arg": {"$._operation": {"read": "observe", "update": "owner_data", "delete": "delete"}},
+          "retry": "forbidden",
+          "check_with": "paios_people",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:people"
+        },
+        "paios_visual_capture_policy": {
+          "effect_by_arg": {"$._operation": {"read": "observe", "update": "owner_data"}},
+          "retry": "forbidden",
+          "check_with": "paios_visual_capture_policy",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:visual_capture_policy"
+        },
+        "paios_avatar": {
+          "effect_by_arg": {
+            "$.action": {
+              "get": "observe",
+              "list": "observe",
+              "change": "owner_data"
+            }
+          },
+          "retry": "forbidden",
+          "check_with": "paios_avatar",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:avatar"
+        },
+        "paios_action_request": {
+          "effect": "owner_data",
+          "retry": "forbidden",
+          "check_with": "paios_action_request",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:action_request",
+          "target": "$.target_device_id"
+        }
+      },
+      "staging": {
+        "fake": {
+          "command": "node",
+          "args": [
+            "fake/server.ts"
+          ]
+        }
+      },
+      "tests": {
+        "contract": "tests/contract.yaml"
+      },
+      "provenance": {
+        "source_commit": "decaff83c56b5e188b229a11e79b32106eeccf43",
+        "workshop_run": null,
+        "adapter_modules": [
+          "server/index.ts"
+        ]
+      }
+    }
+  }
+}

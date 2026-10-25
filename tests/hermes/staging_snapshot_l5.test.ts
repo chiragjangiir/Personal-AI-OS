@@ -4,6 +4,7 @@ import {promises as fs} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {createServer} from 'node:http';
+import {transferSession,verifySession} from '../../deploy/cloud/staging_snapshot_sessions.ts';
 import {exportL5,verifyL5} from '../../deploy/cloud/staging_snapshot_l5.ts';
 import {PosixStorage} from '../../01-product-half-finished/backend/services/personal-aios-integration/src/storage.ts';
 import {RawArchive} from '../../01-product-half-finished/backend/services/personal-aios-integration/src/archive.ts';
@@ -162,4 +163,105 @@ test('old references use disk grouping and an exact count with a bounded sample'
   assert.equal(receipt.excluded_history_count,257);assert.equal(receipt.excluded_history.length,128);
   assert.equal(receipt.sources.length,3);assert.ok(receipt.closure_policy.includes('sample'));
   await verifyL5(f.dest);
+});
+
+
+test('final transport streams one verified aggregate scan without whole reads or scratch copies',async t=>{
+  const f=await fixture(t),ref=f.head.event.raw_ref;
+  const final=await f.archive.finalizeSession(ref,'fixture-ended');assert.ok(final);
+  const audio=await f.storage.read('objects',final.object_hash),read=f.storage.read.bind(f.storage);
+  let scans=0;
+  Object.assign(f.storage,{async *readObjectRange(key:string,offset:number,bytes:number){
+    assert.equal(key,final.object_hash);assert.equal(offset,0);assert.equal(bytes,final.bytes);scans++;
+    for(let at=0;at<bytes;at+=73)yield audio.subarray(at,Math.min(at+73,bytes));
+  }});
+  t.mock.method(f.storage,'read',async(namespace:string,key:string)=>{
+    assert.ok(namespace!=='objects'||key!==final.object_hash,'aggregate must use bounded range reads');
+    return read(namespace,key);
+  });
+  const target=new PosixStorage(join(f.root,'transport'));t.after(()=>target.close());let streamed=false;
+  await transferSession(f.storage,target,ref,async(namespace,key,data)=>{
+    if(data&&!(data instanceof Uint8Array)){streamed=true;const chunks=[];
+      for await(const chunk of data)chunks.push(chunk);await target.publish(namespace,key,Buffer.concat(chunks));
+    }else await target.publish(namespace,key,data??await f.storage.read(namespace,key));
+  });
+  assert.equal(streamed,true);assert.equal(scans,1);assert.deepEqual(await target.readFinal(ref),final);
+  await verifySession(f.storage,ref);assert.equal(scans,2);
+  // A valid aggregate does not excuse a wrong original-object range in final metadata.
+  t.mock.method(f.storage,'readFinal',async()=>({...final,objects:final.objects.map(object=>({...object,key:'0'.repeat(64)}))}));
+  await assert.rejects(verifySession(f.storage,ref),/SESSION_FINAL_RANGE_FAILED/);
+});
+
+test('partial finals retain cold stream objects and consumer records outside final metadata',async t=>{
+  const f=await fixture(t,true),ref=f.head.event.raw_ref;
+  const last=await f.archive.streams.append({...raw('lane'),device_id:'glasses',device_type:'glasses',source:{channel:'livekit'},
+    media_type:'livekit_tracks',mime:'audio/pcm',representation:'received_decoded_sample',payload:Buffer.alloc(200,9)},observation,now,chunk(2));
+  const proofKey=digest(['partial-consumer',ref]),proof=Buffer.from(canonical({raw_ref:ref,consumer:'fixture'}));
+  await f.storage.publish('processed-media',proofKey,proof);await f.storage.trackSessionRecords(ref,[{namespace:'processed-media',key:proofKey}]);
+  const alias=digest([ref,1]),record=await f.storage.read('stream-revisions',alias);
+  const original=await f.archive.streams.readRecord(ref,'owner',f.parent.event.archive_revision);
+  const bytes=original.chunks[0].bytes;
+  const final={schema:'paios.session.final.v1',raw_ref:ref,object_hash:sha256(bytes),bytes:bytes.length,
+    records:[{namespace:'stream-revisions',key:alias,bytes:Buffer.from(record).toString('base64')}],objects:[],retained_objects:[],ended_by:'fixture-partial'} as const;
+  await f.storage.publishFinal(final as any);await f.storage.completeFinal(ref);
+  const remaining=await f.storage.sessionRecords(ref);assert.ok(remaining.some(r=>r.namespace==='processed-media'));
+  const cold=[];for(const namespace of ['objects','stream-revisions','processed-media'])for(const key of await f.storage.listHot(namespace))
+    cold.push({namespace,key,bytes:await f.storage.read(namespace,key)});
+  await f.storage.moveCold(cold);await f.storage.removeOriginals(cold);await f.archive.close();await f.storage.close();
+  await exportL5(f.source,f.dest,now,f.config);
+  const restored=new PosixStorage(f.dest),reader=new RawArchive(restored,65536);
+  try{
+    assert.deepEqual(await restored.readFinal(ref),final);assert.deepEqual(await restored.sessionRecords(ref),remaining);
+    assert.deepEqual(Buffer.from(await restored.read('processed-media',proofKey)),proof);
+    const replay=await reader.readRecord(ref,'owner',last.event.archive_revision);assert.equal(replay.kind,'stream');
+    if(replay.kind==='stream')assert.deepEqual(replay.chunks[2].bytes,Buffer.alloc(200,9));
+    await reader.delete(ref,'owner');assert.deepEqual(await restored.sessionRecords(ref),[]);
+    await assert.rejects(restored.read('processed-media',proofKey),{code:'ENOENT'});
+    await assert.rejects(restored.read('objects',sha256(Buffer.alloc(200,9))),{code:'ENOENT'});
+    await assert.rejects(reader.readRecord(ref,'owner',last.event.archive_revision),/RAW_DELETED/);
+  }finally{await reader.close();await restored.close();}
+  const coldSource=new PosixStorage(f.source,{cold:f.config}),coldReader=new RawArchive(coldSource,65536);
+  try{await coldReader.delete(ref,'owner');assert.deepEqual(await coldSource.sessionRecords(ref),[]);
+    await assert.rejects(coldSource.read('processed-media',proofKey),{code:'ENOENT'});
+    await assert.rejects(coldSource.read('objects',sha256(Buffer.alloc(200,9))),{code:'ENOENT'});
+  }finally{await coldReader.close();await coldSource.close();}
+});
+
+
+test('a 2050-revision folded lane exports all 4100 journal identities with its aggregate only in cold storage',async t=>{
+  const f=await fixture(t,true),ref=f.head.event.raw_ref,total=2050,payload=Buffer.from([17,0]);
+  const event={...raw('lane'),device_id:'glasses',device_type:'glasses' as const,source:{channel:'livekit'},
+    media_type:'livekit_tracks' as const,mime:'audio/pcm',representation:'received_decoded_sample' as const,payload};
+  let last=f.head;
+  for(let start=2;start<total;start+=64){
+    const inputs=Array.from({length:Math.min(64,total-start)},(_,offset)=>{
+      const seq=start+offset;
+      return {event,trusted:observation,received_at:now,chunk:{...chunk(seq),
+        source_range:{kind:'interval' as const,timebase_id:'samples',stream_epoch:'epoch',start_ms:seq+198,end_ms:seq+199}}};
+    });
+    last=(await f.archive.streams.appendBatch(inputs,{max_chunks:64,max_bytes:128})).at(-1)!;
+  }
+  assert.equal((await f.storage.listHot('stream-revisions')).length,total*2);
+  await f.archive.endSession(ref,'fixture-ended');assert.equal(await f.storage.readFinal(ref),null);
+  do{await f.archive.maintenance(1,Date.now(),{budget_ms:5000});}while(f.archive.maintenanceSnapshot().phase!=='idle');
+  const final=await f.storage.readFinal(ref);assert.ok(final);
+  assert.equal(final.records.filter(r=>r.namespace==='stream-revisions').length,total*2);
+  const objects=[];for(const key of await f.storage.listHot('objects'))objects.push({namespace:'objects',key,bytes:await f.storage.read('objects',key)});
+  assert.ok(objects.some(object=>object.key===final.object_hash));
+  await f.storage.moveCold(objects);await f.storage.removeOriginals(objects);
+  assert.deepEqual(await f.storage.listHot('objects'),[]);
+  await f.archive.close();await f.storage.close();
+  const receipt=await exportL5(f.source,f.dest,now,f.config),selected=receipt.sources.find(source=>source.ref===ref);
+  assert.equal(selected?.revisions?.length,total*2);assert.equal(receipt.sources.length,3);
+  assert.ok(receipt.files.some(item=>item.namespace==='objects'&&item.key===final.object_hash));
+  await verifyL5(f.dest);
+  const restored=new PosixStorage(f.dest),reader=new RawArchive(restored,65536);
+  try{
+    const replay=await reader.readRecord(ref,'owner',last.event.archive_revision);assert.equal(replay.kind,'stream');
+    if(replay.kind!=='stream')assert.fail();
+    assert.equal(replay.chunks.length,total);assert.equal(replay.total_bytes,400+(total-2)*payload.length);
+    assert.deepEqual(Buffer.concat(replay.chunks.map(c=>Buffer.from(c.bytes))),Buffer.concat([Buffer.alloc(400),Buffer.concat(Array.from({length:total-2},()=>payload))]));
+    const pinned=await reader.readRecord(ref,'owner',f.parent.event.archive_revision);assert.equal(pinned.kind,'stream');
+    if(pinned.kind==='stream'){assert.equal(pinned.chunks.length,1);assert.deepEqual(pinned.chunks[0].bytes,Buffer.alloc(200));}
+  }finally{await reader.close();await restored.close();}
 });

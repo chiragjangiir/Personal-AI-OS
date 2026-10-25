@@ -1,0 +1,328 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:yimi:capability:receipt:1",
+  "title": "Capability receipt v1",
+  "description": "Five package-authored fact kinds. Delivery and already-reported facts belong to the platform ledger. Additive fields are allowed; admission qualifies claims separately.",
+  "type": "object",
+  "properties": {
+    "receipt": {
+      "const": 1
+    },
+    "status": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "succeeded",
+            "partial",
+            "failed",
+            "unknown",
+            "running",
+            "accepted",
+            "waiting",
+            "cancelled",
+            "rejected"
+          ]
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "ended_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason_code": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "progress": {
+          "type": "object",
+          "properties": {
+            "done": {
+              "type": "number",
+              "minimum": 0
+            },
+            "total": {
+              "type": "number",
+              "minimum": 0
+            },
+            "unit": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            }
+          },
+          "required": [
+            "done",
+            "total",
+            "unit"
+          ]
+        }
+      },
+      "required": [
+        "state"
+      ]
+    },
+    "effects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "observe",
+              "workspace",
+              "owner_data",
+              "send",
+              "account",
+              "delete",
+              "physical",
+              "spend",
+              "self_change"
+            ]
+          },
+          "target": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "action": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "verification": {
+            "type": "string",
+            "enum": [
+              "verified",
+              "service_ack",
+              "not_verified",
+              "unknown"
+            ]
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "target",
+          "action",
+          "verification",
+          "evidence",
+          "ref"
+        ]
+      }
+    },
+    "values": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unit": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "description": "Required; use none only for a truly unitless value."
+          },
+          "provenance": {
+            "type": "string",
+            "enum": [
+              "observed",
+              "computed",
+              "inferred",
+              "peer"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "key",
+          "value",
+          "unit",
+          "provenance",
+          "source",
+          "as_of"
+        ]
+      }
+    },
+    "content": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "text": {
+            "type": "string"
+          },
+          "provenance": {
+            "type": "string",
+            "enum": [
+              "observed",
+              "computed",
+              "inferred",
+              "peer"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "text",
+          "provenance"
+        ]
+      }
+    },
+    "unknowns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "about": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "why": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          }
+        },
+        "required": [
+          "about",
+          "why"
+        ]
+      }
+    },
+    "next": {
+      "type": "object",
+      "properties": {
+        "retry": {
+          "type": "string",
+          "enum": [
+            "forbidden",
+            "allowed",
+            "after_check"
+          ]
+        },
+        "check_with": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "needs_confirmation": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "waiting_on": {
+          "type": "string",
+          "enum": [
+            "none",
+            "owner",
+            "external",
+            "time"
+          ]
+        },
+        "waiting_detail": {
+          "type": "string"
+        },
+        "until": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "retry",
+        "waiting_on"
+      ]
+    },
+    "job": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Strictly increasing per job; the future ledger checks across receipts."
+        }
+      },
+      "required": [
+        "id",
+        "revision"
+      ]
+    }
+  },
+  "required": [
+    "receipt",
+    "status",
+    "effects",
+    "values",
+    "content",
+    "unknowns",
+    "next"
+  ]
+}

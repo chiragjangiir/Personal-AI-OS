@@ -18,6 +18,7 @@ test('Watch normalized HTTP metadata freezes AAC-LC mono and exact limits',()=>{
   for(const change of [{unknown:true},{'x-watch-turn-id':'bad'},{'x-watch-codec':'pcm_s16le'},{'x-watch-channels':'2'},{'x-watch-sample-rate-hz':'48000'},{'content-type':'audio/aac'}])assert.equal(accepts({...sample,...change}),false);
   assert.equal(wire.transport.utterance.max_body_bytes,1_000_000);
   assert.equal(wire.transport.utterance.max_duration_ms,30_000);
+  assert.equal(wire.transport.utterance.max_duration_difference_ms,3*1024*1000/16000);
 });
 
 test('Watch responses are strict disjoint states with bounded failure reasons',()=>{

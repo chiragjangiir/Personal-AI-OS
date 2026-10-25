@@ -50,6 +50,7 @@ test('new single and batch raw reuse materializes hot bytes; admitted replay of 
   }
   f.remote.state.unavailable=false;
   const admitted=await f.archive.admitStream(raw(3,'closed'),trusted,chunk(2));assert.deepEqual(await admitted.commit,saved[2]);
+  await f.archive.maintenance(1,Date.parse(at)+1000);
   await assert.rejects(f.storage.readHot('objects',saved[2]!.chunk.object_hash),{code:'ENOENT'});
   assert.deepEqual(await f.storage.list('raw-ingress'),[]);
   assert.deepEqual(Buffer.from(await f.storage.readHot('objects',single.chunk.object_hash)),Buffer.from(raw(1,'new-single').payload));

@@ -85,7 +85,8 @@ export function publishRawRecord(storage:StoragePort,rawRef:string,namespace:str
 }
 const identity = (e: BoundEvent): unknown => ({event_id: e.event_id, device_id: e.device_id,
   device_type: e.device_type, principal_id: e.principal_id, consent_ref: e.consent_ref,
-  captured_at: e.captured_at, source: e.source, media_type: e.media_type, origin: e.origin});
+  captured_at: e.captured_at, source: e.source, media_type: e.media_type, origin: e.origin,
+  ...(e.audio_capture?{audio_capture:e.audio_capture}:{})});
 const sameTrack = (a: TrackChunk, b: TrackChunk): boolean => a.track_id === b.track_id && a.stream_epoch === b.stream_epoch;
 
 function extents(chunks: StoredChunk[]): TrackExtent[] {
@@ -136,13 +137,14 @@ export class StreamArchive {
     const m=parse<{schema:string}>(data);check(['paios.stream.v1','paios.stream.delta.v2'].includes(m.schema),'STREAM_REVISION_INTEGRITY',500);
     return m.schema==='paios.stream.v1';
   }
-  private async journal(rawRef:string,through=this.budget.max_revisions):Promise<JournalState>{
+  private async journal(rawRef:string,through=this.budget.max_revisions,checkpoint?:()=>Promise<void>):Promise<JournalState>{
     check(/^l5:[a-f0-9]{64}$/u.test(rawRef),'INVALID_RAW_REF');
     // Least recently used lanes leave first. The bound is in entries, not lanes (~2 KB of heap each): 16 full lanes per
     // archive held ~190 MB, growing ~1 MiB/min per live 100 ms PCM lane. A re-read lane is re-verified.
-    let state:JournalState=this.journals.get(rawRef)??{entries:[],chunks:[],slots:new Map(),tracks:new Map(),firsts:new Map()};
-    this.journals.delete(rawRef);this.journals.set(rawRef,state);
+    let state:JournalState=(!checkpoint?this.journals.get(rawRef):undefined)??{entries:[],chunks:[],slots:new Map(),tracks:new Map(),firsts:new Map()};
+    if(!checkpoint){this.journals.delete(rawRef);this.journals.set(rawRef,state);}
     for(let n=state.entries.length+1;n<=through;n++){
+      await checkpoint?.();
       let data:Uint8Array;try{data=await this.storage.read('stream-revisions',this.key(rawRef,n));}
       catch(e){if(absent(e))break;throw e;}
       const j=parse<JournalRevision>(data),prior=state.entries.at(-1),c=j.chunk;
@@ -162,6 +164,7 @@ export class StreamArchive {
       deepFreeze(j);if(!state.firsts.has(track(c)))state.firsts.set(track(c),{chunk:c,revision:n});
       state.entries.push(j);state.chunks.push(c);state.slots.set(slot(c),j);state.tracks.set(track(c),c);
     }
+    if(checkpoint)return state;
     let cached=0;for(const lane of this.journals.values())cached+=lane.entries.length;
     for(const [ref,lane] of this.journals){if(ref===rawRef||cached<=JOURNAL_CACHE_LANES*this.budget.max_revisions&&this.journals.size<=64)break;
       this.journals.delete(ref);cached-=lane.entries.length;}
@@ -211,9 +214,10 @@ export class StreamArchive {
     if(end.pending?.some(p=>p.fingerprint===chunk.fingerprint))return;
     check(false,'STREAM_ALREADY_FINAL',409);
   }
-  async head(rawRef:string):Promise<StreamManifest|null>{
+  async head(rawRef:string,options:{checkpoint?:()=>Promise<void>}={}):Promise<StreamManifest|null>{
     await requireRawAvailable(this.storage,rawRef);
-    if(await this.isLegacy(rawRef))return this.legacyHead(rawRef);
+    if(await this.isLegacy(rawRef))return this.legacyHead(rawRef,options.checkpoint);
+    if(options.checkpoint){const state=await this.journal(rawRef,undefined,options.checkpoint);return state.entries.length?this.materialize(state,state.entries.length):null;}
     return this.journalWork(async()=>{const s=await this.journal(rawRef);return s.entries.length?this.materialize(s,s.entries.length):null;});
   }
   async readRecord(rawRef:string,principal:string,revision:string,options:StreamReadOptions={}):Promise<VerifiedStreamRecord>{
@@ -289,10 +293,11 @@ export class StreamArchive {
     return data;
   }
   private key(rawRef: string, revision: number): string {return digest([rawRef, revision]);}
-  private async legacyHead(rawRef: string): Promise<StreamManifest | null> {
+  private async legacyHead(rawRef: string,checkpoint?:()=>Promise<void>): Promise<StreamManifest | null> {
     check(/^l5:[a-f0-9]{64}$/u.test(rawRef), 'INVALID_RAW_REF');
     let previous: StreamManifest | null = null;
     for (let n=1; n<=this.budget.max_revisions; n++) {
+      await checkpoint?.();
       let stored: Uint8Array;
       try {stored = await this.storage.read('stream-revisions', this.key(rawRef,n));}
       catch (e) {if (absent(e)) return previous; throw e;}

@@ -1,0 +1,87 @@
+{
+  "receipt": 1,
+  "status": {
+    "state": "partial",
+    "started_at": "2026-10-24T13:03:10Z",
+    "ended_at": "2026-10-24T13:03:12Z",
+    "progress": {
+      "done": 47,
+      "total": 50,
+      "unit": "份"
+    }
+  },
+  "effects": [
+    {
+      "kind": "workspace",
+      "target": "workspace/pdf-batch/20261024/",
+      "action": "write",
+      "verification": "verified",
+      "evidence": "Fixture: 47 output files were read back.",
+      "ref": "file:workspace/pdf-batch/20261024/"
+    }
+  ],
+  "values": [
+    {
+      "key": "processed",
+      "value": 47,
+      "unit": "份",
+      "provenance": "observed",
+      "source": "pdf-batch fixture worker",
+      "as_of": "2026-10-24T13:03:12Z"
+    },
+    {
+      "key": "failed",
+      "value": 3,
+      "unit": "份",
+      "provenance": "observed",
+      "source": "pdf-batch fixture worker",
+      "as_of": "2026-10-24T13:03:12Z"
+    },
+    {
+      "key": "pages",
+      "value": 1312,
+      "unit": "页",
+      "provenance": "computed",
+      "source": "pdf-batch fixture worker",
+      "as_of": "2026-10-24T13:03:12Z"
+    },
+    {
+      "key": "contracts",
+      "value": 31,
+      "unit": "份",
+      "provenance": "inferred",
+      "source": "pdf-batch fixture worker",
+      "as_of": "2026-10-24T13:03:12Z"
+    },
+    {
+      "key": "invoices",
+      "value": 16,
+      "unit": "份",
+      "provenance": "inferred",
+      "source": "pdf-batch fixture worker",
+      "as_of": "2026-10-24T13:03:12Z"
+    }
+  ],
+  "content": [
+    {
+      "key": "summary",
+      "text": "合同类 31 份，发票 16 份。",
+      "provenance": "inferred"
+    }
+  ],
+  "unknowns": [
+    {
+      "about": "three_scanned_tables",
+      "why": "OCR confidence is below 0.6."
+    }
+  ],
+  "next": {
+    "retry": "allowed",
+    "waiting_on": "none",
+    "waiting_detail": "Retry only the three failed inputs."
+  },
+  "job": {
+    "id": "pdf-batch-fixture",
+    "revision": 3
+  }
+}

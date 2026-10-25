@@ -1,0 +1,62 @@
+{
+  "schema": "yimi.package.contract.v1",
+  "cases": [
+    {
+      "id": "paios_model_settings_read",
+      "tool": "paios_model_settings_read",
+      "args": {},
+      "raw": {
+        "revision": 1,
+        "providers": [],
+        "roles": [],
+        "credentials": [],
+        "cost": {
+          "known": false
+        },
+        "settings_entry": "模型与密钥"
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "paios_model_settings_draft",
+      "tool": "paios_model_settings_draft",
+      "args": {
+        "action": "pause",
+        "expected_revision": 1,
+        "pause_on_limit": true
+      },
+      "raw": {
+        "status": "awaiting_owner_signature",
+        "draft": {
+          "draft_id": "draft"
+        },
+        "settings_entry": {
+          "label": "模型与密钥",
+          "draft_id": "draft"
+        }
+      },
+      "expected": {
+        "state": "waiting"
+      }
+    },
+    {
+      "id": "model-key-required",
+      "tool": "paios_model_settings_draft",
+      "args": {
+        "action": "pause",
+        "expected_revision": 2,
+        "pause_on_limit": true
+      },
+      "raw": {
+        "status": "key_required",
+        "error_code": "MODEL_SETTINGS_KEY_REQUIRED",
+        "settings_entry": "模型与密钥"
+      },
+      "expected": {
+        "state": "waiting"
+      }
+    }
+  ]
+}

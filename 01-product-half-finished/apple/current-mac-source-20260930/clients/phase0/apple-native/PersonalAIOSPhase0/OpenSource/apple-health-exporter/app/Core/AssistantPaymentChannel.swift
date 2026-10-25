@@ -44,6 +44,11 @@ actor AssistantPaymentChannel {
     private var observer: (@Sendable (AssistantPaymentEvent) -> Void)?
     private var pending: [String: Pending] = [:]
     private var ownerObserver: (@Sendable (AssistantPaymentEvent) -> Void)?
+    private var modelSettingsObserver: (@Sendable (AssistantPaymentEvent) -> Void)?
+    func setModelSettingsObserver(_ observer: @escaping @Sendable (AssistantPaymentEvent) -> Void) {
+        modelSettingsObserver = observer
+        observer(binding.map(AssistantPaymentEvent.attached) ?? .detached)
+    }
     func setOwnerObserver(_ observer: @escaping @Sendable (AssistantPaymentEvent) -> Void) {
         ownerObserver = observer
         observer(binding.map(AssistantPaymentEvent.attached) ?? .detached)
@@ -63,6 +68,7 @@ actor AssistantPaymentChannel {
         sender = send
         observer?(.attached(binding))
         ownerObserver?(.attached(binding))
+        modelSettingsObserver?(.attached(binding))
         do { try await presence(presenceState) }
         catch { if self.binding == binding { detach(); observer?(.failed) } }
     }
@@ -79,7 +85,7 @@ actor AssistantPaymentChannel {
             request.dispatch?.cancel()
             request.continuation.resume(throwing: failure(AssistantPaymentChannelError.detached, dispatched: request.dispatchState.cancel()))
         }
-        if wasAttached { observer?(.detached); ownerObserver?(.detached) }
+        if wasAttached { observer?(.detached); ownerObserver?(.detached); modelSettingsObserver?(.detached) }
     }
 
     func presence(_ state: String) async throws {
@@ -100,7 +106,8 @@ actor AssistantPaymentChannel {
         }
         let replies = ["payment_challenge_get": "payment_challenge", "payment_settings_get": "payment_settings",
                        "payment_records_get": "payment_records", "payment_record_get": "payment_record"]
-        let response = operation.hasPrefix("owner_override_") ? "owner_override_status" : (replies[operation] ?? "payment_receipt")
+        let response = operation.hasPrefix("model_settings_") ? "model_settings_receipt"
+            : operation.hasPrefix("owner_override_") ? "owner_override_status" : (replies[operation] ?? "payment_receipt")
         guard usedIDs.insert(id).inserted else { throw AssistantPaymentChannelError.notDispatched(AssistantPaymentChannelError.duplicateID) }
         let token = UUID()
         let dispatchState = AssistantPaymentDispatch()
@@ -128,10 +135,10 @@ actor AssistantPaymentChannel {
         }
     }
 
-    /// Consumes only payment outputs. Wrong sessions never reach correlation or the observer.
+    /// Correlates owner controls on the same encrypted attachment. Wrong sessions never reach observers.
     func accept(_ packet: CentralTextPacket) -> Bool {
         guard let operation = try? packet.fields.value("operation", as: String.self),
-              (operation.hasPrefix("payment_") || operation == "owner_override_status") else { return false }
+              (operation.hasPrefix("payment_") || operation == "owner_override_status" || operation.hasPrefix("model_settings_")) else { return false }
         guard let binding, (try? packet.fields.value("session_id", as: String.self)) == binding.sessionID else { return true }
         let id = (try? packet.fields.value("request_id", as: String.self))
             ?? (try? packet.fields.value("control_id", as: String.self))
@@ -140,7 +147,8 @@ actor AssistantPaymentChannel {
             request.timeout.cancel()
             request.continuation.resume(returning: packet)
         }
-        if operation == "owner_override_status" { ownerObserver?(.output(packet)) }
+        if operation.hasPrefix("model_settings_") { modelSettingsObserver?(.output(packet)) }
+        else if operation == "owner_override_status" { ownerObserver?(.output(packet)) }
         else { observer?(.output(packet)) }
         return true
     }

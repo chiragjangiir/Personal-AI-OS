@@ -57,6 +57,9 @@ for obj in objects.values():
         obj["requirement"] = {"kind": "exactVersion", "version": version}
     if obj.get("isa") == "XCLocalSwiftPackageReference":
         obj["relativePath"] = str((app / obj["relativePath"]).resolve())
+    if obj.get("sourceTree") == "SOURCE_ROOT":
+        obj["path"] = str((app / obj["path"]).resolve())
+        obj["sourceTree"] = "<absolute>"
     settings = obj.get("buildSettings", {})
     for key in ("INFOPLIST_FILE", "CODE_SIGN_ENTITLEMENTS"):
         if key in settings:
@@ -81,6 +84,17 @@ final class AliyunARTCCallClient: ARTCCallClient {
 }
 ''')
 # Compile every package test on the simulator, including files absent from the older Xcode scheme.
+# The package also includes WatchCore; the iPhone target does not include those watch-only types.
+host = next(obj for obj in objects.values() if obj.get("isa") == "PBXNativeTarget" and obj.get("name") == "HealthKitExporter")
+host_sources = next(objects[key] for key in host["buildPhases"] if objects[key]["isa"] == "PBXSourcesBuildPhase")
+host_references = {objects[objects[key]["fileRef"]].get("path", "").split("/")[-1] for key in host_sources["files"]}
+for index, path in enumerate(sorted((app / "WatchCore").glob("*.swift")), 1):
+    if path.name in host_references:
+        continue
+    ref, build = f"AC340000000000000000{index:04X}", f"AC330000000000000000{index:04X}"
+    objects[ref] = {"isa": "PBXFileReference", "path": str(path), "sourceTree": "<absolute>", "lastKnownFileType": "sourcecode.swift"}
+    objects[build] = {"isa": "PBXBuildFile", "fileRef": ref}
+    host_sources["files"].append(build)
 tests = next(obj for obj in objects.values() if obj.get("isa") == "PBXNativeTarget" and obj.get("name") == "HealthKitExporterTests")
 source_phase = next(objects[key] for key in tests["buildPhases"] if objects[key]["isa"] == "PBXSourcesBuildPhase")
 resource_phase = next(objects[key] for key in tests["buildPhases"] if objects[key]["isa"] == "PBXResourcesBuildPhase")

@@ -151,7 +151,7 @@ class HudCardsContractTest {
         assertEquals("card-10", hud.snapshot(41).last().id)
     }
     @Test fun reconnectRecoversResultAfterFirstChunkWithExactFieldsAndTimestamp() {
-        val hud = HudCards("glasses"); hud.accept(header(), 1000)
+        val hud = HudCards("glasses", wireNow = { 1000 }); hud.accept(header(), 1000)
         val ack = hud.accept(chunk(1), 1000).single().ack!!
         assertEquals("1970-01-01T00:00:01.000Z", ack.getJSONObject("ack").getString("observed_at"))
         confirm(hud, hud.replies.rendered(ack, 1001)!!, 1002)

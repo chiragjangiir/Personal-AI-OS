@@ -62,6 +62,44 @@ function pcmWav(pcm: Buffer, sampleRate: number): TtsAudio {
   return inspectWav(wav);
 }
 
+// First audio passes through immediately. Later blocks flush at 256 KiB or 500 ms,
+// so provider fragmentation cannot set journal growth or leave playback waiting for a large block.
+export async function* coalesceTts(source: AsyncIterable<TtsAudio>): AsyncIterable<TtsAudio> {
+  let first = true, rate = 0, channels = 0, size = 0, deadline = 0;
+  const parts: Buffer[] = [], iterator = source[Symbol.asyncIterator]();
+  let pending: Promise<IteratorResult<TtsAudio>> | undefined;
+  try {
+    while (true) {
+      pending ??= iterator.next();
+      let timer: NodeJS.Timeout | undefined;
+      const next = size ? await Promise.race([pending, new Promise<null>(resolve => {
+        timer = setTimeout(() => resolve(null), Math.max(0, deadline - performance.now()));
+      })]).finally(() => clearTimeout(timer)) : await pending;
+      if (next === null) {yield merged(); continue;}
+      pending = undefined;
+      if (next.done) break;
+      const parsed = inspectWav(next.value.bytes);
+      check(parsed.sha256 === next.value.sha256, 'OUTPUT_AUDIO_INVALID');
+      if (first) {first = false; rate = parsed.sample_rate; channels = parsed.channels; yield parsed; continue;}
+      check(parsed.sample_rate === rate && parsed.channels === channels, 'TTS_FORMAT_CHANGED');
+      const samples = wavSamples(parsed.bytes), pcm = Buffer.alloc(samples.length * 2);
+      for (let n = 0; n < samples.length; n++) pcm.writeInt16LE(samples[n]!, n * 2);
+      for (let at = 0; at < pcm.length;) {
+        if (!size) deadline = performance.now() + 500;
+        const part = pcm.subarray(at, at + Math.min(pcm.length - at, 262144 - size));
+        parts.push(part); size += part.length; at += part.length;
+        if (size === 262144) yield merged();
+      }
+    }
+    if (size) yield merged();
+  } finally {await iterator.return?.();}
+  function merged(): TtsAudio {
+    const wav = Buffer.from(pcmWav(Buffer.concat(parts), rate).bytes);
+    wav.writeUInt16LE(channels, 22); wav.writeUInt32LE(rate * channels * 2, 28); wav.writeUInt16LE(channels * 2, 32);
+    parts.length = 0; size = 0; return inspectWav(wav);
+  }
+}
+
 // One provider owner serializes both APIs and reuses completed-task connections.
 export class DashScopeTts implements TtsPort {
   readonly model: string;

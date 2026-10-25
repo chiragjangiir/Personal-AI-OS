@@ -3,14 +3,14 @@
   "contract": "hermes.run.v2",
   "upstream": {
     "repository": "https://github.com/NousResearch/hermes-agent.git",
-    "commit": "f97608f178d1ffeca59860195ab7da295f7c8e5f"
+    "commit": "bf0203a794a07aac3ff764972ab9087baa4e4f4e"
   },
   "patch": {
     "path": "native-context.patch",
-    "sha256": "7dbc7736419a12db8405f4fb1533bd811566de8d22b363ea58b6972819df6437"
+    "sha256": "de75a336b391159dbcc63c194f998283a8483ce8b32d3ec5330688a8d1145e12"
   },
-  "result_tree": "3b8d3cc648574cfa6a31c429893a295870065df3",
-  "shape_sha256": "f5ecab354c673aa7354730b9d1fa03ccedcc3d47fdb1ccd3b8383b89d4c749e8",
+  "result_tree": "fa701b7b615dccc181cb948b763f3a146713d21b",
+  "shape_sha256": "b725baece0ba60cdcf1789b5964224e94a08768c3cd252ed30a12a517ebda210",
   "producer": {
     "publisher": "gateway/platforms/api_server_runs.py",
     "shape_schema": "gateway/platforms/native-run.shape.schema.json"
@@ -19,5 +19,158 @@
     "pin": "01-product-half-finished/backend/services/personal-aios-integration/src/hermes-client.ts",
     "shape_schema": "01-product-half-finished/backend/services/personal-aios-integration/src/native-run.shape.schema.json"
   },
-  "exported_from_commit": "5b1416f88ff8591ff95e5512dd6e7eea7fdaa6b0"
+  "exported_from_commit": "76fffc4c3a7cd320796072170175d9ef6273357e",
+  "residual_patch_status": "TEMPORARY",
+  "build_products": {
+    "dockerfile_sha256": "96f5e732fbf60c96bc8416a33f838470ddf126df0d2a4d0c7a393967198f2eda",
+    "base_images": [
+      "sha256:ef071a7d7192c506725453eef7e1ac1e058ad92bacf5ccf35a245aa16eebeeb7",
+      "sha256:a408b317ab3ecd9e3cd424fd13aeda36f8132588fd4e5a411dd5a01515658bd1"
+    ],
+    "paths": [
+      {
+        "path": ".install_method",
+        "reason": "Upstream Dockerfile stamps the docker installation method beside the immutable code.",
+        "path_count": 1,
+        "paths_sha256": "ee115d40c5d4c3673b25e86f56b9847e7790dc4024f78403ea9c53173da59ab4"
+      },
+      {
+        "path": ".venv",
+        "reason": "Upstream pm.build_env creates the sealed application environment; docker.build_agent installs its command links.",
+        "path_count": 21737,
+        "paths_sha256": "b446d9f7d727ce721dd023733dfa25c4caf5bf498ef00e7734748decf9fa7088"
+      },
+      {
+        "path": "bin",
+        "reason": "Upstream Dockerfile installs the hermes exec shim into bin/hermes.",
+        "path_count": 2,
+        "paths_sha256": "42c967820342c44e91c6a65372e26baa3142613e545d4d953dde6786761be6aa"
+      },
+      {
+        "path": "hermes_agent-0.0.0.dist-info",
+        "reason": "Upstream docker.build_agent/shared assembler writes application distribution metadata.",
+        "path_count": 3,
+        "paths_sha256": "f6778b001e3e1e1b35a013082cbaf17840010c3e9d0ecc0c226d846e6827470e"
+      },
+      {
+        "path": "hermes_cli/tui_dist",
+        "reason": "Upstream shared assembler publishes the prepared terminal frontend resource.",
+        "path_count": 7,
+        "paths_sha256": "4fef25dc7ce1381b756b9c418be152df30342a799f31ce905a0b0122c4a12f2c"
+      },
+      {
+        "path": "hermes_cli/web_dist",
+        "reason": "Upstream frontend_build produces the icon-bearing web distribution copied into runtime.",
+        "path_count": 64,
+        "paths_sha256": "f3482f29142b106de3d0042c01f9de7e884b82697322ebef160ac28ef0a9b5ad"
+      },
+      {
+        "path": "install-stamp.json",
+        "reason": "Upstream Dockerfile writes the fallback image install stamp and its pmRuntime location.",
+        "path_count": 1,
+        "paths_sha256": "12feb7434509b745c196ea8aae9e324469d3b7d2e4a7a8f6751990eceff79f76"
+      },
+      {
+        "path": "libexec",
+        "reason": "Upstream docker.build_agent/shared assembler emits the fixed runtime command launchers.",
+        "path_count": 4,
+        "paths_sha256": "e74761990f1e295ae0a4d371935bbf99f038805139831ba321f6a4ca87161c7a"
+      },
+      {
+        "path": "manifest.json",
+        "reason": "Upstream docker.build_agent/shared assembler publishes the assembled runtime manifest.",
+        "path_count": 1,
+        "paths_sha256": "1dd34fd5ef8b5370b38e461f22874ee0f89eed84d25bce4f2d43977c2299b5c8"
+      },
+      {
+        "path": "node_modules",
+        "reason": "Upstream Dockerfile copies the pinned TypeScript compiler and creates its tsc link.",
+        "path_count": 159,
+        "paths_sha256": "85470b36d2f1984f4905c8fa08bb383570789253cca39af6705c306b14c06c2f"
+      },
+      {
+        "path": "plugins/platforms/photon/sidecar/node_modules",
+        "reason": "Upstream Dockerfile runs the locked Photon sidecar npm install and upstream postinstall.",
+        "path_count": 12201,
+        "paths_sha256": "e6038f88ba1b163a4aa62a88b04f9401b33a7920ac9349d03040de075bd6dabc"
+      },
+      {
+        "path": "pm-runtime",
+        "reason": "Upstream Dockerfile stages and seals the resident package-manager Python runtime.",
+        "path_count": 174,
+        "paths_sha256": "afe749980bfd3f5007f6c4c8722163dbdb4c304613cfbeb3aa5e4cb9b2db87cf"
+      },
+      {
+        "path": "tools/.install.lock",
+        "reason": "Upstream PM owns the tool-store installation lock.",
+        "path_count": 1,
+        "paths_sha256": "e27d0030ed4f139b686fd93a6f4043bff56c209307c85190ae04acef070fcd72"
+      },
+      {
+        "path": "tools/chromium-1208",
+        "reason": "Upstream PM installs this tool from pm/lock.json through Dockerfile ensure calls and their declared dependencies.",
+        "path_count": 319,
+        "paths_sha256": "cd89ff7d6e928e8182be3db8fefd12c6e88f9c9e01bf3b07d9f693a0dfee0089"
+      },
+      {
+        "path": "tools/facts.json",
+        "reason": "Upstream PM records installed tool facts and the sealed dependency selection.",
+        "path_count": 1,
+        "paths_sha256": "695e6ee0e582f1a1e55e7f9f26176cc4a31413fef8d0ff915030c7ca427546f9"
+      },
+      {
+        "path": "tools/ffmpeg-9.0.1-linux-x64",
+        "reason": "Upstream PM installs this tool from pm/lock.json through Dockerfile ensure calls and their declared dependencies.",
+        "path_count": 73,
+        "paths_sha256": "81a05f1d45e4304e183c337e8943e8f8c1a8c15c3c4240eb27874d327277f883"
+      },
+      {
+        "path": "tools/node-26.12.1-linux-x64",
+        "reason": "Upstream PM installs this tool from pm/lock.json through Dockerfile ensure calls and their declared dependencies.",
+        "path_count": 5828,
+        "paths_sha256": "9718b41ea79bcb77bff732b4b4ddbf22fe3008f34940e22f895cf709759e3c62"
+      },
+      {
+        "path": "tools/npm-12.0.2-linux-x64",
+        "reason": "Upstream PM installs this tool from pm/lock.json through Dockerfile ensure calls and their declared dependencies.",
+        "path_count": 2431,
+        "paths_sha256": "5f2de522b694640e96424e765805b6b196fe99a6463047e918f1c330dec384b8"
+      },
+      {
+        "path": "tools/python-3.14.9+20261021-linux-x64",
+        "reason": "Upstream PM installs this tool from pm/lock.json through Dockerfile ensure calls and their declared dependencies.",
+        "path_count": 4930,
+        "paths_sha256": "877521b6456397fad65760f82a422e78867671dd52e5aee836129174d56c315f"
+      },
+      {
+        "path": "tools/ripgrep-15.2.0-linux-x64",
+        "reason": "Upstream PM installs this tool from pm/lock.json through Dockerfile ensure calls and their declared dependencies.",
+        "path_count": 16,
+        "paths_sha256": "99c138422e89d48ec823cc5efa3e91bc0b30cc1cb292707303436b4a9ad318f9"
+      },
+      {
+        "path": "tools/uv-0.13.5-linux-x64",
+        "reason": "Upstream PM installs this tool from pm/lock.json through Dockerfile ensure calls and their declared dependencies.",
+        "path_count": 3,
+        "paths_sha256": "ee30de568c42b837e58ba2a846568e0487d1f7e221dba6b04ab4953ab237f29a"
+      },
+      {
+        "path": "ui-tui/.hermes-product",
+        "reason": "Upstream frontend/shared assembler records the compiled terminal product marker.",
+        "path_count": 1,
+        "paths_sha256": "e5e82685be27ef7d3dda6766f4fe0f5b87f92baa343c3a04c5d9cba896aba90e"
+      },
+      {
+        "path": "ui-tui/dist",
+        "reason": "Upstream frontend_build compiles and copies the terminal frontend distribution.",
+        "path_count": 6,
+        "paths_sha256": "bf039d6af44149c0a83605713cabf8b193df0ca8cc137313ac825b6872c822f3"
+      },
+      {
+        "path": "uv-cache",
+        "verification": "opaque_seed_cache",
+        "reason": "Upstream pm/packages.py:329-385 uses this payload seed for plugin installs and offline rebuilds. Two independent no-cache base inventories (base_images below) differ only here: 15,073 paths per build and 146 symlink targets. uv archive names are opaque; require the directory, safe entry types/modes and contained symlinks instead of pinning its paths."
+      }
+    ]
+  }
 }

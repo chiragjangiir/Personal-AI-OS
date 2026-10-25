@@ -16,7 +16,7 @@ def rollback_hub(tmp_path, monkeypatch):
     monkeypatch.syspath_prepend(str(ROOT / 'integrations/hermes'))
     from personal_aios import workshop
     from gateway import session_context
-    from gateway.session_context import set_session_vars, scoped_current_session_id, bind_api_memory_write, reset_api_memory_write
+    from gateway.session_context import set_session_vars, scoped_current_session_id, bind_api_run_conversation, reset_api_run_conversation
     from gateway.run_scope import runtime_scope
     from tools.approval_context import _approval_tool_call_id
     import hermes_cli.config
@@ -32,7 +32,7 @@ def rollback_hub(tmp_path, monkeypatch):
                       SimpleNamespace(_request=request))
     monkeypatch.setattr(session_context, '_session_context_engaged', session_context.session_context_engaged())
     tokens = set_session_vars(platform='api_server', session_key='run-owner', session_id='owner-session')
-    policy = bind_api_memory_write('run-owner', 'owner-session', True)
+    policy = bind_api_run_conversation('run-owner', 'owner-session')
     call = _approval_tool_call_id.set('rollback-call')
     try:
         # Native execution uses the child's transcript while tool RPCs retain the admitted owner conversation.
@@ -40,7 +40,7 @@ def rollback_hub(tmp_path, monkeypatch):
             yield handlers['skills_hub'], owner, calls
     finally:
         _approval_tool_call_id.reset(call)
-        reset_api_memory_write(policy)
+        reset_api_run_conversation(policy)
         for token in reversed(tokens):
             token.var.reset(token)
 

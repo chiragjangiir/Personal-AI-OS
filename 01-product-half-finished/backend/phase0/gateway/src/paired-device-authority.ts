@@ -54,6 +54,7 @@ export interface PairedDevice {
 
 /** Read-only view for the Hermes source resolver and Watch primary checks. */
 export interface DeviceAuthorityProjection {
+  readonly recipientPublicKey?: string;
   readonly deviceType: 'phone'|'glasses'|'mac';
   readonly capabilities: readonly TerminalCapability[];
   readonly userId: string;
@@ -222,6 +223,7 @@ export async function createPairedDeviceAuthority(options: {
     capabilities: Object.freeze([...capabilities]), occurredAt });
 
   const projection = (): DeviceAuthorityProjection => Object.freeze({
+    recipientPublicKey: device.publicKey,
     deviceType:device.deviceType, capabilities:device.capabilities,
     userId: device.userId, deviceId: device.deviceId, principal: device.userId, capabilityRef,
     allowedMediaCapabilities: device.media, purpose: DEVICE_SESSION_PURPOSE, governance: device.governance as OpaqueGovernanceValue,
@@ -364,20 +366,63 @@ export async function createPairedTerminalAuthorities(options: {pool:Pool;now?:(
   if (records.some(device=>device.userId!==ownerUserId)) fail('PAIRED_DEVICE_OWNER_MISMATCH',503);
   const terminals = await Promise.all(records.map(device => createPairedDeviceAuthority({...options,deviceId:device.deviceId})));
   let bindingReader: CurrentBindingReader | undefined;
-  const listener = await options.pool.connect();
-  let listenerClosed=false;
+  let listener:import('pg').PoolClient|undefined;
+  let listenerClosed=false,listenerReady=false,retryMs=100;
+  let retryTimer:ReturnType<typeof setTimeout>|undefined,reconnecting:Promise<void>|undefined,closing:Promise<void>|undefined;
   const callbacks = new Set<(deviceId:string)=>Promise<void>>();
-  const notified = (event:{channel:string;payload?:string|undefined}) => {
-    if(event.channel==='paired_device_revoked'&&event.payload)for(const callback of callbacks)void callback(event.payload).catch(console.error);
+  const revoked=async(deviceId:string)=>{
+    const terminal=terminals.find(device=>device.deviceId===deviceId);
+    await terminal?.close();
+    await Promise.all([...callbacks].map(callback=>callback(deviceId)));
+    if(terminal){const index=terminals.indexOf(terminal);if(index>=0)terminals.splice(index,1);}
   };
-  listener.on('notification',notified);
-  try {await listener.query('LISTEN paired_device_revoked');} catch(error) {listener.removeListener('notification',notified);listener.release();throw error;}
+  const retry=():void=>{
+    if(listenerClosed||retryTimer||reconnecting)return;
+    retryTimer=setTimeout(()=>{
+      retryTimer=undefined;
+      reconnecting=listen().catch(()=>{console.error(JSON.stringify({event:'PAIRED_DEVICE_LISTENER_RECONNECT_FAILED'}));})
+        .finally(()=>{reconnecting=undefined;if(!listenerReady)retry();});
+    },retryMs);
+    retryTimer.unref();retryMs=Math.min(retryMs*2,5000);
+  };
+  const disconnected=(client:NonNullable<typeof listener>):void=>{
+    if(listener!==client)return;
+    listener=undefined;listenerReady=false;
+    console.error(JSON.stringify({event:'PAIRED_DEVICE_LISTENER_DISCONNECTED'}));
+    client.removeListener('notification',notified);client.release(true);retry();
+  };
+  const notified = (event:{channel:string;payload?:string|undefined}) => {
+    if(listenerClosed||event.channel!=='paired_device_revoked'||!event.payload)return;
+    const client=listener;
+    void revoked(event.payload).catch(()=>{
+      console.error(JSON.stringify({event:'PAIRED_DEVICE_REVOCATION_FAILED'}));
+      if(client)disconnected(client);
+    });
+  };
+  const listen=async():Promise<void>=>{
+    const client=await options.pool.connect();
+    if(listenerClosed){client.release(true);return;}
+    listener=client;
+    // Retain an error owner until the discarded client ends, including errors following release(true).
+    client.on('error',()=>disconnected(client));client.on('end',()=>disconnected(client));
+    client.on('notification',notified);
+    try{
+      await client.query('LISTEN paired_device_revoked');
+      const known=[...terminals];
+      const active=await client.query("SELECT device_id::text FROM paired_devices WHERE status = 'active'");
+      if(listenerClosed||listener!==client)return;
+      const ids=new Set(active.rows.map(row=>String(row.device_id)));
+      await Promise.all(known.filter(device=>!ids.has(device.deviceId)).map(device=>revoked(device.deviceId)));
+      if(!listenerClosed&&listener===client){listenerReady=true;retryMs=100;}
+    }catch(error){disconnected(client);throw error;}
+  };
+  try{await listen();}catch(error){listenerClosed=true;clearTimeout(retryTimer);await Promise.all(terminals.map(device=>device.close()));throw error;}
   const forDevice = (deviceId:string):DeviceOwnerAuthority => terminals.find(device => device.deviceId === deviceId) ?? fail('PAIRED_DEVICE_REQUIRED');
   const readiness:DeviceAuthorityReadiness = Object.freeze({owner:'paired-device-authority',environment:'production',reason:'PAIRED_DEVICE_AUTHORITY_NOT_READY',
-    isReady:()=>!listenerClosed&&terminals.every(device=>device.readiness.isReady()),
-    current:()=>Object.freeze({ready:!listenerClosed&&terminals.every(device=>device.readiness.isReady()),bound:terminals.length>0&&terminals.every(device=>device.readiness.current().bound),
-      authorityReady:!listenerClosed&&terminals.every(device=>device.readiness.current().authorityReady),closed:listenerClosed}),
-    assertReady:()=>{if(listenerClosed)fail('PAIRED_DEVICE_AUTHORITY_NOT_READY',503);for(const device of terminals)device.readiness.assertReady();}});
+    isReady:()=>!listenerClosed&&listenerReady&&terminals.every(device=>device.readiness.isReady()),
+    current:()=>Object.freeze({ready:!listenerClosed&&listenerReady&&terminals.every(device=>device.readiness.isReady()),bound:terminals.length>0&&terminals.every(device=>device.readiness.current().bound),
+      authorityReady:!listenerClosed&&listenerReady&&terminals.every(device=>device.readiness.current().authorityReady),closed:listenerClosed}),
+    assertReady:()=>{if(listenerClosed||!listenerReady)fail('PAIRED_DEVICE_AUTHORITY_NOT_READY',503);for(const device of terminals)device.readiness.assertReady();}});
   const aggregate:Omit<DeviceOwnerAuthority,'deviceId'|'readCurrentAuthority'|'readActiveAuthority'> & {readonly terminals:readonly DeviceOwnerAuthority[];register(deviceId:string,refresh?:boolean):Promise<DeviceOwnerAuthority>;forDevice(deviceId:string):DeviceOwnerAuthority;onRevoked(callback:(deviceId:string)=>Promise<void>):()=>void} = {get terminals(){return Object.freeze([...terminals]);},forDevice,readiness,
     register:async(deviceId:string,refresh=false)=>{
       if (listenerClosed) fail('PAIRED_DEVICE_AUTHORITY_NOT_READY',503);
@@ -386,13 +431,17 @@ export async function createPairedTerminalAuthorities(options: {pool:Pool;now?:(
       if(listenerClosed){await terminal.close();fail('PAIRED_DEVICE_AUTHORITY_NOT_READY',503);}
       if(terminal.readCurrentAuthority().userId!==ownerUserId) {await terminal.close();fail('PAIRED_DEVICE_OWNER_MISMATCH',503);}
       if(bindingReader)terminal.bindCurrentBinding(bindingReader);
-      if(existing){await existing.close();terminals[terminals.indexOf(existing)]=terminal;}else terminals.push(terminal);return terminal;
+      if(existing){
+        await existing.close();const index=terminals.indexOf(existing);
+        if(index<0){await terminal.close();fail('PAIRED_DEVICE_REVOKED');}
+        terminals[index]=terminal;
+      }else terminals.push(terminal);return terminal;
     },onRevoked:(callback:(deviceId:string)=>Promise<void>)=>{callbacks.add(callback);return ()=>{callbacks.delete(callback);};},
     place:{resolve:async tokenSha256=>{
       const issued=await aggregate.bearer.resolve({tokenSha256,operation:'place_upload'});
       return issued?forDevice(issued.deviceId).readCurrentAuthority():undefined;
     },credential:(token,input)=>forDevice(input.device_id).place.credential(token,input)},
-    bearer:{isReady:()=>!listenerClosed&&terminals.every(device=>device.bearer.isReady()),resolve:async input=>{
+    bearer:{isReady:()=>!listenerClosed&&listenerReady&&terminals.every(device=>device.bearer.isReady()),resolve:async input=>{
       const result=await options.pool.query((input.operation==='place_upload'?"SELECT device_id::text FROM paired_devices WHERE place_token_sha256 = $1 AND status = 'active' AND device_class = 'iphone'":"SELECT device_id::text FROM paired_devices WHERE token_sha256 = $1 AND status = 'active'"),[input.tokenSha256]);
       return result.rows.length === 1 ? forDevice(String(result.rows[0].device_id)).bearer.resolve(input) : undefined;
     }},
@@ -410,7 +459,12 @@ export async function createPairedTerminalAuthorities(options: {pool:Pool;now?:(
       return device.formalWatchPrimaryAuthority.resolve(input,client);
     }},
     bindCurrentBinding:(reader:CurrentBindingReader)=>{for(const device of terminals)device.bindCurrentBinding(reader);bindingReader=reader;},
-    close:async()=>{if(listenerClosed)return;listenerClosed=true;callbacks.clear();listener.removeListener('notification',notified);try {await listener.query('UNLISTEN paired_device_revoked');} finally {listener.release();await Promise.all(terminals.map(device=>device.close()));}},
+    close:()=>closing??=(async()=>{
+      listenerClosed=true;listenerReady=false;clearTimeout(retryTimer);callbacks.clear();
+      const client=listener;listener=undefined;
+      try{if(client)await client.query('UNLISTEN paired_device_revoked');}
+      finally{client?.removeListener('notification',notified);client?.release(true);await reconnecting;await Promise.all(terminals.map(device=>device.close()));}
+    })(),
   };
   return Object.freeze(aggregate);
 }

@@ -30,8 +30,9 @@ internal fun canonicalJson(value: Any?): String = when (value) {
 class GatewayClient internal constructor(private val enrollment: Enrollment,
     private val discoveryScope: CoroutineScope? = null,
     private val openConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection },
-    private val now: () -> Long = System::currentTimeMillis,
-    private val openKey: (JSONObject, JSONObject, ByteArray) -> ByteArray = { request, response, secret -> E2ee.open(request, response, secret) }) {
+    private val now: () -> Long = ::monotonicMillis,
+    private val openKey: (JSONObject, JSONObject, ByteArray) -> ByteArray = { request, response, secret -> E2ee.open(request, response, secret) },
+    private val clock: ServerClock = ServerClock.shared) {
     data class Connection(val url: String, val token: String, val contentKey: ByteArray, val sessionId: String,
         val deviceId: String, val gatewayIdentity: String, val callRejoinWindowS: Long? = null)
     private var pairing: JSONObject? = null
@@ -53,7 +54,7 @@ class GatewayClient internal constructor(private val enrollment: Enrollment,
         val device = pairing.getString("device_id")
         val body = JSONObject().put("operation", "bootstrap").put("bootstrap_mode", "initial").put("request_id", requestId())
             .put("device_id", device).put("governance", pairing.getJSONObject("governance"))
-            .put("start", JSONObject().put("kind", "explicit_user_start").put("device_id", device).put("modalities", modalities).put("started_at", timestamp()))
+            .put("start", JSONObject().put("kind", "explicit_user_start").put("device_id", device).put("modalities", modalities).put("started_at", timestamp(clock.nowMillis())))
             .put("requested_media", JSONObject().put("audio", "audio" in names).put("video", "video" in names).put("data", "data" in names))
         val response = post("bootstrap", "/v1/realtime/bootstrap", body)
         resolveConnection(response).also { current = it }
@@ -114,6 +115,20 @@ class GatewayClient internal constructor(private val enrollment: Enrollment,
     }
 
     internal fun post(slug: String, path: String, body: JSONObject, receiveKey: ((ByteArray) -> Unit)? = null): JSONObject {
+        return try { postAttempt(slug, path, body, receiveKey) }
+        catch (answered: GatewayControlAnswered) {
+            if (slug != "bootstrap" || answered.code != "PAIRED_DEVICE_START_TIME_INVALID" || !answered.timeLearned) throw answered
+            // A coded refusal is final in the gateway ledger. A corrected Start needs a fresh identity and hash.
+            val corrected = JSONObject(body.toString()).apply {
+                remove("idempotency_context")
+                put("request_id", requestId())
+                getJSONObject("start").put("started_at", timestamp(clock.nowMillis()))
+            }
+            postAttempt(slug, path, corrected, receiveKey)
+        }
+    }
+
+    private fun postAttempt(slug: String, path: String, body: JSONObject, receiveKey: ((ByteArray) -> Unit)?): JSONObject {
         pairing = enrollment.pairing() ?: checkNotNull(pairing)
         val snapshot = JSONObject(pairing.toString())
         val profile = "https://personal-ai-os.local/contracts/realtime/idempotency/$slug"
@@ -200,6 +215,7 @@ class GatewayClient internal constructor(private val enrollment: Enrollment,
             connection.setRequestProperty("Content-Type", "application/json")
             connection.outputStream.use { it.write(bytes) }
             val status = connection.responseCode
+            val timeLearned = clock.learn(connection)
             val text = (if (status in 200..299) connection.inputStream else connection.errorStream)?.use { it.readBytes().toString(Charsets.UTF_8) }.orEmpty()
             if (status !in 200..299) {
                 val rejection = runCatching { JSONObject(text) }.getOrNull()
@@ -211,7 +227,7 @@ class GatewayClient internal constructor(private val enrollment: Enrollment,
                 val message = "Gateway control HTTP $status $code"
                 // The gateway's ledger replays this coded answer to every retry of the same idempotency key (for example,
                 // a stored ACCEPTED_ACTIVITY_FUTURE); only a running attempt is still open.
-                if (code.isNotEmpty() && code != "PUBLIC_OPERATION_RECEIPT_IN_FLIGHT") throw GatewayControlAnswered(message)
+                if (code.isNotEmpty() && code != "PUBLIC_OPERATION_RECEIPT_IN_FLIGHT") throw GatewayControlAnswered(message, code, timeLearned)
                 if (status >= 500 || status in 300..399) throw IOException(message)
                 throw GatewayControlRejected(message)
             }
@@ -219,11 +235,11 @@ class GatewayClient internal constructor(private val enrollment: Enrollment,
         } finally { connection.disconnect() }
     }
     companion object {
-        fun timestamp(now: Long = System.currentTimeMillis()): String = java.time.format.DateTimeFormatter
+        fun timestamp(now: Long = ServerClock.shared.nowMillis()): String = java.time.format.DateTimeFormatter
             .ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(java.time.ZoneOffset.UTC).format(Instant.ofEpochMilli(now))
     }
     private fun requestId(): String {
-        val b = ByteArray(16).also { SecureRandom().nextBytes(it) }; val ms = System.currentTimeMillis()
+        val b = ByteArray(16).also { SecureRandom().nextBytes(it) }; val ms = clock.nowMillis()
         for (i in 0..5) b[i] = (ms ushr ((5 - i) * 8)).toByte()
         b[6] = ((b[6].toInt() and 15) or 112).toByte(); b[8] = ((b[8].toInt() and 63) or 128).toByte()
         val bb = java.nio.ByteBuffer.wrap(b); return UUID(bb.long, bb.long).toString()
@@ -232,4 +248,4 @@ class GatewayClient internal constructor(private val enrollment: Enrollment,
 
 private class GatewayControlRejected(message: String) : Exception(message)
 /** The gateway's own coded error for a control request; retrying the same request can only repeat it. */
-private class GatewayControlAnswered(message: String) : IOException(message)
+private class GatewayControlAnswered(message: String, val code: String, val timeLearned: Boolean) : IOException(message)

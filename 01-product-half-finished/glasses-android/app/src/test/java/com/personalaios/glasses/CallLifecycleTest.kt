@@ -11,6 +11,7 @@ class CallLifecycleTest {
         val owner = SupervisorJob()
         val hud = MutableStateFlow(HudState(paired = true, status = "随身开", ambient = true))
         var now = 100_000L
+        var serverOffset = 0L
         var capturing = false
         var ends = 0
         private val cards = HudCards("glasses")
@@ -22,7 +23,7 @@ class CallLifecycleTest {
             try { ready.await() } finally { timers.remove(ready) }
         }, diagnose = { code -> diagnostics += code }, onFailure = { message ->
             hud.value = hud.value.copy(cards = cards.callFailure(message, now))
-        }).apply { windowS = 7 }
+        }, serverNow = { now + serverOffset }).apply { windowS = 7 }
         fun advance(ms: Long) {
             now += ms
             timers.filterValues { it <= now }.keys.toList().forEach { it.complete(Unit) }
@@ -36,6 +37,15 @@ class CallLifecycleTest {
             assertEquals("随身开", hud.value.status); assertFalse(capturing); assertEquals(1, ends)
         }
         override fun close() { owner.cancel() }
+    }
+
+    @Test fun serverDeadlineBecomesALocalDurationUnaffectedByLaterClockCorrections() = Fixture().use {
+        it.serverOffset = 52 * 60_000L
+        it.live(deadline = it.now + it.serverOffset + 7000)
+        it.calls.linkLost()
+        it.serverOffset = -52 * 60_000L
+        it.advance(6999); assertNotNull(it.hud.value.callId)
+        it.advance(1); it.ended()
     }
 
     @Test fun linkLossRetainsTheCurrentCallAndItsCaptureIntentInTheSingleWaitState() {

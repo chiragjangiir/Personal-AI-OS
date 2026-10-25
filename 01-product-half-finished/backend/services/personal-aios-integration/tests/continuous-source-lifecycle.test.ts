@@ -14,9 +14,10 @@ import {MediaProcessor,type Capability,type WorkerPort} from '../src/media/proce
 import {MediaService} from '../src/media/service.ts';
 import type {ClockMap} from '../src/media/align.ts';
 import type {VadStreamFactory} from '../src/media/silero-stream.ts';
-import type {AudioRoute} from '../src/media/audio-consumption.ts';
+import {AudioConsumption,type AudioRoute} from '../src/media/audio-consumption.ts';
 import type {ContinuousBudget} from '../src/media/continuous-source.ts';
 import {testJournal} from './speech-fixture.ts';
+import {createSourceMediaAdmission} from '../../../phase0/gateway/src/source-media-admission.ts';
 import {RealtimeAuthorityConflictError} from '../../platform-data/src/realtime-authority-repository.ts';
 
 const trusted:TrustedContext={principal_id:'owner',device_id:'glasses',device_type:'glasses',consent_ref:'fixture',channel:'fixture',submission:'observation'};
@@ -33,7 +34,7 @@ const capability:Capability={id:'controlled',version:'fixture',modalities:['audi
 const analysis:WorkerPort['analyze']=async request=>({event_id:request.event_id,segment_id:request.segment_id,archive_revision:request.archive_revision,
   time_range:request.time_range,content:{audio_observations:['controlled byte analysis']},speakers:[],warnings:['CONTROLLED_WORKER_NOT_REAL_MODEL'],status:'partial'});
 
-async function fixture(t:test.TestContext,options:{budget?:Partial<ContinuousBudget>;worker?:WorkerPort['analyze'];consumer?:AudioRoute['consumer'];contextFault?:()=>boolean|Error;detectionWait?:Promise<void>;detectionEntered?:()=>void}={}) {
+async function fixture(t:test.TestContext,options:{budget?:Partial<ContinuousBudget>;worker?:WorkerPort['analyze'];consumer?:AudioRoute['consumer'];capturePurpose?:'request'|'voiceprint';contextFault?:()=>boolean|Error;detectionWait?:Promise<void>;detectionEntered?:()=>void}={}) {
   const directory=await mkdtemp(join(tmpdir(),'paios-continuous-lifecycle-'));
   const storage=new PosixStorage(directory);
   const budget={max_chunk_bytes:10000,max_total_bytes:100000,max_chunks:20,max_revisions:20,max_seq:20};
@@ -47,7 +48,12 @@ async function fixture(t:test.TestContext,options:{budget?:Partial<ContinuousBud
     close:async()=>{if(!closed){closed=true;detectors.closed++;}}};}};
   const processor=new MediaProcessor(storage,new Map([['controlled',{analyze:async(request,signal)=>{analyses++;return (options.worker??analysis)(request,signal);}}]]),
     {policy_version:'lifecycle-fixture',max_inflight:2,max_input_bytes:100000,timeout_ms:5000,allow_external:false,allow_replay:true,allow_partial:true});
-  const service=new MediaService({storage,archive,streamArchive,processor,capabilities:async()=>[capability],
+  let captureSource:TrustedContext;
+  const gate=createSourceMediaAdmission({source:{capture:async()=>({binding:{userId:'owner',deviceId:'glasses'} as never,trusted:captureSource})},
+    clock:{read:async(_binding,chunk)=>({...map(chunk.stream_epoch),target_timebase_id:'utc_epoch_ms'})},
+    permission:{read:async()=>{throw new Error('preflight forbidden');},withPermission:async(_binding,_modality,consume)=>consume({authorizedMediaUntil:new Date(100000).toISOString()} as never)},requestTeardown:async()=>{}});
+  const service=new MediaService({storage,archive,streamArchive,processor,
+    ...(options.capturePurpose?gate:{}),capabilities:async()=>[capability],
     vad:{candidates:async request=>[{start_ms:0,end_ms:request.time_range.kind==='interval'?request.time_range.end_ms:0,semantic_status:'open',basis:'controlled'}]},
     align:{max_chunks:20,max_visual_refs:10,max_frame_gap_ms:100,max_uncertainty_ms:2},max_segments:4,max_window_ms:200,fixtureOnly:true,
     continuous:{detector,budget:{max_streams:2,max_pending_chunks:4,max_pending_candidates:32,max_chunk_bytes:10000,block_samples:8000,overlap_samples:1600,...options.budget},
@@ -62,14 +68,14 @@ async function fixture(t:test.TestContext,options:{budget?:Partial<ContinuousBud
   const runtime=new PersonalAIOSRuntime({storage,archive,admission,native,output:new OutputAuthority(storage),media:service,ambient_journal:await testJournal(t),
     devices:[{...trusted,route_version:'route',output_modes:['text'],token_sha256:sha256('token')},
       {...trusted,device_id:'other-glasses',route_version:'route',output_modes:['text'],token_sha256:sha256('other-token')}],
-    skill:'controlled',max_read_bytes:100000,audio_route:async(_source,event)=>({...route,capture_span:event.raw_ref}),
+    skill:'controlled',max_read_bytes:100000,audio_route:async(_source,event)=>({...route,capture_span:event.raw_ref,...(options.capturePurpose?{source_scope:event.device_id,purpose_evidence_ref:event.consent_ref}:{})}),
     continuous_context:async(_source,_event,chunk)=>{const fault=options.contextFault?.();if(fault)throw fault instanceof Error?fault:new Error('CONTROLLED_CONTEXT_UNAVAILABLE');
       return {session:'session',clock_maps:[map(chunk.stream_epoch)]};}});
   t.after(async()=>{await runtime.close();await processor.close();await rm(directory,{recursive:true,force:true});});
-  const device=await runtime.authenticate('token');
+  const device=await runtime.authenticate('token');captureSource={...device,submission:'observation'};
   const handles=()=>(runtime as unknown as {mediaSources:Map<string,unknown>}).mediaSources.size;
   const append=(span:string)=>runtime.appendMedia(raw(span),device,chunk(span));
-  return {storage,runtime,service,device,append,errors,detectors,handles,analyses:()=>analyses,creates:()=>creates,
+  return {directory,storage,archive,runtime,service,gate,device,append,errors,detectors,handles,analyses:()=>analyses,creates:()=>creates,
     other:()=>runtime.authenticate('other-token')};
 }
 const within=<T>(work:Promise<T>)=>Promise.race([work,new Promise<never>((_resolve,reject)=>setTimeout(()=>reject(new Error('did not settle')),30000).unref())]);
@@ -254,4 +260,53 @@ test('delayed older admission reports cannot recover or regress a newer lane rep
   assert.deepEqual(transitions(),['rejected','recovered']);
   await f.runtime.finishContinuousMedia(fresh.event,frame(2));await f.runtime.continuousMedia().drain();
   assert.equal((f.service as unknown as {continuousAdmissionReports:Map<string,unknown>}).continuousAdmissionReports.size,0);
+});
+
+
+for(const consumer of ['voice','audit_only'] as const)for(const batch of [false,true])
+test(`processing backlog preserves durable ${consumer} acquisition route (${batch?'batch':'frame'})`,async t=>{
+  const f=await fixture(t,{consumer}),span=`cancelled-${consumer}-${batch}`;
+  const lifecycle={onDurable:()=>{},beforeConsume:Promise.resolve(),consume:false};
+  const a=batch?(await f.runtime.appendMediaBatch([{raw:raw(span),device:f.device,chunk:chunk(span)}],{max_chunks:2,max_bytes:10000},undefined,lifecycle))[0]!
+    :await f.runtime.appendMedia(raw(span),f.device,chunk(span),undefined,lifecycle);
+  assert.equal(a.event.archive_status,'durable');assert.equal(a.processing_admission?.error_code,'FORMAL_PCM_PROCESSING_BACKLOG');
+  assert.equal((await f.runtime.archivedAudioRoute(a.event))?.consumer,consumer);
+  assert.equal((await f.archive.readRecord(a.event.raw_ref,'owner',a.event.archive_revision,{maxReadBytes:10000})).kind,'stream');
+  const replay=await f.runtime.appendMedia(raw(span),f.device,chunk(span));
+  assert.equal((await f.runtime.archivedAudioRoute(replay.event))?.consumer,consumer);assert.equal(f.analyses(),0);assert.equal(f.creates(),0);
+});
+
+
+for(const purpose of ['request','voiceprint'] as const)for(const batch of [false,true])for(const cut of ['audio-consumer-spans','audio-consumer-routes'])
+test(`durable ${purpose} capture recovers after interruption before ${cut} (${batch?'batch':'frame'})`,async t=>{
+  const consumer=purpose==='request'?'voice':'audit_only',f=await fixture(t,{consumer,capturePurpose:purpose});
+  const span=`crash-${purpose}-${batch}-${cut}`,ref=`l5:${digest({event_id:span,principal_id:'owner',device_id:'glasses'})}`;
+  const publish=f.storage.publish.bind(f.storage);let interrupted=false;
+  f.storage.publish=async(namespace,key,bytes)=>{
+    if(namespace===cut&&!interrupted){interrupted=true;throw new Error('controlled process interruption before route publication');}
+    return publish(namespace,key,bytes);
+  };
+  const lifecycle={onDurable:()=>{},beforeConsume:Promise.resolve(),consume:false,audioPurpose:purpose};
+  await assert.rejects(batch?f.runtime.appendMediaBatch([{raw:raw(span),device:f.device,chunk:chunk(span)}],{max_chunks:2,max_bytes:10000},undefined,lifecycle)
+    :f.runtime.appendMedia(raw(span),f.device,chunk(span),undefined,lifecycle),/controlled process interruption/);
+  assert.equal(interrupted,true);f.storage.publish=publish;
+  await assert.rejects(f.gate.withAppendAdmission!(raw(span),{...f.device,submission:'observation',principal_id:'forged'},chunk(span),async()=>assert.fail('wrong identity must not archive')),/MEDIA_CAPTURE_CONTEXT_MISMATCH/);
+  await f.runtime.close();
+  const storage=new PosixStorage(f.directory),recoveredArchive=new RawArchive(storage,10000),owner=new AudioConsumption(storage,100000);
+  t.after(()=>recoveredArchive.close());await recoveredArchive.recover();
+  const recovered=await recoveredArchive.locate(ref,'owner');
+  const lane=purpose==='request'?'finite':'continuous';
+  assert.deepEqual(recovered.audio_capture,{purpose,lane});
+  const route=cut==='audio-consumer-spans'?await owner.select(recovered,lane):await owner.existingRoute(recovered);
+  assert.equal(route?.consumer,consumer);assert.equal((await owner.existingRoute(recovered))?.consumer,consumer);
+  await assert.rejects(owner.select(recovered,lane,{consumer:'media',source_scope:'glasses',capture_span:ref,purpose_evidence_ref:'fixture'}),/AUDIO_ROUTE_CONFLICT/);
+  assert.equal(f.analyses(),0);assert.equal(f.creates(),0);
+});
+
+test('external raw metadata cannot forge the Host audio capture purpose',async t=>{
+  const f=await fixture(t),span='forged-purpose';
+  const forged={...raw(span),audio_capture:{purpose:'voiceprint',lane:'continuous'}};
+  const archived=await f.runtime.appendMedia(forged,f.device,chunk(span),undefined,{onDurable:()=>{},beforeConsume:Promise.resolve(),consume:false});
+  assert.equal(archived.event.audio_capture,undefined);
+  assert.equal((await f.runtime.archivedAudioRoute(archived.event))?.consumer,'media');
 });

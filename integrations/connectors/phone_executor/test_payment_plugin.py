@@ -29,7 +29,7 @@ LINEAGE = {"principal_id": "owner", "job_id": "server-job", "origin_processed_ev
 
 class PaymentPlugin(unittest.TestCase):
     def setUp(self):
-        self.provider = SimpleNamespace(_request=mock.Mock(return_value={**LINEAGE, "allowed": True, "ride_allowed": True}))
+        self.provider = SimpleNamespace(owner_mac_enabled=False, capability_enabled=lambda _: False, _request=mock.Mock(return_value={**LINEAGE, "allowed": True, "ride_allowed": True}))
         hooks, gates = {}, []
         sections = mock.Mock()
         ctx = SimpleNamespace(register_memory_provider=lambda _: None,
@@ -42,11 +42,11 @@ class PaymentPlugin(unittest.TestCase):
                         register_execution_gate=lambda ctx, gate: gates.append(gate))}), \
                 mock.patch.dict("os.environ", {"PAIOS_WORKSHOP_HOST": ""}):
             plugin.register(ctx)
-        sections.assert_called_once()
-        section_id, content = sections.call_args.args
-        self.assertEqual(section_id, 'personal-aios.reporting')
+        reporting = [call for call in sections.call_args_list if call.args[0] == 'personal-aios.reporting']
+        self.assertEqual(len(reporting), 1)
+        content = reporting[0].args[1]
         self.assertIn('只报告记录支持的事实', content)
-        self.assertLessEqual(len(content), sections.call_args.kwargs['max_chars'])
+        self.assertLessEqual(len(content), reporting[0].kwargs['max_chars'])
         # This matrix tests payment/source directives; Hermes tests exercise the real dispatch middleware.
         self.hook = gates[0]
         effect_patch = mock.patch.dict(sys.modules, {"payment_plugin_test.effects": SimpleNamespace(check_effect=lambda *_: None)})
@@ -131,7 +131,7 @@ class PaymentPlugin(unittest.TestCase):
                                   io.BytesIO(json.dumps({"error_code": code}).encode()))
                 provider._request = mock.Mock(side_effect=error)
                 result = json.loads(provider.handle_tool_call("paios_payment", {"action": "request"}, run_id="trusted-run"))
-                self.assertEqual(result, {"status": "rejected", "error_code": code, "http_status": 409})
+                self.assertEqual(result, {"status": "rejected", "error_code": code, "http_status": 409, "success": False, "error": code})
                 provider._request.assert_called_once()
 
 

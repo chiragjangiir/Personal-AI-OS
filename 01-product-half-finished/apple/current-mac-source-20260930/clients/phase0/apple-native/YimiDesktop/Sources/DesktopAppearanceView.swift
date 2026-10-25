@@ -32,22 +32,22 @@ struct DesktopAppearanceView: View {
                 HStack(alignment: .center, spacing: 18) {
                     YimiPortrait(breathes: false)
                         .frame(width: 100, height: 120).clipped()
-                        .accessibilityLabel("当前使用的依米形象")
+                        .accessibilityLabel("依米现在的样子")
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("照片和视频形象一致。")
-                        Text(avatar.loadedVersion.map { "本机已载入 · 第 \($0) 版" } ?? "正在载入形象。")
+                        Text("照片和视频里的她长得一样。")
+                        Text(avatar.loadedVersion.map { "这台 Mac 已换好 · 第 \($0) 版" } ?? "正在载入她的样子。")
                             .font(.caption).foregroundStyle(Yimi.ink2)
-                        Text(model.connected ? "此 Mac 已连接。" : "此 Mac 离线 · 连接后接收最新形象。")
+                        Text(model.connected ? "这台 Mac 已连接。" : "这台 Mac 未连接 · 连上后会换成她最新的样子。")
                             .font(.caption).foregroundStyle(Yimi.ink2)
                     }
                 }
-                Text("新的视频形象准备好后，再一起更换静态头像。已有通话继续使用原来的她，下一通使用新形象。")
+                Text("新的数字人准备好后，静态头像会一起更换。正在进行的通话仍用原来的她，下一通才用新样子。")
                     .font(.caption).foregroundStyle(Yimi.ink2)
             }
             Section("换一张照片") {
                 Button(image == nil ? "从 Mac 选照片…" : "换一张…", systemImage: "photo") { chooseImage() }
                     .accessibilityIdentifier("appearance.chooseImage").disabled(uploading)
-                Text("可选图或把照片拖到这里。调整和预览不会上传。")
+                Text("可以选照片，也可以拖到这里。调整和预览都只在本机，不会上传。")
                     .font(.caption).foregroundStyle(Yimi.ink2)
                 if let image {
                     draft(image)
@@ -61,11 +61,11 @@ struct DesktopAppearanceView: View {
                 if let quote = state.options?.preparation_quote {
                     Text(quote.price_text).font(.headline)
                     Text(quote.scope_text)
-                } else { Text(state.options?.unavailable_reason ?? "尚未取得实际费用与使用范围，请连接后刷新。") }
-                Button("确认费用并准备视频形象") { confirmDraft() }
+                } else { Text(state.options?.unavailable_reason ?? "还没拿到实际费用和使用范围，请连接后刷新。") }
+                Button("确认费用并准备数字人") { confirmDraft() }
                     .disabled(!model.connected || !preview || image == nil || state.busy || state.hasOutstandingCommand || uploading || state.options?.preparation_quote == nil || (selectedLook == nil && state.options?.photo_upload_available != true))
                     .accessibilityIdentifier("appearance.confirm")
-                if uploading { ProgressView("正在上传并提交准备请求") }
+                if uploading { ProgressView("正在上传并提交请求") }
                 if let preparation = state.preparation { Text(preparation.message) }
                 if state.commandID != nil { Button("查询进度") { Task { await model.reconcileAppearance() } }.disabled(state.busy) }
                 if state.hasOutstandingCommand { Button("取消准备", role: .destructive) { Task { await model.cancelAppearance() } }.disabled(state.busy) }
@@ -82,12 +82,12 @@ struct DesktopAppearanceView: View {
             }
             Section("最近的样子") {
                 ForEach(state.options?.recent_versions ?? []) { version in
-                    Button("复用第 \(version.version) 版 · \(version.profile?.style ?? "内置默认")") { Task { await model.reuseAppearance(version.version) } }.disabled(state.busy || !model.connected)
+                    Button("换回第 \(version.version) 版 · \(version.profile?.style ?? "内置默认")") { Task { await model.reuseAppearance(version.version) } }.disabled(state.busy || !model.connected)
                 }
-                Button("恢复内置默认") { Task { await model.reuseAppearance(0) } }.disabled(state.busy || !model.connected)
-                Text("复用与恢复不会重新生成视频形象。").font(.caption).foregroundStyle(Yimi.ink2)
+                Button("恢复默认") { Task { await model.reuseAppearance(0) } }.disabled(state.busy || !model.connected)
+                Text("换回旧版或默认样子，不会重新生成数字人。").font(.caption).foregroundStyle(Yimi.ink2)
             }
-            Section("各处是否一致") {
+            Section("各设备一致吗") {
                 ForEach(["mac", "phone", "glasses"], id: \.self) { type in
                     HStack { Text(type == "mac" ? "Mac" : type == "phone" ? "iPhone" : "眼镜"); Spacer(); Text(receiptStatus(type)).foregroundStyle(Yimi.ink2) }
                 }
@@ -101,7 +101,7 @@ struct DesktopAppearanceView: View {
                 try Task.checkCancellation()
                 guard selectedLook?.look_id == look.look_id, let loaded = NSImage(data: data) else { return }
                 image = loaded
-            } catch is CancellationError {} catch { selectionError = "预览无法载入：" + error.localizedDescription }
+            } catch is CancellationError {} catch { selectionError = "预览打不开：" + error.localizedDescription }
         }
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             guard !uploading, let provider = providers.first else { return false }
@@ -113,7 +113,7 @@ struct DesktopAppearanceView: View {
             }
             return true
         }
-        .confirmationDialog("准备新的视频形象", isPresented: $confirming, titleVisibility: .visible) {
+        .confirmationDialog("准备新的数字人", isPresented: $confirming, titleVisibility: .visible) {
             Button("确认费用并准备") { submitDraft() }
             Button("取消", role: .cancel) { confirmedDraft = nil }
         } message: {
@@ -131,22 +131,22 @@ struct DesktopAppearanceView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 20) {
                 crop(image).frame(width: 150, height: 180).clipped()
-                    .accessibilityLabel(preview ? "本机静态照片预览，未应用" : "调整照片取景")
+                    .accessibilityLabel(preview ? "只在本机预览照片，还没换上" : "调整照片取景")
                     .accessibilityIdentifier("appearance.localPreview")
                 VStack(alignment: .leading, spacing: 10) {
-                    Text(preview ? "本机静态预览 · 未应用" : "调整脸的位置").font(.headline)
+                    Text(preview ? "本机预览 · 未换上" : "调整脸的位置").font(.headline)
                     Slider(value: $focusX, in: 0...1) { Text("左右位置") }
                         .accessibilityIdentifier("appearance.focusX").disabled(preview)
                     Slider(value: $focusY, in: 0...1) { Text("上下位置") }
                         .accessibilityIdentifier("appearance.focusY").disabled(preview)
                 }
             }
-            Text("请选择仅有一人的全身或半身照片。服务是否接受以实际准备结果为准。")
+            Text("请选只有一个人的全身或半身照。能不能用，以准备结果为准。")
                 .font(.caption).foregroundStyle(Yimi.ink2)
             HStack {
                 Button(preview ? "继续调整" : "预览取景") { preview.toggle() }
                     .accessibilityIdentifier("appearance.preview")
-                Button("取消本机草稿", role: .cancel) { clearDraft() }
+                Button("放弃这张照片", role: .cancel) { clearDraft() }
                     .accessibilityIdentifier("appearance.cancelDraft")
             }
         }
@@ -215,11 +215,11 @@ struct DesktopAppearanceView: View {
                 else { throw CocoaError(.coderInvalidValue) }
                 guard avatar.pairingIdentity == owner else { throw CentralTextError.contextChanged() }
                 await model.prepareAppearance(lookID: lookID, focus: draft.focus, version: draft.version, quote: draft.quote)
-            } catch { selectionError = "准备请求未完成：" + error.localizedDescription }
+            } catch { selectionError = "这次准备没完成：" + error.localizedDescription }
         }
     }
     private func receiptStatus(_ type: String) -> String {
-        guard !model.terminals.isEmpty else { return "等待终端资料" }
+        guard !model.terminals.isEmpty else { return "暂无设备资料" }
         let targets = model.terminals.filter { $0.device_class == (type == "phone" ? "iphone" : type) }
         guard !targets.isEmpty else { return "尚未配对" }
         let loaded = targets.filter { terminal in
@@ -228,8 +228,8 @@ struct DesktopAppearanceView: View {
             }
         }.count
         return loaded == targets.count
-            ? "已载入 \(loaded)/\(targets.count) · 第 \(model.conversationAvatarVersion) 版"
-            : "已载入 \(loaded)/\(targets.count) · 等待回执"
+            ? "已换好 \(loaded)/\(targets.count) · 第 \(model.conversationAvatarVersion) 版"
+            : "已换好 \(loaded)/\(targets.count) · 等设备回应"
     }
     private func clearDraft() {
         selectedLook = nil; image = nil; focusX = 0.5; focusY = 0.5; preview = false; selectionError = nil

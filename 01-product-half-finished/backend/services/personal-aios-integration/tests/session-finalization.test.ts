@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {promises as fs} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
+import {createHash} from 'node:crypto';
+import {finalizeSession} from '../src/session-finalization.ts';
 import {RawArchive} from '../src/archive.ts';
 import {PosixStorage} from '../src/storage.ts';
 import {AudioConsumption} from '../src/media/audio-consumption.ts';
@@ -68,6 +70,16 @@ class CrashStorage extends PosixStorage {
     if(namespace==='objects'&&bytes.length===9600)this.publishedFull=true;
     if(namespace==='session-ends')this.fail('after_end');if(namespace==='objects')this.fail('after_object');return saved;
   }
+  override async publishObjectStream(chunks:AsyncIterable<Uint8Array>,beforePublish?:(key:string)=>Promise<void>){
+    this.fail('before_object');const saved=await super.publishObjectStream(chunks,beforePublish);this.publishedFull=true;
+    this.fail('after_object');return saved;
+  }
+  override async *readObjectRange(key:string,offset:number,bytes:number):AsyncGenerator<Uint8Array>{
+    for await(const block of super.readObjectRange(key,offset,bytes)){
+      if(this.armed&&this.publishedFull&&this.fault==='readback'){this.armed=false;yield Buffer.alloc(block.length);}
+      else yield block;
+    }
+  }
   override async read(namespace:string,key:string){const saved=await super.read(namespace,key);
     if(this.armed&&this.publishedFull&&this.fault==='readback'&&namespace==='objects'&&saved.length===9600){this.armed=false;return Buffer.alloc(saved.length);}
     return saved;
@@ -91,7 +103,8 @@ for(const boundary of ['before_end','after_end','before_object','after_object','
     await assert.rejects(writer.finalizeSession(ref,'source_stopped'),boundary==='readback'?/SESSION_FINAL_READBACK_FAILED/:/CRASH:/);
     await writer.close();await storage.close();
     const disk=new PosixStorage(root),restarted=archive(disk);t.after(()=>disk.close());
-    await restarted.recover();
+    await restarted.recover();assert.equal(await disk.readFinal(ref)!==null,boundary.startsWith('after_fold')||['before_unlink_0','after_unlink_0','after_unlink_3','after_unlink_7','before_directory_flush','after_directory_flush','before_clean','after_clean'].includes(boundary));
+    await restarted.maintenance(2,Date.parse(at)+1000);
     // A crash before publishing the end fact intentionally leaves an ambiguous live stream untouched.
     if(boundary==='before_end')assert.equal(await disk.readFinal(ref),null);
     else assert.ok(await disk.readFinal(ref));
@@ -128,12 +141,14 @@ for(const previous of [false,true])test(`ended source recovers detached admitted
   const disk=new PosixStorage(root),restarted=archive(disk);t.after(async()=>{await restarted.close();await disk.close();});
   await restarted.recover();
   for(let n=0;n<1000;n++){
+    await restarted.maintenance(2,Date.parse(at)+1000);
     if(await disk.readFinal(ref)&&(await disk.pendingFinals()).length===0)break;
     await new Promise(resolve=>setTimeout(resolve,5));
   }
   const final=await disk.readFinal(ref);assert.ok(final);assert.equal(final.ended_by,'source_closed');assert.equal(final.bytes,9600);
   assert.deepEqual(await disk.list('raw-ingress'),[]);assert.deepEqual(await fs.readdir(join(root,'objects')),[final.object_hash]);
   assert.deepEqual(Buffer.from(await disk.read('objects',final.object_hash)),Buffer.concat([0,1,2].map(seq=>Buffer.from(raw(seq).payload))));
+  await restarted.close();
 });
 
 test('cold eligibility excludes live journals and chunk proofs; finalized prefix reads survive hot eviction',async t=>{
@@ -245,7 +260,7 @@ test('disabled folding retains source bytes and processing proofs across restart
   await restarted.recover();assert.equal(await disk.readFinal(ref),null);
   for(const [path,bytes] of retained)assert.deepEqual(await fs.readFile(join(root,path)),bytes);
   await restarted.close();await disk.close();
-  const enabledDisk=new PosixStorage(root),enabled=archive(enabledDisk);await enabled.recover();
+  const enabledDisk=new PosixStorage(root),enabled=archive(enabledDisk);await enabled.recover();await enabled.maintenance(2,Date.parse(at)+1000);
   const final=await enabledDisk.readFinal(ref);assert.ok(final);
   await enabled.recover();assert.deepEqual(await enabled.finalizeSession(ref),final);
   assert.deepEqual(await enabledDisk.list('session-finals'),[ref.slice(3)]);
@@ -266,7 +281,7 @@ test('disabled folding does not resume cleanup of an already committed final',as
   assert.deepEqual(await fs.readdir(join(root,'objects')),originals);
   assert.deepEqual(await fs.readdir(join(root,'stream-revisions')),revisions);
   await disabled.close();await disk.close();
-  const enabledDisk=new PosixStorage(root),enabled=archive(enabledDisk);await enabled.recover();
+  const enabledDisk=new PosixStorage(root),enabled=archive(enabledDisk);await enabled.recover();await enabled.maintenance(2,Date.parse(at)+1000);
   assert.deepEqual(await enabledDisk.pendingFinals(),[]);
   assert.deepEqual(await fs.readdir(join(root,'objects')),[(await enabledDisk.readFinal(ref))!.object_hash]);
   await enabled.close();await enabledDisk.close();
@@ -334,4 +349,95 @@ test('fold cleanup preserves a newly admitted shared payload before its publicat
   assert.deepEqual(await storage.list('raw-ingress'),[next.key]);
   assert.deepEqual(Buffer.from(await storage.read('objects',first.chunk.object_hash)),Buffer.from(raw(0).payload));
   releasePublish();assert.equal((await next.commit).event.bytes,3200);
+});
+
+// Regression: folding must never materialize the session audio in one read.
+test('fold streams audio and readback without loading the whole session',async t=>{
+  const root=await fixture(t),storage=new PosixStorage(root),writer=archive(storage);
+  t.after(async()=>{await writer.close();await storage.close();});
+  let ref='';for(let seq=0;seq<3;seq++)ref=(await writer.streams.append(raw(seq),trusted,at,chunk(seq))).event.raw_ref;
+  const original=writer.streams.readRecord.bind(writer.streams);
+  writer.streams.readRecord=async(...args)=>{assert.equal(args[3]?.proof_only,true,'fold must select proofs without payloads');return original(...args);};
+  const read=storage.read.bind(storage);storage.read=async(namespace,key)=>{
+    const bytes=await read(namespace,key);assert.ok(namespace!=='objects'||bytes.length<=3200,'whole folded audio read');return bytes;};
+  const final=await writer.finalizeSession(ref);assert.ok(final);assert.equal(final.bytes,9600);
+});
+
+
+test('streamed object publication and verification exceed the old64MiB payload bound',async t=>{
+  const root=await fixture(t),storage=new PosixStorage(root);t.after(()=>storage.close());
+  const expected=createHash('sha256');
+  async function* payload(){for(let n=0;n<72;n++){const bytes=Buffer.alloc(1024*1024,n);expected.update(bytes);yield bytes;}}
+  const saved=await storage.publishObjectStream(payload());assert.equal(saved.bytes,72*1024*1024);
+  assert.equal(saved.object_hash,expected.digest('hex'));
+  const verified=createHash('sha256');let bytes=0;
+  for await(const block of storage.readObjectRange(saved.object_hash,0,saved.bytes)){
+    assert.ok(block.length<=65536);verified.update(block);bytes+=block.length;
+  }
+  assert.equal(bytes,saved.bytes);assert.equal(verified.digest('hex'),saved.object_hash);
+});
+
+test('interruption between streamed chunks preserves originals and permits recovery',async t=>{
+  const root=await fixture(t),storage=new PosixStorage(root),writer=archive(storage);t.after(async()=>{await writer.close();await storage.close();});
+  let ref='';for(let seq=0;seq<3;seq++)ref=(await writer.streams.append(raw(seq),trusted,at,chunk(seq))).event.raw_ref;
+  const before=await fs.readdir(join(root,'objects'));let checkpoints=0;
+  await assert.rejects(finalizeSession(storage,writer.streams,ref,'capture_stopped',true,{checkpoint:async()=>{
+    if(++checkpoints===2)throw new Error('INTERRUPTED');
+  }}),/INTERRUPTED/);
+  assert.equal(await storage.readFinal(ref),null);assert.deepEqual(await fs.readdir(join(root,'objects')),before);
+  assert.ok(await writer.finalizeSession(ref));assert.deepEqual(await storage.pendingFinals(),[]);
+});
+
+test('fold verifies every replacement chunk range before publishing metadata or unlinking originals',async t=>{
+  const root=await fixture(t),storage=new PosixStorage(root),writer=archive(storage);t.after(async()=>{await writer.close();await storage.close();});
+  let ref='';for(let seq=0;seq<3;seq++)ref=(await writer.streams.append(raw(seq),trusted,at,chunk(seq))).event.raw_ref;
+  const originals=await fs.readdir(join(root,'objects')),readRange=storage.readObjectRange.bind(storage);
+  storage.readObjectRange=async function*(key,offset,bytes){for await(const block of readRange(key,offset,bytes))yield offset===3200?Buffer.alloc(block.length):block;};
+  await assert.rejects(writer.finalizeSession(ref),/SESSION_FINAL_RANGE_FAILED/);
+  assert.equal(await storage.readFinal(ref),null);
+  for(const key of originals)assert.ok((await fs.readdir(join(root,'objects'))).includes(key));
+});
+
+test('eight-hour session retains all115MB audio and cold-uploads bounded old-reader-compatible objects',async t=>{
+  const root=await fixture(t),remote=await webdav(t,root),storage=new PosixStorage(join(root,'hot'),{cold:remote.config});
+  const chunkBytes=1600000,count=72,total=chunkBytes*count;
+  const writer=new RawArchive(storage,chunkBytes,()=>at,{max_chunk_bytes:chunkBytes,max_total_bytes:total,max_chunks:count,max_revisions:count,max_seq:count});
+  t.after(async()=>{await writer.close();await storage.close();});
+  const saved=[];
+  for(let seq=0;seq<count;seq++){
+    const input={...raw(seq,'eight-hour'),payload:Buffer.alloc(chunkBytes,seq+1)};
+    const descriptor={...chunk(seq),format:'pcm_s16le:2000:1',source_range:{...chunk(seq).source_range,start_ms:seq*400000,end_ms:(seq+1)*400000}};
+    saved.push(await writer.streams.append(input,trusted,at,descriptor));
+  }
+  assert.equal(count*400000,8*60*60*1000);
+  for(const receipt of saved)assert.equal((await writer.readExactChunk(receipt.event,receipt.chunk,chunkBytes)).bytes.length,chunkBytes);
+  const final=await finalizeSession(storage,writer.streams,saved.at(-1)!.event.raw_ref,'capture_stopped');assert.ok(final);
+  assert.equal(final.bytes,8000000);assert.equal(final.objects.length,5);assert.equal(final.retained_objects!.length,67);
+  assert.equal(final.bytes+final.retained_objects!.length*chunkBytes,total);
+  const now=Date.now()+86400000+1000;
+  for(let tick=0;tick<24;tick++)if((await writer.moveCold(2,now)).segments===0)break;
+  for(const key of [final.object_hash,...final.retained_objects!.map(object=>object.key)])assert.ok(await storage.cold!.contains('objects',key));
+  for(let tick=0;tick<4;tick++)await writer.moveCold(2,now+2*86400000);
+  for(let seq=0;seq<count;seq++){
+    const receipt=saved[seq]!,read=await writer.readExactChunk(receipt.event,receipt.chunk,chunkBytes);
+    assert.equal(read.bytes.length,chunkBytes);assert.equal(sha256(read.bytes),receipt.chunk.object_hash);
+  }
+});
+
+test('journal proofs beyond the bounded fold remain owned and enter cold storage',async t=>{
+  const root=await fixture(t),remote=await webdav(t,root),storage=new PosixStorage(join(root,'hot'),{cold:remote.config}),count=3000;
+  const writer=new RawArchive(storage,3200,()=>at,{max_chunk_bytes:3200,max_total_bytes:count*3200,max_chunks:count,max_revisions:count,max_seq:count});
+  t.after(async()=>{await writer.close();await storage.close();});
+  let ref='';
+  for(let seq=0;seq<count;seq++)ref=(await writer.streams.append(raw(seq,'journal-overflow'),trusted,at,chunk(seq))).event.raw_ref;
+  const head=(await writer.streams.head(ref))!,final=await finalizeSession(storage,writer.streams,ref,'source_exhausted');assert.ok(final);
+  assert.ok(Buffer.byteLength(canonical(final))<12*1024*1024,'final metadata stays within old reader cache');
+  const included=new Set(final.records.map(r=>`${r.namespace}:${r.key}`)),owned=new Set((await storage.sessionRecords(ref)).map(r=>`${r.namespace}:${r.key}`)),overflow:string[]=[];
+  for(const journal of head.journal!)for(const key of [digest([ref,journal.revision]),digest(journal)])if(!included.has(`stream-revisions:${key}`)){
+    overflow.push(key);assert.ok(owned.has(`stream-revisions:${key}`),'overflow journal has a session owner');
+  }
+  assert.ok(overflow.length>0,'fixture exceeds the metadata fold budget');
+  for(let tick=0;tick<20&&!await storage.cold!.contains('stream-revisions',overflow.at(-1)!);tick++)await writer.moveCold(1,Date.now()+2*86400000);
+  for(const key of overflow)assert.ok(await storage.cold!.contains('stream-revisions',key));
+  assert.equal((await writer.streams.head(ref))!.revision,count);
 });

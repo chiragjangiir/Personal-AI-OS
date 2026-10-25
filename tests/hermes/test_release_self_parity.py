@@ -75,6 +75,9 @@ def test_baseline_candidate_waits_for_bound_owner_decision_before_build(tmp_path
     host = release.Host({'stage': 'staging', 'root': str(tmp_path), 'repo': str(repo.bare),
                          'exchange': str(tmp_path / 'exchange')})
     host.state = tmp_path
+    (tmp_path / 'exchange').mkdir()
+    release_build.write(tmp_path / 'exchange/production.json', {'commit': repo.base})
+    monkeypatch.setattr(release.release_parity, 'ensure', lambda selected, lock: {'commit': repo.base})
     monkeypatch.setattr(release_build, 'build', lambda *a: pytest.fail('unapproved baseline must not execute'))
     result = release.candidate(host, request)
     assert result['state'] == 'awaiting_owner' and 'finished_at' not in result
@@ -125,6 +128,9 @@ def test_host_failures_return_to_original_main_and_accepted_baseline_resumes_sam
     host = release.Host({'stage': 'staging', 'root': str(tmp_path), 'repo': str(repo.bare),
                          'exchange': str(tmp_path / 'exchange')})
     host.state = tmp_path
+    (tmp_path / 'exchange').mkdir()
+    release_build.write(tmp_path / 'exchange/production.json', {'commit': repo.base})
+    monkeypatch.setattr(release.release_parity, 'ensure', lambda selected, lock: {'commit': repo.base})
     first = release.candidate(host, request)
     decisions = tmp_path / 'exchange/decisions'
     decisions.mkdir()
@@ -242,6 +248,11 @@ def test_native_release_confirmation_asks_once_and_persists_actual_owner_choice(
     assert first['confirmation_id'] == 'native-card-1'
     assert release_decide(tmp_path, '0123456789ab', provider, 'session-original') == {
         **first, 'reused': True, 'lifecycle': 'saved_decision_replay'} and len(questions) == 1
+    rebased = {**json.loads(status.read_text()), 'base': 'd' * 40, 'commit': 'e' * 40}
+    release_build.write(status, rebased)
+    second = release_decide(tmp_path, '0123456789ab', provider, 'session-original')
+    assert second['commit'] == rebased['commit'] and not second['reused'] and len(questions) == 2
+    assert (tmp_path / ('decisions/0123456789ab-' + first['commit'] + '.json')).exists()
     provider._request = lambda *a: {'allow_owner_mutation': True, 'principal_id': 'different-owner'}
     with pytest.raises(ValueError, match='RELEASE_OWNER_MISMATCH'):
         release_decide(tmp_path, '0123456789ab', provider, 'session-original')

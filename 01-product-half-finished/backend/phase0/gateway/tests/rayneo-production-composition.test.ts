@@ -1001,13 +1001,3 @@ test('production composition has no process-environment identity fallback', () =
   const source = readFileSync(new URL('../src/rayneo-production-composition.ts', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /process\.env/u);
 });
-
-test('local SAPI synthesis is zh-CN stdin-to-bounded-WAV stdout with no network or temp file', () => {
-  const source = readFileSync(new URL('../src/rayneo-production-composition.ts', import.meta.url), 'utf8');
-  assert.match(source, /System\.Speech/u);
-  assert.match(source, /Culture\.Name -eq 'zh-CN'/u);
-  assert.match(source, /\[Console\]::In\.ReadToEnd\(\)/u);
-  assert.match(source, /OpenStandardOutput/u);
-  assert.match(source, /RAYNEO_SAPI_WAV_INVALID/u);
-  assert.doesNotMatch(source, /SetOutputToWaveFile|Invoke-WebRequest|https?:\/\//u);
-});

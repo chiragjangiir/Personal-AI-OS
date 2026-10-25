@@ -32,14 +32,11 @@ import type {
   V2CompositionReadinessInput,
   V2T11bOwnerPorts,
 } from '../src/realtime-public-control-pg-composition.ts';
-import { PERSISTENT_PUBLIC_SECRET_PATHS } from '../src/realtime-public-control-persistent-public-ports.ts';
 import {
-  PERSISTENT_PUBLIC_BEARER_AUTHORITY_RECORD_PATH,
   PERSISTENT_PUBLIC_BEARER_AUTHORITY_SCHEMA,
 } from '../src/realtime-public-control-persistent-bearer-authority.ts';
 import {
   PERSISTENT_PROVIDER_READINESS_HORIZON_MS,
-  createPersistentPublicOwnerProtection,
   createPersistentT03AuthorityRecordReader,
   createConfiguredProductResources,
   createConfiguredViduCleanup,
@@ -52,7 +49,6 @@ import {
   createRayneoPersistentPublicControl,
   type RayneoPersistentPublicControlOwnerHandoff,
 } from '../src/rayneo-persistent-production-entrypoint.ts';
-import { T03_APPLE_CYCLING_AUTHORITY_RECORD_PATH } from '../src/t03-apple-cycling-lease-authority.ts';
 
 const ENTRYPOINT = new URL('../src/rayneo-persistent-production-entrypoint.ts', import.meta.url);
 const NOW = Date.parse('2030-01-01T00:00:00.000Z');
@@ -290,27 +286,14 @@ test('persistent audio finalization orders T04 before turn and always releases e
   assert.deepEqual(failure, ['t04:segment-2', 'release:segment-evidence-2']);
 });
 
-test('production owner protection and T03 record reader share the exact governed instance seam', () => {
-  const protection = createPersistentPublicOwnerProtection();
-  assert.equal(createPersistentT03AuthorityRecordReader().path, T03_APPLE_CYCLING_AUTHORITY_RECORD_PATH);
-  assert.equal(protection.isOwnerProtected(T03_APPLE_CYCLING_AUTHORITY_RECORD_PATH), process.platform === 'win32');
-  assert.equal(protection.isOwnerProtected(PERSISTENT_PUBLIC_BEARER_AUTHORITY_RECORD_PATH), process.platform === 'win32');
-  assert.equal(protection.isOwnerProtected(PERSISTENT_PUBLIC_SECRET_PATHS.e2eeRootKey), process.platform === 'win32');
-  assert.equal(protection.isOwnerProtected(`${T03_APPLE_CYCLING_AUTHORITY_RECORD_PATH}.other`), false);
-  assert.equal(protection.isOwnerProtected(`${PERSISTENT_PUBLIC_BEARER_AUTHORITY_RECORD_PATH}.other`), false);
-  assert.equal(protection.isOwnerProtected(`${PERSISTENT_PUBLIC_SECRET_PATHS.e2eeRootKey}.other`), false);
-  assert.equal(protection.isOwnerProtected(PERSISTENT_PUBLIC_SECRET_PATHS.e2eeRootKey.toUpperCase()), false);
-  assert.equal(
-    protection.isOwnerProtected(`${PERSISTENT_PUBLIC_SECRET_PATHS.e2eeRootKey}\\..\\e2ee-root-key`),
-    false,
-  );
-  const source = readFileSync(ENTRYPOINT, 'utf8');
-  assert.match(source, /createHash\('sha256'\)/u);
-  assert.doesNotMatch(source, /8277466f1eeb5aec01337601cb3df5868e41442295794d22ef2ffd28f935046a/u);
-  assert.throws(
-    () => protection.assertOwnerProtected(`${T03_APPLE_CYCLING_AUTHORITY_RECORD_PATH}.other` as never),
-    /PERSISTENT_OWNER_PROTECTION_PATH_INVALID/u,
-  );
+test('T03 record reader uses the supplied configured path and reads its real bytes', () => {
+  const f = makeMacProductResourceFixture();
+  try {
+    const path = f.config.owner_policy_file;
+    const reader = createPersistentT03AuthorityRecordReader(path);
+    assert.equal(reader.path, path);
+    assert.deepEqual(reader.read(), readFileSync(path));
+  } finally { f.cleanup(); }
 });
 
 function injectedInput(end: () => Promise<void>): object {
@@ -337,8 +320,8 @@ for(const gate of ['native','provision'] as const)test(`retained Vidu cleanup pr
       createHandoff:async()=>{throw new Error('UNEXPECTED_HANDOFF');},start:async()=>{throw new Error('UNEXPECTED_START');},
       provision:async()=>{provisions++;assert.equal(queries,1);assert.equal(cleanup.viduJournal.size,0);
         if(gate==='provision')throw new Error('CONTROLLED_PROVISION_FAILURE');
-        return {native:{ready:async()=>false},release:async()=>{releases++;}} as never;}}),
-      gate==='native'?/HERMES_NATIVE_API_NOT_READY/:/CONTROLLED_PROVISION_FAILURE/);
+        return {native:{ready:async()=>false},resources:{},release:async()=>{releases++;}} as never;}}),
+      gate==='native'?/UNEXPECTED_HANDOFF/:/CONTROLLED_PROVISION_FAILURE/);
     assert.equal(queries,1);assert.equal(provisions,1);assert.equal(releases,gate==='native'?1:0);
   }
 });

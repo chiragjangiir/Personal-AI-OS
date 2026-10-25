@@ -1,8 +1,10 @@
+import { GATEWAY_DATA_ROOT } from './gateway-runtime-paths.ts';
+import { resolve } from 'node:path';
 /**
  * Gateway-owned adapter for the Runtime029 demo owner.
  *
  * This module does not mint a realtime identity, persist a session, derive a
- * LiveKit alias, or read ambient process state. It combines the protected, stable local
+ * LiveKit alias, or derive identity from process state. It combines the protected, stable local
  * policy with the exact live bootstrap projection supplied by the signed
  * RayNeo/LiveKit owner. T02 then receives the resulting owner projection and
  * is the only authority that issues canonical realtime references.
@@ -26,7 +28,7 @@ import type { Phase0EligibleSession } from './phase0-demo-session-controller.ts'
 import { Phase0SharedSessionOwner } from './phase0-shared-session-owner.ts';
 
 export const RAYNEO_LOCAL_OWNER_POLICY_PATH =
-  'D:\\AI\\personal ai os\\.runtime\\phase0-roaming\\windows\\config\\local-owner.v1.json' as const;
+  resolve(GATEWAY_DATA_ROOT, 'resources/local-owner.v1.json');
 
 const POLICY_SCHEMA = 'paios.windows.local-owner.v1' as const;
 const POLICY_PURPOSE = 'public_product_canary' as const;

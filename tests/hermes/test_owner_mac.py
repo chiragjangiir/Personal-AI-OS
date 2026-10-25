@@ -56,8 +56,10 @@ def test_hook_overwrites_model_identity_and_blocks_unbound_scope(monkeypatch):
     args = {'command': 'pwd', 'device_id': 'selected', 'context': {'run_id': 'spoof'}}
     result = hook('mcp__owner_mac__exec', args, session_id='session', tool_call_id='call')
     assert result['args'] == {**args, 'context': {'run_id': 'actual-run', 'session_id': 'session', 'tool_call_id': 'call'}}
+    assert hook('computer_use', args, session_id='session', tool_call_id='call')['args']['context'] == result['args']['context']
     monkeypatch.setattr(gateway.run_scope, 'current_scope', lambda: 'build')
     assert hook('mcp__owner_mac__write', args, session_id='session', tool_call_id='call')['action'] == 'block'
+    assert hook('computer_use', args, session_id='session', tool_call_id='call')['action'] == 'block'
     monkeypatch.setattr(gateway.run_scope, 'current_scope', Mock(side_effect=RuntimeError('scope unavailable')))
     assert hook('mcp__owner_mac__exec', args)['action'] == 'block'
     assert hook('mcp__other__exec', args) is None

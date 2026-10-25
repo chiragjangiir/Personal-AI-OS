@@ -511,7 +511,7 @@ test('accepted-user source readiness failure prevents listener start and subscri
 
 test('accepted-user source is hard-wired to the same authority service, never a substitute sink', () => {
   const source = readFileSync(COMPOSITION_SOURCE, 'utf8');
-  assert.match(source, /recordAcceptedUserActivity:\s*\(activity:[\s\S]{0,120}boundAuthority\.service\.recordAcceptedUserActivity\(activity\)/u);
+  assert.match(source, /recordAcceptedUserActivity:\s*\(activity:[\s\S]{0,200}boundAuthority\.service\.recordAcceptedUserActivity\(activity, ownerEvent\)/u);
   assert.doesNotMatch(source, /acceptedUserActivity[\s\S]{0,120}(?:sinkProvider|fallbackSink|new RealtimeSessionService)/u);
 });
 

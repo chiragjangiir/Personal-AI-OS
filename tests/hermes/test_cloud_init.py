@@ -18,6 +18,7 @@ import yaml
 ROOT = Path(__file__).parents[2]
 PRODUCT_CONFIG = ROOT / 'deploy/cloud/hermes-product-config.yaml'
 INTEGRATION = ROOT / 'integrations/hermes/personal_aios'
+PACKAGE = ROOT / 'capability/packages/mijia'
 spec = importlib.util.spec_from_file_location('cloud_hermes_init', ROOT / 'deploy/cloud/hermes-init.py')
 cloud = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(cloud)
@@ -99,11 +100,28 @@ def test_workshop_persistent_cap_reuses_image_and_rejects_unmounted_data(tmp_pat
         migration.prepare_workshop(args)
 
 
+def imported_product(home):
+    return yaml.safe_load((ROOT / 'tests/hermes/fixtures/cloud-product-import.yaml').read_text())
+
+
+def publish_projection(home, config):
+    fields = {'model', 'providers', 'custom_providers', 'fallback_providers', 'fallback_model',
+              'delegation', 'auxiliary', 'cron'}
+    transport = {key: value for key, value in config.items() if key in fields}
+    transport.setdefault('fallback_providers', [])
+    for group, profile, path in (('brain', 'owner', home / 'model-settings.json'),
+                                 ('build', 'workshop', home / 'build-settings.json')):
+        path.write_text(json.dumps({'environment_id': 'fixture', 'profile': profile, 'revision': 1,
+            'group': group, 'configured': True, 'config': transport,
+            'credentials': [{'name': 'FIXTURE_KEY', 'handle': 'fixture-opaque'}]}))
+
+
 @pytest.fixture
 def home(tmp_path, monkeypatch):
     monkeypatch.setenv('PAIOS_INTEGRATION_PORT', '19661')
     gateway_config = tmp_path / 'gateway.json'
-    gateway_config.write_text(json.dumps({'desktop': {'enabled': True}}))
+    gateway_config.write_text(json.dumps({'desktop': {'enabled': True}, 'capability_packages': {
+        'enabled': ['mijia'], 'gateway': ['mijia'], 'single_host_flags': {'mijia': 'PAIOS_ENABLE_MIHOME'}}}))
     monkeypatch.setenv('PAIOS_PRODUCT_CONFIG', str(gateway_config))
     monkeypatch.delenv('PAIOS_STAGE', raising=False)
     monkeypatch.setattr(cloud.os, 'chown', lambda *args: None)
@@ -115,6 +133,9 @@ def home(tmp_path, monkeypatch):
     access = tmp_path / 'workshop-access'
     access.mkdir()
     monkeypatch.setattr(cloud, 'ACCESS', access)
+    publish_projection(tmp_path, imported_product(tmp_path))
+    monkeypatch.setenv('PAIOS_MODEL_SETTINGS_PROJECTION', str(tmp_path / 'model-settings.json'))
+    monkeypatch.setenv('PAIOS_MODEL_SETTINGS_BUILD_PROJECTION', str(tmp_path / 'build-settings.json'))
     return tmp_path
 
 
@@ -122,30 +143,55 @@ def load(home):
     return yaml.safe_load((home / 'config.yaml').read_text())
 
 
+@pytest.mark.parametrize('staging', [False, True])
+def test_selected_families_keep_the_shared_hosts_provider_interpreter_and_registry(home, monkeypatch, staging):
+    gateway = Path(os.environ['PAIOS_PRODUCT_CONFIG'])
+    selection = json.loads((ROOT / 'deploy/cloud/cloud.json').read_text())['capability_packages']
+    gateway.write_text(json.dumps({'desktop': {'enabled': True}, 'capability_packages': selection}))
+    (cloud.SECRETS / 'agentbay.key').write_text('synthetic-agentbay')
+    monkeypatch.delenv('PAIOS_DEPLOYMENT', raising=False)
+    if staging:
+        monkeypatch.setenv('PAIOS_STAGE', 'staging')
+    cloud.initialize(home, INTEGRATION, PRODUCT_CONFIG)
+    config = load(home)
+    assert set(config['mcp_servers']) >= {'phone', 'yimi_shared', 'platform_ts', 'desktop', 'owner_mac'}
+    phone = config['mcp_servers']['phone']
+    assert phone['command'] == '/opt/paios-phone/bin/python'
+    assert phone['args'] == [str(ROOT / ('capability/packages/phone/fake/server.py' if staging else 'capability/packages/phone/server/main.py'))]
+    assert config['mcp_servers']['yimi_shared']['args'][:2] == ['-m', 'capability.hosts.python']
+    assert 'registry=capability.hosts.registry' in config['mcp_servers']['yimi_shared']['args']
+    assert config['mcp_servers']['platform_ts']['url'] == 'http://127.0.0.1:19661/internal/capability/mcp'
+    assert config['personal_aios']['capability_registry'] is True
+    assert {'phone', 'yimi_shared', 'platform_ts', 'desktop', 'owner_mac'} <= set(config['personal_aios']['delegated_toolsets'])
+
+
 @pytest.mark.parametrize('single_host', [False, True])
-def test_cloud_start_loads_role_files_only_for_single_host(tmp_path, monkeypatch, single_host):
+def test_cloud_start_uses_authority_without_loading_role_files(tmp_path, monkeypatch, single_host):
     import pathlib
     monkeypatch.setattr(os, 'environ', dict(os.environ))
     secrets = tmp_path / 'secrets'
     secrets.mkdir()
-    for name in ('hermes-api.key', 'hermes-internal.key', 'deepseek.key', 'siliconflow.key', 'role-brain.key'):
+    for name in ('hermes-api.key', 'hermes-internal.key', 'role-brain.key'):
         (secrets / name).write_text('synthetic-' + name)
-    models = tmp_path / 'models.json'
     if single_host:
         monkeypatch.setenv('PAIOS_DEPLOYMENT', 'single-host')
-        models.write_text(json.dumps({'brain': {'key_file': str(secrets / 'role-brain.key')}}))
     else:
         monkeypatch.delenv('PAIOS_DEPLOYMENT', raising=False)
     monkeypatch.delenv('PAIOS_BRAIN_API_KEY', raising=False)
     monkeypatch.setenv('PAIOS_HERMES_PORT', '19662')
-    monkeypatch.setattr(pathlib, 'Path', lambda value: secrets if value == '/run/secrets' else
-                        models if value == '/etc/paios/models.json' else Path(value))
+    monkeypatch.setattr(pathlib, 'Path', lambda value: secrets if value == '/run/secrets' else Path(value))
     commands = []
+    monkeypatch.setenv('PAIOS_MODEL_SETTINGS_SERVICE_URL', 'http://127.0.0.1:19661')
+    import contextlib
+    import urllib.request
+    monkeypatch.setattr(urllib.request, 'urlopen', lambda url, **kwargs: (commands.append(url),
+                        contextlib.nullcontext(type('Health', (), {'status': 200})()))[1])
     monkeypatch.setattr(subprocess, 'run', lambda command, **kwargs: commands.append(command))
     monkeypatch.setattr(os, 'execv', lambda *args: commands.append(args))
     runpy.run_path(str(ROOT / 'deploy/cloud/hermes-start.py'))
+    assert commands.pop(0) == 'http://127.0.0.1:19661/health'
     assert os.environ['API_SERVER_KEY'] == 'synthetic-hermes-api.key'
-    assert os.environ.get('PAIOS_BRAIN_API_KEY') == ('synthetic-role-brain.key' if single_host else None)
+    assert os.environ.get('PAIOS_BRAIN_API_KEY') is None
     assert commands[0][0] == 'node'
     assert commands[-1][0] == '/opt/hermes/.venv/bin/python'
 
@@ -154,22 +200,22 @@ def test_cloud_start_loads_role_files_only_for_single_host(tmp_path, monkeypatch
 def test_single_host_uses_configured_models_and_optional_mcp_only(home, monkeypatch, vision):
     monkeypatch.setenv('PAIOS_DEPLOYMENT', 'single-host')
     monkeypatch.delenv('PAIOS_PHONE_PROVIDER')
-    roles = {'brain': {'model': 'fixture-brain', 'provider': 'fixture-brain-provider',
-                      'base_url': 'http://model.invalid/v1', 'key_file': '/run/secrets/role-brain.key'},
-             'workshop_repair': {'model': 'fixture-repair', 'provider': 'fixture-repair-provider',
-                                'base_url': 'http://repair.invalid/v1', 'key_file': '/run/secrets/role-workshop-repair.key'}}
-    if vision:
-        roles['vision'] = {'model': 'fixture-vision', 'provider': 'fixture-vision-provider',
-                           'base_url': 'http://vision.invalid/v1', 'key_file': '/run/secrets/role-vision.key'}
-    models = home / 'models.json'
-    models.write_text(json.dumps(roles))
-    monkeypatch.setattr(cloud, 'MODELS', models)
+    source = imported_product(home)
+    source['model'] = {'default': 'fixture-brain', 'provider': 'fixture-brain-provider',
+                       'base_url': 'https://model.invalid/v1'}
+    source['auxiliary']['vision'] = ({'model': 'fixture-vision', 'provider': 'fixture-vision-provider',
+                                      'base_url': 'https://vision.invalid/v1'} if vision else {'enabled': False})
+    publish_projection(home, source)
+    build_path = home / 'build-settings.json'
+    build_projection = json.loads(build_path.read_text())
+    build_projection['config']['model']['default'] = 'fixture-repair'
+    build_projection['config']['delegation']['provider'] = 'fixture-repair-provider'
+    build_path.write_text(json.dumps(build_projection))
     cloud.initialize(home, INTEGRATION, PRODUCT_CONFIG)
     config = load(home)
-    assert config['model'] == {'default': 'fixture-brain', 'provider': 'fixture-brain-provider',
-                               'base_url': 'http://model.invalid/v1'}
-    assert {provider['key_env'] for provider in config['custom_providers']} == {
-        'PAIOS_' + role.upper() + '_API_KEY' for role in roles}
+    assert config['model'] == source['model']
+    assert config['model_settings']['profile'] == 'owner'
+    assert config['secrets']['personal_aios']['projection'] == str(home / 'model-settings.json')
     assert not {'mijia', 'phone', 'owner_mac', 'desktop'} & config['mcp_servers'].keys()
     assert not {'mijia', 'phone', 'owner_mac'} & set(config['personal_aios']['delegated_toolsets'])
     assert ('vision' in config['personal_aios']['delegated_toolsets']) is vision
@@ -179,8 +225,11 @@ def test_single_host_uses_configured_models_and_optional_mcp_only(home, monkeypa
     build = yaml.safe_load((home / 'workshop/config.yaml').read_text())
     assert build['model']['default'] == 'fixture-repair'
     assert build['delegation']['provider'] == 'fixture-repair-provider'
-    roles['brain']['model'] = 'fixture-updated-brain'
-    models.write_text(json.dumps(roles))
+    projection = home / 'model-settings.json'
+    generation = json.loads(projection.read_text())
+    generation['config']['model']['default'] = 'fixture-updated-brain'
+    generation['revision'] = 2
+    projection.write_text(json.dumps(generation))
     monkeypatch.setenv('PAIOS_ENABLE_MIHOME', '1')
     cloud.initialize(home, INTEGRATION, PRODUCT_CONFIG)
     assert load(home)['model']['default'] == 'fixture-updated-brain'
@@ -195,8 +244,12 @@ def test_single_host_uses_configured_models_and_optional_mcp_only(home, monkeypa
     assert 'wechat' in load(home)['skills']['disabled']
     assert 'owner_mac' in load(home)['mcp_servers']
     monkeypatch.setenv('PAIOS_PHONE_PROVIDER', 'mac-android')
+    models = home / 'executor.json'
+    models.write_text('{}')
+    monkeypatch.setattr(cloud, 'EXECUTOR_MODELS', models)
     with pytest.raises(ValueError, match='PAIOS_EXECUTOR_FAST_MODEL'):
         cloud.initialize(home, INTEGRATION, PRODUCT_CONFIG)
+    roles = {}
     for role in ('executor_fast', 'executor_thorough'):
         roles[role] = {'model': 'fixture-' + role, 'base_url': 'http://executor.invalid/v1',
                        'provider': 'fixture-' + role, 'key_file': '/run/secrets/role-' + role.replace('_', '-') + '.key'}
@@ -221,6 +274,8 @@ def test_production_shaped_config_gets_product_rules_and_retains_state(home, mon
     fixture = ROOT / 'tests/hermes/fixtures/cloud-owner-config.yaml'
     original = fixture.read_bytes()
     source = yaml.safe_load(original)
+    source['auxiliary']['title_generation'].update(enabled=False, model_upgrade_enabled=False)
+    publish_projection(home, source)
     (home / 'config.yaml').write_bytes(original)
     cloud.initialize(home, INTEGRATION, PRODUCT_CONFIG)
     config = load(home)
@@ -231,7 +286,7 @@ def test_production_shaped_config_gets_product_rules_and_retains_state(home, mon
         args = {'channel': 'owner'}
         for _ in range(5):
             assert guard.before_call('paios_open_reply', args).allows_execution
-            guard.after_call('paios_open_reply', args, '{"error":"OUTPUT_EPOCH_LIMIT","status":429}')
+            guard.after_call('paios_open_reply', args, '{"error":"OUTPUT_EPOCH_LIMIT","status":409}')
         assert guard.before_call('paios_open_reply', args).should_halt
     assert config['display'] == {'file_mutation_verifier': False,
                                  'api_server': {'interim_assistant_messages': False}}
@@ -247,7 +302,7 @@ def test_production_shaped_config_gets_product_rules_and_retains_state(home, mon
         **source['auxiliary']['title_generation'], 'enabled': False, 'model_upgrade_enabled': False}
     assert config['delegation'] == source['delegation']
     assert config['cron'] == source['cron']
-    assert config['agent']['max_tokens'] == 16384 and config['agent']['reasoning_effort'] == 'high'
+    assert 'max_tokens' not in config['agent'] and 'reasoning_effort' not in config['agent']
     assert config['approvals'] == source['approvals']
     assert config['security']['acked_advisories'] == source['security']['acked_advisories']
     assert config['monitoring'] == source['monitoring']
@@ -303,7 +358,7 @@ def test_staging_matches_production_except_documented_plumbing(home, monkeypatch
     assert {key for key in production.keys() | staging.keys()
             if production.get(key) != staging.get(key)} == {'agent', 'personal_aios', 'mcp_servers'}
     assert staging['mcp_servers']['phone']['args'] == [str(INTEGRATION / 'staging/fake_phone.py')]
-    assert staging['mcp_servers']['mijia']['args'] == [str(INTEGRATION / 'staging/fake_mijia.py')]
+    assert staging['mcp_servers']['mijia']['args'] == [str(PACKAGE / 'fake/server.py')]
     staging['agent'].pop('disabled_toolsets')
     staging['mcp_servers'].pop('phone')
     production['mcp_servers'].pop('phone')
@@ -330,7 +385,7 @@ def test_cloud_image_input_has_no_mac_or_retired_phone_configuration():
 def test_builder_transport_is_confined_to_build_profile(home, monkeypatch):
     monkeypatch.setenv('PAIOS_BUILDER_URL', 'https://192.0.2.10:18664')
     monkeypatch.setenv('PAIOS_BUILDER_TOKEN_FILE', '/run/secrets/workshop-builder.key')
-    existing = yaml.safe_load(PRODUCT_CONFIG.read_text())
+    existing = imported_product(home)
     existing.setdefault('skills', {})['write_approval'] = True
     (home / 'config.yaml').write_text(yaml.safe_dump(existing))
     cloud.initialize(home, INTEGRATION, PRODUCT_CONFIG)
@@ -344,7 +399,7 @@ def test_builder_transport_is_confined_to_build_profile(home, monkeypatch):
     assert not build['skills'].get('write_approval', False)
     assert not {'terminal', 'file', 'code_execution'} & set(build['platform_toolsets']['api_server_build'])
     assert {'skills', 'skills_hub'} <= set(build['platform_toolsets']['api_server_build'])
-    assert owner['model'] == yaml.safe_load(PRODUCT_CONFIG.read_text())['model']
+    assert owner['model'] == imported_product(home)['model']
     assert not {'providers', 'custom_providers'} & set(build['personal_aios'])
     from agent.deadline import resolve_timeout
     from hermes_constants import set_hermes_home_override, reset_hermes_home_override
@@ -397,7 +452,7 @@ def test_cloud_phone_provider_controls_production_and_staging_registration(home,
     cloud.initialize(home, INTEGRATION, PRODUCT_CONFIG)
     assert not (home / 'skills/errands/cloud-phone').exists()
     config = load(home)
-    assert config['skills']['external_dirs'] == [str(INTEGRATION / 'errands'), str(INTEGRATION / 'shared-skills')]
+    assert config['skills']['external_dirs'] == [str(INTEGRATION / 'errands'), str(INTEGRATION / 'shared-skills'), str(PACKAGE / 'skills')]
     servers = config['mcp_servers']
     assert (config['agent']['max_tool_calls'], config['agent']['tool_call_milestone_interval']) == (120, 20)
     assert not {'max_turns', 'background_max_turns', 'run_budget_seconds'} & config['agent'].keys()
@@ -532,7 +587,10 @@ def test_I17_desktop_mcp_is_discoverable_but_grantable_tools_never_enter_platfor
         for platform in ('api_server', 'api_server_background'):
             assert 'owner_mac' not in _get_platform_tools(config, platform)
         assert ('owner_mac' in config['personal_aios']['delegated_toolsets']) is enabled
+        assert ('computer_use' in config['personal_aios']['delegated_toolsets']) is enabled
         if enabled:
+            assert config['computer_use']['backend'] == 'cua' and config['computer_use']['no_overlay'] is False
+            assert 'computer_use' not in config['agent'].get('disabled_toolsets', [])
             assert config['mcp_servers']['owner_mac']['args'] == [str(INTEGRATION / 'owner_mac.py')]
             assert config['mcp_servers']['owner_mac']['env'] == {'PAIOS_INTEGRATION_PORT': '19661',
                                                                  'PAIOS_OWNER_MAC_FILES': str(home / 'cache/owner-mac')}
@@ -599,6 +657,13 @@ def test_optional_cloud_secrets_are_private_and_never_added_to_staging(home, mon
         command.append('--staging')
     prepared = subprocess.run(command, check=True, capture_output=True)
     keys = {name: (secrets / name).read_bytes() for name in ('payment-executor.key', 'voiceprint.key')}
+    master = (secrets / 'model-settings-master.key').read_bytes()
+    service_key = (secrets / 'model-settings-service.key').read_bytes()
+    assert len(master) == 32 and len(service_key) >= 24
+    for name, value in [('model-settings-master.key', master), ('model-settings-service.key', service_key)]:
+        assert (secrets / name).stat().st_mode & 0o777 == 0o600
+        assert (secrets / name).stat().st_uid == secrets.stat().st_uid
+        assert value not in prepared.stdout + prepared.stderr
     for name, value in keys.items():
         assert len(base64.b64decode(value, validate=False)) == 32
         assert value.strip() not in prepared.stdout + prepared.stderr
@@ -607,6 +672,8 @@ def test_optional_cloud_secrets_are_private_and_never_added_to_staging(home, mon
     assert keys['payment-executor.key'] != keys['voiceprint.key']
     subprocess.run(command, check=True, capture_output=True)
     assert keys == {name: (secrets / name).read_bytes() for name in keys}
+    assert (secrets / 'model-settings-master.key').read_bytes() == master
+    assert (secrets / 'model-settings-service.key').read_bytes() == service_key
     assert (secrets / 'workshop-public-ipv4').read_text() == '192.0.2.1\n'
     service = yaml.safe_load((ROOT / 'deploy/cloud/compose.yaml').read_text())['services']['workshop-staging' if staging else 'workshop']
     variable = 'PAIOS_STAGING_SECRETS_DIR' if staging else 'PAIOS_SECRETS_DIR'
@@ -649,12 +716,13 @@ def test_mijia_config_uses_supplied_profile_or_fake(home, monkeypatch, staging):
     config = load(home)
     product = ROOT
     server = config['mcp_servers']['mijia']
-    assert config['model'] == source['model']
+    # Model transport comes from the settings projection, never from the supplied product file.
+    assert config['model']['default'] == imported_product(home)['model']['default'] != source['model']['default']
     assert server['command'] == '/opt/hermes/.venv/bin/python'
-    assert server['args'] == [str(product / 'integrations/hermes/personal_aios' /
-                                  ('staging/fake_mijia.py' if staging else 'mijia.py'))]
-    assert server['env'] == ({'HERMES_HOME': str(home), 'PAIOS_FAKE_MIJIA_LOG': str(home / 'fake-mijia.jsonl')}
-                             if staging else {'HERMES_HOME': str(home)})
+    assert server['args'] == [str(PACKAGE / ('fake/server.py' if staging else 'server/mijia.py'))]
+    assert server['env'] == {'HERMES_HOME': str(home), 'PLUGIN_ROOT': str(PACKAGE),
+        'PLUGIN_DATA': str(home / 'capability/data/mijia'), 'PYTHONPATH': str(ROOT) + ':/opt/hermes',
+        **({'PAIOS_FAKE_MIJIA_LOG': str(home / 'fake-mijia.jsonl')} if staging else {})}
     if staging:
         assert config['mcp_servers']['phone']['command'] == server['command']
     assert (config['agent']['max_tool_calls'], config['agent']['tool_call_milestone_interval']) == (120, 20)
@@ -664,12 +732,11 @@ def test_mijia_config_uses_supplied_profile_or_fake(home, monkeypatch, staging):
                for server in config['mcp_servers'].values())
     assert config['platform_toolsets']['api_server'] == ['memory', 'session_search', 'skills', 'delegation', 'kanban']
     assert config['personal_aios']['delegated_toolsets'].count('mijia') == 1
-    assert config['skills']['external_dirs'] == [str(product / 'integrations/hermes/personal_aios' / name)
-                                                 for name in ('errands', 'shared-skills')]
+    assert config['skills']['external_dirs'] == [str(product / 'integrations/hermes/personal_aios' / name) for name in ('errands', 'shared-skills')] + [str(PACKAGE / 'skills')]
 
 
 def test_fresh_home_uses_native_product_rules(home):
-    source = yaml.safe_load(PRODUCT_CONFIG.read_text())
+    source = imported_product(home)
     (home / 'mijia').mkdir()
     (home / 'mijia/session.json').write_text('{"serviceToken":"synthetic-mijia-secret"}')
     cloud.initialize(home, INTEGRATION, PRODUCT_CONFIG)
@@ -678,7 +745,7 @@ def test_fresh_home_uses_native_product_rules(home):
                   'display', 'fallback_providers', 'timezone']:
         assert config[field] == source[field]
     assert config['agent'] == {**{key: value for key, value in source['agent'].items()
-            if key not in {'max_turns', 'background_max_turns', 'run_budget_seconds'}},
+            if key not in {'max_turns', 'background_max_turns', 'run_budget_seconds', 'max_tokens', 'reasoning_effort'}},
             'max_tool_calls': 120, 'tool_call_milestone_interval': 20}
     assert config['cron'] == {**source['cron'], 'allowed_scripts': ['personal-aios-reminder.py', 'personal-aios-task.py']}
     assert config['custom_providers'][0]['extra_body'] == {
@@ -686,10 +753,12 @@ def test_fresh_home_uses_native_product_rules(home):
     assert config['personal_aios']['internal_key_file'] == '/run/secrets/hermes-internal.key'
     assert config['personal_aios']['internal_base_url'] == 'http://127.0.0.1:19661'
     assert config['mcp_servers']['mijia'] == {'command': '/opt/hermes/.venv/bin/python',
-        'args': [str(INTEGRATION / 'mijia.py')], 'env': {'HERMES_HOME': str(home)}, 'timeout': 120,
+        'args': [str(PACKAGE / 'server/mijia.py')], 'cwd': str(PACKAGE),
+        'env': {'HERMES_HOME': str(home), 'PLUGIN_ROOT': str(PACKAGE), 'PLUGIN_DATA': str(home / 'capability/data/mijia'),
+                'PYTHONPATH': str(ROOT) + ':/opt/hermes'}, 'timeout': 120, 'lazy': True, 'idle_timeout_seconds': 900,
         'tools': {'resources': False, 'prompts': False}}
     assert 'synthetic-mijia-secret' not in (home / 'config.yaml').read_text()
-    assert config['skills']['external_dirs'] == [str(INTEGRATION / name) for name in ('errands', 'shared-skills')]
+    assert config['skills']['external_dirs'] == [str(INTEGRATION / name) for name in ('errands', 'shared-skills')] + [str(PACKAGE / 'skills')]
     assert config['platform_toolsets']['api_server'] == ['memory', 'session_search', 'skills', 'delegation', 'kanban']
     assert set(source['platform_toolsets']['api_server'] + ['owner_mac']) <= set(config['personal_aios']['delegated_toolsets'])
     assert config['network']['force_ipv4'] is True
@@ -742,9 +811,11 @@ def test_workshop_backend_and_native_growth_survive_cloud_restart(home, monkeypa
     assert 'HERMES_YOLO_MODE' not in (home / '.env').read_text() and 'HERMES_WRITE_SAFE_ROOT' not in (home / '.env').read_text()
     assert staging or (home / '.env').read_text() == 'OWNER_MODEL_KEY=synthetic\n'
     assert any('HERMES_YOLO_MODE=true' in path.read_text() for path in (home / 'backups').glob('.env.*'))
-    service = yaml.safe_load((ROOT / 'deploy/cloud/compose.yaml').read_text())['services']['hermes-staging' if staging else 'hermes']
+    services = yaml.safe_load((ROOT / 'deploy/cloud/compose.yaml').read_text())['services']
+    service = services['hermes-staging' if staging else 'hermes']
     assert 'HERMES_YOLO_MODE' not in service['environment'] and service['environment']['HERMES_WRITE_SAFE_ROOT'] == '/workshop'
-    assert not service.get('depends_on')
+    assert service['depends_on'] == {'gateway-staging' if staging else 'gateway': {'condition': 'service_started'}}
+    assert ('hermes-staging' if staging else 'hermes') not in services['gateway-staging' if staging else 'gateway']['depends_on']
     assert (home / 'workshop-ssh/id_ed25519').read_bytes() == identity
     assert (home / 'workshop-ssh/id_ed25519').stat().st_mode & 0o777 == 0o600
     assert (home / 'workshop-ssh/owner_ed25519').read_bytes() == owner_identity
@@ -757,7 +828,7 @@ def test_workshop_backend_and_native_growth_survive_cloud_restart(home, monkeypa
 
 
 def test_migrated_native_provider_and_owner_files_survive_restarts(home):
-    source = yaml.safe_load(PRODUCT_CONFIG.read_text())
+    source = imported_product(home)
     # Exercise a migrated provider that differs from the product seed. The cloud
     # initializer must not impose env placeholders or replace nested settings.
     source['agent']['max_turns'] = 8
@@ -769,6 +840,7 @@ def test_migrated_native_provider_and_owner_files_survive_restarts(home):
     source['providers'] = {'owner-provider': {'base_url': 'https://owner.example/v1',
         'extra_body': {'owner_option': 'retained'}}}
     source['platform_toolsets']['api_server'] += ['terminal', 'file', 'browser']
+    publish_projection(home, source)
     (home / 'config.yaml').write_text(yaml.safe_dump(source))
     (home / 'SOUL.md').write_text('owner imported persona\n')
     old_plugin = home / 'plugins/personal_aios'
@@ -782,7 +854,7 @@ def test_migrated_native_provider_and_owner_files_survive_restarts(home):
         for field in ['model', 'providers', 'custom_providers', 'auxiliary', 'compression', 'gateway']:
             assert config[field] == source[field]
         assert config['agent'] == {**{key: value for key, value in source['agent'].items()
-            if key not in {'max_turns', 'background_max_turns', 'run_budget_seconds'}},
+            if key not in {'max_turns', 'background_max_turns', 'run_budget_seconds', 'max_tokens', 'reasoning_effort'}},
             'max_tool_calls': 120, 'tool_call_milestone_interval': 20}
         assert config['platform_toolsets']['api_server'] == ['memory', 'session_search', 'skills', 'delegation', 'kanban']
         assert config['tools']['tool_search'] == {'enabled': 'off'}
@@ -799,7 +871,7 @@ def test_staging_uses_native_policy_and_does_not_reimport_cron(home, monkeypatch
     monkeypatch.setenv('PAIOS_STAGE', 'staging')
     (home / 'cron').mkdir()
     (home / 'cron/jobs.json').write_text('[{"id":"owner-job"}]\n')
-    source = yaml.safe_load(PRODUCT_CONFIG.read_text())
+    source = imported_product(home)
     for _ in range(2):
         cloud.initialize(home, INTEGRATION, PRODUCT_CONFIG)
     config = load(home)
@@ -812,9 +884,10 @@ def test_staging_uses_native_policy_and_does_not_reimport_cron(home, monkeypatch
     assert config['model'] == source['model']
     assert config['custom_providers'] == source['custom_providers']
     assert config['mcp_servers']['phone']['args'] == [str(INTEGRATION / 'staging/fake_phone.py')]
-    assert config['mcp_servers']['mijia']['args'] == [str(INTEGRATION / 'staging/fake_mijia.py')]
+    assert config['mcp_servers']['mijia']['args'] == [str(PACKAGE / 'fake/server.py')]
     assert config['mcp_servers']['mijia']['env'] == {'HERMES_HOME': str(home),
-        'PAIOS_FAKE_MIJIA_LOG': str(home / 'fake-mijia.jsonl')}
+        'PLUGIN_ROOT': str(PACKAGE), 'PLUGIN_DATA': str(home / 'capability/data/mijia'),
+        'PYTHONPATH': str(ROOT) + ':/opt/hermes', 'PAIOS_FAKE_MIJIA_LOG': str(home / 'fake-mijia.jsonl')}
     assert json.loads((home / 'cron/jobs.json').read_text())['jobs'][0]['enabled'] is False
     assert (home / 'cron/jobs.pre-staging.json').read_text() == '[{"id":"owner-job"}]\n'
 
@@ -845,7 +918,7 @@ def test_persona_and_main_skill_references_are_discoverable(home, monkeypatch, s
                                 '\n'.join(path.read_text() for path in documents)))
     assert {'engineering-handbook', 'food-delivery', 'ride-hailing', 'wechat', 'mijia'} <= references
     definitions = {yaml.safe_load(path.read_text().split('---', 2)[1])['name']: path.parent
-                   for path in INTEGRATION.rglob('SKILL.md')}
+                   for path in [*INTEGRATION.rglob('SKILL.md'), *PACKAGE.rglob('SKILL.md')]}
     assert references <= definitions.keys(), f'Missing referenced skills: {references - definitions.keys()}'
     if staging:
         monkeypatch.setenv('PAIOS_STAGE', 'staging')
@@ -934,7 +1007,7 @@ def test_mac_staging_launcher_isolates_authority_before_start(tmp_path, case):
     assert json.loads((stage / 'started.json').read_text())['stage'] == 'staging'
     assert (stage / 'plugins/personal_aios').resolve() == INTEGRATION
     assert config['mcp_servers']['mijia'] == {'command': sys.executable,
-        'args': [str(INTEGRATION / 'staging/fake_mijia.py')],
+        'args': [str(PACKAGE / 'fake/server.py')],
         'env': {'HERMES_HOME': str(stage), 'PAIOS_FAKE_MIJIA_LOG': str(stage / 'fake-mijia.jsonl')}, 'timeout': 120,
         'tools': {'resources': False, 'prompts': False}}
     assert 'mijia' in config['platform_toolsets']['api_server']
@@ -956,12 +1029,13 @@ def test_mac_staging_launcher_isolates_authority_before_start(tmp_path, case):
 
 def test_staging_quarantines_imported_env_hooks_and_plugins_but_keeps_local_learning(home, monkeypatch):
     monkeypatch.setenv('PAIOS_STAGE', 'staging')
-    source = yaml.safe_load(PRODUCT_CONFIG.read_text())
+    source = imported_product(home)
     source.update(hooks={'outbound': [{'url': 'https://owner.example/push'}]},
                   secrets={'owner-vault': {'enabled': True}}, sync={'enabled': True})
     source['providers'] = {'owner-provider': {'base_url': 'https://owner.example/v1',
         'extra_body': {'owner_option': 'retained'}}}
     source.pop('custom_providers')
+    publish_projection(home, source)
     source['plugins']['enabled'] = ['owner-push']
     (home / 'config.yaml').write_text(yaml.safe_dump(source))
     (home / '.env').write_text('BARK_KEY=fixture-owner-key\nPAIOS_STAGE=production\n')
@@ -974,10 +1048,10 @@ def test_staging_quarantines_imported_env_hooks_and_plugins_but_keeps_local_lear
     for _ in range(2):
         cloud.initialize(home, INTEGRATION, PRODUCT_CONFIG)
     config = load(home)
-    assert 'hooks' not in config and 'secrets' not in config
+    assert 'hooks' not in config and config['secrets']['environment'] == 'profile'
     assert config['providers'] == source['providers']
     assert 'custom_providers' not in config
-    assert config['plugins']['enabled'] == ['personal_aios']
+    assert config['plugins']['enabled'] == ['personal_aios', 'yimi-gateway']
     assert config['sync'] == {'enabled': False}
     assert (home / '.env').read_text() == '' and not (home / '.op.env').exists()
     assert list((home / 'backups').glob('.env.pre-staging-*'))
@@ -1035,7 +1109,8 @@ def test_restore_uses_selected_file_mount_and_preserves_imported_secrets(home, m
             migration.restore(SimpleNamespace(bundle=bundle, staging=False))
 
     definition = {'volumes': {key: {'name': f'new_{key}'} for key in
-        ['postgres-staging', 'hermes-home-staging', 'owner-data-staging', 'models', *[name+'-staging' for name in owners]]},
+        ['postgres-staging', 'hermes-home-staging', 'owner-data-staging', 'model-settings-projections-staging',
+         'model-settings-authority-staging', 'model-settings-authority', 'model-settings-projections', 'models', *[name+'-staging' for name in owners]]},
         'services': {'gateway-staging': {'image':'fixture-gateway','environment':{'PAIOS_DATA_ROOT':'/data','PAIOS_SECRET_ROOT':'/run/secrets'},
             'volumes': [{'target': '/run/secrets/postgres.password','source': str(secrets / 'postgres.password')},
                         {'target':'/etc/paios/cloud.json','source':str(config)}]}, 'postgres-staging': {
@@ -1067,9 +1142,19 @@ def test_restore_uses_selected_file_mount_and_preserves_imported_secrets(home, m
     env = home / 'staging.env'
     env.write_text('')
     args = SimpleNamespace(bundle=bundle, secrets_dir=secrets, compose='compose.yaml',
-        env_file=str(env), staging=True, utility_image='alpine:3.22',archive_network=None)
+        env_file=str(env), staging=True, utility_image='alpine:3.22',archive_network=None,
+        model_settings_environment='staging-secondary', model_settings_projection=secrets / 'projection.json')
+    secrets.mkdir()
+    (secrets / 'projection.json').write_text(json.dumps({'environment_id': 'staging-secondary', 'profile': 'owner',
+        'group': 'brain', 'revision': 1, 'configured': True,
+        'config': {'model': {'default': 'fake-stage-model'}, 'fallback_providers': []}, 'credentials': []}))
+    args.model_settings_build_projection = secrets / 'build-projection.json'
+    args.model_settings_build_projection.write_text((secrets / 'projection.json').read_text()
+        .replace('"owner"', '"workshop"').replace('"brain"', '"build"'))
+    (secrets / 'postgres.password').write_bytes(b'fixture-stage-password')
+    (secrets / 'postgres.password').chmod(0o600)
     args.secrets_dir = home / 'wrong-secrets'
-    with pytest.raises(ValueError, match='secret mount'):
+    with pytest.raises(ValueError, match='target staging secrets'):
         migration.restore(args)
     assert not any(command[:3] == ['docker', 'volume', 'create'] for command in calls)
     args.secrets_dir = secrets
@@ -1091,14 +1176,13 @@ def test_restore_uses_selected_file_mount_and_preserves_imported_secrets(home, m
         migration.restore(args)
     assert not any(command[:3] == ['docker', 'volume', 'create'] for command in calls)
     private_archive.write_bytes(retained_archive)
-    secret_archive = bundle / 'secrets.tar.gz'
-    original = secret_archive.read_bytes()
-    with tarfile.open(secret_archive, 'w:gz'):
-        pass
-    with pytest.raises(ValueError, match='missing required staging secret files'):
+    projection_path = secrets / 'projection.json'
+    original = projection_path.read_text()
+    projection_path.write_text(original.replace('true', 'false'))
+    with pytest.raises(ValueError, match='credentials must be configured'):
         migration.restore(args)
     assert not any(command[:3] == ['docker', 'volume', 'create'] for command in calls)
-    secret_archive.write_bytes(original)
+    projection_path.write_text(original)
     if bundle_format == 4:
         import shutil
         for step in ('--restore-archive', 'pg_restore'):
@@ -1113,9 +1197,12 @@ def test_restore_uses_selected_file_mount_and_preserves_imported_secrets(home, m
             assert any('up' in command for command in calls[before:]) == (step == 'pg_restore')
             assert secrets.is_dir() and bundle.is_dir()
             # The documented retry chooses a fresh target; reset only this fixture's fake target.
-            shutil.rmtree(secrets)
         fail_step[0] = None
     migration.restore(args)
+    assert not any(command[:3] in (['docker', 'volume', 'create'], ['docker', 'volume', 'rm']) and
+                   'new_model-settings-authority-staging' in command for command in calls)
+    projection_install=next(command for command in calls if '/opt/paios/deploy/cloud/staging_model_settings.py' in command)
+    assert 'new_model-settings-projections-staging:/restore-projections' in projection_install
     for name in owners:
         command=next(command for command in calls if f'new_{name}-staging:/restore' in command)
         assert '--numeric-owner' in command[-1] and 'chown' not in command[-1]
@@ -1126,8 +1213,8 @@ def test_restore_uses_selected_file_mount_and_preserves_imported_secrets(home, m
         assert f'device={prepared}' in create and 'type=none' in create and 'o=bind' in create
         owner_restore = next(command for command in calls if 'new_owner-data-staging:/restore' in command)
         assert 'new_errands-staging:/restore/state/errands' in owner_restore
-    assert {path.name for path in secrets.iterdir()} == migration.staging_secret_names() | ({'cold-webdav.password'} if bundle_format==4 else set())
-    assert (secrets / 'postgres.password').read_bytes() == b'fixture-private'
+    assert {path.name for path in secrets.iterdir()} == {'projection.json', 'build-projection.json', 'postgres.password'}
+    assert (secrets / 'postgres.password').read_bytes() == b'fixture-stage-password'
     restored_home = restored / 'new_hermes-home-staging'
     assert (restored_home / 'owner-file').read_bytes() == b'fixture-private'
     assert not (restored_home / 'workshop/plugins/personal_aios').is_symlink()
@@ -1136,6 +1223,8 @@ def test_restore_uses_selected_file_mount_and_preserves_imported_secrets(home, m
     assert (restored_home / 'skills/image-x').read_bytes() == b'fixture-private'
     with monkeypatch.context() as image_init:
         image_init.setattr(cloud.subprocess, 'run', real_run)
+        image_init.setenv('PAIOS_MODEL_SETTINGS_PROJECTION', str(projection_path))
+        image_init.setenv('PAIOS_MODEL_SETTINGS_BUILD_PROJECTION', str(args.model_settings_build_projection))
         for _ in range(2):
             cloud.initialize(restored_home, INTEGRATION, PRODUCT_CONFIG)
             assert (restored_home / 'plugins/personal_aios').resolve() == INTEGRATION
@@ -1146,18 +1235,17 @@ def test_restore_uses_selected_file_mount_and_preserves_imported_secrets(home, m
     assert any('pg_restore' in command for command in calls)
     if bundle_format in (2, 3, 4):
         owner_restore = next(command for command in calls if 'new_owner-data-staging:/restore' in command)
-        assert 'tar -xzf /bundle/owner-data.tar.gz -C /restore;' in owner_restore[-1]
+        assert 'tar -xzf /bundle/owner-data.tar.gz -C /restore' in owner_restore[-1]
         assert '/restore/owner-data' not in owner_restore[-1]
     if bundle_format==4:
         process=next(command for command in calls if '--restore-archive' in command)
         assert process[process.index('--memory')+1]=='512m'
         assert process[process.index('--memory-swap')+1]=='512m'
         assert process[process.index('--network')+1]=='none'
-        assert str(secrets / 'cold-webdav.password')+':/run/secrets/cold-webdav.password:ro' in process
+        assert str(secrets / 'cold-webdav.password')+':/run/secrets/cold-webdav.password:ro' not in process
         assert str(secrets)+':/run/secrets:ro' not in process
         assert calls.index(process)<next(i for i,command in enumerate(calls) if 'up' in command)
-    with pytest.raises(ValueError, match='destination already exists'):
-        migration.restore(args)
+    assert projection_path.read_text() == original
 
 
 @pytest.mark.parametrize('consistency', ['staging', 'frozen', 'online'])
@@ -1237,7 +1325,7 @@ def test_cloud_snapshot_preserves_owner_state_and_excludes_raw_photos(home, monk
         path = sources['models'] / filename
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b'native-model')
-    secret_names = migration.staging_secret_names() | {'bark-device', 'bark-key', 'deepseek.key', 'frp.token',
+    secret_names = migration.staging_secret_names() | {'postgres.password', 'bark-device', 'bark-key', 'deepseek.key', 'frp.token',
         'pins', 'avatar-token', 'postgres-admin.password', 'hermes-staging-api.key',
         'payment-executor.key', 'voiceprint.key'}
     for filename in secret_names:
@@ -1391,13 +1479,15 @@ def test_cloud_snapshot_preserves_owner_state_and_excludes_raw_photos(home, monk
         assert secret_step[secret_step.index('--user') + 1] == '0:0'
         assert not (bundle / 'models.tar.gz').exists()
     with tarfile.open(bundle / 'hermes-home.tar.gz') as archive:
-        assert archive.extractfile('config.yaml' if consistency == 'online' else './config.yaml').read() == b'owner-model-and-provider'
+        if consistency != 'staging':
+            assert archive.extractfile('config.yaml' if consistency == 'online' else './config.yaml').read() == b'owner-model-and-provider'
         assert './SOUL.md' not in archive.getnames()
         assert './plugins/personal_aios' not in archive.getnames()
-        assert archive.extractfile('backups/SOUL.md.owner' if consistency == 'online' else './backups/SOUL.md.owner').read() == b'owner-persona'
-        retained = archive.getmember(('' if consistency == 'online' else './') + 'backups/config/config.yaml.good.fixture')
-        assert archive.extractfile(retained).read() == backup.read_bytes()
-        assert (retained.uid, retained.gid, retained.mode) == (backup.stat().st_uid, backup.stat().st_gid, 0o640)
+        if consistency != 'staging':
+            assert archive.extractfile('backups/SOUL.md.owner' if consistency == 'online' else './backups/SOUL.md.owner').read() == b'owner-persona'
+            retained = archive.getmember(('' if consistency == 'online' else './') + 'backups/config/config.yaml.good.fixture')
+            assert archive.extractfile(retained).read() == backup.read_bytes()
+            assert (retained.uid, retained.gid, retained.mode) == (backup.stat().st_uid, backup.stat().st_gid, 0o640)
         names = {name.removeprefix('./') for name in archive.getnames()}
         assert not {'workshop/plugins/personal_aios', 'workshop/skills/image-skill'} & names
         assert archive.getmember('workshop/owner-link' if consistency == 'online' else './workshop/owner-link').linkname == 'skills/learned.bin'
@@ -1412,7 +1502,8 @@ def test_cloud_snapshot_preserves_owner_state_and_excludes_raw_photos(home, monk
     with tarfile.open(bundle / 'secrets.tar.gz') as archive:
         # I9/I11/I14: real prohibited fixture files must not leave in any snapshot.
         assert not {'payment-executor.key', 'voiceprint.key'} & {Path(name).name for name in archive.getnames()}
-        assert archive.extractfile('postgres.password' if consistency == 'online' else './postgres.password').read() == b'protected-password'
+        if consistency != 'staging':
+            assert archive.extractfile('postgres.password' if consistency == 'online' else './postgres.password').read() == b'protected-password'
         assert {entry.name.removeprefix('./') for entry in archive if entry.isfile()} == (
             migration.staging_secret_names() if consistency == 'staging' else
             (secret_names - {'payment-executor.key', 'voiceprint.key'}) | ({'openlist/data.db'} if consistency == 'online' else set()))
@@ -1549,7 +1640,7 @@ def test_mac_export_keeps_raw_photos_only_in_complete_production_snapshots(home,
     (source / 'resources/outside-link').symlink_to(image)
     (source / 'hermes-home/config.yaml').write_text('retained owner configuration')
     key = source / 'secrets/postgres.password'
-    secret_names = migration.staging_secret_names() | {'bark-device', 'bark-key', 'frp.token', 'pins',
+    secret_names = migration.staging_secret_names() | {'postgres.password', 'tavily.key', 'bark-device', 'bark-key', 'frp.token', 'pins',
         'avatar-token', 'postgres-admin.password', 'deepseek.key', 'hermes-staging-api.key',
         'agentbay.key', 'agentbay.adbkey', 'agentbay.adbkey.pub', 'payment-executor.key', 'voiceprint.key'}
     if not optional_tavily:
@@ -1599,7 +1690,7 @@ def test_mac_export_keeps_raw_photos_only_in_complete_production_snapshots(home,
             (set() if consistency == 'staging' else {'./call-turns/owner.wav', './call-turns/owner.json'}))
     with tarfile.open(output / 'hermes-home.tar.gz') as archive:
         files = {entry.name.removeprefix('./') for entry in archive if entry.isfile()}
-        assert files == ({'config.yaml'} if consistency == 'staging' else {'config.yaml', '.env', '.env.backup', '.op.env'})
+        assert files == (set() if consistency == 'staging' else {'config.yaml', '.env', '.env.backup', '.op.env'})
         assert archive.getmember('./workshop/owner-link').linkname == '../config.yaml'
         assert not any('personal_aios' in name or 'image-skill' in name for name in archive.getnames())
     with tarfile.open(output / 'resources.tar.gz') as archive:
@@ -2070,8 +2161,7 @@ def test_staging_migration_secret_contract_matches_compose(monkeypatch):
     mounted = {name for service in definition['services'].values() if 'staging' in service.get('profiles', [])
         for name in secret_names(service.get('volumes', []))}
     # I14: these mounts need fresh staging keys, never copied production keys.
-    assert migration.staging_secret_names() == mounted - {
-        'livekit.yaml', 'nginx-attestation.conf', 'payment-executor.key', 'voiceprint.key', 'owner-mac-relay.json'}
+    assert migration.staging_secret_names() == set()
     agentbay = {'agentbay.key', 'agentbay.adbkey', 'agentbay.adbkey.pub'}
     assert not (agentbay | {'vidu.key'}) & mounted
     assert '${PAIOS_SECRETS_DIR:?}/vidu.key:/run/secrets/vidu.key:ro' in definition['services']['gateway']['volumes']
@@ -2123,7 +2213,7 @@ def test_cloud_renderer_preserves_supplied_fictional_video_resources(tmp_path):
     import shutil
     cloud = tmp_path / 'deploy/cloud'
     cloud.mkdir(parents=True)
-    for name in ('prepare-build.py', 'front.conf.in', 'paios_roaming_guard.js.in'):
+    for name in ('prepare-build.py', 'staging_config.py', 'front.conf.in', 'paios_roaming_guard.js.in'):
         shutil.copyfile(ROOT / 'deploy/cloud' / name, cloud / name)
     fixture = {'payment': {'enabled': True, 'staging': False}, 'product_resources': {
         'postgres': {'host': 'fixture-postgres'},
@@ -2267,7 +2357,7 @@ def test_I9_I14_payment_secret_mounts_are_scoped_and_staging_uses_own_keys():
 
 def test_I13_I14_rendered_staging_quarantines_restored_payment_intents(tmp_path):
     import shutil
-    for relative in ['deploy/cloud/prepare-build.py', 'deploy/cloud/cloud.json',
+    for relative in ['deploy/cloud/prepare-build.py', 'deploy/cloud/staging_config.py', 'deploy/cloud/cloud.json',
                      'deploy/cloud/front.conf.in',
                      'deploy/cloud/paios_roaming_guard.js.in']:
         target = tmp_path / relative
@@ -2387,3 +2477,44 @@ print(json.dumps(migration.compose_cloud(SimpleNamespace(compose=sys.argv[2],env
     command = json.loads(result.stdout)
     assert command == ['docker', 'compose', '--env-file', str(env), '-f', str(tmp_path / 'compose.yaml'),
                        '-f', str(tmp_path / 'compose.workshop-client.yaml'), '--profile', 'production']
+
+
+@pytest.mark.parametrize('brain_configured', [False, True])
+def test_control_startup_keeps_unconfigured_build_inert(home, brain_configured):
+    inactive = {'environment_id': 'fixture', 'profile': 'workshop', 'revision': 0,
+        'group': 'build', 'configured': False, 'credentials': [], 'config': {
+            'model': {'enabled': False}, 'providers': {}, 'fallback_providers': [],
+            'delegation': {'enabled': False}, 'cron': {'enabled': False},
+            'auxiliary': {'compression': {'enabled': False}, 'title_generation': {'enabled': False}}}}
+    (home / 'build-settings.json').write_text(json.dumps(inactive))
+    if not brain_configured:
+        (home / 'model-settings.json').write_text(json.dumps({**inactive, 'profile': 'owner', 'group': 'brain'}))
+    cloud.initialize(home, INTEGRATION, PRODUCT_CONFIG)
+    brain = load(home)
+    build = yaml.safe_load((home / 'workshop/config.yaml').read_text())
+    assert brain['secrets']['personal_aios']['enabled'] is brain_configured
+    assert (brain['model'].get('enabled') is not False) is brain_configured
+    assert build['model'] == {'enabled': False}
+    assert build['providers'] == {} and build['fallback_providers'] == []
+    assert build['secrets']['personal_aios']['enabled'] is False
+    assert build['delegation']['enabled'] is False and build['cron']['enabled'] is False
+
+
+def test_core_profile_projection_mounts_are_platform_writable_and_native_read_only():
+    class ComposeLoader(yaml.SafeLoader):
+        pass
+    ComposeLoader.add_constructor('!override', lambda loader, node: loader.construct_sequence(node, deep=True))
+    ComposeLoader.add_constructor('!reset', lambda loader, node: loader.construct_mapping(node, deep=True))
+    base = yaml.safe_load((ROOT / 'deploy/cloud/compose.yaml').read_text())
+    overlay = yaml.load((ROOT / 'deploy/cloud/compose.single-host.yaml').read_text(), Loader=ComposeLoader)
+    services = base['services']
+    for gateway, native, volume in [(services['gateway'], services['hermes'], 'core-profile'),
+            (services['gateway-staging'], services['hermes-staging'], 'core-profile-staging'),
+            (overlay['services']['gateway'], overlay['services']['hermes'], 'core-profile')]:
+        assert volume in base['volumes']
+        assert f'{volume}:/var/lib/paios/core-profile/memories' in gateway['volumes']
+        assert f'{volume}:/opt/data/memories:ro' in native['volumes']
+        assert not any(isinstance(mount, dict) and mount.get('volume', {}).get('subpath') for mount in native['volumes'])
+        assert not any(isinstance(mount, str) and mount.startswith('owner-data') for mount in native['volumes'])
+    profile = json.loads((ROOT / 'deploy/cloud/cloud.json').read_text())['core_profile']
+    assert profile == {'enabled': True, 'profile_home': '${PAIOS_DATA_ROOT}/core-profile', 'native_profile_home': '/opt/data'}

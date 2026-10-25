@@ -69,7 +69,7 @@ struct YimiWatchRideView: View {
             let figures = WatchRideFigures.live(phone: store.state?.ride?.metrics, phoneAt: store.rideMetricsAt,
                                                 local: metric, elapsed: workout.elapsedTime, now: context.date)
             let banner = presentation.expiresAt.map { context.date < $0 } == true && !dimmed ? presentation.banner : nil
-            YimiWatchRideNumbers(figures: figures, zone: figures.phoneCurrent ? store.state?.ride?.hr_zone : nil, banner: banner,
+            YimiWatchRideNumbers(figures: figures, zone: figures.phoneHeartCurrent ? store.state?.ride?.hr_zone : nil, banner: banner,
                                  cadence: WatchCyclingMetricMapper.fresh(metric?.cadenceSPM, at: metric?.cadenceSampleAt, observedAt: context.date),
                                  alerting: presentation.banner != nil, dimmed: dimmed)
         }

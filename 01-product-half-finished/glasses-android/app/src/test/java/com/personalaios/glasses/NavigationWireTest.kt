@@ -5,6 +5,13 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class NavigationWireTest {
+    @Test fun navigationFreshnessUsesServerEpochWhileDisplayDeadlinesUseMonotonicTime() {
+        val epoch = java.time.Instant.parse("2026-10-18T12:00:00Z").toEpochMilli()
+        val state = HudState().move(fix(), now = 1000, serverNow = epoch)
+        assertNotNull(visibleHud(state, now = 1001, serverNow = epoch + 1).navigationFix)
+        assertNull(visibleHud(state, now = 1002, serverNow = epoch + 10000).navigationFix)
+        assertNull(visibleHud(state, now = 11000, serverNow = epoch + 1).navigationFix)
+    }
     private fun route(revision: Int = 1) = JSONObject("""{"operation":"nav_route","coordinate_system":"wgs84","nav_id":"n","revision":$revision,"steps":[{"polyline":[{"lat":31.23,"lng":121.47},{"lat":31.231,"lng":121.47}]},{"polyline":[{"lat":31.231,"lng":121.47},{"lat":31.232,"lng":121.47}]}]}""")
     private fun fix(distance: Int = 101) = JSONObject("""{"operation":"move_hud","kind":"walk_nav","coordinate_system":"wgs84","seq":9,"position":{"lat":31.23,"lng":121.47,"accuracy_m":3,"course_deg":90,"at":"2026-10-18T12:00:00Z"},"nav":{"nav_id":"n","revision":1,"maneuver":"right","maneuver_location":{"lat":31.231,"lng":121.47},"distance_to_maneuver_m":$distance,"route_segment_index":0,"segment_fraction":0.5}}""")
     private val heading = HeadingSample(0f, HeadingAccuracy.HIGH, 1)

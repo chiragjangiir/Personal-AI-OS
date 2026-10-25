@@ -76,7 +76,7 @@ struct DesktopUnpairExplanation: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("解除这台电脑的配对？").font(.headline)
-            Text("依米会立刻断开。本机配对凭据和对话缓存会清除；活动记录、文件和文件夹设置保留。要再用，需在手机上重新添加。")
+            Text("依米会立刻断开。这台 Mac 上的连接信息和对话副本会清除，活动记录、文件和文件夹设置仍保留。以后要再用，需在手机上重新添加。")
                 .font(.callout).foregroundStyle(Yimi.ink2)
             HStack {
                 Text("取消").padding(.horizontal, 12).padding(.vertical, 6).background(Yimi.paper, in: RoundedRectangle(cornerRadius: 6))

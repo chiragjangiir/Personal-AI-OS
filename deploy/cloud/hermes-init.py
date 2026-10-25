@@ -15,64 +15,37 @@ from dotenv import dotenv_values, unset_key
 
 SECRETS = Path('/run/secrets')
 ACCESS = Path('/run/workshop-access')
-MODELS = Path('/etc/paios/models.json')
+EXECUTOR_MODELS = Path('/etc/paios/executor-models.json')
 
 
-# Owner model transport is independent of the shipped product behavior.
-OWNER_KEYS = (
-    'model', 'providers', 'custom_providers', 'fallback_providers', 'fallback_model',
-    'fallback', 'credential_pool_strategies', 'model_catalog', 'model_overrides',
-    'models_dev', 'openrouter', 'bedrock', 'vertex', 'nous', 'local_runtime',
-    'smart_model_routing', 'image_gen', 'video_gen', 'x_search', 'tts', 'stt', 'timezone',
-)
+# Imported homes retain runtime choices. Model transport belongs to the settings authority.
 RUNTIME_KEYS = ('_config_version', 'command_allowlist', 'known_plugin_toolsets',
-                'known_builtin_toolsets', 'tool_gateway_declined_tools')
-AUXILIARY_ROUTES = (
-    'vision', 'compression', 'skills_hub', 'approval', 'review', 'mcp', 'title_generation',
-    'memory_query_rewrite', 'tts_audio_tags', 'triage_specifier', 'kanban_decomposer',
-    'profile_describer', 'goal_judge', 'curator', 'monitor', 'background_review',
-    'moa_reference', 'moa_aggregator',
-)
+                'known_builtin_toolsets', 'tool_gateway_declined_tools', 'timezone')
 
 
 def compose_config(product, existing):
-    """Use the same ownership boundary for staging and production."""
     config = copy.deepcopy(product)
-    if 'providers' in existing:
-        # Hermes migrates custom_providers to providers; never reseed the legacy list.
-        config.pop('custom_providers', None)
-    for field in OWNER_KEYS + RUNTIME_KEYS:
+    config.setdefault('memory', {}).update(memory_enabled=False, user_profile_enabled=False)
+    for field in RUNTIME_KEYS:
         if field in existing:
             config[field] = copy.deepcopy(existing[field])
-    auxiliary = existing.get('auxiliary', {})
-    for field in ('free_only', 'openrouter_model', 'stream_only_base_urls'):
-        if field in auxiliary:
-            config.setdefault('auxiliary', {})[field] = copy.deepcopy(auxiliary[field])
-    for task in AUXILIARY_ROUTES:
-        if task in auxiliary:
-            route = config.setdefault('auxiliary', {}).setdefault(task, {})
-            route.update({key: copy.deepcopy(value) for key, value in auxiliary[task].items()
-                          if key not in {'enabled', 'model_upgrade_enabled', 'max_input_tokens'}})
-    fields = {
-        'agent': ('max_tokens', 'reasoning_effort', 'reasoning_overrides', 'reasoning_echo',
-                  'service_tier', 'fast_auto_seconds', 'text_verbosity', 'image_input_mode'),
-        'delegation': ('model', 'provider', 'fallback_providers', 'base_url', 'api_key',
-                       'api_mode', 'request_overrides', 'reasoning_effort', 'command', 'args'),
-        'cron': ('model', 'model_provider'),
-        'moa': ('presets',),
-        'voice': ('gpt_live',),
-        # Modes are product policy; deny rules are owner policy; confirmations are runtime choices.
+    for section, names in {
         'approvals': ('timeout', 'smart_policy', 'denial_breaker_threshold', 'deny',
                       'mcp_reload_confirm', 'destructive_slash_confirm'),
-        'monitoring': ('install_id',),
-        'security': ('acked_advisories',),
-        'onboarding': ('seen',),
-    }
-    for section, names in fields.items():
+        'monitoring': ('install_id',), 'security': ('acked_advisories',), 'onboarding': ('seen',),
+    }.items():
         for field in names:
             if field in existing.get(section, {}):
                 config.setdefault(section, {})[field] = copy.deepcopy(existing[section][field])
     return config
+
+
+def transport(config, path):
+    spec = importlib.util.spec_from_file_location('model_transport',
+        Path(os.environ.get('PAIOS_APP_ROOT', Path(__file__).parents[2])) / 'integrations/hermes/personal_aios/model_transport.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.projected_config(config, path)
 
 
 def seed_config(home, product_config):
@@ -131,40 +104,21 @@ PHONE_PROVIDERS = {'agentbay': agentbay_phone, 'mac-android': mac_android_phone,
                    'off': lambda home, integration, provider: None}
 
 
-def single_host_models(config):
-    """Apply explicitly configured public model roles; private transport is untouched."""
-    if os.environ.get('PAIOS_DEPLOYMENT') != 'single-host':
-        return {}
-    roles = json.loads(MODELS.read_text())
-    config.pop('providers', None)
-    config['custom_providers'] = [
-        {'name': role['provider'], 'base_url': role['base_url'],
-         'key_env': f'PAIOS_{name.upper()}_API_KEY', 'api_mode': 'chat_completions'}
-        for name, role in roles.items() if name not in ('realtime', 'tts')]
-    brain = roles['brain']
-    config['model'] = {'default': brain['model'], 'provider': brain['provider'], 'base_url': brain['base_url']}
-    config['fallback_providers'] = []
-    for field in ('fallback_model', 'fallback', 'fallbacks'):
-        config.pop(field, None)
-    config['delegation'].update(model=brain['model'], provider=brain['provider'], base_url=brain['base_url'])
-    for field in ('api_key', 'fallback_providers'):
-        config['delegation'].pop(field, None)
-    auxiliary = config.setdefault('auxiliary', {})
-    if 'vision' in roles:
-        vision = roles['vision']
-        auxiliary['vision'] = {'model': vision['model'], 'provider': vision['provider'], 'base_url': vision['base_url']}
-    else:
-        auxiliary['vision'] = {'enabled': False}
-    return roles
-
-
 def initialize(home, integration, product_config):
+    single_host = os.environ.get('PAIOS_DEPLOYMENT') == 'single-host'
+    # Authority bootstraps independently of the model and publishes both generations before inference starts.
+    deadline = time.monotonic() + 90
+    paths = [Path(os.environ[name]) for name in
+             ('PAIOS_MODEL_SETTINGS_PROJECTION', 'PAIOS_MODEL_SETTINGS_BUILD_PROJECTION')]
+    while not all(path.is_file() for path in paths):
+        if time.monotonic() >= deadline:
+            raise RuntimeError('Model settings authority did not publish startup projections')
+        time.sleep(1)
     native = yaml.safe_load(product_config.read_text())
     config_file = home / 'config.yaml'
     original_config = config_file.read_bytes() if config_file.exists() else None
     config = compose_config(native, yaml.safe_load(original_config) if original_config else {})
-    roles = single_host_models(config)
-    single_host = os.environ.get('PAIOS_DEPLOYMENT') == 'single-host'
+    config = transport(config, os.environ['PAIOS_MODEL_SETTINGS_PROJECTION'])
     if os.environ.get('PAIOS_STAGE') != 'staging':
         # Upstream setup seeds this key even for fresh homes. Hermes dotenv
         # overrides the mounted key injected by hermes-start, breaking gateway auth.
@@ -211,7 +165,16 @@ def initialize(home, integration, product_config):
         internal_base_url=f"http://127.0.0.1:{os.environ['PAIOS_INTEGRATION_PORT']}",
         internal_key_file='/run/secrets/hermes-internal.key')
     shared_skills = str(integration / 'shared-skills')
-    config['skills']['external_dirs'] = [str(integration / 'errands'), shared_skills]
+    product = json.loads(Path(os.environ['PAIOS_PRODUCT_CONFIG']).read_text())
+    spec = importlib.util.spec_from_file_location('capability_packages', integration.parents[2] / 'capability/packages/load.py')
+    packages = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(packages)
+    package_servers, package_skills, package_tools = packages.load_packages(integration.parents[2], product, home,
+        staging=os.environ.get('PAIOS_STAGE') == 'staging', single_host=single_host, environ=os.environ)
+    config['personal_aios']['capability_tools'] = package_tools
+    selection = product.get('capability_packages', {})
+    config['personal_aios']['capability_registry'] = 'yimi' in selection.get('enabled', []) and 'yimi' in selection.get('gateway', [])
+    config['skills']['external_dirs'] = [str(integration / 'errands'), shared_skills, *package_skills]
     if single_host:
         disabled = set(config['skills'].get('disabled', []))
         if os.environ.get('PAIOS_ENABLE_WECHAT', '0') == '1':
@@ -239,18 +202,23 @@ def initialize(home, integration, product_config):
     spec.loader.exec_module(policy)
     growth = policy.GROWTH_TOOLSETS
     # Replace imported Mac commands with image-owned MCP servers.
-    config['mcp_servers'] = {'mijia': {'command': '/opt/hermes/.venv/bin/python',
-        'args': [str(integration / 'mijia.py')], 'env': {'HERMES_HOME': str(home)}, 'timeout': 120}}
+    config['mcp_servers'] = package_servers
     provider = os.environ.get('PAIOS_PHONE_PROVIDER', 'off' if single_host else 'agentbay')
     phone_factory = PHONE_PROVIDERS[provider]
     if os.environ.get('PAIOS_STAGE') == 'staging':
         if provider != 'off':
-            config['mcp_servers']['phone'] = {'command': '/opt/hermes/.venv/bin/python',
+            legacy_fake = {'command': '/opt/hermes/.venv/bin/python',
                 'args': [str(integration / 'staging/fake_phone.py')],
                 'env': {'PAIOS_FAKE_PHONE_LOG': str(home / 'fake-phone.jsonl'),
                         'PAIOS_ERRAND_SPOOL': '/var/lib/paios/state/errands'}, 'timeout': 120}
-        config['mcp_servers']['mijia']['args'] = [str(integration / 'staging/fake_mijia.py')]
-        config['mcp_servers']['mijia']['env']['PAIOS_FAKE_MIJIA_LOG'] = str(home / 'fake-mijia.jsonl')
+            if 'phone' in package_servers:
+                from capability.packages.phone.server.registration import select_transport
+                legacy_fake['command'] = '/opt/paios-phone/bin/python'
+                config['mcp_servers']['phone'] = select_transport(selection, legacy_fake, package_servers['phone'])
+            else:
+                config['mcp_servers']['phone'] = legacy_fake
+        else:
+            config['mcp_servers'].pop('phone', None)
         policy.isolate_staging_jobs(home)
         os.chown(home / '.paios-cloud-staging-v2', 10000, 10000)
         if (home / 'cron/jobs.json').exists():
@@ -262,32 +230,46 @@ def initialize(home, integration, product_config):
     else:
         phone = phone_factory(home, integration, provider)
         if phone is not None:
-            config['mcp_servers']['phone'] = phone
-    if single_host and os.environ.get('PAIOS_ENABLE_MIHOME', '0') != '1':
-        config['mcp_servers'].pop('mijia', None)
+            from capability.packages.phone.server.registration import select_transport
+            config['mcp_servers']['phone'] = select_transport(product.get('capability_packages', {}), phone,
+                package_servers.get('phone', phone))
+        else:
+            config['mcp_servers'].pop('phone', None)
     desktop_enabled = json.loads(Path(os.environ['PAIOS_PRODUCT_CONFIG']).read_text()).get('desktop', {}).get('enabled') is True
     if single_host and os.environ.get('PAIOS_ENABLE_OWNER_MAC', '0') != '1':
         desktop_enabled = False
     if desktop_enabled:
-        config['mcp_servers']['desktop'] = {
+        config['mcp_servers'].setdefault('desktop', {
             'url': f"http://127.0.0.1:{os.environ['PAIOS_INTEGRATION_PORT']}/internal/desktop/mcp",
             'headers': {'Authorization': 'Bearer ${PAIOS_HERMES_INTERNAL_KEY}'},
-            'timeout': 330, 'connect_timeout': 10, 'trust': 'full'}
+            'timeout': 330, 'connect_timeout': 10, 'trust': 'full'})
     if desktop_enabled:
-        config['mcp_servers']['owner_mac'] = {
+        legacy_owner_mac = {
             'command': '/opt/hermes/.venv/bin/python', 'args': [str(integration / 'owner_mac.py')],
             'env': {'PAIOS_INTEGRATION_PORT': os.environ['PAIOS_INTEGRATION_PORT'],
                     'PAIOS_OWNER_MAC_FILES': str(home / 'cache/owner-mac')},
             'timeout': 330, 'trust': 'full'}
+        if 'owner_mac' in config['mcp_servers']:
+            config['mcp_servers']['owner_mac']['command'] = legacy_owner_mac['command']
+            config['mcp_servers']['owner_mac']['env'].update(legacy_owner_mac['env'])
+            config['mcp_servers']['owner_mac'].update(timeout=330, trust='full')
+        else:
+            config['mcp_servers']['owner_mac'] = legacy_owner_mac
+        config.setdefault('computer_use', {}).update(backend='cua', no_overlay=False)
+        if 'disabled_toolsets' in config['agent']:
+            config['agent']['disabled_toolsets'] = [name for name in config['agent']['disabled_toolsets'] if name != 'computer_use']
         for platform in ('api_server', 'api_server_background'):
             config['platform_toolsets'][platform] = [*config['platform_toolsets'][platform], 'owner_mac']
+    else:
+        for name in ('desktop', 'owner_mac'):
+            config['mcp_servers'].pop(name, None)
     config['mcp_servers']['self'] = {
         'url': f"http://127.0.0.1:{os.environ['PAIOS_INTEGRATION_PORT']}/internal/self/mcp",
         'headers': {'Authorization': 'Bearer ${PAIOS_HERMES_INTERNAL_KEY}'},
         'timeout': 15, 'connect_timeout': 10, 'trust': 'full'}
     if single_host:
         unavailable = {name for name in ('phone', 'mijia', 'owner_mac') if name not in config['mcp_servers']}
-        if 'vision' not in roles:
+        if config['auxiliary']['vision'].get('enabled') is False:
             unavailable.add('vision')
         for platform, tools in config['platform_toolsets'].items():
             config['platform_toolsets'][platform] = [name for name in tools if name not in unavailable]
@@ -300,11 +282,14 @@ def initialize(home, integration, product_config):
     # Tool visibility is not authorization: children inherit the admitted scope and grants.
     conversation = ['memory', 'session_search', 'skills', 'delegation', 'kanban']
     execution = set(grantable) | set(config['mcp_servers']) | {'skills_hub', 'code_execution', 'effects'}
+    if desktop_enabled:
+        execution.add('computer_use')
     for platform in ('api_server', 'api_server_background', 'cron'):
         execution.update(config['platform_toolsets'].get(platform, []))
         config['platform_toolsets'][platform] = list(conversation)
     config['personal_aios']['delegated_toolsets'] = sorted(execution)
     if single_host and 'phone' in config['mcp_servers'] and os.environ.get('PAIOS_STAGE') != 'staging':
+        roles = json.loads(EXECUTOR_MODELS.read_text())
         for role in ('executor_fast', 'executor_thorough'):
             if role not in roles:
                 raise ValueError('Phone requires ' + ', '.join(f'PAIOS_{role.upper()}_{field}' for field in ('MODEL', 'BASE_URL', 'API_KEY')))
@@ -333,18 +318,12 @@ def initialize(home, integration, product_config):
     build_home = home / 'workshop'
     build_home.mkdir(mode=0o700, exist_ok=True)
     build = {field: copy.deepcopy(config[field]) for field in
-        ('model', 'providers', 'custom_providers', 'fallback_providers', 'auxiliary', 'network',
-         'terminal', 'security', 'approvals') if field in config}
-    if 'workshop_repair' in roles:
-        repair = roles['workshop_repair']
-        build['model'] = {'default': repair['model'], 'provider': repair['provider'], 'base_url': repair['base_url']}
+        ('network', 'terminal', 'security', 'approvals') if field in config}
     build['terminal']['ssh_key'] = str(home / 'workshop-ssh/id_ed25519')
     build['agent'] = {key: native['agent'][key] for key in ('max_tool_calls', 'tool_call_milestone_interval')}
-    build['delegation'] = copy.deepcopy(config['delegation'])
-    if 'workshop_repair' in roles:
-        build['delegation'].update(model=repair['model'], provider=repair['provider'], base_url=repair['base_url'])
+    build = transport(build, os.environ['PAIOS_MODEL_SETTINGS_BUILD_PROJECTION'])
     build['plugins'] = {'enabled': ['personal_aios'], 'entries': {'personal_aios': {'allow_tool_override': True}}}
-    build['personal_aios'] = {key: config['personal_aios'][key] for key in ('internal_base_url', 'internal_key_file')}
+    build['personal_aios'] = {key: config['personal_aios'][key] for key in ('internal_base_url', 'internal_key_file', 'capability_registry')}
     build['personal_aios']['grantable_toolsets'] = []
     if os.environ.get('PAIOS_BUILDER_URL'):
         build['personal_aios'].update(builder_url=os.environ['PAIOS_BUILDER_URL'],
@@ -367,6 +346,7 @@ def initialize(home, integration, product_config):
     # SOUL files. Preserve owner files before rebinding, without overwriting backups.
     (home / 'plugins').mkdir(parents=True, exist_ok=True)
     bind_image_path(home / 'plugins/personal_aios', integration)
+    bind_image_path(home / 'plugins/yimi_gateway', integration.parent / 'yimi_gateway')
     bind_image_path(home / 'SOUL.md', integration / 'persona/yimi.md')
     rendered = yaml.safe_dump(config, allow_unicode=True, sort_keys=False).encode()
     if original_config is not None and original_config != rendered:

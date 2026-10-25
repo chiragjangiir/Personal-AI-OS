@@ -18,6 +18,17 @@ class _NoBuilderRedirect(HTTPRedirectHandler):
 
 
 def builder_request(path, body, config=None, timeout=660):
+    if __package__:
+        from .model_task_admission import require_new_task
+        from .model_usage import _context
+    else:
+        from model_task_admission import require_new_task
+        from model_usage import _context
+    if path in {'/build', '/repair'}:
+        require_new_task('build')
+        if os.environ.get('PAIOS_MODEL_SETTINGS_PROJECTION'):
+            source = _context()
+            body = {**body, '_model_context': {key: source[key] for key in ('run_id', 'session_id')}}
     from hermes_cli.config import load_config
     config = config if config is not None else load_config()['personal_aios']
     if not config.get('builder_url'):
@@ -65,11 +76,27 @@ def local_hub(action, value):
     return {'output': output.getvalue()}
 
 
-def register(ctx, provider=None):
+def register(ctx, provider=None, registry_factory=None):
+    def find(args, **kwargs):
+        from .workshop_capability import registry_client, local_discovery
+        if provider is not None and registry_factory is None:
+            raise ValueError('Capability registry is not bound; use the existing skills_hub search')
+        result = (registry_factory(kwargs)('find', {'query': args['query']}) if registry_factory
+                  else local_discovery(args['query']))
+        return json.dumps(result, ensure_ascii=False)
+
+    if registry_factory is not None or provider is None:
+        ctx.register_tool('capability_find', 'skills_hub', {
+            'name': 'capability_find', 'description': 'Find reusable capabilities in installed packages, the Hermes skills hub, then the official MCP registry.',
+            'parameters': {'type': 'object', 'properties': {'query': {'type': 'string', 'minLength': 1}},
+                           'required': ['query'], 'additionalProperties': False}}, find)
+
     def hub(args, **kwargs):
         from hermes_cli.config import load_config
         action, value = args['action'], args['value']
         service = load_config().get('personal_aios', {})
+        if action == 'find':
+            return find({'query': value}, **kwargs)
         if action in {'search', 'inspect', 'install'}:
             if not service.get('builder_url'):
                 return json.dumps(local_hub(action, value), ensure_ascii=False)
@@ -88,7 +115,7 @@ def register(ctx, provider=None):
         if action == 'release_status':
             from .self_observe import scrub_value
             from .release_status import read_status
-            receipt = read_status(spool, value) if spool and re.fullmatch(r'(rollback-)?[0-9a-f]{12}', value) else None
+            receipt = read_status(spool, value) if spool and (value == 'runtime' or re.fullmatch(r'(rollback-)?[0-9a-f]{12}', value)) else None
             if receipt is None:
                 receipt = builder_request('/release-status', {'request_id': value}, service)
             return json.dumps(scrub_value(receipt), ensure_ascii=False)
@@ -122,6 +149,18 @@ def register(ctx, provider=None):
             return json.dumps(builder_request('/repair', {'input': value, 'origin': origin}, service, timeout=3600), ensure_ascii=False)
         from hermes_constants import get_hermes_home, set_hermes_home_override, reset_hermes_home_override
         from .tool_lifecycle import ToolLifecycle, _files
+        if registry_factory is not None and action in {'build', 'test', 'promote', 'monitor', 'status', 'revert'} and (
+                action not in {'test', 'promote'} or len(value) == 64):
+            client = registry_factory(kwargs)
+            lifecycle = ToolLifecycle(None, registry=client)
+            if action == 'build':
+                if current_scope() != 'build':
+                    raise ValueError('Capabilities are built only inside an isolated background build task')
+                existing = lifecycle.status(args['name'])
+                candidate = builder_request('/capability-build', {'input': value, 'name': args['name'],
+                    'files': existing.get('files', {})}, service)
+                return json.dumps({**candidate, **lifecycle.stage(candidate['name'], candidate['files'])}, ensure_ascii=False)
+            return json.dumps(getattr(lifecycle, action)(value), ensure_ascii=False)
         if current_scope() != 'build':
             raise ValueError('Tools are built only inside a background build task: create one with cronjob_manage(action="create", build=true) carrying the owner\'s data-free request, then build, test and promote there')
         home = get_hermes_home()
@@ -151,9 +190,9 @@ def register(ctx, provider=None):
         return json.dumps(result, ensure_ascii=False)
 
     ctx.register_tool('skills_hub', 'skills_hub', {
-        'name': 'skills_hub', 'description': 'Discover native skills or build with the remote Hermes builder. Build and remote install return staged candidates and package budget evidence. needs_reason requires a builder-written budget_reason in SKILL.md. needs_approval preserves pending_id: return it to the main agent, who explains every overrun and the full reason to the user, then delegates approve in an owner conversation to ask once through the native approval card; then resume test/promote on that same pending_id. A denial ends this candidate. All four package budgets, including atomic operation count, use the same reason/approval policy; publication stays one native atomic batch. Report every overrun and reason to the user. test, promote, status and revert use native skill pending records and ledger. Scan refusals cannot be overridden. repair hands a data-free product bug or change request to the remote repair builder and returns a request_id; release_decide asks the owner once before a baseline change and records their decision; release_status reports that candidate through suites, real-data staging and production (it ships itself at an idle moment); release_rollback queues a user request to undo the latest product change or return to the previous version, regardless of wording; the admitted owner utterance is recorded automatically, value is only a summary, and it returns rollback-<id> for release_status.',
+        'name': 'skills_hub', 'description': 'Discover reusable skills; build a standard capability package with the isolated builder, then test and promote the checked candidate. Package registration validates manifests, secrets, receipts, effects and offline egress before direct publication. status and monitor read platform package evidence; revert restores the most recent package version without restarting Hermes. Legacy skill candidates retain their existing budget approval path. repair, release_decide, release_status and release_rollback use the separate protected product release flow.',
         'parameters': {'type': 'object', 'properties': {
-            'action': {'type': 'string', 'enum': ['search', 'inspect', 'install', 'build', 'approve', 'test', 'promote', 'monitor', 'status', 'revert', 'repair', 'release_status', 'release_decide', 'release_rollback']},
+            'action': {'type': 'string', 'enum': ['find', 'search', 'inspect', 'install', 'build', 'approve', 'test', 'promote', 'monitor', 'status', 'revert', 'repair', 'release_status', 'release_decide', 'release_rollback']},
             'name': {'type': 'string', 'description': 'Bare reusable skill name for build.'},
             'value': {'type': 'string', 'description': 'Search query, skill identifier, data-free build or repair request, pending_id for approve/test/promote, skill name for status/revert, request_id for release_status, or a summary for release_rollback (owner words come from the admitted run).'}},
             'required': ['action', 'value'], 'additionalProperties': False}}, hub)

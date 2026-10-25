@@ -1,6 +1,8 @@
 """Compile primitives; test CLI and injected permission snapshots without GUI access."""
 import json
+import importlib.util
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 
@@ -129,7 +131,7 @@ def permission_probe(tmp_path_factory, swift_module_cache):
     '屏幕与系统音频录制：“依米”',
 ])
 def test_permission_overlay_refuses_even_with_wechat_focus(permission_probe, request_text):
-    # The visible system overlay is independent of AXFocusedApplication.
+    # The visible system overlay is independent of the frontmost application.
     snapshot = [permission_window(permission_node(request_text))]
     result = invoke(permission_probe, [json.dumps(snapshot)], 1)
     assert request_text in result["error"]
@@ -171,3 +173,41 @@ def test_permission_snapshot_read_failure_propagates(permission_probe):
     result = invoke(permission_probe, ["read-error"], 1)
     assert "synthetic AX read failed" in result["error"]
     assert "posted" not in result
+
+
+def test_versioned_install_reuses_binaries_and_rebuilds_changed_sources(tmp_path, monkeypatch):
+    spec = importlib.util.spec_from_file_location("wechat_install", SCRIPTS / "install.py")
+    installer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(installer)
+    root = tmp_path / "skill"
+    shutil.copytree(SCRIPTS.parent, root)
+    key = installer.source_key(root)
+    assert key == (root / "references/cache-key.txt").read_text().strip()
+    compilations = []
+
+    def compile_binary(command, check):
+        compilations.append(command)
+        binary = Path(command[-1])
+        binary.write_text("compiled fixture")
+        binary.chmod(0o700)
+        (binary.parent / "modules").mkdir(exist_ok=True)
+
+    monkeypatch.setattr(installer.subprocess, "run", compile_binary)
+    cache = tmp_path / "cache"
+    first = installer.install(root, cache, key)
+    assert first["compiled"] and len(compilations) == len(installer.ENTRIES)
+    binary = Path(first["path"]) / "activate"
+    before = binary.stat().st_mtime_ns
+    assert not installer.install(root, cache, key)["compiled"]
+    assert binary.stat().st_mtime_ns == before and len(compilations) == len(installer.ENTRIES)
+    # A new skill version has a different address; the previous working version stays usable.
+    source = root / "scripts/activate.swift"
+    source.write_text(source.read_text() + "\n// changed version\n")
+    new_key = installer.source_key(root)
+    second = installer.install(root, cache, new_key)
+    assert second["compiled"] and second["path"] != first["path"]
+    assert len(compilations) == 2 * len(installer.ENTRIES)
+    assert binary.stat().st_mtime_ns == before
+    with pytest.raises(ValueError, match="Source key differs"):
+        installer.install(root, cache, "0" * 64)
+    assert not (cache / ("0" * 64)).exists()

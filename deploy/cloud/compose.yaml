@@ -13,9 +13,11 @@ x-env: &env
   PAIOS_LIVEKIT_SIGNAL_PORT: ${PAIOS_LIVEKIT_SIGNAL_PORT:-7880}
   PAIOS_DASHSCOPE_ENDPOINT: ${PAIOS_DASHSCOPE_ENDPOINT:-}
   PAIOS_CONFIG_ROOT: /etc/paios
+  PAIOS_PRODUCT_CONFIG: /etc/paios/cloud.json
   PAIOS_DATA_ROOT: /var/lib/paios
   PAIOS_SECRET_ROOT: /run/secrets
   PAIOS_MODEL_ROOT: /opt/models
+  PAIOS_MODEL_SETTINGS_ENVIRONMENT: production
   PAIOS_OWNER_MAC_ROOT: /run/owner-mac
   PAIOS_OWNER_MAC_RELAY_FILE: /run/secrets/owner-mac-relay.json
   PAIOS_PUBLIC_API_URL: ${PAIOS_PUBLIC_API_URL:-https://${PAIOS_PUBLIC_HOST:?}:${PAIOS_TLS_PORT:-9443}}
@@ -33,6 +35,7 @@ x-env: &env
   # (33k-130k page faults/s and ~30 % system CPU can starve call audio).
   MALLOC_ARENA_MAX: "2"
 x-hermes-env: &hermes-env
+  PAIOS_APP_ROOT: /opt/paios
   PAIOS_INTEGRATION_PORT: ${PAIOS_INTEGRATION_PORT:-18661}
   PAIOS_HERMES_PORT: ${PAIOS_HERMES_PORT:-18662}
   PAIOS_PHONE_PROVIDER: ${PAIOS_PHONE_PROVIDER:-agentbay}
@@ -41,6 +44,10 @@ x-hermes-env: &hermes-env
   HERMES_GID: "10000"
   HERMES_DASHBOARD: "0"
   PAIOS_WORKSHOP_HOST: workshop-link
+  PAIOS_MODEL_SETTINGS_PROJECTION: /etc/paios/model-settings/current.json
+  PAIOS_MODEL_SETTINGS_BUILD_PROJECTION: /etc/paios/model-settings/build-current.json
+  PAIOS_MODEL_SETTINGS_SERVICE_URL: http://127.0.0.1:${PAIOS_INTEGRATION_PORT:-18661}
+  PAIOS_MODEL_SETTINGS_TOKEN_FILE: /run/secrets/model-settings-service.key
   HERMES_WRITE_SAFE_ROOT: /workshop
   PAIOS_PRODUCT_CONFIG: /etc/paios/cloud.json
   PAIOS_SECRET_ROOT: /run/secrets
@@ -59,8 +66,8 @@ services:
     cap_drop: [ALL]
     cap_add: [DAC_READ_SEARCH]
     security_opt: [no-new-privileges:true]
-    mem_limit: 32m
-    memswap_limit: 32m
+    mem_limit: 64m
+    memswap_limit: 64m
     cpus: 0.25
     pids_limit: 32
     tmpfs: [/tmp:size=1m]
@@ -163,6 +170,11 @@ services:
         read_only: true
         bind: {create_host_path: false}
       - owner-data:/var/lib/paios
+      - core-profile:/var/lib/paios/core-profile/memories
+      - model-settings-authority:/var/lib/paios/central-storage/model-settings
+      - model-settings-projections:/var/lib/paios/model-projections
+      - ${PAIOS_SECRETS_DIR:?}/model-settings-master.key:/run/secrets/model-settings-master.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/model-settings-service.key:/run/secrets/model-settings-service.key:ro
       - desktop-in:/var/lib/paios/desktop-in
       - desktop-out:/var/lib/paios/desktop-out:ro
       - errands:/var/lib/paios/state/errands
@@ -184,7 +196,6 @@ services:
       - ${PAIOS_SECRETS_DIR:?}/bark-key:/run/secrets/bark-key:ro
       - ${PAIOS_SECRETS_DIR:?}/amap.key:/run/secrets/amap.key:ro
     depends_on:
-      hermes: {condition: service_healthy}
       postgres: {condition: service_healthy}
   hermes:
     cgroup: private # self observations see only this service
@@ -207,6 +218,8 @@ services:
     volumes:
       - ${PAIOS_SECRETS_DIR:?}/owner-mac:/run/owner-mac:ro
       - hermes-home:/opt/data
+      - core-profile:/opt/data/memories:ro
+      - model-settings-projections:/etc/paios/model-settings:ro
       - ${PAIOS_RELEASE_SPOOL_DIR:-/srv/paios/release-spool}:/srv/release-spool
       - workshop-access:/run/workshop-access
       - errands:/var/lib/paios/state/errands
@@ -217,10 +230,13 @@ services:
       - ${PAIOS_SECRETS_DIR:?}/payment-executor.key:/run/secrets/payment-executor.key:ro
       - ${PAIOS_SECRETS_DIR:?}/deepseek.key:/run/secrets/deepseek.key:ro
       - ${PAIOS_SECRETS_DIR:?}/siliconflow.key:/run/secrets/siliconflow.key:ro
+      - ${PAIOS_SECRETS_DIR:?}/model-settings-service.key:/run/secrets/model-settings-service.key:ro
       - ${PAIOS_SECRETS_DIR:?}/tavily.key:/run/secrets/tavily.key:ro
       - ${PAIOS_SECRETS_DIR:?}/agentbay.key:/run/secrets/agentbay.key:ro
       - ${PAIOS_SECRETS_DIR:?}/agentbay.adbkey:/run/secrets/agentbay.adbkey:ro
       - ${PAIOS_SECRETS_DIR:?}/agentbay.adbkey.pub:/run/secrets/agentbay.adbkey.pub:ro
+    depends_on:
+      gateway: {condition: service_started}
     healthcheck:
       test: [CMD, /opt/hermes/.venv/bin/python, -c, "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:'+os.environ['PAIOS_HERMES_PORT']+'/health', timeout=3).read()"]
       interval: 10s
@@ -357,6 +373,7 @@ services:
     environment:
       <<: *env
       PAIOS_STAGE: staging
+      PAIOS_MODEL_SETTINGS_ENVIRONMENT: ${PAIOS_STAGING_MODEL_SETTINGS_ENVIRONMENT:?}
       PAIOS_PUBLIC_API_URL: ${PAIOS_STAGING_PUBLIC_API_URL:?render production.public.env first}
       PAIOS_LEGACY_PUBLIC_API_URLS: ""
       PAIOS_LIVEKIT_URL: ${PAIOS_STAGING_LIVEKIT_URL:?render production.public.env first}
@@ -371,6 +388,11 @@ services:
       - ${PAIOS_STAGING_SECRETS_DIR:?}/owner-mac-relay.json:/run/secrets/owner-mac-relay.json:ro
       - ${PAIOS_STAGING_SECRETS_DIR:?}/owner-mac:/run/owner-mac
       - owner-data-staging:/var/lib/paios
+      - core-profile-staging:/var/lib/paios/core-profile/memories
+      - model-settings-authority-staging:/var/lib/paios/central-storage/model-settings
+      - model-settings-projections-staging:/var/lib/paios/model-projections
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/model-settings-master.key:/run/secrets/model-settings-master.key:ro
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/model-settings-service.key:/run/secrets/model-settings-service.key:ro
       - errands-staging:/var/lib/paios/state/errands
       - desktop-in-staging:/var/lib/paios/desktop-in
       - desktop-out-staging:/var/lib/paios/desktop-out:ro
@@ -389,7 +411,6 @@ services:
       - ${PAIOS_STAGING_SECRETS_DIR:?}/voiceprint.key:/run/secrets/voiceprint.key:ro
       - ${PAIOS_STAGING_SECRETS_DIR:?}/amap.key:/run/secrets/amap.key:ro
     depends_on:
-      hermes-staging: {condition: service_healthy}
       postgres-staging: {condition: service_healthy}
   hermes-staging:
     cgroup: private # self observations see only this service
@@ -401,6 +422,7 @@ services:
     environment:
       <<: *hermes-env
       PAIOS_STAGE: staging
+      PAIOS_MODEL_SETTINGS_ENVIRONMENT: ${PAIOS_STAGING_MODEL_SETTINGS_ENVIRONMENT:?}
       PAIOS_WORKSHOP_HOST: workshop-link-staging
     mem_limit: 1024m
     memswap_limit: 1280m # RAM + 256 MiB swap; background agent state
@@ -408,6 +430,8 @@ services:
     volumes:
       - ${PAIOS_STAGING_SECRETS_DIR:?}/owner-mac:/run/owner-mac:ro
       - hermes-home-staging:/opt/data
+      - core-profile-staging:/opt/data/memories:ro
+      - model-settings-projections-staging:/etc/paios/model-settings:ro
       - workshop-access-staging:/run/workshop-access
       - errands-staging:/var/lib/paios/state/errands
       - ./.build/staging.json:/etc/paios/cloud.json:ro
@@ -417,7 +441,10 @@ services:
       - ${PAIOS_STAGING_SECRETS_DIR:?}/payment-executor.key:/run/secrets/payment-executor.key:ro
       - ${PAIOS_STAGING_SECRETS_DIR:?}/deepseek.key:/run/secrets/deepseek.key:ro
       - ${PAIOS_STAGING_SECRETS_DIR:?}/siliconflow.key:/run/secrets/siliconflow.key:ro
+      - ${PAIOS_STAGING_SECRETS_DIR:?}/model-settings-service.key:/run/secrets/model-settings-service.key:ro
       - ${PAIOS_STAGING_SECRETS_DIR:?}/tavily.key:/run/secrets/tavily.key:ro
+    depends_on:
+      gateway-staging: {condition: service_started}
     healthcheck:
       test: [CMD, /opt/hermes/.venv/bin/python, -c, "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:'+os.environ['PAIOS_HERMES_PORT']+'/health', timeout=3).read()"]
       interval: 10s
@@ -504,6 +531,10 @@ networks:
   workshop:
   workshop-staging:
 volumes:
+  model-settings-authority:
+  model-settings-authority-staging:
+  model-settings-projections:
+  model-settings-projections-staging:
   desktop-in:
   desktop-in-staging:
   desktop-out:
@@ -522,6 +553,8 @@ volumes:
     driver_opts: {type: none, o: bind, device: "/var/lib/paios/${PAIOS_PROJECT:-paios}/workshop-staging/data"}
   workshop-ssh-staging:
   workshop-access-staging:
+  core-profile:
+  core-profile-staging:
   owner-data:
   errands:
   hermes-home:

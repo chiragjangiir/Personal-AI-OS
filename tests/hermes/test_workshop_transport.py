@@ -39,6 +39,7 @@ def bridge(tmp_path, monkeypatch):
     tls.load_cert_chain(cert, key)
     builder, client = module('workshop_builder'), module('workshop')
     monkeypatch.setattr(builder, 'build_tool', lambda body: {'built': body})
+    monkeypatch.setattr(builder, 'build_capability', lambda body: {'capability': body})
     monkeypatch.setattr(builder, 'test_tool', lambda body: {'tested': body})
     monkeypatch.setattr(builder, 'hub_request', lambda body: {'hub': body})
     server = builder.builder_server(('127.0.0.1', 0), 'fixture-bearer', tls, read_timeout=.3)
@@ -59,6 +60,7 @@ def bridge(tmp_path, monkeypatch):
 def test_pinned_certificate_and_https_required(bridge):
     _, client, config, other, _ = bridge
     assert client.builder_request('/build', {'fixture': 1}, config) == {'built': {'fixture': 1}}
+    assert client.builder_request('/capability-build', {'fixture': 1}, config) == {'capability': {'fixture': 1}}
     assert client.builder_request('/hub', {'action': 'search', 'value': 'fixture'}, config) == {
         'hub': {'action': 'search', 'value': 'fixture'}}
     with pytest.raises(URLError, match='CERTIFICATE_VERIFY_FAILED'):
@@ -82,7 +84,7 @@ def test_build_and_test_refuse_busy_without_queuing(bridge, monkeypatch):
     thread.start()
     try:
         assert entered.wait(2)
-        for path in ('/build', '/test', '/hub'):
+        for path in ('/build', '/capability-build', '/test', '/hub'):
             with pytest.raises(RuntimeError, match='the builder is busy'):
                 client.builder_request(path, {}, config)
     finally:
@@ -97,9 +99,8 @@ def test_build_and_test_refuse_busy_without_queuing(bridge, monkeypatch):
 def test_incomplete_headers_and_body_expire_without_blocking_accept(bridge, partial):
     _, client, config, _, server = bridge
     context = ssl.create_default_context(cafile=config['builder_ca_file'])
-    with context.wrap_socket(socket.socket(), server_hostname='127.0.0.1') as connection:
-        connection.settimeout(2)
-        connection.connect(('127.0.0.1', server.server_port))
+    raw = socket.create_connection(('127.0.0.1', server.server_port), timeout=2)
+    with context.wrap_socket(raw, server_hostname='127.0.0.1') as connection:
         connection.sendall(partial)
         response = connection.recv(4096)
         assert not response or b'408' in response

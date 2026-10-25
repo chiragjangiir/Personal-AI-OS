@@ -1,4 +1,4 @@
-Personal-AI-OS 0.0.1
+Personal-AI-OS 0.0.2
 Copyright 2026 Personal AI OS contributors
 
 Third-party notices
@@ -9,7 +9,7 @@ Apache License does not replace those licenses.
 
 Hermes Agent: portions of integrations/hermes/personal_aios/native-context.patch
 are based on NousResearch/hermes-agent, revision
-f97608f178d1ffeca59860195ab7da295f7c8e5f. Copyright (c) 2025 Nous Research.
+bf0203a794a07aac3ff764972ab9087baa4e4f4e. Copyright (c) 2025 Nous Research.
 Licensed under the MIT License. See THIRD_PARTY_LICENSES/Hermes-MIT.txt.
 
 Mobilerun: configuration and integration examples derive where indicated from
@@ -47,9 +47,10 @@ Licensed under the ISC License. See deploy/cloud/licenses/s6-overlay.COPYING.
 The Hermes image includes s6-overlay and a copy of this license.
 
 Mi Home MCP service
-integrations/hermes/personal_aios/mijia.py incorporates adapted portions of
+capability/packages/mijia/server/mijia.py incorporates adapted portions of
 mijiaAPI 5.0.0 and is licensed under GPL-3.0-or-later. It runs as a separate
 Python MCP service. The source of this service is included in this distribution.
+Its receipt adapter in capability/packages/mijia/server/ is part of the same GPL component.
 See THIRD_PARTY_LICENSES/Mijia-GPL-3.0.txt. The project Apache license does not
 replace this component's GPL terms. The mijiaAPI wheel cache is not included.
 The Hermes image build installs mijiaAPI 5.0.0 for this optional, separate-process

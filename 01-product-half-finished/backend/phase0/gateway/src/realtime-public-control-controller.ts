@@ -121,6 +121,7 @@ export interface RealtimePublicControlControllerOptions {
   readonly appearanceImages?:ReturnType<typeof createAppearanceImages>;
   readonly glassesEnrollment?: ReturnType<typeof createGlassesEnrollment>;
   readonly capabilityUpgrade?: Pick<ReturnType<typeof import('./paired-device-capabilities.ts').createPairedDeviceCapabilities>,'declare'>;
+  readonly wechatPreviews?: (bearer:RealtimeBearerContext,value:JsonRecord)=>Promise<unknown>;
   readonly ownerMac?: ReturnType<typeof import('./owner-mac-ssh.ts').createOwnerMacSsh>;
   readonly viduRetrieval?:ViduRetrieval;
   readonly place?: {upload(token:string,batch:JsonRecord):Promise<unknown>;credential(token:string,input:{device_id:string;action:'issue'|'rotate'|'revoke'}):Promise<unknown>};
@@ -282,7 +283,7 @@ export function parseRealtimePublicControlFeatureFlag(environment: NodeJS.Proces
 }
 
 export function isRealtimePublicControlRoute(method: string | undefined, rawTarget: string): boolean {
-  return isAppearanceImageRoute(method,rawTarget)||isWatchHttpRoute(method,rawTarget)||routeFor(rawTarget, method) !== undefined || method === 'POST' && (MAC_SSH.test(rawTarget)||VIDU_RETRIEVAL.test(rawTarget)||rawTarget === '/v1/terminals/capabilities'||rawTarget === '/v1/place/credential' || ENROLLMENT.test(rawTarget)||MAC_PAIRING.test(rawTarget));
+  return isAppearanceImageRoute(method,rawTarget)||isWatchHttpRoute(method,rawTarget)||routeFor(rawTarget, method) !== undefined || method === 'POST' && (rawTarget === '/v1/mac/wechat/previews'||MAC_SSH.test(rawTarget)||VIDU_RETRIEVAL.test(rawTarget)||rawTarget === '/v1/terminals/capabilities'||rawTarget === '/v1/place/credential' || ENROLLMENT.test(rawTarget)||MAC_PAIRING.test(rawTarget));
 }
 
 export class RealtimePublicControlController {
@@ -300,6 +301,7 @@ export class RealtimePublicControlController {
   readonly #appearanceImages:RealtimePublicControlControllerOptions['appearanceImages'];
   readonly #place:RealtimePublicControlControllerOptions['place'];
   readonly #watch:WatchHttpOwner|undefined;
+  readonly #wechatPreviews:RealtimePublicControlControllerOptions['wechatPreviews'];
   readonly #ownerMac:RealtimePublicControlControllerOptions['ownerMac'];
   #closed = false;
 
@@ -332,6 +334,7 @@ export class RealtimePublicControlController {
     this.#place=options.place;
     this.#watch=options.watch;
     this.#ownerMac=options.ownerMac;
+    this.#wechatPreviews=options.wechatPreviews;
     if (!Number.isSafeInteger(this.#maxBodyBytes) || this.#maxBodyBytes < 1024 || this.#maxBodyBytes > 4 * 1024 * 1024) {
       throw new Error('PUBLIC_CONTROL_BODY_LIMIT_INVALID');
     }
@@ -381,6 +384,12 @@ export class RealtimePublicControlController {
         if(!this.#capabilityUpgrade)fail('CAPABILITY_UPGRADE_UNAVAILABLE',503);
         if(Object.keys(value).join(',')!=='capabilities')fail('INVALID_TERMINAL_CAPABILITIES',422);
         sendJson(response,200,await this.#capabilityUpgrade.declare(bearerValue(request),value.capabilities));return true;
+      }
+      if(request.url==='/v1/mac/wechat/previews'){
+        await this.#edge.authorize({method:request.method!,url:request.url,remoteAddress:request.socket.remoteAddress,rawHeaders:request.rawHeaders,controlHost:this.#controlHost});
+        if(!this.#wechatPreviews)fail('WECHAT_PREVIEWS_UNAVAILABLE',503);
+        const bearer=await this.#bearer.authorize({token:bearerValue(request),operation:'bootstrap',request:value});
+        sendJson(response,202,await this.#wechatPreviews(bearer,value));return true;
       }
       if(macSsh){
         await this.#edge.authorize({method:request.method!,url:request.url!,remoteAddress:request.socket.remoteAddress,rawHeaders:request.rawHeaders,controlHost:this.#controlHost});

@@ -1,0 +1,9 @@
+{
+  "name": "@yimi/capability-contracts",
+  "version": "0.0.2",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "1.25.3"
+  }
+}

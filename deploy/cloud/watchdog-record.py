@@ -26,6 +26,7 @@ def main():
                  "state-dir", "timing", "principal-id", "device-id"):
         parser.add_argument("--" + name, required=True)
     parser.add_argument("--unit", action="append", required=True, help="SERVICE:PAIOS_IMAGE_VARIABLE")
+    parser.add_argument("--compose-profile", action="append")
     parser.add_argument("--lock-fd", type=int, required=True)
     parser.add_argument("--mode", choices=("prepare", "arm"), required=True)
     args = parser.parse_args()
@@ -90,6 +91,8 @@ def main():
               "previous_compose": str(previous_compose), "previous_compose_sha256": hashlib.sha256(previous_text.encode()).hexdigest(),
               "owner": {"principal_id": args.principal_id, "device_id": args.device_id},
               "timing": json.loads(Path(args.timing).read_text())}
+    if args.compose_profile:
+        record['profiles'] = args.compose_profile
     validate(record)
     # Compose config already escapes literal dollars for reloading; preserve its exact output.
     atomic_write(previous_compose, previous_text)

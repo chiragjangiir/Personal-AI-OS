@@ -23,6 +23,8 @@ from types import SimpleNamespace
 root, home = Path(sys.argv[1]), Path(sys.argv[2])
 fixture_bytes = int(sys.argv[3])
 sys.path.insert(0,str(root/'integrations/hermes/personal_aios'))
+import model_task_admission
+model_task_admission.preflight=lambda role: None  # This loop's external budget-service fixture admits the build.
 def module(name, path):
  spec=importlib.util.spec_from_file_location(name,path)
  value=importlib.util.module_from_spec(spec);spec.loader.exec_module(value);return value
@@ -34,7 +36,12 @@ class Model(BaseHTTPRequestHandler):
  def log_message(self,*args): pass
  def do_POST(self):
   body=json.loads(self.rfile.read(int(self.headers['Content-Length'])))
-  assert body['model']=='fixture-model',body['model']
+  print('fixture HTTP:',self.path,sorted(body),flush=True)
+  if self.path=='/api/show':
+   assert set(body)=={'name'},sorted(body)
+   self.send_response(404);self.send_header('Content-Length','0');self.end_headers();return
+  assert self.path=='/v1/chat/completions',self.path
+  assert body['model']=='fixture-model',body.get('model')
   state['instructions']='\n'.join(str(m.get('content','')) for m in body['messages'] if m.get('role')=='system')
   for msg in body['messages']:
    if msg.get('role')=='tool': print('fixture tool result:',msg.get('content'),flush=True)
@@ -71,10 +78,22 @@ class Model(BaseHTTPRequestHandler):
   self.send_response(200);self.send_header('Content-Type','text/event-stream' if body.get('stream') else 'application/json');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
 server=ThreadingHTTPServer(('127.0.0.1',0),Model)
 thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
-os.environ.update(HERMES_HOME=str(home),PAIOS_BUILDER_API_KEY='synthetic-not-a-secret',PAIOS_BUILDER_BASE_URL=f'http://127.0.0.1:{server.server_port}/v1',PAIOS_BUILDER_MODEL='fixture-model',HOME=str(home))
+os.environ['HERMES_HOME']=str(home)
+projection={'environment_id':'fixture','profile':'builder','revision':1,'group':'build','configured':True,
+ 'config':{'model':{'default':'fixture-model','provider':'fixture-builder','base_url':f'http://127.0.0.1:{server.server_port}/v1',
+  'context_length':262144,'request_overrides':{'max_tokens':8192,'temperature':0,'extra_body':{'thinking':{'type':'disabled'}}}},
+ 'providers':{'fixture-builder':{'api':f'http://127.0.0.1:{server.server_port}/v1','key_env':'TEST_BUILDER_KEY',
+ 'transport':'chat_completions','session_affinity_header':'x-opencode-session'}},'fallback_providers':[],
+ 'auxiliary':{'title_generation':{'enabled':False},'vision':{'enabled':False},'compression':{'enabled':False}}},
+ 'credentials':[{'name':'TEST_BUILDER_KEY','handle':'test-build-handle'}]}
+home.mkdir(parents=True,exist_ok=True)
+projection_path=home/'authority.json';projection_path.write_text(json.dumps(projection))
+os.environ['PAIOS_MODEL_SETTINGS_PROJECTION']=str(projection_path)
 config=init.prepare_builder_home(home, home/'access')
+from hermes_cli.env_loader import install_profile_secret_source_values
+for profile in (home,home/'workshop'):install_profile_secret_source_values(profile,{'TEST_BUILDER_KEY':'synthetic-not-a-secret'})
 import yaml
-config['workshop']={'repair_model':'repair-only-fixture'}
+config['workshop']={'repair':{**projection['config']['model'],'model':'repair-only-fixture','fallback_providers':[]}}
 config['compression']={'enabled':False}
 for profile in (home,home/'workshop'):
  (profile/'config.yaml').write_text(yaml.safe_dump(config))
@@ -206,8 +225,14 @@ def test_product_repair_queues_the_committed_patch_on_the_accepted_base(tmp_path
     if shallow:
         (source / 'shallow').write_text(base + '\n')
     (spool / 'base.json').write_text(json.dumps({'commit': base}))
+    import release_preflight
+    monkeypatch.setattr(release_preflight, 'prepare', lambda selected, request_id: {
+        'request_id': request_id, 'base': base, 'parity': {'equal': True}})
     monkeypatch.setenv('PAIOS_RELEASE_REQUESTS', str(spool))
-    monkeypatch.setenv('PAIOS_BUILDER_API_KEY', 'fixture')
+    import hermes_cli.runtime_provider as native_runtime
+    monkeypatch.setattr(native_runtime, 'resolve_runtime_with_fallback', lambda *args, **kwargs: ({
+        'provider': 'p', 'base_url': 'u', 'api_key': 'fixture', 'api_mode': 'chat_completions',
+        'request_overrides': {'extra_headers': {'x-opencode-session': 'native-fixture'}}}, None))
     seen = {}
     class Agent:
         def __init__(self, **options):
@@ -246,8 +271,8 @@ def test_product_repair_queues_the_committed_patch_on_the_accepted_base(tmp_path
             return {'returncode': 1 if seen.get('export_fails') else 0, 'output': patch_text}
     monkeypatch.setattr(run_agent, 'AIAgent', Agent)
     config = {'model': {'default': 'm', 'provider': 'p', 'base_url': 'u'}, 'agent': {}}
-    if workshop is not None:
-        config['workshop'] = workshop
+    config['workshop'] = {'repair': {'provider':'p','model':expected_model,'base_url':'u',
+        'api_mode':'chat_completions','fallback_providers':[],'request_overrides':{}}}
     monkeypatch.setattr(hermes_config, 'load_config', lambda: config)
     monkeypatch.setattr(terminal, 'ensure_task_env', lambda task: Environment())
     monkeypatch.setattr(terminal, '_evict_environment_for_task', lambda task: None)

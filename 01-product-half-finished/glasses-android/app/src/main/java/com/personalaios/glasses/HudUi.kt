@@ -65,17 +65,17 @@ fun cameraLabel(state: HudState): String = when {
 }
 
 /** Gateway move_hud / move_say / ride_summary received at [now]; a summary ends the riding layout. */
-fun HudState.move(message: JSONObject, now: Long): HudState = when (message.getString("operation")) {
+fun HudState.move(message: JSONObject, now: Long, serverNow: Long = now): HudState = when (message.getString("operation")) {
     "nav_route" -> NavigationRoute.fromWire(message).let { route -> copy(navigationRoute = route,
         nav = nav ?: JSONObject(),
         routeOverviewUntil = if (route.overview?.show == true) {
             if (now - rideAt in 0..5000 && ride?.optDouble("speed_kmh", 0.0)?.let { it > 1.0 } == true ||
-                navigationMoving && navigationFix?.let { now - it.sampleTime in 0..5000 } == true) 0 else now + 2000
+                navigationMoving && navigationFix?.let { serverNow - it.sampleTime in 0..5000 } == true) 0 else now + 2000
         } else routeOverviewUntil) }
     "move_hud" -> message.getString("kind").let { kind ->
         val fix = if (kind == "ride" || !message.has("nav") || !message.has("position")) null else NavigationFix.fromWire(message)
         val moved = message.optJSONObject("ride")?.optDouble("speed_kmh", 0.0)?.let { it > 1.0 } == true ||
-            fix?.let { next -> navigationFix?.let { previous -> next.sampleTime > previous.sampleTime && now - next.sampleTime in 0..10000 &&
+            fix?.let { next -> navigationFix?.let { previous -> next.sampleTime > previous.sampleTime && serverNow - next.sampleTime in 0..10000 &&
                 NavMetric.distance(previous.position, next.position) / ((next.sampleTime-previous.sampleTime)/1000.0) > 0.5 } } == true
         copy(ride = if (kind == "walk_nav") null else message.optJSONObject("ride") ?: ride ?: JSONObject(),
         nav = if (kind == "ride") null else message.optJSONObject("nav"), moveAt = now, rideAt = if (message.has("ride")) now else rideAt,
@@ -91,11 +91,11 @@ fun captionAlpha(age: Long) = ((5000 - age) / 1000f).coerceIn(0f, 1f)
 
 /** The HUD at [now]: live cards; old ride metrics become pending after 60 s; old navigation waits for a fresh fix; 依米's line for 4 s.
  *  During movement, only cards that interrupt show; message and notice cards wait. */
-fun visibleHud(state: HudState, now: Long): HudState {
+fun visibleHud(state: HudState, now: Long, serverNow: Long = now): HudState {
     val masked = state.paymentLock.locked || now < state.paymentLock.bannerUntil
     val ride = state.ride?.let { if (now - state.rideAt < 60000) it else JSONObject() }
     val navigationStale = state.navigationFix == null || now - state.moveAt >= 10000 ||
-        state.navigationFix?.let { now - it.sampleTime >= 10000 } == true
+        state.navigationFix?.let { serverNow - it.sampleTime >= 10000 } == true
     val nav = state.nav?.let { if (navigationStale) JSONObject() else it }
     val moving = ride != null || nav != null
     val captions = if (masked) emptyList() else captionWindow(state.captions, now)

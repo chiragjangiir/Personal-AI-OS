@@ -3,7 +3,7 @@ import AVFoundation
 import Foundation
 
 @MainActor
-final class WatchUtteranceRecorder: NSObject, AVAudioRecorderDelegate {
+final class WatchUtteranceRecorder: NSObject, AVAudioRecorderDelegate, WatchUtteranceRecording {
     enum RecorderError: Error { case permissionDenied, couldNotStart, encodingFailed }
     var onFinish: ((Result<(Data, Int), Error>) -> Void)?
     private var recorder: AVAudioRecorder?
@@ -29,7 +29,9 @@ final class WatchUtteranceRecorder: NSObject, AVAudioRecorderDelegate {
             recorder.isMeteringEnabled = true
             self.recorder = recorder
             segmenter = WatchRecorderSegmenter()
-            guard recorder.record(forDuration: 30) else { throw RecorderError.couldNotStart }
+            // Priming and final AAC frames must fit inside the 30-second encoded upload limit.
+            let encoderAllowance = 3 * 1024.0 / 16000
+            guard recorder.record(forDuration: segmenter.maximumDuration - encoderAllowance) else { throw RecorderError.couldNotStart }
             timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
                 Task { @MainActor in self?.meter() }
             }
@@ -40,15 +42,16 @@ final class WatchUtteranceRecorder: NSObject, AVAudioRecorderDelegate {
         recorder.updateMeters()
         if segmenter.sample(elapsed: recorder.currentTime, level: recorder.averagePower(forChannel: 0)) != nil { finish() }
     }
-    func finish(wristDown: Bool = false, maximumReached: Bool = false) {
+    func finish(wristDown: Bool = false) {
         guard let recorder else { return }
         _ = segmenter.finish(wristDown: wristDown)
-        let milliseconds = maximumReached ? 30_000 : min(30_000, max(1, Int((recorder.currentTime * 1000).rounded())))
         self.recorder = nil
         timer?.invalidate(); timer = nil
         recorder.stop()
         do {
             guard let file else { throw RecorderError.encodingFailed }
+            let audio = try AVAudioFile(forReading: file)
+            let milliseconds = Int((Double(audio.length) * 1000 / audio.processingFormat.sampleRate).rounded())
             let bytes = try Data(contentsOf: file)
             cleanup()
             onFinish?(.success((bytes, milliseconds)))
@@ -69,7 +72,7 @@ final class WatchUtteranceRecorder: NSObject, AVAudioRecorderDelegate {
     nonisolated func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
         Task { @MainActor in
             guard self.recorder === recorder else { return }
-            if flag { self.finish(maximumReached: true) }
+            if flag { self.finish() }
             else { self.cancel(); self.onFinish?(.failure(RecorderError.encodingFailed)) }
         }
     }

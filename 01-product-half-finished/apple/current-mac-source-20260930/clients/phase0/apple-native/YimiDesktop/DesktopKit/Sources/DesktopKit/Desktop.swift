@@ -196,7 +196,7 @@ public actor Desktop: DesktopControl {
     func recordAudit(_ record: AuditRecord) throws {
         var persisted = record
         // Retire recovery intent atomically with success; failed appends leave the caller's intent intact.
-        if persisted.result == "ok" { persisted.undo?.replacement = nil; persisted.undo?.movement = nil }
+        if persisted.result == "ok" { persisted.undo?.replacement = nil; persisted.undo?.creation = nil; persisted.undo?.movement = nil }
         try history.append(persisted); events.emit(.audit(persisted.entry))
     }
     func opened(_ path: String, tool: String, write: Bool) throws -> FileCapability {

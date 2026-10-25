@@ -1,0 +1,85 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "ts-schedule",
+  "version": "1.0.0",
+  "description": "修改已有任务及管理等待 Mac 的任务队列",
+  "extensions": {
+    "ai.yimi.capability": {
+      "schema": "yimi.capability.v1",
+      "receipt_schema": 1,
+      "compat": {
+        "hermes": ">=0.22.5 <0.24",
+        "gateway_api": 1
+      },
+      "maintainer": "lead",
+      "runtime": {
+        "server": "platform_ts",
+        "lazy": true,
+        "idle_timeout_seconds": 900,
+        "host": "shared"
+      },
+      "secrets": [
+        {
+          "name": "HERMES_INTERNAL_KEY"
+        }
+      ],
+      "network": {
+        "egress": []
+      },
+      "scopes": [
+        "owner"
+      ],
+      "tools": {
+        "paios_task_amend": {
+          "effect_by_arg": {
+            "$.action": {
+              "list": "observe",
+              "amend": "owner_data",
+              "reconcile": "observe"
+            }
+          },
+          "retry": "forbidden",
+          "check_with": "paios_task_amend",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:task_amend",
+          "target": "$.run_id"
+        },
+        "paios_desktop_queue": {
+          "effect_by_arg": {
+            "$.action": {
+              "list": "observe",
+              "add": "owner_data",
+              "cancel": "owner_data"
+            }
+          },
+          "retry": "forbidden",
+          "check_with": "paios_desktop_queue",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:desktop_queue"
+        }
+      },
+      "staging": {
+        "fake": {
+          "command": "node",
+          "args": [
+            "fake/server.ts"
+          ]
+        }
+      },
+      "tests": {
+        "contract": "tests/contract.yaml"
+      },
+      "provenance": {
+        "source_commit": "decaff83c56b5e188b229a11e79b32106eeccf43",
+        "workshop_run": null,
+        "adapter_modules": [
+          "server/index.ts"
+        ]
+      }
+    }
+  }
+}

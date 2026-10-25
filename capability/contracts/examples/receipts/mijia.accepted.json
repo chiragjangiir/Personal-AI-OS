@@ -1,0 +1,31 @@
+{
+  "receipt": 1,
+  "status": {
+    "state": "accepted",
+    "started_at": "2026-10-24T13:03:10Z",
+    "ended_at": null
+  },
+  "effects": [
+    {
+      "kind": "physical",
+      "target": "mijia:fixture:living-room-ac",
+      "action": "power_on",
+      "verification": "not_verified",
+      "evidence": "Fixture: Mi Home returned code=1, accepted only.",
+      "ref": "mijia:command:fixture"
+    }
+  ],
+  "values": [],
+  "content": [],
+  "unknowns": [],
+  "next": {
+    "retry": "forbidden",
+    "waiting_on": "external",
+    "waiting_detail": "Waiting for Mi Home execution acknowledgement.",
+    "check_with": "read_device"
+  },
+  "job": {
+    "id": "mijia-fixture",
+    "revision": 0
+  }
+}

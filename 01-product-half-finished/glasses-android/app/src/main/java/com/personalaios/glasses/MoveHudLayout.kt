@@ -68,7 +68,8 @@ fun moveHudLayout(state: HudState, page: Int = 0, largeText: Boolean = false, me
         if (thinking != null) {
             if (!menuOpen) line("thinking_status", thinking, 82, subtitleY, 528, subtitleHeight, 16)
         } else state.say?.let { line("say", it, 82, subtitleY, 528, subtitleHeight, 18) }
-        val portrait = if (combined) HudTextRect(26, 86, 42, 42) else HudTextRect(26, 20, 42, 42)
+        val portrait = if (state.conversation?.mode == "thinking") null
+            else if (combined) HudTextRect(26, 86, 42, 42) else HudTextRect(26, 20, 42, 42)
         val heart = ride?.let { HudTextRect(470, 30, 24, 24) }
         if (nav.length() == 0) {
             line("navigation", "等待定位", 94, 304, 326, 64, 30)

@@ -1,3 +1,5 @@
+import { GATEWAY_CONFIG_ROOT } from './gateway-runtime-paths.ts';
+import { resolve } from 'node:path';
 import { createHash, timingSafeEqual } from "node:crypto";
 
 import {
@@ -22,7 +24,7 @@ import { snapshotOpaqueOwnerValue, type OpaqueCanonicalRef } from "../../../serv
 import type { T04AcceptedUserActivityOwnerEvent } from "./realtime-public-control-t04-owner.ts";
 
 export const T03_PRODUCTION_MEMORY_LIFECYCLE_AUTHORITY_PATH =
-  "D:\\AI\\personal ai os\\.runtime\\phase0-roaming\\windows\\config\\t03-production-memory-lifecycle-authority.v1.json" as const;
+  resolve(GATEWAY_CONFIG_ROOT, 't03-production-memory-lifecycle-authority.v1.json');
 export const T03_PRODUCTION_MEMORY_LIFECYCLE_AUTHORITY_SCHEMA =
   "paios.t03.production_memory_lifecycle_authority.v1" as const;
 export const T03_PRODUCTION_MEMORY_LIFECYCLE_ACTIONS = Object.freeze([

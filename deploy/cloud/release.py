@@ -35,10 +35,15 @@ from release_status import project_result
 import release_build
 import release_checks
 import release_notice
+import release_identity
+import release_parity
 import release_source
 import release_transfer
+import release_migrations
+import release_compose
+from release_compose import stop_writers
 from release_watchdog import compose_files, release_files
-from watchdog_platform import atomic_json, point
+from watchdog_platform import atomic_json, install_front, point, restore_front, retire_newer_transport
 
 BUSY = 75
 
@@ -60,12 +65,7 @@ class Host:
         return path.resolve(strict=True)
 
     def compose(self, release):
-        files = release_files(release)
-        command = ['docker', 'compose', '-p', self.config['project'], '--env-file', files['env_file'],
-                   '--env-file', files['public_env_file']] + compose_files(files['compose'], files['env_file'])
-        for profile in self.config['profiles']:
-            command += ['--profile', profile]
-        return command
+        return release_compose.command(release, self.config['project'], self.config['profiles'])
 
     def runner(self, release):
         prefix = self.compose(release)
@@ -163,31 +163,31 @@ def render(host, release):
 
 # ---------------------------------------------------------------- service lifecycle (shared by switch/rollback)
 
-def stop_writers(host, run):
-    if 'edge-forward' in host.config['profiles']:
-        run(['stop', 'frpc'], capture_output=True)
-    s = host.suffix
-    run(['stop', '-t', '120', 'gateway' + s, 'hermes' + s, 'workshop' + s, 'workshop-link' + s], capture_output=True)
-
-
 def start(host, release, run, receipt):
     s, up = host.suffix, ['up', '-d', '--no-deps', '--no-build', '--pull', 'never']
     run(up + ['--wait', 'postgres' + s], capture_output=True)
     # The candidate's ledgered migrator is the schema authority; its result is recorded, not re-derived here.
-    run(['run', '--rm', '--no-deps', '--pull', 'never', 'gateway' + s, 'node',
+    release_migrations.recorded(run, ['run', '--rm', '--no-deps', '--pull', 'never', 'gateway' + s, 'node',
          '01-product-half-finished/backend/phase0/gateway/tools/mac-product-provision.ts',
-         'migrate', '--config', '/etc/paios/cloud.json', '--root', '/var/lib/paios'], capture_output=True)
+         'migrate', '--config', '/etc/paios/cloud.json', '--root', '/var/lib/paios'], receipt, 'migration')
+    services = host.definition(release)['services']
+    # The release's own Compose graph orders Gateway and Hermes: a Hermes that depends on Gateway (its model
+    # settings authority) starts only after Gateway is healthy; an older Hermes-first release keeps its order.
+    gateway_first = 'gateway' + s in services['hermes' + s].get('depends_on', {})
+    if gateway_first:
+        run(up + ['gateway' + s], capture_output=True)
+        receipt.update(release_checks.wait_health(run, s))
     run(up + ['--wait', 'hermes' + s], capture_output=True)
     receipt['native_ready'] = release_checks.native_ready(run, s)
     if not receipt['native_ready']['official_native_ready']:
         raise RuntimeError('NATIVE_NOT_READY')
     run(up + ['livekit' + s], capture_output=True)
-    run(up + ['gateway' + s], capture_output=True)
-    receipt.update(release_checks.wait_health(run, s))
+    if not gateway_first:
+        run(up + ['gateway' + s], capture_output=True)
+        receipt.update(release_checks.wait_health(run, s))
     receipt['core_postcheck'] = release_checks.postcheck(run, s, core_only=True)
     if not receipt['core_postcheck']['passed']:
         raise RuntimeError('CORE_POSTCHECK_FAILED')
-    services = host.definition(release)['services']
     relay = [name for name in ('owner-mac-relay', 'owner-mac-visitor') if host.stage == 'production' and name in services]
     if relay:
         run(up + relay, capture_output=True)
@@ -218,29 +218,6 @@ def front(host, release, reviewed_sha):
     return {'changed': True, 'sha256': digest, 'container': container}
 
 
-def install_front(container, live_config, live_guard, config, guard):
-    before = live_config.read_bytes(), live_guard.read_bytes()
-    live_config.write_bytes(config)
-    live_guard.write_bytes(guard)
-    if subprocess.run(['docker', 'exec', container, 'nginx', '-t', '-q'], capture_output=True).returncode:
-        live_config.write_bytes(before[0])
-        live_guard.write_bytes(before[1])
-        raise RuntimeError('FRONT_CONFIG_INVALID')
-    subprocess.run(['docker', 'exec', container, 'nginx', '-s', 'reload'], check=True, capture_output=True)
-
-
-def restore_front(host, release):
-    state = release / '.release'
-    if not (state / 'front-before.conf').exists():
-        return False
-    container = json.loads((state / 'front.json').read_text())['container']
-    mounts = {m['Destination']: m['Source'] for m in json.loads(subprocess.run(['docker', 'inspect', container], check=True,
-                                                                               capture_output=True, text=True).stdout)[0]['Mounts']}
-    install_front(container, Path(mounts['/etc/nginx/conf.d/default.conf']), Path(mounts['/etc/paios-roaming/paios_roaming_guard.js']),
-                  (state / 'front-before.conf').read_bytes(), (state / 'front-before.js').read_bytes())
-    return True
-
-
 def watchdog_record(host, lock, mode, release_id, candidate, previous):
     if not host.config.get('timing'):
         return None
@@ -251,6 +228,8 @@ def watchdog_record(host, lock, mode, release_id, candidate, previous):
                '--principal-id', host.config['owner']['principal_id'], '--device-id', host.config['owner']['device_id']]
     for unit in host.config['units']:
         command += ['--unit', unit]
+    for profile in host.config['profiles']:
+        command += ['--compose-profile', profile]
     subprocess.run(command, check=True, pass_fds=(lock.fileno(),), env=release_build.clean_env(), cwd=candidate / 'deploy/cloud')
     return mode
 
@@ -321,8 +300,10 @@ def stage(host, release, snapshot, lock):
         with Path(settings['lock']).open('a') as snapshot_lock:
             fcntl.flock(snapshot_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             snapshot = Path(snapshot) if snapshot else release_build.newest_snapshot(settings)
-            staging_snapshot_restore.restore(settings, snapshot, True, lock=lock)
+            staging_snapshot_restore.restore(settings, snapshot, True, lock=lock,
+                                              inventory=getattr(host, 'parity_inventory', None))
         receipt = json.loads((Path(settings['evidence']) / (snapshot.stem + '.json')).read_text())
+        atomic_json(release / '.release/snapshot.json', {**receipt, 'release_parity': True})
         accepted = release_build.accept(release, receipt)
     except BaseException:
         host.unflip(old)
@@ -383,13 +364,15 @@ def switch(host, release, lock, front_sha=None, copy_secrets=False):
     except BaseException as error:
         receipt['failure'] = type(error).__name__ + ': ' + str(error)[:500]
         host.event('switch_failed', release_id=release_id, reason=type(error).__name__)
-        if flipped:
-            receipt['immediate_rollback'] = rollback(host, release_id)
-        else:
-            receipt['front_restored'] = restore_front(host, release)
-            if stopped:
-                start(host, current, old_run, receipt.setdefault('restart', {}))
-        release_build.write(release / f'.release/switch-{release_id}.json', receipt)
+        try:
+            if flipped:
+                rollback(host, release_id, receipt.setdefault('immediate_rollback', {}))
+            else:
+                receipt['front_restored'] = restore_front(release)
+                if stopped:
+                    start(host, current, old_run, receipt.setdefault('restart', {}))
+        finally:
+            release_build.write(release / f'.release/switch-{release_id}.json', receipt)
         raise
     receipt['finished_at'] = now().isoformat()
     release_build.write(release / f'.release/switch-{release_id}.json', receipt)
@@ -403,17 +386,27 @@ def expected_images(accepted, suffix):
             'workshop' + suffix: images['workshop'], 'workshop-link' + suffix: images['workshop']}
 
 
-def rollback(host, reason):
+def rollback(host, reason, receipt=None):
     """Swap current and previous, then start the previous release with its own env, config and images."""
     failed, target = host.release('current'), host.release('previous')
+    receipt = {} if receipt is None else receipt
+    receipt.update({'from': str(failed), 'to': str(target)})
     stop_writers(host, host.runner(failed))
+    # The newer image understands its L3 facts. Project before moving pointers or starting any older writer.
+    try:
+        release_migrations.project_rollback(host, failed, target, receipt)
+    except BaseException:
+        release_build.write(failed / '.release/rollback-failed.json', receipt)
+        raise
     point(host.root, 'current', target)
     point(host.root, 'previous', failed)
-    restored_front = restore_front(host, failed)
+    restored_front = restore_front(failed)
     # The previous release keeps the config it was rendered with; re-rendering could rewrite a live front mount.
-    receipt = {'from': str(failed), 'to': str(target), 'front_restored': restored_front}
+    receipt['front_restored'] = restored_front
+    receipt['transport_retired'] = retire_newer_transport(host.runner(target), target, failed, ['hermes' + host.suffix])
     start(host, target, host.runner(target), receipt)
     host.event('rollback_passed', reason=reason, **{k: receipt[k] for k in ('from', 'to')})
+    release_build.write(failed / '.release/rollback.json', receipt)
     return receipt
 
 
@@ -432,6 +425,13 @@ def cmd_rollback(host, args):
 
 
 def candidate(host, request):
+    while True:
+        result = _candidate(host, request)
+        if result.get('state') != 'rebuilding':
+            return result
+
+
+def _candidate(host, request):
     """Agent request: an exact base plus a patch from the coding workshop, through every gate up to accepted."""
     request = Path(request)
     spec = json.loads((request / 'request.json').read_text())
@@ -446,11 +446,24 @@ def candidate(host, request):
     step = 'source'
     try:
         with host.locked(wait=True) as lock:
+            production = release_transfer.production_base(host.config)
             if result_path.exists():
                 result = json.loads(result_path.read_text())
-                if result.get('finished_at'):
+                if result.get('finished_at') and (not result.get('ready_for_production') or
+                        production['commit'] in (result['base'], result.get('commit')) or
+                        spec['request_id'] in production.get('closed_requests', [])):
                     return result
+            step = 'parity'
+            production = release_parity.ensure(host, lock)
+            base = production['commit']
+            if result['base'] != base:
+                rebuilds = result.get('rebuilds', []) + [{'base': result['base'], 'commit': result.get('commit')}]
+                result = {key: value for key, value in result.items() if key not in
+                          ('commit', 'finished_at', 'accepted', 'transfer', 'owner_decision', 'protected_paths')}
+                result.update(base=base, steps={}, state='rebuilding', ready_for_production=False, rebuilds=rebuilds)
+            result['parity'] = {'equal': True, 'base': base}
             save()
+            step = 'source'
             commit = result.get('commit')
             if not commit:
                 ref = 'candidates/' + spec['request_id']
@@ -458,17 +471,20 @@ def candidate(host, request):
                                         'refs/paios/' + ref], capture_output=True, text=True)
                 if saved.returncode not in (0, 1):
                     saved.check_returncode()
-                commit = saved.stdout.strip() if saved.returncode == 0 else release_source.apply_patch(
-                    host.config['repo'], spec['base'], request / 'candidate.patch', ref)
+                reusable = saved.returncode == 0 and subprocess.run(['git', '-C', host.config['repo'],
+                    'merge-base', '--is-ancestor', base, saved.stdout.strip()], capture_output=True).returncode == 0
+                commit = saved.stdout.strip() if reusable else release_source.apply_patch(
+                    host.config['repo'], base, request / 'candidate.patch', ref)
             result['commit'] = commit
             save()
-            if protected := release_source.protected_changes(host.config['repo'], spec['base'], commit):
-                decision = owner_decision(Path(host.config['exchange']) / 'decisions', spec['request_id'], spec['base'], commit)
+            if protected := release_source.protected_changes(host.config['repo'], base, commit):
+                decision = owner_decision(Path(host.config['exchange']) / 'decisions', spec['request_id'], base, commit,
+                                          superseded_ok=True)
                 if decision is None:
                     result.update(state='awaiting_owner', protected_paths=protected)
                     save()
                     request_notice(host, spec, 'release-approval-required', '这次修复涉及主人基线，需要主人确认后继续。',
-                                   base=spec['base'], commit=commit, paths=protected)
+                                   base=base, commit=commit, paths=protected)
                     return result
                 result['owner_decision'] = decision
                 result['state'] = 'approved'
@@ -478,7 +494,7 @@ def candidate(host, request):
                     return result
             release = host.releases / commit[:8]
             if not release.exists():
-                release, _ = release_source.materialize(host.config['repo'], commit, host.releases, base=spec['base'])
+                release, _ = release_source.materialize(host.config['repo'], commit, host.releases, base=base)
             state = release / '.release'
             result['steps']['source'] = 'passed'
             save()
@@ -504,15 +520,22 @@ def candidate(host, request):
             result['steps']['staging'] = 'passed'
             result.update(accepted=accepted, ready_for_production=True)
             save()
+            if release_transfer.production_base(host.config)['commit'] != base:
+                result.update(state='rebuilding', ready_for_production=False)
+                save()
+                return result
             # The owner reads this line: the commit subject the repair builder wrote, bounded, from the host's own store.
             summary = release_source.git(host.config['repo'], 'log', '-1', '--format=%s', commit, text=True).strip()[:200]
             step = 'transfer'
             package = Path(host.config['exchange']) / 'candidates' / spec['request_id']
             if package.exists():
                 manifest = json.loads((package / 'manifest.json').read_text())
-                result['transfer'] = {'package': str(package), **{k: manifest[k] for k in ('delta_bytes', 'reused_bytes')}}
-            else:
+                if manifest['base'] != base:
+                    package.rename(package.with_name('.superseded-' + package.name + '-' + manifest['commit'][:8]))
+            if not package.exists():
                 result['transfer'] = release_transfer.export(host.config, release, result, summary)
+            else:
+                result['transfer'] = {'package': str(package), **{k: manifest[k] for k in ('delta_bytes', 'reused_bytes')}}
     except Exception as error:
         result.update(state='failed', ready_for_production=False)
         result['failure'] = step + ': ' + type(error).__name__
@@ -528,10 +551,15 @@ def candidate(host, request):
 def cmd_requests(host, args):
     """Refresh the repair base from production, then process every queued agent request in order (path unit)."""
     host.refresh_base()
+    release_parity.prepare_requests(host)
     status = 0
     for request in sorted(Path(host.config['requests']).glob('*/request.json')):
         result = request.parent / 'result.json'
-        if request.parent.name.startswith('.') or (result.exists() and json.loads(result.read_text()).get('finished_at')):
+        previous = json.loads(result.read_text()) if result.exists() else {}
+        production = release_transfer.production_base(host.config)
+        if request.parent.name.startswith('.') or request.parent.name in production.get('closed_requests', []) or (
+                previous.get('finished_at') and (not previous.get('ready_for_production') or
+                production['commit'] in (previous['base'], previous.get('commit')))):
             continue
         try:
             candidate(host, request.parent)
@@ -543,7 +571,7 @@ def cmd_requests(host, args):
 
 # ---------------------------------------------------------------- production: 依米's repairs and her 「改回去」
 
-TERMINAL = {'switched', 'switch_failed', 'stale_base', 'refused', 'transfer_failed'}
+TERMINAL = {'switched', 'switch_failed', 'refused', 'transfer_failed'}
 PACKAGE = ('manifest.json', 'accepted.json', 'result.json', 'source.bundle', 'delta.tar')
 
 
@@ -556,12 +584,14 @@ def set_status(host, name, **fields):
     return value
 
 
-def owner_decision(directory, request_id, base, commit):
+def owner_decision(directory, request_id, base, commit, superseded_ok=False):
     path = directory / (request_id + '.json')
     if not path.exists():
         return None
     decision = json.loads(path.read_text())
     if (decision.get('request_id'), decision.get('base'), decision.get('commit')) != (request_id, base, commit):
+        if superseded_ok and decision.get('request_id') == request_id:
+            return None
         raise ValueError('OWNER_DECISION_CANDIDATE_MISMATCH')
     if type(decision.get('approved')) is not bool:
         raise ValueError('INVALID_OWNER_DECISION')
@@ -715,7 +745,7 @@ def _ship_package(host, lock, package):
     # Production independently checks the owner decision for this exact immutable candidate.
     release_source.fetch(repo, package / 'source.bundle')
     if protected := release_source.protected_changes(repo, base, manifest['commit']):
-        decision = owner_decision(Path(host.config['spool']) / 'decisions', request_id, base, manifest['commit'])
+        decision = owner_decision(Path(host.config['spool']) / 'decisions', request_id, base, manifest['commit'], superseded_ok=True)
         if decision is None:
             set_status(host, request_id, state='awaiting_owner', protected_paths=protected)
             request_notice(host, manifest, 'release-approval-required', '这次修复涉及主人基线，需要主人确认后继续。',
@@ -755,12 +785,26 @@ def _ship_package(host, lock, package):
 
 
 def production_state(host):
-    current = host.release('current')
-    lines = read_env(release_files(current)['env_file'])
-    images = {role: value for role in release_transfer.ROLES
-              if (value := env_value(lines, f'PAIOS_{role.upper()}_IMAGE')) and value.startswith('sha256:')}
-    return {'schema': 'paios.production-state.v1', 'commit': host.commit(current), 'release': current.name, 'images': images,
-            'published_at': now().isoformat()}
+    return release_identity.capture(host)
+
+
+def record_identity(host, *, snapshot_required=True, dry_run=False):
+    """Self ship and the lead's deploy kit both enter here under the production release lock."""
+    if host.stage != 'production':
+        raise ValueError('PRODUCTION_IDENTITY_ONLY')
+    state = production_state(host) if snapshot_required else release_identity.capture(
+        host, snapshot_required=False, roles_required=False)
+    if spool := host.config.get('spool'):
+        state['closed_requests'] = [p.stem for p in (Path(spool) / 'status').glob('*.json')
+                                    if json.loads(p.read_text()).get('state') in TERMINAL]
+    if dry_run:
+        return state
+    if snapshot_required or host.config.get('exchange_remote'):
+        state['sync'] = release_transfer.production_package(host, state)
+    # This is the existing production state. Exchange publication is only its transported view.
+    atomic_json(host.lock_path().parent / 'production.json', state)
+    release_transfer.publish(host.config, state)
+    return state
 
 
 def publish_runtime(host):
@@ -797,7 +841,9 @@ def publish_runtime(host):
         for row in release_checks.containers(host.runner(host.release('current')))
         if row['Config']['Labels']['com.docker.compose.service'] in {'gateway' + host.suffix, 'hermes' + host.suffix}}
     set_status(host, 'runtime', current=pointer('current'), previous=pointer('previous'), recent=recent,
-               requests=requests, health=health, builder_requests=builder_requests)
+               requests=requests, health=health, builder_requests=builder_requests,
+               parity=(json.loads((Path(host.config['incoming']) / 'parity.json').read_text())
+                       if (Path(host.config['incoming']) / 'parity.json').exists() else None))
 
 
 def cmd_ship(host, args):
@@ -806,11 +852,13 @@ def cmd_ship(host, args):
     with host.locked():
         rollback_requests(host)
         deliver_notices(host)
+        before = host.commit(host.release('current'))
     status = Path(host.config['spool']) / 'status'
     decided = {p.stem for p in status.glob('*.json') if json.loads(p.read_text()).get('state') in TERMINAL}
     try:
         release_transfer.publish_decisions(host.config)
-        release_transfer.publish(host.config, production_state(host))
+        with host.locked():
+            record_identity(host)
         release_transfer.fetch(host.config, decided)
     except subprocess.CalledProcessError as error:
         host.event('exchange_unreachable', reason=type(error).__name__)
@@ -824,6 +872,37 @@ def cmd_ship(host, args):
                 break
         deliver_notices(host)
         publish_runtime(host)
+        if host.commit(host.release('current')) != before:
+            try:
+                record_identity(host)
+            except subprocess.CalledProcessError as error:
+                host.event('exchange_unreachable', reason=type(error).__name__)
+
+
+def cmd_identity(host, args):
+    with host.locked():
+        value = record_identity(host, snapshot_required=False, dry_run=args.dry_run)
+    print(json.dumps(value))
+
+
+def cmd_parity(host, args):
+    if args.production_record and args.staging_record and args.dry_run:
+        value = release_identity.compare(json.loads(Path(args.production_record).read_text()),
+                                         json.loads(Path(args.staging_record).read_text()))
+        if args.command == 'sync':
+            value['actions'] = [] if value['equal'] else release_parity.ACTIONS
+    else:
+        if host.stage != 'staging':
+            raise ValueError('PARITY_REQUIRES_STAGING_HOST')
+        with host.locked() as lock:
+            if args.command == 'sync':
+                value = release_parity.ensure(host, lock, dry_run=args.dry_run)
+            else:
+                value = release_parity.inspect(host, release_transfer.production_base(host.config))
+                if not args.dry_run:
+                    release_parity.publish_report(host, value)
+    print(json.dumps(value))
+    return 0 if args.command == 'sync' or value['equal'] else 1
 
 
 def cmd_prune(host, args):
@@ -881,13 +960,20 @@ def main():
     p = commands.add_parser('candidate'); p.add_argument('request')
     commands.add_parser('requests')
     commands.add_parser('ship')
+    p = commands.add_parser('identity'); p.add_argument('--dry-run', action='store_true')
+    for name in ('parity', 'sync'):
+        p = commands.add_parser(name)
+        p.add_argument('--dry-run', action='store_true')
+        p.add_argument('--production-record'); p.add_argument('--staging-record')
     p = commands.add_parser('prune'); p.add_argument('--execute', action='store_true')
     args = parser.parse_args()
     os.umask(0o077)
-    host = Host(json.loads(Path(args.config).read_text()))
+    record_only = args.command in ('parity', 'sync') and args.dry_run and args.production_record and args.staging_record
+    host = None if record_only else Host(json.loads(Path(args.config).read_text()))
     handler = {'adopt': cmd_adopt, 'source': cmd_source, 'build': cmd_build, 'suites': cmd_suites, 'stage': cmd_stage,
                'switch': cmd_switch, 'rollback': cmd_rollback, 'candidate': lambda h, a: candidate(h, a.request) and 0,
-               'requests': cmd_requests, 'ship': cmd_ship, 'prune': cmd_prune}[args.command]
+               'requests': cmd_requests, 'ship': cmd_ship, 'identity': cmd_identity, 'parity': cmd_parity,
+               'sync': cmd_parity, 'prune': cmd_prune}[args.command]
     return handler(host, args) or 0
 
 

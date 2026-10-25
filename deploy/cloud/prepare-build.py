@@ -9,6 +9,8 @@ import sys
 from ipaddress import IPv6Address
 from urllib.parse import urlsplit
 
+from staging_config import render as render_staging
+
 root = Path(__file__).resolve().parents[2]
 cloud = root / 'deploy/cloud'
 build = cloud / '.build'
@@ -43,24 +45,20 @@ stage_authority = stage_origin.netloc
 deny_hosts = list(dict.fromkeys(deny_hosts + [stage_host]))
 # Optional external avatar must be absent, not an empty URL.
 production = json.loads((cloud / 'cloud.json').read_text())
+if 'model_settings' in production and os.environ.get('PAIOS_BUILDER_URL'):
+    production['model_settings'].update(build_profile='builder', build_activation_url=os.environ['PAIOS_BUILDER_URL'],
+        build_ca_file='${PAIOS_SECRET_ROOT}/workshop-builder.crt')
 production['product_resources'].update(public_api_url=canonical_origin, legacy_public_api_urls=legacy_csv,
     livekit_url=public_livekit,
     livekit_api_url=os.environ.get('PAIOS_LIVEKIT_API_URL') or f"http://127.0.0.1:{os.environ.get('PAIOS_LIVEKIT_SIGNAL_PORT', '7880')}")
 if not os.environ.get('PAIOS_AVATAR_URL'):
     production['product_resources'].pop('avatar_url', None)
 if os.environ.get('PAIOS_DEPLOYMENT') == 'single-host':
-    roles = {}
-    for role in ('brain', 'vision', 'executor_fast', 'executor_thorough', 'realtime', 'tts', 'workshop_repair'):
-        prefix = 'PAIOS_' + role.upper()
-        model = os.environ.get(prefix + '_MODEL', '')
-        if not model and role != 'brain':
-            continue
-        endpoint = os.environ.get(prefix + '_BASE_URL', '')
-        if not model or urlsplit(endpoint).scheme not in ('http', 'https', 'wss'):
-            raise ValueError(f'{prefix}_MODEL and {prefix}_BASE_URL are required')
-        roles[role] = dict(model=model, base_url=endpoint, provider='single-host-' + role.replace('_', '-'),
-                           key_file='/run/secrets/role-' + role.replace('_', '-') + '.key')
-    (build / 'models.json').write_text(json.dumps(roles, indent=2) + '\n')
+    from single_host_models import configured_roles, snapshot
+    roles = configured_roles()
+    (build / 'model-settings-import.json').write_text(json.dumps(snapshot(roles), indent=2) + '\n')
+    (build / 'executor-models.json').write_text(json.dumps({name: role for name, role in roles.items()
+                                                        if name.startswith('executor_')}, indent=2) + '\n')
     for key in ('voiceprint', 'visual'):
         production.pop(key, None)
     if 'realtime' not in roles:
@@ -90,16 +88,8 @@ if os.environ.get('PAIOS_DEPLOYMENT') == 'single-host':
             production['product_resources'].pop(key, None)
 (build / 'production.json').write_text(json.dumps(production, ensure_ascii=False, indent=2) + '\n')
 # Staging differs only at named external-effect/state boundaries.
-staging = json.loads(json.dumps(production))
-staging['payment']['enabled'] = False
-staging['payment']['staging'] = True
-staging.pop('archive_tiering', None) # The staging snapshot materializes its recent L5 closure locally.
-staging['product_resources']['postgres']['host'] = 'postgres-staging'
-staging['product_resources'].update(public_api_url='https://' + stage_authority, livekit_url='wss://' + stage_authority,
-    livekit_api_url=f"http://127.0.0.1:{os.environ.get('PAIOS_LIVEKIT_SIGNAL_PORT', '7880')}", legacy_public_api_urls='')
-for key in ['bark_device_file', 'bark_key_file', 'avatar_url', 'video_call', 'vidu_cleanup_key_file']:
-    staging['product_resources'].pop(key, None)
-staging['product_resources']['staging_effect_sink_file'] = '${PAIOS_DATA_ROOT}/state/staging-effects.jsonl'
+staging = render_staging(production, stage_authority,
+    f"http://127.0.0.1:{os.environ.get('PAIOS_LIVEKIT_SIGNAL_PORT', '7880')}", os.environ.get('PAIOS_STAGING_BUILDER_URL'))
 (build / 'staging.json').write_text(json.dumps(staging, ensure_ascii=False, indent=2) + '\n')
 public_environment = {name: production['product_resources'][key] for name, key in
     [('PAIOS_PUBLIC_API_URL', 'public_api_url'), ('PAIOS_LEGACY_PUBLIC_API_URLS', 'legacy_public_api_urls'),
@@ -139,22 +129,23 @@ if '--config-only' not in sys.argv:
     # tracked files and .git so the in-image producer verifier sees the exact tree.
     dockerfile = build / 'hermes-base.Dockerfile'
     text = (hermes / 'Dockerfile').read_text()
-    text = replace_required(text, 'ENV PLAYWRIGHT_BROWSERS_PATH=/opt/hermes/.playwright', 'ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright')
     # Upstream chmods a tracked 0644 dispatcher. Execute its unchanged bytes
     # outside the locked tree so producer verification still covers file modes.
     text = replace_required(text, 'COPY --chmod=0755 docker/entrypoint-dispatch.sh /opt/hermes/docker/entrypoint-dispatch.sh',
                             'COPY --chmod=0755 docker/entrypoint-dispatch.sh /usr/local/bin/hermes-entrypoint', 1)
     text = replace_required(text, 'ENTRYPOINT [ "/opt/hermes/docker/entrypoint-dispatch.sh" ]',
                             'ENTRYPOINT [ "/usr/local/bin/hermes-entrypoint" ]', 1)
-    # Mirror transport is opt-in for every apt stage, npm and the frozen uv lock.
-    # The later upstream COPY restores tracked uv.lock before producer verification.
+    # PM owns its pinned tool store and dependency lock; configure transport without rewriting them.
     apt_arg = 'ARG PAIOS_BUILD_MAINLAND_MIRRORS=0\nRUN if [ "$PAIOS_BUILD_MAINLAND_MIRRORS" = "1" ]; then sed -i "s|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g" /etc/apt/sources.list.d/debian.sources; fi\n'
-    text = replace_required(text, 'FROM debian:13.4 AS sqlite_build\n', 'FROM debian:13.4 AS sqlite_build\n' + apt_arg, 1)
-    text = replace_required(text, 'FROM debian:13.4\n', 'FROM debian:13.4\n' + apt_arg, 1)
+    stages = re.findall(r'^FROM debian:[^\n]+\n', text, re.M)
+    if len(stages) != 2:
+        raise ValueError('Expected the locked upstream SQLite and runtime Debian stages')
+    for stage in stages:
+        text = replace_required(text, stage, stage + apt_arg, 1)
     npm_export = 'if [ "$PAIOS_BUILD_MAINLAND_MIRRORS" = "1" ]; then export npm_config_registry=https://registry.npmmirror.com; fi && '
-    text = replace_required(text, 'RUN npm install --prefer-offline', 'RUN ' + npm_export + 'npm install --prefer-offline', 1)
+    text = replace_required(text, 'RUN node scripts/build/node-deps.mjs', 'RUN ' + npm_export + 'node scripts/build/node-deps.mjs', 1)
     text = replace_required(text, 'RUN cd plugins/platforms/photon/sidecar', 'RUN ' + npm_export + 'cd plugins/platforms/photon/sidecar', 1)
-    text = replace_required(text, 'RUN uv sync --frozen', "RUN if [ \"$PAIOS_BUILD_MAINLAND_MIRRORS\" = \"1\" ]; then sed -i 's|https://pypi.org/simple|https://pypi.tuna.tsinghua.edu.cn/simple|g; s|https://files.pythonhosted.org/packages/|https://pypi.tuna.tsinghua.edu.cn/packages/|g' uv.lock; export UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple; fi && uv sync --frozen", 1)
+    text = replace_required(text, 'RUN python3 -m pm.build_env', 'RUN if [ "$PAIOS_BUILD_MAINLAND_MIRRORS" = "1" ]; then export UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple; fi && python3 -m pm.build_env', 1)
     dockerfile.write_text(text)
     (dockerfile.with_name(dockerfile.name + '.dockerignore')).write_text('node_modules\n**/node_modules\n.venv\n**/.venv\n**/__pycache__\n**/.env\n**/.env.*\n!**/.env.example\n')
 # Both ingress paths share one closed route/header template. The loopback path

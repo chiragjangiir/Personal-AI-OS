@@ -418,7 +418,7 @@ test('actual HTTP JSON errors distinguish native refusal, generic JSON, HTML, pr
     if (kind === 2) return refusal(res, 'provider_error');
     res.writeHead(503, {'Content-Type': kind === 3 ? 'text/html' : 'application/json'});res.end('<html>unknown</html>');
   });
-  for (kind = 0; kind < 5; kind++) await assert.rejects(client.create({input: 'D', instructions: 'skill', session_id: 's', memory_write:false}, 'key'),
+  for (kind = 0; kind < 5; kind++) await assert.rejects(client.create({input: 'D', instructions: 'skill', session_id: 's'}, 'key'),
     e => kind < 2 ? e instanceof NativeNotAcceptedError && e.retryAfterMs === 1000 :
       e instanceof ContractError && !(e instanceof NativeNotAcceptedError));
 });
@@ -465,12 +465,18 @@ for (const constraint of ['attempts','deadline','retention'] as const) test(`kno
 test('generic uncertainty stays blocked; lost acceptance recovers under configured same-key budget', async t => {
   for (const mode of ['generic','lost']) {
     const f=await fixture(t,{native_retry:retry});const a=f.admission();const d=await f.d(mode);const next=await f.d(`${mode}-next`);
+    const retryWake=fence(),pause=(a as unknown as {pause(ms:number):Promise<void>}).pause.bind(a);let first=true;
+    (a as unknown as {pause(ms:number):Promise<void>}).pause=async ms=>{if(first){first=false;await retryWake.block();}await pause(ms);};
     if(mode==='lost')f.native.lost=true;else f.native.create=async()=>{f.native.creates++;throw new ContractError('HERMES_HTTP_503',503);};
-    await a.admit(d,'session','skill');await until(()=>a.get('owner','session',d.processed_event_id)?.state==='reconcile_required');
-    await a.admit(next,'session','skill');
-    await until(()=>mode==='lost'?a.get('owner','session',d.processed_event_id)?.state==='running':f.native.creates===retry.max_attempts);
-    assert.equal(f.native.creates,mode==='lost'?2:retry.max_attempts);assert.equal(f.native.logicalRuns,mode==='lost'?1:0);
-    assert.equal(a.get('owner','session',next.processed_event_id)?.state,'pending');await a.close();await preserve(f,mode);
+    try{
+      await a.admit(d,'session','skill');await retryWake.entered;
+      assert.equal(a.get('owner','session',d.processed_event_id)?.state,'reconcile_required');
+      await a.admit(next,'session','skill');retryWake.release();
+      await until(()=>mode==='lost'?a.get('owner','session',d.processed_event_id)?.state==='running':f.native.creates===retry.max_attempts);
+      assert.equal(f.native.creates,mode==='lost'?2:retry.max_attempts);assert.equal(f.native.logicalRuns,mode==='lost'?1:0);
+      assert.equal(a.get('owner','session',next.processed_event_id)?.state,'pending');
+    }finally{retryWake.release();await a.close();}
+    await preserve(f,mode);
   }
 });
 

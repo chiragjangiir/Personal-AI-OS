@@ -1,8 +1,11 @@
 import { ContractError, check, digest, canonical, id, utc, validateProcessed, type AgentResult, type DeviceType, type Json, type ProcessedEvent } from './contracts.ts';
 import type { StoragePort } from './storage.ts';
 import { randomUUID } from 'node:crypto';
-import { inspectWav, type TtsAudio, type TtsPort } from './tts.ts';
+import { coalesceTts, inspectWav, type TtsAudio, type TtsPort } from './tts.ts';
 import { NATIVE_TERMINAL_STATUSES, nativeConversationSession, type NativeFinalResponse, type NativeRun } from './hermes-client.ts';
+import type {CapabilityGateway} from './capability/gateway.ts';
+import {checkReport, factCarried, type CheckDecision} from './capability/checker.ts';
+import {recordFacts} from './capability/renderer.ts';
 
 export interface OutputContext {
   /** Host delivery intent; does not change the immutable route or durable journal binding. */
@@ -44,6 +47,7 @@ export type ReceiptSourceRead =
   | (ReceiptSourceStatus & {status: 'not_configured'; error: null; receipts: []});
 export interface RunReceiptRead {sources: ReceiptSourceRead[]}
 export interface OutputConfig {
+  capability?: CapabilityGateway;
   tts?: TtsPort; maxAudioBytes?: number;
   maxEpochs?: number; maxTextBytes?: number; chunkChars?: number; maxJournalEntries?: number;
   listRunReceipts?: (context: OutputContext) => Promise<RunReceiptRead>;
@@ -82,21 +86,24 @@ interface Entry {
   delivery?: {reply_epoch:number; target:OutputContext['target']};
   open?: OpenReplyReceipt; services?: ServiceReceipt[]; evidence?: string[];
   admissionDefault?: true;
-  voice?: VoiceAttempt; voiceRefusal?: {reply_epoch: number; error: string}; voiceAdmission?: {queued_at_ms: number}; receipts?: ReceiptSnapshot;
+  voiceChunk?: VoiceChunk; voice?: VoiceAttempt; voiceRefusal?: {reply_epoch: number; error: string}; voiceAdmission?: {queued_at_ms: number}; receipts?: ReceiptSnapshot;
   nativeFinalResponse?: NativeFinalResponse & {reply_epoch: number};
   nativeBoundaryEvidence?: NativeFinalResponse;
   result?: AgentResult; chunks?: TextChunk[]; nativeFingerprint?: string; ack?: OutputAckReceipt; cancel?: OutputCancelReceipt;
+  capabilityCheck?: CheckDecision & {voice_text: string; chunks: TextChunk[]};
 }
 // Owners of voice generations running in this process (registered with the in-memory job). The output journal stays the
 // only claim record; storage has a single process owner (main lock), so a claim whose owner is not live here was left
 // by a crashed or settled generation. Remote synthesis may already have incurred cost; takeover requires explicit retry.
 const liveVoiceOwners = new Set<string>();
-interface State {delivery?: Entry['delivery']; entries: Entry[]; active?: Entry; sealed?: Entry; cancelled: number[]; accepted: number; rendered: number; voiceAccepted: number; played: number; voice?: VoiceAttempt; voiceRefusal?: Entry['voiceRefusal']; receipts?: ReceiptSnapshot; receiptRevision?: number}
+interface State {capabilityCheck?: Entry['capabilityCheck']; delivery?: Entry['delivery']; entries: Entry[]; active?: Entry; sealed?: Entry; cancelled: number[]; accepted: number; rendered: number; voiceAccepted: number; played: number; voice?: VoiceAttempt; voiceRefusal?: Entry['voiceRefusal']; receipts?: ReceiptSnapshot; receiptRevision?: number}
 
 // NEW business owner: phase, durable replay and delivery evidence. Native messages/history remain Hermes-owned.
 export class OutputAuthority {
   private readonly storage: StoragePort;
   private readonly config: OutputConfig;
+  private capability: CapabilityGateway | undefined;
+  setCapabilityGateway(gateway: CapabilityGateway): void {check(!this.capability, 'CAPABILITY_GATEWAY_OWNER_CONFLICT'); this.capability = gateway;}
   private timeline:((ctx:OutputContext,result:AgentResult)=>void)|undefined;
   setTimeline(publish:(ctx:OutputContext,result:AgentResult)=>void):void {check(!this.timeline,'TIMELINE_OWNER_CONFLICT');this.timeline=publish;}
   private readonly synthesis = new Map<string, {task: Promise<void>; admitted: Promise<void>; abort: AbortController; dequeue: (release?: boolean) => void; settled: boolean; owner: string}>();
@@ -132,6 +139,7 @@ export class OutputAuthority {
   get maxTextBytes():number {return this.config.maxTextBytes??262144;}
   constructor(storage: StoragePort, config: OutputConfig = {}) {
     this.storage = storage; this.config = config;
+    this.capability = config.capability;
     for (const n of [config.maxEpochs ?? 8, config.maxTextBytes ?? 262144,
       config.chunkChars ?? 1024, config.maxAudioBytes ?? 33554432, config.maxJournalEntries ?? 1024]) check(Number.isSafeInteger(n) && n > 0, 'INVALID_OUTPUT_CONFIG');
   }
@@ -157,7 +165,9 @@ export class OutputAuthority {
       if (entry.delivery) state.delivery = entry.delivery;
       if (entry.open) {state.active = entry; state.accepted = 0; state.rendered = 0; state.voiceAccepted = 0; state.played = 0; delete state.voice; delete state.voiceRefusal;}
       if (entry.result) state.sealed = entry;
-      if (entry.voice) {state.voice = entry.voice; delete state.voiceRefusal;}
+      if (entry.capabilityCheck) state.capabilityCheck = entry.capabilityCheck;
+      if (entry.voice) {state.voice = {...entry.voice, chunks: entry.voice.chunks ?? (entry.voice.chunk ? [entry.voice.chunk] : state.voice?.attempt === entry.voice.attempt ? state.voice.chunks ?? [] : [])}; delete state.voiceRefusal;}
+      if (entry.voiceChunk) state.voice!.chunks!.push(entry.voiceChunk);
       if (entry.voiceRefusal) state.voiceRefusal = entry.voiceRefusal;
       if (entry.receipts) {state.receipts = entry.receipts; state.receiptRevision = (state.receiptRevision ?? 0) + 1;}
       if (entry.cancel) state.cancelled.push(entry.cancel.reply_epoch);
@@ -178,7 +188,9 @@ export class OutputAuthority {
       const fingerprint = typeof fingerprintSource === 'function' ? fingerprintSource(state) : fingerprintSource;
       const replay = state.entries.find(e => e.operation === operation);
       if (replay) {check(replay.fingerprint === fingerprint, 'OUTPUT_REPLAY_CONFLICT', 409); return replay;}
-      check(state.entries.length < (this.config.maxJournalEntries ?? 1024), 'OUTPUT_JOURNAL_FULL', 429);
+      // A failed generation and an interruption must remain recordable at the journal boundary.
+      const reserve = operation.startsWith('voice-finish:') ? 1 : operation.startsWith('cancel:') ? 0 : 2;
+      check(state.entries.length < (this.config.maxJournalEntries ?? 1024) - reserve, 'OUTPUT_JOURNAL_FULL', 429);
       const entry = {...await build(state), operation, fingerprint, binding: this.binding(ctx)};
       const bytes = Buffer.from(canonical(entry));
       const stored = await this.storage.publish('output-journal', digest({scope: this.scope(ctx), seq: state.entries.length}), bytes);
@@ -221,7 +233,7 @@ export class OutputAuthority {
       route_version:delivery.target.route_version} : chunk;
   }
   private textChunksIn(state:State):TextChunk[] {
-    return (state.sealed?.chunks ?? []).map(chunk=>this.deliveryChunk(state,chunk));
+    return (state.capabilityCheck?.chunks ?? state.sealed?.chunks ?? []).map(chunk=>this.deliveryChunk(state,chunk));
   }
   async open(ctx: OutputContext, args: OpenReplyRequest): Promise<OpenReplyReceipt> {
     return (await this.declare(ctx,args))!;
@@ -361,9 +373,6 @@ export class OutputAuthority {
               for (const receipt of valid.values()) {
                 const prior = current.get(receipt.receipt_ref);
                 check(!prior || digest(prior) === digest(receipt), 'RUN_RECEIPTS_CONFLICT');
-                const obtained = known.get(receipt.receipt_ref);
-                check(source.source !== 'l2' || !obtained || digest(obtained) === digest(receipt),
-                  'NATIVE_MEMORY_RECEIPT_CONFLICT');
               }
               for (const receipt of valid.values()) {
                 current.set(receipt.receipt_ref, receipt); known.set(receipt.receipt_ref, receipt);
@@ -392,7 +401,7 @@ export class OutputAuthority {
       if (!complete && retained.size) snapshot.status = 'partial';
       const fingerprint = digest(snapshot);
       if (state.receipts && digest(state.receipts) === fingerprint) return state.receipts;
-      check(state.entries.length < (this.config.maxJournalEntries ?? 1024), 'OUTPUT_JOURNAL_FULL', 429);
+      check(state.entries.length < (this.config.maxJournalEntries ?? 1024) - 2, 'OUTPUT_JOURNAL_FULL', 429);
       const entry: Entry = {operation: `receipts:${state.entries.length}`, fingerprint, binding: this.binding(ctx), receipts: snapshot};
       const bytes = Buffer.from(canonical(entry));
       const stored = await this.storage.publish('output-journal', digest({scope: this.scope(ctx), seq: state.entries.length}), bytes);
@@ -485,10 +494,11 @@ export class OutputAuthority {
         ...(proof ? {nativeBoundaryEvidence: proof} : {}),
         ...(proof && success ? {nativeFinalResponse: {...proof, reply_epoch: open!.reply_epoch}} : {})};
     });
+    await this.checkCapability(ctx, entry);
     let state = await this.state(ctx);
     if (!this.closing && !state.cancelled.includes(entry.result!.reply_epoch) && entry.result!.result_status === 'completed' &&
       ['voice','text_and_voice'].includes(entry.result!.reply_mode) && !state.voiceRefusal && !['ready','failed'].includes(state.voice?.status ?? '')) {
-      await this.requestVoice(ctx, entry.result!);
+      await this.requestVoice(ctx, {...entry.result!, reply_text: state.capabilityCheck?.voice_text ?? entry.result!.reply_text});
       state = await this.state(ctx);
     }
     const result=this.resultProjection(ctx,entry,state,receipts);
@@ -515,7 +525,8 @@ export class OutputAuthority {
       result.warnings.push(receipts.error);
       if (receipts.error !== 'RUN_RECEIPTS_SOURCE_NOT_CONFIGURED' && result.result_status === 'completed') result.result_status = 'failed';
     }
-    const count = entry.chunks!.length;
+    if (state.capabilityCheck) result.reply_text = state.capabilityCheck.text;
+    const count = this.textChunksIn(state).length;
     const wantsVoice = ['voice','text_and_voice'].includes(result.reply_mode);
     if (wantsVoice) {
       const pending = this.synthesis.get(`${this.scope(ctx)}:${result.reply_epoch}`);
@@ -532,13 +543,13 @@ export class OutputAuthority {
     return result;
   }
   private textSnapshot(state: State): TextDeliverySnapshot {
-    const count=state.sealed?.chunks?.length ?? 0;
+    const count=this.textChunksIn(state).length;
     return {text_chunk_count:count,pending_text_chunk_count:Math.max(0,count-state.rendered),rendered_text_through_seq:state.rendered};
   }
   async textDelivery(ctx: OutputContext): Promise<TextDeliverySnapshot> {return this.textSnapshot(await this.state(ctx));}
   async textPublished(ctx:OutputContext,chunk:TextChunk):Promise<void> {
     await this.transact(ctx,`text-published:${chunk.reply_epoch}:${chunk.seq}`,digest(chunk),async state=>{
-      check(state.sealed?.chunks?.some(value=>value.reply_epoch===chunk.reply_epoch&&value.seq===chunk.seq&&value.output_id===chunk.output_id),
+      check(this.textChunksIn(state).some(value=>value.reply_epoch===chunk.reply_epoch&&value.seq===chunk.seq&&value.output_id===chunk.output_id),
         'OUTPUT_CHUNK_NOT_FOUND',409);
       return {operation:'',fingerprint:'',binding:'',textPublished:{reply_epoch:chunk.reply_epoch,seq:chunk.seq}};
     });
@@ -557,6 +568,8 @@ export class OutputAuthority {
     return value;
   }
   private async readFinalSnapshot(ctx:OutputContext,replay:boolean) {
+    const initial=await this.state(ctx);
+    if(initial.sealed?.operation==='seal')await this.checkCapability(ctx,initial.sealed);
     const state=await this.state(ctx),entry=state.sealed;
     check(entry?.result && entry.chunks && state.receipts, 'SEALED_TEXT_NOT_AVAILABLE', 409);
     if(replay) check(state.active?.open?.reply_epoch === entry.result.reply_epoch && !state.cancelled.includes(entry.result.reply_epoch),
@@ -614,8 +627,33 @@ export class OutputAuthority {
     // Even duplicate ACKs cannot reopen a cancelled epoch.
     const state = await this.state(ctx);
     check(!state.cancelled.includes(request.reply_epoch), 'OUTPUT_ACK_OLD_EPOCH', 409);
+    if(this.capability && state.capabilityCheck && request.status!=='accepted') {
+      const isVoice=request.status==='played', chunks=isVoice?this.voiceChunksIn(state):this.textChunksIn(state);
+      const carried=isVoice ? (request.highest_contiguous_seq===chunks.length ? state.capabilityCheck.voice_text : '') :
+        this.textChunksIn(state).filter(chunk=>chunk.seq<=request.highest_contiguous_seq).map(chunk=>chunk.text).join('');
+      const facts=state.capabilityCheck.facts.filter(fact=>factCarried(fact,carried,isVoice?'voice':'text',state.capabilityCheck!.facts)).map(fact=>fact.id);
+      await this.capability.ledger.delivered(ctx.principal_id,facts,entry.ack!.receipt_ref);
+    }
     if(state.sealed?.result&&state.receipts)this.timeline?.(ctx,this.resultProjection(ctx,state.sealed,state,state.receipts));
     return entry.ack!;
+  }
+  private async checkCapability(ctx: OutputContext, sealed: Entry): Promise<void> {
+    if (!this.capability || sealed.result?.reply_phase!=='sealed' || sealed.result.reply_mode==='none') return;
+    const current=await this.state(ctx);
+    if (current.capabilityCheck) return;
+    const records=await this.capability.ledger.current(ctx);
+    if (!records.length) return;
+    const receipts=records.map(record=>record.receipt);
+    const allFacts=recordFacts(records,ctx.run_id),facts=await this.capability.ledger.novel(ctx.principal_id,allFacts);
+    await this.transact(ctx,`capability-check:${sealed.result.reply_epoch}`,digest(sealed.result.reply_text),async()=>{
+      const checked=checkReport(sealed.result!.reply_text,receipts,ctx.d.content.text??'',facts,'text',allFacts);
+      const voice=checkReport(sealed.result!.reply_text,receipts,ctx.d.content.text??'',facts,'voice',allFacts);
+      const chunks=this.allChunks(ctx,{...sealed.result!,reply_text:checked.text}).map(chunk=>({...chunk,
+        message_ref:`capability-report:${ctx.run_id}:${sealed.result!.reply_epoch}`}));
+      return {operation:'',fingerprint:'',binding:'',capabilityCheck:{...checked,
+        facts:[...new Map([...checked.facts,...voice.facts].map(fact=>[fact.id,fact])).values()],
+        voice_text:voice.text,chunks}};
+    });
   }
   private async requestVoice(ctx: OutputContext, result: AgentResult, retry = false): Promise<void> {
     try {await this.ensureVoice(ctx, result, retry);}
@@ -629,7 +667,7 @@ export class OutputAuthority {
     await this.transact(ctx, `voice-refusal:${attempt}:${error}`, digest({epoch: result.reply_epoch, error}), async () => ({
       operation: '', fingerprint: '', binding: '', voiceRefusal: {reply_epoch: result.reply_epoch, error}}));
   }
-  private voiceChunksIn(state: State): VoiceChunk[] {return (state.voice?.chunks ?? (state.voice?.chunk ? [state.voice.chunk] : [])).map(chunk=>this.deliveryChunk(state,chunk));}
+  private voiceChunksIn(state: State): VoiceChunk[] {return (state.voice?.chunks ?? (state.voice?.chunk ? [state.voice.chunk] : [])).map((chunk,index,list)=>this.deliveryChunk(state,state.voice?.status === 'ready' ? {...chunk,final:index === list.length-1} : chunk));}
   private ensureVoice(ctx: OutputContext, result: AgentResult, retry = false): Promise<void> | undefined {
     if (!result.reply_id || !this.config.tts) return;
     const key = `${this.scope(ctx)}:${result.reply_epoch}`;
@@ -724,36 +762,43 @@ export class OutputAuthority {
       await this.transact(ctx, `voice-chunk:${attempt}:${seq}`, digest(chunk), async current => {
         check(!current.cancelled.includes(result.reply_epoch) && current.active?.open?.reply_epoch === result.reply_epoch, 'OUTPUT_VOICE_CANCELLED', 409);
         fence(current);
-        return {operation: '', fingerprint: '', binding: '', voice: {...claim.voice!, chunks: [...this.voiceChunksIn(current), chunk]}};
+        return {operation: '', fingerprint: '', binding: '', ...(seq === 1 ? {voice: {...claim.voice!, chunk}} : {voiceChunk: chunk})};
       });
       if (this.config.tts!.stream) await this.voiceOwner?.(ctx);
     };
     const source = audio ? (async function* () {yield audio!;})() : this.config.tts!.stream
       ? this.config.tts!.stream(result.reply_text, audioKey, signal)
       : (async function* (tts: TtsPort) {yield await tts.synthesize(result.reply_text, audioKey, signal);})(this.config.tts!);
-    const iterator = source[Symbol.asyncIterator]();
+    const iterator = (this.config.tts!.stream && !audio ? coalesceTts(source) : source)[Symbol.asyncIterator]();
     let seq = 0;
+    const fail = (error: unknown) => this.transact(ctx, `voice-finish:${attempt}`, digest({attempt, status: 'failed'}), async current => {
+      fence(current);
+      return {operation: '', fingerprint: '', binding: '', voice: {...claim.voice!, status: 'failed', chunks: this.voiceChunksIn(current),
+        error: signal.aborted ? 'TTS_SYNTHESIS_CANCELLED' : error instanceof ContractError ? error.code : 'TTS_SYNTHESIS_FAILED'}};
+    });
     try {
       while (true) {
         let next: IteratorResult<TtsAudio>;
         try {signal.throwIfAborted(); next = await iterator.next(); signal.throwIfAborted();}
-        catch (error) {
-          await this.transact(ctx, `voice-finish:${attempt}`, digest({attempt, status: 'failed'}), async current => {fence(current); return {
-            operation: '', fingerprint: '', binding: '', voice: {...current.voice!, status: 'failed', error: signal.aborted ? 'TTS_SYNTHESIS_CANCELLED' : error instanceof ContractError ? error.code : 'TTS_SYNTHESIS_FAILED'}};});
-          return;
-        }
+        catch (error) {await fail(error);return;}
         if (next.done) break;
-        await publishChunk(next.value, ++seq, !this.config.tts!.stream || Boolean(audio));
+        try {await publishChunk(next.value, ++seq, !this.config.tts!.stream || Boolean(audio));}
+        catch (error) {
+          const current = await this.state(ctx);
+          // A first publication failure leaves the paid claim unknown. Persist partial audio without authorizing resynthesis.
+          if (this.voiceChunksIn(current).length && !current.cancelled.includes(result.reply_epoch)) await fail(error);
+          throw error;
+        }
       }
       check(seq > 0, 'OUTPUT_AUDIO_INVALID');
+      await this.transact(ctx, `voice-finish:${attempt}`, digest({attempt, status: 'ready'}), async current => {
+        check(!current.cancelled.includes(result.reply_epoch) && current.active?.open?.reply_epoch === result.reply_epoch, 'OUTPUT_VOICE_CANCELLED', 409);
+        fence(current);
+        return {operation: '', fingerprint: '', binding: '', voice: {...claim.voice!, status: 'ready', error: null, chunks: this.voiceChunksIn(current).map((chunk,index,list)=>({...chunk,final:index===list.length-1}))}};
+      });
     } finally {await iterator.return?.();}
-    await this.transact(ctx, `voice-finish:${attempt}`, digest({attempt, status: 'ready'}), async current => {
-      check(!current.cancelled.includes(result.reply_epoch) && current.active?.open?.reply_epoch === result.reply_epoch, 'OUTPUT_VOICE_CANCELLED', 409);
-      fence(current);
-      const complete = this.voiceChunksIn(current).map((chunk,index,list)=>({...chunk,final:index===list.length-1}));
-      return {operation: '', fingerprint: '', binding: '', voice: {...claim.voice!, status: 'ready', error: null, chunks: complete}};
-    });
   }
+
   async voiceChunks(ctx: OutputContext, native: NativeRun): Promise<VoiceChunk[]> {
     const result = await this.seal(ctx, native);
     const state = await this.state(ctx);
@@ -784,7 +829,8 @@ export class OutputAuthority {
     const state = await this.state(ctx);
     check(state.sealed?.result && !state.cancelled.includes(state.sealed.result.reply_epoch) &&
       (prior || recoverable(state) || state.voice?.status === 'failed' || state.voiceRefusal?.reply_epoch === state.sealed.result.reply_epoch), 'OUTPUT_VOICE_RETRY_NOT_SAFE', 409);
-    if (!this.synthesis.has(key)) await this.requestVoice(ctx, state.sealed.result, true);
+    if (!this.synthesis.has(key)) await this.requestVoice(ctx, {...state.sealed.result,
+      reply_text:state.capabilityCheck?.voice_text??state.sealed.result.reply_text}, true);
     await this.synthesis.get(key)?.task;
     return native?this.seal(ctx,native):(await this.readFinalized(ctx)).result;
   }

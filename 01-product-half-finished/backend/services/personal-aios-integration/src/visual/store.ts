@@ -92,7 +92,7 @@ export class CameraCapturePolicies {
 
 export interface VisualModels {
   embedImage(bytes:Buffer,signal?:AbortSignal):Promise<number[]>;embedQuery(text:string):Promise<number[]>;
-  describe(bytes:Buffer,signal?:AbortSignal):Promise<{caption:string;ocr:string}>;
+  describe(bytes:Buffer,signal?:AbortSignal,context?:import('../hermes-client.ts').ModelSourceContext):Promise<{caption:string;ocr:string}>;
 }
 export interface ColdVisualPort {
   download(reference:string):Promise<Uint8Array>;
@@ -263,7 +263,7 @@ export class VisualMemory {
       if('status' in reservation)return {...reservation,people:[]};
       signal.throwIfAborted();
       const embedding=new Float32Array(await this.models.embedImage(prepared.thumbnail,signal));signal.throwIfAborted();
-      const description=reservation.keyframe?await this.models.describe(frame.image,signal):{caption:'',ocr:''};signal.throwIfAborted();
+      const description=reservation.keyframe?await this.models.describe(frame.image,signal,{kind:'capture',raw_ref:archived.raw_ref,archive_revision:archived.archive_revision,principal_id:principal,device_id:device}):{caption:'',ocr:''};signal.throwIfAborted();
       return await this.run(async()=>{
         signal.throwIfAborted();
         check(this.db.prepare('SELECT 1 FROM capture_refs WHERE raw_ref=? AND owner_delete=0').get(archived!.raw_ref),'VISUAL_DELETED',409);

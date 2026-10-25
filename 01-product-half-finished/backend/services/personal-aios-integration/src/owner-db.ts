@@ -30,7 +30,7 @@ export function configureSqlite(db:DatabaseSync):void {
  *  stored schema tag must match. The integration's process lock makes this process the only writer.
  *  (The ambient journal predates this helper and opens itself the same way.) */
 export function openOwnerDatabase(directory:string,file:string,ddl:string,schema:string,code:string,extension?:string,previousSchemas:readonly string[]=[]):DatabaseSync {
-  check(/^[a-z][a-z0-9-]*\.sqlite$/u.test(file)&&isAbsolute(directory),`${code}_PATH_UNSAFE`,500);
+  check(/^[a-z][a-z0-9-]*\.sqlite3?$/u.test(file)&&isAbsolute(directory),`${code}_PATH_UNSAFE`,500);
   const ownerOnly=(path:string,dir:boolean)=>{
     const stat=lstatSync(path);
     check(!stat.isSymbolicLink()&&(dir?stat.isDirectory():stat.isFile())&&stat.uid===process.getuid?.(),`${code}_PATH_UNSAFE`,500);

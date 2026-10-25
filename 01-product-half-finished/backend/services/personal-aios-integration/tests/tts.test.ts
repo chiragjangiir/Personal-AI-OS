@@ -1,6 +1,6 @@
 import {strict as assert} from 'node:assert';
 import test from 'node:test';
-import {DashScopeTts, inspectWav} from '../src/tts.ts';
+import {DashScopeTts, inspectWav, coalesceTts} from '../src/tts.ts';
 import {FakeSpeechSocket, fakeQwenConfiguration,fakeTtsConfiguration} from './speech-fixture.ts';
 
 test('dedicated TTS preserves text and task protocol, requested rate and reuses its connection', async () => {
@@ -164,4 +164,23 @@ test('a WAV duration is whole milliseconds, rounded the way the phone checks it 
     const audio = inspectWav(wav(samples));
     assert.equal(audio.duration_ms, expected); assert.ok(Number.isSafeInteger(audio.duration_ms));
   }
+});
+
+test('coalesced playback flushes blocked small frames at 500ms and cancellation releases its iterator',{timeout:3000},async()=>{
+  const tts=new DashScopeTts(fakeQwenConfiguration(FakeSpeechSocket),fakeTtsConfiguration);
+  const audio=await tts.synthesize('test','coalesce');tts.close();
+  const abort=new AbortController();let seen=0,closed=false;
+  const source=(async function*(){
+    try {seen++;yield audio;seen++;yield audio;await new Promise<void>((_resolve,reject)=>{
+      abort.signal.addEventListener('abort',()=>reject(abort.signal.reason),{once:true});
+    });} finally {closed=true;}
+  })();
+  const stream=coalesceTts(source)[Symbol.asyncIterator]();
+  try {
+    assert.deepEqual((await stream.next()).value?.bytes,audio.bytes);assert.equal(seen,1);
+    const start=performance.now(),next=await stream.next();
+    assert.deepEqual(next.value?.bytes,audio.bytes);assert.ok(performance.now()-start>=450);
+    assert.equal(seen,2);assert.equal(closed,false);
+    abort.abort();assert.equal((await stream.return!()).done,true);assert.equal(closed,true);
+  } finally {abort.abort();await stream.return?.();}
 });

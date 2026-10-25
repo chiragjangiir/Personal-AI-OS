@@ -68,6 +68,9 @@ def test_native_owner_no_closes_source_and_all_status_views(tmp_path, repo, monk
     host = release.Host({'root': str(tmp_path / 'builder'), 'stage': 'staging', 'repo': str(repo.bare),
                          'requests': str(request.parent), 'exchange': str(tmp_path / 'exchange')})
     host.state = tmp_path / 'builder'
+    (tmp_path / 'exchange').mkdir()
+    release_build.write(tmp_path / 'exchange/production.json', {'commit': repo.base})
+    monkeypatch.setattr(release.release_parity, 'ensure', lambda host, lock: {'commit': repo.base})
     monkeypatch.setattr(release_build, 'build', lambda *a: pytest.fail('declined baseline cannot build'))
     waiting = release.candidate(host, request)
     shutil.copytree(tmp_path / 'exchange/notices', Path(prod.host.config['incoming']) / 'notices')

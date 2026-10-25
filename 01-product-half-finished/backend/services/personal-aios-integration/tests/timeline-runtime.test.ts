@@ -15,10 +15,11 @@ import {EVENT_SCHEMA,sha256,runScope,principalAttribution,ownerActionGrant,type 
 import {PHONE_CAPABILITIES,MAC_CAPABILITIES,GLASSES_CAPABILITIES,StaticFixtureDeviceAuthority,type RegisteredDevice} from '../src/source-authority.ts';
 import {nativeApprovalId} from '../src/voiceprint/confirmation.ts';
 import {parseErrandResult} from '../../../phase0/gateway/src/errand-spool.ts';
+import {buildTimelineContext} from '../src/timeline.ts';
 
-async function fixture(t:test.TestContext,notifications?:{title:string;body:string}[]|((notice:{title:string;body:string})=>Promise<void>),voice?:{calls:number},stagingOutreach?:ConstructorParameters<typeof PersonalAIOSRuntime>[0]['staging_outreach']){
+async function fixture(t:test.TestContext,notifications?:{title:string;body:string}[]|((notice:{title:string;body:string})=>Promise<void>),voice?:{calls:number},stagingOutreach?:ConstructorParameters<typeof PersonalAIOSRuntime>[0]['staging_outreach'],historyWait?:{aborted:number}){
   const root=await mkdtemp(join(tmpdir(),'paios-timeline-runtime-')),storage=new PosixStorage(join(root,'storage'));
-  const runs=new Map<string,NativeRun>(),inputs=new Map<string,{input:string;memory_write:boolean;run_scope?:string;guest_key?:string}>(),decisions:unknown[]=[],mirrors=new Map<string,{session:string;input:string;captured_at:string}>(),bodies:{input:string;instructions:string;session_id:string}[]=[];let sequence=0;
+  const runs=new Map<string,NativeRun>(),inputs=new Map<string,{input:string;run_scope?:string;guest_key?:string}>(),decisions:unknown[]=[],mirrors=new Map<string,{session:string;input:string;captured_at:string}>(),bodies:{input:string;instructions:string;session_id:string}[]=[];let sequence=0;
   const histories=new Map<string,{role:string;content:string;timestamp:number;tool_calls?:unknown}[]>();
   // Exercise HermesClient's actual wire decoder and approval response validation.
   const native=new HermesClient('http://127.0.0.1:1','fixture-token-abcdefghijklmnop',1000000,1048576,undefined,async(input,init)=>{
@@ -33,14 +34,17 @@ async function fixture(t:test.TestContext,notifications?:{title:string;body:stri
       mirrors.set(body.processed_event_id,{session,input:body.input,captured_at:body.captured_at});
       return Response.json({session_id:session,processed_event_id:body.processed_event_id});
     }
-    if(path==='/api/sessions')return Response.json({data:[...histories.keys()].reverse().map(id=>({id}))});
+    if(path==='/api/sessions'){
+      if(historyWait)await new Promise<void>((_resolve,reject)=>init!.signal!.addEventListener('abort',()=>{historyWait.aborted++;reject(init!.signal!.reason);},{once:true}));
+      return Response.json({data:[...histories.keys()].reverse().map(id=>({id}))});
+    }
     if(path.startsWith('/api/sessions/'))return Response.json({data:histories.get(decodeURIComponent(path.split('/')[3]!))??[]});
     if(path==='/v1/runs'){
       inputs.set(body.session_id,body);
       bodies.push(body);const messages=histories.get(body.session_id)??[];histories.set(body.session_id,messages);
       messages.push({role:'user',content:body.input,timestamp:Date.now()/1000});
-      const run:NativeRun={run_id:`run-${++sequence}`,session_id:body.care_decision?`care-${sequence}`:body.session_id,conversation_session_id:body.session_id,status:'running',...(body.care_decision?{memory_write:false}:{})};runs.set(run.run_id,run);
-      return Response.json({schema:'hermes.run.v2',shape_sha256:NATIVE_RUN_SHAPE_SHA256,profile_home:'/fixture',...run,granted_toolsets:body.grant_toolsets??[],...(body.run_scope?{run_scope:body.run_scope,memory_write:false}:{})},{status:202});
+      const run:NativeRun={run_id:`run-${++sequence}`,session_id:body.care_decision?`care-${sequence}`:body.session_id,conversation_session_id:body.session_id,status:'running',...(body.care_decision?{}:{})};runs.set(run.run_id,run);
+      return Response.json({schema:'hermes.run.v2',shape_sha256:NATIVE_RUN_SHAPE_SHA256,profile_home:'/fixture',...run,granted_toolsets:body.grant_toolsets??[],...(body.run_scope?{run_scope:body.run_scope}:{})},{status:202});
     }
     const run=runs.get(path.split('/')[3]!)!;
     if(path.endsWith('/events')){
@@ -90,7 +94,7 @@ async function fixture(t:test.TestContext,notifications?:{title:string;body:stri
   const [phone,mac,glasses,foreign]=await Promise.all(['phone','mac','glasses','foreign'].map(id=>runtime.authenticate(id)));
   const raw=(source:RegisteredDevice,event_id:string,payload:string|object):RawEvent=>({schema_version:EVENT_SCHEMA,event_id,device_id:source.device_id,device_type:source.device_type,
     captured_at:new Date().toISOString(),source:{channel:'fixture'},media_type:typeof payload==='string'?'text':'app_event',mime:typeof payload==='string'?'text/plain;charset=utf-8':'application/json',representation:'uploaded_original',payload:Buffer.from(typeof payload==='string'?payload:JSON.stringify(payload))});
-  return {runtime,output,archive,storage,native,admission,health,root,phone:phone!,mac:mac!,glasses:glasses!,foreign:foreign!,raw,runs,inputs,decisions,errors,mirrors,bodies,histories};
+  return {runtime,output,archive,storage,native,admission,health,authority,root,phone:phone!,mac:mac!,glasses:glasses!,foreign:foreign!,raw,runs,inputs,decisions,errors,mirrors,bodies,histories};
 }
 const ownerConfirmation=(run_id:string,request_id='')=>({confirmation_id:nativeApprovalId('owner',run_id,request_id),
   confirmed_by:'owner',surface:{device_id:'phone',device_type:'phone'},confirmed_at:'2026-10-22T00:00:00.000Z'});
@@ -98,6 +102,64 @@ async function until<T>(read:()=>T|Promise<T>,done:(value:T)=>boolean):Promise<T
   const deadline=Date.now()+5000;
   for(;;){const value=await read();if(done(value))return value;assert.ok(Date.now()<deadline,'public runtime observation did not settle');await new Promise(resolve=>setTimeout(resolve,10));}
 }
+
+test('typed submission survives its native history deadline without resending or claiming history is empty',async t=>{
+  const historyWait={aborted:0},f=await fixture(t,undefined,undefined,undefined,historyWait);
+  const accepted=await f.runtime.submit(f.raw(f.phone,'history-deadline','controlled request'),f.phone,'history-deadline-session',true);
+  assert.equal(accepted.processed_event.event_id,'history-deadline');
+  assert.equal(historyWait.aborted,1,'the existing timeline deadline cancels the stalled history HTTP read');
+  await until(()=>f.bodies.length,count=>count===1);
+  assert.match(f.bodies[0]!.instructions,/【同一条时间线】暂不可读取，不能据此认定此前没有对话。/);
+  assert.equal(f.bodies[0]!.session_id,'history-deadline-session');
+  const admitted=await until(()=>f.runtime.event(f.phone,'history-deadline-session',accepted.processed_event.processed_event_id),value=>value.admission.run_id==='run-1');
+  assert.equal(admitted.admission.run_id,'run-1');
+  assert.equal(f.bodies.length,1,'the first submitted D starts one native run without a terminal resend');
+});
+
+test('timeline history deadline handling preserves caller cancellation and actual service errors',async()=>{
+  const caller=new AbortController(),cancelled=new Error('controlled caller cancellation');caller.abort(cancelled);
+  await assert.rejects(buildTimelineContext({signal:caller.signal,sessionOwner:async()=>undefined},'owner','session'),error=>error===cancelled);
+  for(const failure of [new Error('controlled history failure'),new DOMException('controlled upstream timeout','TimeoutError')])
+    await assert.rejects(buildTimelineContext({sessionOwner:async()=>undefined,
+      native:{sessions:async()=>{throw failure;},messages:async()=>[]}},'owner','session'),error=>error===failure);
+});
+
+test('package confirmation uses the existing owner surface and starts exactly one new native run for its result',async t=>{
+  const f=await fixture(t),session='package-confirmation';
+  await f.runtime.submit(f.raw(f.phone,'package-request','把消息发给小李'),f.phone,session,true);
+  const run=await until(()=>[...f.runs.values()].find(value=>value.conversation_session_id===session),value=>!!value);
+  const bound=await until(()=>f.admission.find(run!.run_id,session),value=>!!value);
+  const receipts:unknown[]=[],executed:unknown[]=[];
+  await f.runtime.attachCapabilityConsent({
+    spend:async()=>({action:'block',message:'CASHIER_REQUIRED'}),selfChange:async()=>({action:'block',message:'RELEASE_REQUIRED'}),
+    execute:async call=>{
+      const source=await f.runtime.scheduleContext(call.consent.context);assert.equal(source.allow_owner_mutation,true);
+      await assert.rejects(f.runtime.scheduleContext({...call.consent.context,tool_call_id:'other-call'}),/SCHEDULE_RUN_BINDING_REQUIRED/);
+      executed.push(call.args);return {receipt:1,status:{state:'succeeded'},effects:[],values:[],content:[],unknowns:[],next:{retry:'forbidden',waiting_on:'none'}};
+    },
+    receipt:async(_,body)=>{receipts.push(body);},error:error=>f.errors.push(error),
+    followUp:async(call,body,id)=>{await f.runtime.capabilityFollowUp(call,{receipt_ref:'fixture-ledger-result',model_view:JSON.stringify(body)},id);}
+  });
+  await f.runtime.capabilityConsent!.decide({tool_name:'send_message',task_id:'native-child',args:{target:'email:fixture@example.com',message:'原文'},
+    idempotency_key:'fixture-key',admission:bound!,check_with:'message_status',consent:{
+      context:{run_id:run!.run_id,session_id:session,tool_call_id:'send'},effect:'send',target:'email:fixture@example.com',
+      task_type:'send_message:email:send',owner_requested:true,scope_allowed:true,consent_required:true}});
+  const [card]=await f.runtime.voiceConfirmations(f.phone);assert.equal(card!.kind,'native_approval');
+  await f.runtime.tool('paios_open_reply',{context:{run_id:run!.run_id,session_id:session,tool_call_id:'waiting'},args:{reply_mode:'none'}});
+  run!.status='completed';
+  await until(()=>f.runtime.event(f.phone,session,bound!.d.processed_event_id),value=>value.admission.state==='completed');
+  await f.runtime.confirmVoice(f.phone,{confirmation_id:card!.confirmation_id,choice:'approve'});
+  await until(()=>f.runs.size,value=>value===2);
+  await assert.rejects(f.runtime.scheduleContext({run_id:run!.run_id,session_id:session,tool_call_id:'send'}),/SCHEDULE_RUN_BINDING_REQUIRED/);
+  const result=f.bodies.at(-1)!;assert.ok(result.input.includes('capability_result'));
+  assert.ok(result.input.includes('fixture-ledger-result'));
+  assert.ok(result.input.includes('model_view'));
+  await f.runtime.confirmVoice(f.phone,{confirmation_id:card!.confirmation_id,choice:'approve'});
+  await until(()=>f.storage.list('capability-followup-inputs'),value=>value.length===1);
+  assert.equal(executed.length,1);assert.equal(f.runs.size,2);
+  const followup=JSON.parse(result.input) as import('../src/contracts.ts').ProcessedEvent;
+  assert.deepEqual(await ownerActionGrant(followup,async()=>bound!.d,{payment_source:{...f.phone,chat_ui:true}}),[]);
+});
 
 test('rollback system notice persists offline, retries through existing delivery, and deduplicates its timeline and event',async t=>{
   const events:unknown[]=[],bus=channel('paios.runtime.events'),listener=(event:unknown)=>events.push(event);
@@ -198,7 +260,7 @@ test('call observations reach the main turn with archived audio and only verifie
     assert.equal(observation.speaker_ref,speaker);assert.equal(observation.instruction_eligible,speaker==='owner');
     assert.equal(observation.evidence.raw_ref,original.raw_ref);assert.equal(observation.evidence.processed_event_id,d.processed_event_id);
     assert.equal(observation.evidence_status,'archived_audio');
-    assert.equal(input!.memory_write,speaker==='owner');assert.equal(principalAttribution(d),speaker==='owner'?'owner_call_turn':null);
+    assert.equal(Object.hasOwn(input!,'memory_write'),false);assert.equal(principalAttribution(d),speaker==='owner'?'owner_call_turn':null);
     assert.equal(input!.run_scope,speaker==='owner'?undefined:speaker==='owner_uncertain'?'owner_uncertain':'guest');
     if(speaker==='speaker:1')assert.ok(input!.guest_key?.startsWith('speaker:1:'));
     assert.deepEqual(await ownerActionGrant(d),speaker==='owner'?['desktop','terminal','file']:[]);
@@ -910,6 +972,31 @@ test(`voice-origin queue completion stays bound to its original call and reaches
   assert.deepEqual(spoken,[{text:'发票已经整理好了',origin:state==='non-voice'?undefined:{device_id:'phone',call_id:'original-call',identity:'owner',turn:0,message_id:result.result.processed_event_id}}]);
   assert.notEqual(accepted.processed_event.processed_event_id,result.result.processed_event_id);
   assert.deepEqual(f.errors,[]);
+});
+
+test('captured server call archives its turn and close after transport expiry while stale public requests stay denied',async t=>{
+  const f=await fixture(t),session='captured-call-session',call_id='captured-call';
+  const captured=await f.runtime.captureCall(f.phone,session,call_id);
+  assert.ok(Object.isFrozen(captured)&&Object.isFrozen(captured.source));
+  const inactive=Object.assign(new Error('SOURCE_BINDING_INACTIVE'),{code:'SOURCE_BINDING_INACTIVE'});
+  const revalidation=t.mock.method(f.authority,'revalidate',async()=>{throw inactive;});
+  const turn={kind:'voice_turn',call_id,turn:0,user:'controlled captured input',assistant:'controlled spoken answer',route:'front_only',speaker:'owner'};
+  const raw=f.raw(f.phone,'captured-turn',turn),closed={reason:'disconnected',final_turn:0,processed_event_ids:[] as string[],closed_at:new Date().toISOString()};
+  await assert.rejects(f.runtime.submitCallTurn(raw,f.phone,session),error=>error===inactive);
+  await assert.rejects(f.runtime.closeCall(f.phone,session,{...closed,call_id}),error=>error===inactive);
+  await assert.rejects(f.runtime.captureCall(f.phone,session,'new-call'),error=>error===inactive);
+  const denied=revalidation.mock.callCount();
+  assert.equal(captured.locate(),undefined,'a captured location read does not renew transport authorization');
+  await assert.rejects(captured.turn(f.raw(f.phone,'foreign-call-turn',{...turn,call_id:'another-call'})),{code:'CALL_TURN_BINDING_DENIED'});
+  const saved=await captured.turn(raw);
+  assert.equal(saved.admission,null);
+  assert.equal(f.mirrors.get(saved.processed_event.processed_event_id)?.session,`native-front-${session}`);
+  const archived=await f.archive.readRecord(saved.processed_event.raw_ref,'owner',saved.processed_event.archive_revision,{maxReadBytes:8192});
+  assert.equal(archived.kind,'original');
+  const sealed=await captured.close({...closed,processed_event_ids:[saved.processed_event.processed_event_id]});
+  assert.ok('processed_event' in sealed);
+  assert.deepEqual(sealed.processed_event.content.app_event,{kind:'call_closed',...closed,call_id,processed_event_ids:[saved.processed_event.processed_event_id]});
+  assert.equal(revalidation.mock.callCount(),denied,'server finalization never revalidates the expired transport');
 });
 
 test('call close observation admits without live native history or replaying task text; false wakes never start a brain run',async t=>{

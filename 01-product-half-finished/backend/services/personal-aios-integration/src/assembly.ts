@@ -10,6 +10,7 @@ import type { ActionAuthority } from './actions/authority.ts';
 import type { MediaService } from './media/service.ts';
 
 export interface PersonalAIOSAssemblyResources {
+  model_settings?:{attach:(runtime:PersonalAIOSRuntime)=>void};
   storage: StoragePort; native: NativeClient; admission: AdmissionPolicy; skill: string;
   max_event_bytes: number; max_read_bytes: number; archive?: RawArchive;
   session_folding?:boolean;
@@ -21,7 +22,7 @@ export interface PersonalAIOSAssemblyResources {
   voice?:ConstructorParameters<typeof PersonalAIOSRuntime>[0]['voice'];
   audio_route?:ConstructorParameters<typeof PersonalAIOSRuntime>[0]['audio_route'];
   continuous_context?:ConstructorParameters<typeof PersonalAIOSRuntime>[0]['continuous_context'];
-  native_memory_receipts?: ConstructorParameters<typeof PersonalAIOSRuntime>[0]['native_memory_receipts'];
+  core_profile?: ConstructorParameters<typeof PersonalAIOSRuntime>[0]['core_profile'];
   payment?:ConstructorParameters<typeof PersonalAIOSRuntime>[0]['payment'];
   payment_ports?:ConstructorParameters<typeof PersonalAIOSRuntime>[0]['payment_ports'];
   payment_devices?:ConstructorParameters<typeof PersonalAIOSRuntime>[0]['payment_devices'];
@@ -72,7 +73,7 @@ export function createPersonalAIOSAssembly(resources: PersonalAIOSAssemblyResour
     ...(resources.voice ? {voice:resources.voice} : {}),
     ...(resources.audio_route ? {audio_route:resources.audio_route} : {}),
     ...(resources.continuous_context ? {continuous_context:resources.continuous_context} : {}),
-    ...(resources.native_memory_receipts ? {native_memory_receipts:resources.native_memory_receipts} : {}),
+    ...(resources.core_profile ? {core_profile:resources.core_profile} : {}),
     ...(resources.payment?{payment:resources.payment}:{}),...(resources.payment_ports?{payment_ports:resources.payment_ports}:{}),...(resources.payment_devices?{payment_devices:resources.payment_devices}:{}),
     ...(resources.payment_clock_map?{payment_clock_map:resources.payment_clock_map}:{}),
     ...(resources.speech_detector?{speech_detector:resources.speech_detector}:{}),
@@ -92,17 +93,22 @@ export function createPersonalAIOSAssembly(resources: PersonalAIOSAssemblyResour
     ...(resources.care ? {care:resources.care} : {}), ...(resources.care_sms ? {care_sms:resources.care_sms} : {}),
     ...(resources.staging_outreach ? {staging_outreach:resources.staging_outreach} : {}),
     ...(resources.notify ? {notify:resources.notify} : {})});
+  resources.model_settings?.attach(runtime);
   const server = createPersonalAIOSServer(runtime, resources.http);
   let tierTimer:ReturnType<typeof setInterval>|undefined,tierWork=Promise.resolve(),tierRunning=false;
   const tier=()=>{if(tierRunning)return;tierRunning=true;
     tierWork=(async()=>{
       try{
+        if(resources.realtime_busy?.())return;
+        await runtime.applyModelSettings();
+        await runtime.recoverModelUsage();
+        await runtime.monitorCapabilities();
         if(resources.storage instanceof PosixStorage)await resources.storage.monitorReserve();
         if(closing)return;
-        if(resources.archive_tiering)await archive.moveCold(resources.archive_tiering.hot_days,Date.now(),
+        if(!resources.archive_tiering)await runtime.archiveAlert('L5_TIERING_NOT_CONFIGURED');
+        if(resources.archive_tiering||resources.session_folding!==false)await archive.maintenance(resources.archive_tiering?.hot_days??2,Date.now(),
           {...(resources.realtime_busy?{busy:resources.realtime_busy}:{}),
-            ...(resources.archive_tiering.max_upload_kbps!==undefined?{max_upload_kbps:resources.archive_tiering.max_upload_kbps}:{})});
-        else await runtime.archiveAlert('L5_TIERING_NOT_CONFIGURED');
+            ...(resources.archive_tiering?.max_upload_kbps!==undefined?{max_upload_kbps:resources.archive_tiering.max_upload_kbps}:{})});
       }catch(error){console.error('L5_TIERING_UNAVAILABLE',error);}
     })().catch(error=>console.error('L5_OWNER_ALERT_UNDELIVERED',error)).finally(()=>{tierRunning=false;});};
   let closing: Promise<void> | undefined;
@@ -120,9 +126,11 @@ export function createPersonalAIOSAssembly(resources: PersonalAIOSAssemblyResour
     if (errors.length > 1) throw new AggregateError(errors, 'ASSEMBLY_CLOSE_FAILED');
   });
   server.once('listening', () => {
+    resources.http.capability_ready=runtime.wireCapabilities();
     void archive.recover().catch(error=>console.error('L5_INGRESS_RECOVERY_UNAVAILABLE',error instanceof Error?error.message:'unknown'));
     tierTimer=setInterval(tier,60000);tierTimer.unref();tier();
-    void admission.recover().catch(async error => {
+    // Restore calls after their HTTP ports are ready; recovery may invoke these same ports.
+    void Promise.all([admission.recover(),resources.http.capability_ready.then(()=>runtime.capabilityConsent!.recover())]).catch(async error => {
       console.error('ADMISSION_RECOVERY_FAILED', error instanceof Error ? error.message : 'unknown');
       await close();
     }).catch(error => console.error('ADMISSION_RECOVERY_CLOSE_FAILED', error instanceof Error ? error.message : 'unknown'));

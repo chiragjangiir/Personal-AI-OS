@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DataPacketKind, RoomEvent, Room } from '@livekit/rtc-node';
 const REALTIME_ASSISTANT_MAX_PACKET_BYTES = 12288;
-import { bindRawSource, canonical, ContractError, digest, EVENT_SCHEMA, type ProcessedEvent } from '../../../services/personal-aios-integration/src/contracts.ts';
+import { bindRawSource, canonical, ContractError, digest, EVENT_SCHEMA, type ProcessedEvent, type RawEvent } from '../../../services/personal-aios-integration/src/contracts.ts';
 import type {Movement,Navigation} from '../../../services/personal-aios-integration/src/movement.ts';
 import { PosixStorage } from '../../../services/personal-aios-integration/src/storage.ts';
 import { inspectWav } from '../../../services/personal-aios-integration/src/tts.ts';
@@ -31,7 +31,7 @@ import {StreamArchive} from '../../../services/personal-aios-integration/src/str
 import { RawArchive } from '../../../services/personal-aios-integration/src/archive.ts';
 import { RunAdmission } from '../../../services/personal-aios-integration/tests/native-source-fixture.ts';
 import { OutputAuthority } from '../../../services/personal-aios-integration/src/output.ts';
-import {MAC_CAPABILITIES,PHONE_CAPABILITIES,GLASSES_CAPABILITIES,WATCH_CAPABILITIES,sourceSnapshot} from '../../../services/personal-aios-integration/src/source-authority.ts';
+import {MAC_CAPABILITIES,PHONE_CAPABILITIES,GLASSES_CAPABILITIES,WATCH_CAPABILITIES,sourceSnapshot,type RegisteredDevice} from '../../../services/personal-aios-integration/src/source-authority.ts';
 import { OutputTargetAuthority } from '../../../services/personal-aios-integration/src/routing.ts';
 import { PersonalAIOSRuntime,sourceClient,type VoiceResultOrigin } from '../../../services/personal-aios-integration/tests/native-source-fixture.ts';
 import type { NativeClient, NativeRun } from '../../../services/personal-aios-integration/tests/native-source-fixture.ts';
@@ -47,13 +47,25 @@ import {REALTIME_READINESS_DEADLINE_MS} from '../src/realtime-readiness.ts';
 const inertMacSource={principal_id:'actual-owner',device_id:'mac',device_type:'mac',capabilities:[],
   channel:'rtc_typed_text',consent_ref:'submit-consent',route_version:'route-1',output_modes:['text']};
 const now='2026-10-01T00:00:00.000Z', future='2026-10-01T01:00:00.000Z';
+function callRuntime(runtime:PersonalAIOSRuntime):PersonalAIOSRuntime {
+  return Object.assign(runtime,{captureCall:async(source:RegisteredDevice,session:string,call_id:string)=>({source,
+    locate:()=>runtime.locate(source),turn:(raw:RawEvent)=>runtime.submitCallTurn(raw,source,session),
+    close:(closed:Omit<Parameters<PersonalAIOSRuntime['closeCall']>[2],'call_id'>)=>runtime.closeCall(source,session,{...closed,call_id})})});
+}
+function observeCallTurns(t:test.TestContext,runtime:PersonalAIOSRuntime,seen:(value:Awaited<ReturnType<PersonalAIOSRuntime['submitCallTurn']>>)=>void) {
+  const capture=runtime.captureCall.bind(runtime);
+  t.mock.method(runtime,'captureCall',async(...args:Parameters<PersonalAIOSRuntime['captureCall']>)=>{
+    const call=await capture(...args);return {...call,turn:async(raw:RawEvent)=>{const value=await call.turn(raw);seen(value);return value;}};
+  });
+}
+
 
 test('formal registry pins every wire extension sibling without operation collisions',async()=>{
   const {createHash}=await import('node:crypto');
   const contracts=new URL('../../../../../integrations/contracts/',import.meta.url);
   const bytes=await fs.readFile(new URL('formal-message.v1.json',contracts)),wire=JSON.parse(bytes.toString());
   assert.deepEqual(wire.extensions.map((entry:any)=>entry.contract),['payment-message.v1.json','terminal-message.v1.json',
-    'owner-override-message.v1.json','call-avatar.v1.json','appearance-message.v1.json']);
+    'owner-override-message.v1.json','call-avatar.v1.json','appearance-message.v1.json','model-settings.v1.json']);
   const app=new URL('../../../../../01-product-half-finished/apple/current-mac-source-20260930/clients/phase0/apple-native/PersonalAIOSPhase0/OpenSource/apple-health-exporter/app/Contracts/',import.meta.url);
   assert.deepEqual(await fs.readFile(new URL('formal-message.v1.json',app)),bytes);
   const groups={inputs:new Set(Object.keys(wire.inputs)),outputs:new Set(Object.keys(wire.outputs))},ajv=createFormalWireAjv();
@@ -1374,7 +1386,7 @@ test('archived Watch run controls retain source fences and terminal barriers',as
   const original=JSON.parse(bytes.toString('utf8')),f=fixture(true,{primary:original.origin.relay.device_id,watch:original.origin.device_id,client:original.origin.client_instance_id});
   const root=await fs.mkdtemp(join(tmpdir(),'watch-control-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
   const storage=new PosixStorage(root),runs=new Map<string,NativeRun>();let creates=0,cancels=0;
-  const native:NativeClient={create:async body=>{const d=JSON.parse(body.input) as ProcessedEvent;assert.equal(d.user_identity,'unknown');assert.equal(body.memory_write,false);
+  const native:NativeClient={create:async body=>{const d=JSON.parse(body.input) as ProcessedEvent;assert.equal(d.user_identity,'unknown');assert.equal(Object.hasOwn(body,'memory_write'),false);
     const run={run_id:'controlled-watch-'+ ++creates,session_id:body.session_id,conversation_session_id:body.session_id,status:'running'};runs.set(run.run_id,run);return {...run};},
     status:async id=>({...runs.get(id)!}),cancel:async id=>{cancels++;runs.get(id)!.status='cancelled';return {...runs.get(id)!};}};
   const admission=new RunAdmission(storage,native,{max_pending_events:8,max_pending_bytes:100000,max_event_age_ms:10000,poll_interval_ms:5,native_idempotency_retention_ms:100000,policy_version:'explicit-control'});
@@ -1763,11 +1775,11 @@ test('a second authenticated owner call replaces the first and aborts its pendin
   const call=createVoiceCallSession({room:()=>({}),createFront:()=>({connect:async()=>{},close:()=>{},appendAudio:()=>{},appendImage:()=>{},respond:async()=>({completed:true}),context:async()=>{}}),
     createPlayout:()=>({open:async()=>{},push:()=>{},interrupt:()=>{},drain:async()=>{},close:async()=>{}}),
     onState:(...args)=>sink?.state(...args),onSealed:(...args)=>sink?.sealed?.(...args),onTranscript:()=>{},onTurn:()=>{},onError:error=>errors.push(error)});
-  const runtime={watchActivity:async()=>()=>{},replayActivity:async()=>{},authenticate:async()=>({principal_id:'actual-owner',device_id:'mac',device_type:'phone',channel:'rtc_typed_text'}),cameraReady:async()=>{},movementReady:async()=>{},
+  const runtime=callRuntime({watchActivity:async()=>()=>{},replayActivity:async()=>{},authenticate:async()=>({principal_id:'actual-owner',device_id:'mac',device_type:'phone',channel:'rtc_typed_text'}),cameraReady:async()=>{},movementReady:async()=>{},
     locate:async()=>undefined,formalVoice:async(_s:unknown,_m:string,consume:()=>Promise<unknown>)=>consume(),
     ownerInput:async()=>{inputs++;},closeCall:async()=>{},
     callContext:async(_source:unknown,_session:string,_fix:unknown,_turn:unknown,signal:AbortSignal)=>{contextSignals.push(signal);return ++contexts===1?firstContext.promise:'第二次通话的上下文';},
-    watchPayments:async()=>()=>{},paymentDetach:async()=>{},terminalChanged:()=>{},activeTerminal:()=>true,watchVoiceConfirmations:async()=>()=>{},watchReminders:async()=>()=>{},watchCare:async()=>()=>{},watchAmbientTurns:async()=>()=>{}} as unknown as PersonalAIOSRuntime;
+    watchPayments:async()=>()=>{},paymentDetach:async()=>{},terminalChanged:()=>{},activeTerminal:()=>true,watchVoiceConfirmations:async()=>()=>{},watchReminders:async()=>()=>{},watchCare:async()=>()=>{},watchAmbientTurns:async()=>()=>{}} as unknown as PersonalAIOSRuntime);
   const bridge=createFormalTextIngress({participant:{roomPort:room,disconnect:async()=>{}} as unknown as LiveKitCloudParticipantPort,
     runtime,authority:f.authority,max_packet_bytes:REALTIME_ASSISTANT_MAX_PACKET_BYTES,voice_call:{...call,attach:value=>{sink=value;return()=>{sink=undefined;};}},onError:error=>errors.push(error)});
   const send=(operation:string,call_id:string)=>room.emit(RoomEvent.DataReceived,Buffer.from(JSON.stringify({operation,call_id})),{identity:'terminal'},DataPacketKind.KIND_RELIABLE,FORMAL_TEXT_INPUT_TOPIC);
@@ -1792,10 +1804,10 @@ for(const outcome of ['replace','reject'] as const)test(`manual dial replacement
     const call=createVoiceCallSession({room:()=>({}),createFront:()=>({connect:async()=>{},close:()=>{},appendAudio:()=>{},appendImage:()=>{},respond:async()=>({completed:true}),context:async()=>{}}),
       createPlayout:(_room,id)=>({open:async()=>{},push:()=>{},interrupt:()=>{},drain:async()=>{},close:async()=>{if(id==='first-owner'){closing++;await retired.promise;}}}),
       onState:(...args)=>sink?.state(...args),onSealed:(...args)=>sink?.sealed?.(...args),onTranscript:()=>{},onTurn:()=>{},onError:error=>errors.push(error)});
-    const runtime={watchActivity:async()=>()=>{},replayActivity:async()=>{},authenticate:async()=>({principal_id:'actual-owner',device_id:'mac',device_type:'phone',channel:'rtc_typed_text'}),cameraReady:async()=>{},movementReady:async()=>{},
+    const runtime=callRuntime({watchActivity:async()=>()=>{},replayActivity:async()=>{},authenticate:async()=>({principal_id:'actual-owner',device_id:'mac',device_type:'phone',channel:'rtc_typed_text'}),cameraReady:async()=>{},movementReady:async()=>{},
       locate:async()=>undefined,formalVoice:async(_s:unknown,_m:string,consume:()=>Promise<unknown>)=>consume(),
       ownerInput:async()=>{inputs++;},closeCall:async()=>{},callContext:async()=>++contexts===1?firstContext.promise:'最新通话的上下文',
-      watchPayments:async()=>()=>{},paymentDetach:async()=>{},terminalChanged:()=>{},activeTerminal:()=>true,watchVoiceConfirmations:async()=>()=>{},watchReminders:async()=>()=>{},watchCare:async()=>()=>{},watchAmbientTurns:async()=>()=>{}} as unknown as PersonalAIOSRuntime;
+      watchPayments:async()=>()=>{},paymentDetach:async()=>{},terminalChanged:()=>{},activeTerminal:()=>true,watchVoiceConfirmations:async()=>()=>{},watchReminders:async()=>()=>{},watchCare:async()=>()=>{},watchAmbientTurns:async()=>()=>{}} as unknown as PersonalAIOSRuntime);
     const bridge=createFormalTextIngress({participant:{roomPort:room,disconnect:async()=>{}} as unknown as LiveKitCloudParticipantPort,
       runtime,authority:f.authority,max_packet_bytes:REALTIME_ASSISTANT_MAX_PACKET_BYTES,voice_call:{...call,open:async(...args)=>{entered.push(args[0]);return call.open(...args);},attach:value=>{sink=value;return()=>{sink=undefined;};}},onError:error=>errors.push(error)});
     const send=(call_id:string)=>room.emit(RoomEvent.DataReceived,Buffer.from(JSON.stringify({operation:'call_open',call_id})),{identity:'terminal'},DataPacketKind.KIND_RELIABLE,FORMAL_TEXT_INPUT_TOPIC);
@@ -2046,10 +2058,10 @@ test('voice settings, ambient handoff, current confirmation facts and playback r
   let handlers:any,seen:((d:ProcessedEvent)=>void)|undefined,show:((id:string,text:string)=>Promise<boolean>)|undefined,speak:((text:string,origin?:VoiceResultOrigin)=>Promise<boolean>)|undefined,contextReads=0;const contextScopes:unknown[]=[],scopes:unknown[]=[],spoken:unknown[]= [];
   let wake:((value:any)=>Promise<boolean>)|undefined,sink:import('../src/personal-aios-formal-text.ts').CallSink|undefined,current:string|undefined,failOpen=false;
   const phone={principal_id:'actual-owner',device_id:'mac',device_type:'phone',channel:'rtc_typed_text'};
-  const runtime={watchActivity:async()=>()=>{},replayActivity:async()=>{},authenticate:async()=>phone,locate:async()=>undefined,formalVoice:async(_s:unknown,_m:string,consume:()=>Promise<unknown>)=>consume(),
+  const runtime=callRuntime({watchActivity:async()=>()=>{},replayActivity:async()=>{},authenticate:async()=>phone,locate:async()=>undefined,formalVoice:async(_s:unknown,_m:string,consume:()=>Promise<unknown>)=>consume(),
     watchPayments:async()=>()=>{},paymentDetach:async()=>{},terminalChanged:()=>{},ownerInput:async()=>{},activeTerminal:()=>true,watchVoiceConfirmations:async()=>()=>{},watchReminders:async()=>()=>{},cameraReady:async()=>{},movementReady:async()=>{},watchCare:async(_d:unknown,fn:any,voice:any)=>{show=fn;speak=voice;return()=>{};},watchAmbientTurns:async(_d:unknown,_s:string,fn:any)=>{seen=fn;return()=>{};},
     voiceConfirmationFact:(d:ProcessedEvent)=>PersonalAIOSRuntime.prototype.voiceConfirmationFact.call({confirmations} as unknown as PersonalAIOSRuntime,d),replyPrivacy:async()=>({}),callTranscript:async(_d:unknown,text:string,interrupted:boolean)=>{careWords.push(`${interrupted}:${text}`);},callContext:async(...args:unknown[])=>{contextReads++;contextScopes.push(args[5]);return 'owner context';},subscribeResult:async(_d:unknown,_s:string,_id:string,fn:any)=>{await fn({result:{},chunks:[{text:'scoped answer',final:true}]});return()=>{};},
-    watchAmbientVoice:async(_d:unknown,_s:string,fn:any,options:any)=>{wake=fn;handlers=options;return()=>{wake=undefined;};}} as unknown as PersonalAIOSRuntime;
+    watchAmbientVoice:async(_d:unknown,_s:string,fn:any,options:any)=>{wake=fn;handlers=options;return()=>{wake=undefined;};}} as unknown as PersonalAIOSRuntime);
   const bridge=createFormalTextIngress({participant:{roomPort:room,disconnect:async()=>{}} as unknown as LiveKitCloudParticipantPort,runtime,authority:f.authority,
     max_packet_bytes:REALTIME_ASSISTANT_MAX_PACKET_BYTES,voice_call:{open:async(id,extra)=>{if(current&&extra?.intent==='automatic')throw new ContractError('VOICE_CALL_BUSY',409);if(failOpen)throw new Error('care greeting failed');current=id;await sink?.state(id,'opening',{mode:extra?.mode??'manual'});
       if(typeof extra?.context==='function')await extra.context();opened.push({id,extra});},
@@ -2408,9 +2420,11 @@ test('two formal terminals share the owner: ranked outreach, source-bound replie
 });
 for(const after of ['ended','replaced','publication-retry','post-publication-client-death'] as const)
 test(`an errand survives subscription-before-report restart into a changed fixed skill; ${after==='publication-retry'?'publication failure stops report retries':`${after} call uses normal output`}`,async t=>{
-  const root=await fs.mkdtemp(join(tmpdir(),'formal-errand-recovery-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
+  const root=await fs.mkdtemp(join(tmpdir(),'formal-errand-recovery-')),cleanup:(()=>unknown|Promise<unknown>)[]=[];
+  t.after(async()=>{for(const close of cleanup.reverse())await close();await fs.rm(root,{recursive:true,force:true});});
   const sources=new FormalTerminalSources(),f=fixture(false,{primary:'phone',watch:'watch',client:'watch-client'},['text','voice','text_and_voice'],{type:'phone',registry:sources});
   const storage=new PosixStorage(root),errors:unknown[]=[],spoken:string[]=[];let creates=0,notifications=0;
+  cleanup.push(()=>storage.close());
   const retiredConnectionErrors:ContractError[]=[];let oldConnectionClosing=false;
   const notifyFailure=Object.assign(new Error('notification device file absent'),{code:'ENOENT'});
   const run:NativeRun={run_id:'errand-run',session_id:'continuity',conversation_session_id:'continuity',status:'running',output:'已办好的报告'};
@@ -2419,17 +2433,17 @@ test(`an errand survives subscription-before-report restart into a changed fixed
   // A deploy restarts the runtime with its new SKILL.md: the spool retries the job admitted under the old one.
   const make=(skill='fixed')=>{
     const admission=new RunAdmission(storage,native,{max_pending_events:8,max_pending_bytes:100000,max_event_age_ms:10000,poll_interval_ms:5,native_idempotency_retention_ms:100000,policy_version:'errand-recovery'});
-    const runtime=new PersonalAIOSRuntime({storage,archive:new RawArchive(storage,8192),admission,native,sourceAuthority:sources,skill,max_read_bytes:8192,
+    const archive=new RawArchive(storage,8192),runtime=new PersonalAIOSRuntime({storage,archive,admission,native,sourceAuthority:sources,skill,max_read_bytes:8192,
       output:new OutputAuthority(storage,{listRunReceipts:async()=>({sources:[]}),tts:{synthesize:async()=>inspectWav(wav)}}),automatic_output:{onError:error=>errors.push(error)}});
     const spool=createErrandSpool(join(root,'errands'),error=>{if(error!==notifyFailure)errors.push(error);},{deliver:r=>runtime.deliverErrand(r,error=>errors.push(error)),
-      ...(after==='post-publication-client-death'?{notify:async()=>{notifications++;throw notifyFailure;}}:{})});t.after(async()=>{await spool.close();await runtime.close();});return {admission,runtime,spool};
+      ...(after==='post-publication-client-death'?{notify:async()=>{notifications++;throw notifyFailure;}}:{})});cleanup.push(async()=>{await spool.close();await runtime.close();await archive.close();});return {admission,runtime,spool};
   };
   const first=make(),oldRoom=testRoom(),old=createFormalTextIngress({participant:{roomPort:oldRoom,disconnect:async()=>{}} as unknown as LiveKitCloudParticipantPort,
     runtime:first.runtime,authority:f.authority,max_packet_bytes:REALTIME_ASSISTANT_MAX_PACKET_BYTES,errands:first.spool,onError:error=>{
       if(after==='post-publication-client-death'&&oldConnectionClosing&&error instanceof ContractError&&error.code==='ERRAND_REPORT_NOT_DELIVERED'&&error.status===503)
         retiredConnectionErrors.push(error);
       else errors.push(error);
-    }});t.after(()=>old.close());
+    }});cleanup.push(()=>old.close());
   await first.spool.start();await old.onBootstrapConnected(f.input);
   const job={principal_id:'actual-owner',job_id:'job-0123456789ab',task:'点奶茶',success:true,answer:'已办好',finished_at:now},done=join(root,'errands',`${job.job_id}.done.json`);
   await fs.writeFile(done,JSON.stringify(job));await first.spool.sweep();await eventually(()=>creates===1);
@@ -2449,9 +2463,9 @@ test(`an errand survives subscription-before-report restart into a changed fixed
   let sink:import('../src/personal-aios-formal-text.ts').CallSink|undefined;
   const call=createVoiceCallSession({room:()=>({}),onState:(...args)=>sink?.state(...args),onTranscript:(...args)=>sink?.transcript(...args),onTurn:turn=>sink?.turn(turn),onError:error=>errors.push(error),
     createFront:()=>({connect:async()=>{},appendAudio:()=>{},appendImage:()=>{},respond:async text=>{spoken.push(text);return {completed:true};},context:async()=>{},close:()=>{}}),
-    createPlayout:()=>({open:async()=>{},push:()=>{},interrupt:()=>{},drain:async()=>{},close:async()=>{}})});t.after(()=>call.closeAll());
+    createPlayout:()=>({open:async()=>{},push:()=>{},interrupt:()=>{},drain:async()=>{},close:async()=>{}})});cleanup.push(()=>call.closeAll());
   const bridge=createFormalTextIngress({participant:{roomPort:room,disconnect:async()=>{}} as unknown as LiveKitCloudParticipantPort,runtime:next.runtime,authority:current.authority,
-    max_packet_bytes:REALTIME_ASSISTANT_MAX_PACKET_BYTES,voice_transport:'wav_byte_stream_v1',errands:next.spool,onError:error=>errors.push(error),voice_call:{...call,attach:value=>{sink=value;return()=>{sink=undefined;};}}});t.after(()=>bridge.close());
+    max_packet_bytes:REALTIME_ASSISTANT_MAX_PACKET_BYTES,voice_transport:'wav_byte_stream_v1',errands:next.spool,onError:error=>errors.push(error),voice_call:{...call,attach:value=>{sink=value;return()=>{sink=undefined;};}}});cleanup.push(()=>bridge.close());
   await next.spool.start();if(after==='post-publication-client-death')await next.spool.sweep();
   await bridge.onBootstrapConnected(current.input);await call.open('call-A');
   let switched=false,dropped=false;const publish=room.localParticipant.publishData;
@@ -2929,6 +2943,28 @@ async function neutralDialHarness(t:import('node:test').TestContext,hooks:{room?
   const neutral=(id:string)=>{assert.equal(entered.find(item=>item.id===id)?.extra.mode,'ambient');assert.match(created.find(item=>item.id===id)!.instructions,/正在确认声音/);assert.doesNotMatch(created.find(item=>item.id===id)!.instructions,/关于主人/);};
   return {runtime,call,add,neutral,wait,errors,ownerInputs,contexts,lateClosed,settled,created,entered};
 }
+test('N13 call state explains the old phone dial timeout and matching clients close without the rejoin lease',{timeout:15000},async t=>{
+  // This is the exact call_state schema shipped in the owner's 10-19 client, which rejects unknown properties.
+  const legacy=createFormalWireAjv().compile(JSON.parse(await fs.readFile(new URL('fixtures/call-state-92cb51e76.json',import.meta.url),'utf8')));
+  const h=await neutralDialHarness(t),site=await h.add('phone');
+  await site.dial('legacy-phone');
+  const live=site.states().find(p=>p.state==='live');
+  const contract=JSON.parse(await fs.readFile(new URL('../../../../../integrations/contracts/formal-message.v1.json',import.meta.url),'utf8'));
+  const current=createFormalWireAjv().compile(contract.outputs.call_state);
+  assert.ok(live);assert.equal(legacy(live),false);
+  assert.ok(legacy.errors?.some(error=>error.keyword==='additionalProperties'&&error.params.additionalProperty==='conversation_mode'));
+  const {conversation_mode,...legacyState}=live;assert.equal(conversation_mode,'chat');assert.ok(legacy(legacyState));
+  for(const state of site.states())assert.ok(current(state),JSON.stringify(current.errors));
+  assert.equal(h.call.conversationMode('legacy-phone'),'chat','the default call still uses Chat mode internally');
+  assert.equal(h.call.rejoinWindowS,120,'only transport loss opens the existing two-minute rejoin window');
+  const started=Date.now();await site.send('call_close','legacy-phone',{reason:'button'});
+  assert.equal(h.call.pending(),undefined);
+  const elapsed=Date.now()-started;t.diagnostic(JSON.stringify({hangup_ms:elapsed,rejoin_window_s:h.call.rejoinWindowS}));
+  assert.ok(elapsed<5000,'the authenticated hang-up closes within seconds, without the 120 s peer-loss lease');
+  assert.deepEqual(site.states().slice(-2).map(p=>p.state),['closing','closed']);
+  assert.ok(site.states().slice(-2).every(p=>current(p)),JSON.stringify(current.errors));
+  assert.deepEqual(h.errors,[]);
+});
 for(const terminal of ['glasses','mac'] as const)test(`neutral ${terminal} explicit dial replaces its live call through real runtime`,{timeout:5000},async t=>{
   const h=await neutralDialHarness(t),site=await h.add(terminal);
   await site.dial('neutral-first');await site.dial('neutral-second');
@@ -3041,12 +3077,12 @@ test('opted-in Mac owner unlock retains the neutral manual-call boundary',async 
   const f=fixture(),room=testRoom(),errors:unknown[]=[],neutral:unknown[]=[],video:unknown[]=[],opened:unknown[]=[];
   const source={principal_id:'actual-owner',device_id:'mac',device_type:'mac',channel:'rtc_typed_text',capabilities:[...MAC_CAPABILITIES,'owner_unlock']};
   let sink:import('../src/personal-aios-formal-text.ts').CallSink|undefined,ownsLive:()=>boolean=()=>false,ownerInputs=0,contextReads=0,confirmationWatchers=0;
-  const runtime={watchActivity:async()=>()=>{},replayActivity:async()=>{},authenticate:async()=>source,formalVoice:async(_s:unknown,_m:string,consume:()=>Promise<unknown>)=>consume(),
+  const runtime=callRuntime({watchActivity:async()=>()=>{},replayActivity:async()=>{},authenticate:async()=>source,formalVoice:async(_s:unknown,_m:string,consume:()=>Promise<unknown>)=>consume(),
     terminalChanged:()=>{},ownerInput:async()=>{ownerInputs++;},activeTerminal:()=>true,
     watchVoiceConfirmations:async()=>{confirmationWatchers++;return()=>{};},watchAmbientTurns:async()=>()=>{},
     cameraReady:async()=>{},movementReady:async()=>{},watchCare:async(_s:unknown,_show:unknown,_speak:unknown,_context:unknown,isOwner:()=>boolean)=>{ownsLive=isOwner;return()=>{};},
     openAmbientVoice:async(_s:unknown,_session:string,wake:unknown)=>{neutral.push(wake);return false;},
-    callContext:async()=>{contextReads++;return 'PRIVATE_OWNER_CONTEXT';}} as unknown as PersonalAIOSRuntime;
+    callContext:async()=>{contextReads++;return 'PRIVATE_OWNER_CONTEXT';}} as unknown as PersonalAIOSRuntime);
   const bridge=createFormalTextIngress({participant:{roomPort:room,disconnect:async()=>{}} as unknown as LiveKitCloudParticipantPort,
     runtime,authority:f.authority,max_packet_bytes:REALTIME_ASSISTANT_MAX_PACKET_BYTES,onError:error=>errors.push(error),
     voice_call:{open:async(...args)=>{opened.push(args);},close:async()=>{},respond:async()=>false,identify:async()=>true,
@@ -3069,9 +3105,11 @@ test('opted-in Mac owner unlock retains the neutral manual-call boundary',async 
 test('worn glasses questions retain their initiating session; only current-wear verified voice grants owner gesture scope',async t=>{
   const sources=new FormalTerminalSources(),phone=fixture(false,{primary:'phone',watch:'watch',client:'watch-client'},['text'],{type:'phone',registry:sources}),
     glasses=fixture(false,{primary:'glasses',watch:'watch',client:'watch-client'},['text'],{type:'glasses',registry:sources},true,'glasses-session');
-  const root=await fs.mkdtemp(join(tmpdir(),'formal-cards-proof-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
+  const root=await fs.mkdtemp(join(tmpdir(),'formal-cards-proof-')),cleanup:(()=>unknown|Promise<unknown>)[]=[];
+  t.after(async()=>{for(const close of cleanup.reverse())await close();await fs.rm(root,{recursive:true,force:true});});
   const storage=new PosixStorage(root),budget={max_chunk_bytes:50000,max_total_bytes:300000,max_chunks:20,max_revisions:20,max_seq:20},
     archive=new RawArchive(storage,50000,undefined,budget),streamArchive=new StreamArchive(storage,budget);
+  cleanup.push(()=>storage.close(),()=>archive.close());
   const capability={id:'local-sherpa-audio',version:'fixture',modalities:['audio' as const],formats:['pcm_s16le:16000:1'],joint_av:false,
     healthy:true,permitted:true,max_duration_ms:5000,execution:'local' as const,evidence:'real_verified' as const,speaker_identity:'local_voiceprint' as const};
   const processor=new MediaProcessor(storage,new Map([[capability.id,{analyze:async request=>transcriptionResult(request,capability,'主人声音',{speaker:'owner'})}]]),
@@ -3084,23 +3122,23 @@ test('worn glasses questions retain their initiating session; only current-wear 
     status:async id=>({...runs.get(id)!}),cancel:async id=>({...runs.get(id)!}),reminders:async()=>[]};
   const admission=new RunAdmission(storage,native,{max_pending_events:16,max_pending_bytes:1000000,max_event_age_ms:100000,poll_interval_ms:5,native_idempotency_retention_ms:100000,policy_version:'cards'});
   const journal=AmbientJournal.open(join(root,'journal')),model={id:'fixture-speaker',sha256:'e'.repeat(64),dim:16},registry=new VoiceprintRegistry(storage,model),vad=controlledVad();
-  t.after(()=>{journal.close();registry.close();});
+  cleanup.push(async()=>{journal.close();await registry.close();});
   const runtime=new PersonalAIOSRuntime({storage,archive,admission,native,media,sourceAuthority:sources,ambient_journal:journal,voiceprint:registry,
     speech:async()=>({...vad,speaker_model:model,asr_model:{id:'unused',sha256:'f'.repeat(64)},transcribe:async()=>({text:''}),embed:async()=>new Float32Array(16),close:async()=>{}}),output:new OutputAuthority(storage,{listRunReceipts:async()=>({sources:[]})}),
     skill:'fixed',max_read_bytes:50000,notify:async notice=>{notices.push(notice.body);},audio_route:async(source,event)=>({consumer:'media',source_scope:source.device_id,capture_span:event.raw_ref,purpose_evidence_ref:event.consent_ref})});
-  t.after(async()=>{await runtime.close();await processor.close();});
+  cleanup.push(async()=>{await runtime.close();await processor.close();});
   const errors:unknown[]=[],instructions:string[]=[],room=testRoom();let sink:import('../src/personal-aios-formal-text.ts').CallSink|undefined;
   const call=createVoiceCallSession({room:()=>room as never,vision:false,expressive:false,onError:error=>errors.push(error),onState:(...args)=>sink?.state(...args),
     onTranscript:(...args)=>sink?.transcript(...args),onTurn:value=>sink?.turn(value),
     createPlayout:()=>({open:async()=>{},push:()=>{},clear:()=>{},drain:async()=>{},close:async()=>{}} as never),
     createFront:options=>{instructions.push(options.instructions);return {connect:async()=>{},sendAudio:()=>{},sendImage:()=>{},respond:async()=>{},close:async()=>{},setInstructions:async()=>{}} as never;}});
-  t.after(()=>call.closeAll());
-  const spoolDir=join(root,'errands'),spool=createErrandSpool(spoolDir,error=>errors.push(error),{deliver:r=>runtime.deliverErrand(r,error=>errors.push(error))});await spool.start();t.after(()=>spool.close());
+  cleanup.push(()=>call.closeAll());
+  const spoolDir=join(root,'errands'),spool=createErrandSpool(spoolDir,error=>errors.push(error),{deliver:r=>runtime.deliverErrand(r,error=>errors.push(error))});await spool.start();cleanup.push(()=>spool.close());
   const job='job-0123456789ab';await fs.writeFile(join(spoolDir,`${job}.running.json`),JSON.stringify({principal_id:'actual-owner',job_id:job,title:'点奶茶',app:'千问',state:'running',started_at:now,step:1,max_steps:20}));
   const bridge=createFormalTextIngress({participant:{roomPort:room} as unknown as LiveKitCloudParticipantPort,runtime,authority:glasses.authority,
-    max_packet_bytes:REALTIME_ASSISTANT_MAX_PACKET_BYTES,errands:spool,onError:error=>errors.push(error),voice_call:{...call,attach:value=>{sink=value;return()=>{sink=undefined;};}}});t.after(()=>bridge.close());
+    max_packet_bytes:REALTIME_ASSISTANT_MAX_PACKET_BYTES,errands:spool,onError:error=>errors.push(error),voice_call:{...call,attach:value=>{sink=value;return()=>{sink=undefined;};}}});cleanup.push(()=>bridge.close());
   const phoneRoom=testRoom(),phoneBridge=createFormalTextIngress({participant:{roomPort:phoneRoom} as unknown as LiveKitCloudParticipantPort,runtime,authority:phone.authority,
-    max_packet_bytes:REALTIME_ASSISTANT_MAX_PACKET_BYTES,onError:error=>errors.push(error)});t.after(()=>phoneBridge.close());
+    max_packet_bytes:REALTIME_ASSISTANT_MAX_PACKET_BYTES,onError:error=>errors.push(error)});cleanup.push(()=>phoneBridge.close());
   await phoneBridge.onBootstrapConnected(phone.input);await bridge.onBootstrapConnected(glasses.input);
   const send=(body:object)=>room.emit(RoomEvent.DataReceived,Buffer.from(JSON.stringify(body)),{identity:'terminal'},DataPacketKind.KIND_RELIABLE,FORMAL_TEXT_INPUT_TOPIC),
     out=(operation:string)=>room.published.filter((p:any)=>p.operation===operation) as any[];
@@ -3149,7 +3187,7 @@ test('worn glasses questions retain their initiating session; only current-wear 
   const oldWear=Date.now();await hear(oldWear);assert.equal((await wear(true)).owner_verified,true);
   send({operation:'errand_cancel',job_id:job});await eventually(async()=>{try{await fs.stat(join(spoolDir,`${job}.cancel`));return true;}catch(error){if((error as NodeJS.ErrnoException).code==='ENOENT')return false;throw error;}});
   const trusted=await answer('nod','yes','ride');assert.equal(bodies.find(b=>JSON.parse(b.input).processed_event_id===trusted.event.processed_event_id).run_scope,undefined);
-  assert.equal(runtime.paymentSource(trusted.run).allowed,false);assert.equal(runtime.paymentSource(trusted.run).ride_allowed,true);assert.equal(bodies.find(b=>JSON.parse(b.input).processed_event_id===trusted.event.processed_event_id).memory_write,false);
+  assert.equal(runtime.paymentSource(trusted.run).allowed,false);assert.equal(runtime.paymentSource(trusted.run).ride_allowed,true);assert.equal(Object.hasOwn(bodies.find(b=>JSON.parse(b.input).processed_event_id===trusted.event.processed_event_id),'memory_write'),false);
   await assert.rejects(runtime.tool('paios_action_request',{context:{...context,run_id:trusted.run},args:{}}),/GESTURE_PROTECTED_ACTION_DENIED/);
   await assert.rejects(runtime.confirmVoice(gs,{confirmation_id:'a'.repeat(64)}),/VOICE_CONFIRMATION_DEVICE_REQUIRED/);
   await runtime.tool('paios_open_reply',{context:{...context,run_id:trusted.run},args:{reply_mode:'text'}});Object.assign(runs.get(trusted.run)!,{status:'completed',output:'继续后的回答'});
@@ -3168,7 +3206,7 @@ test('worn glasses questions retain their initiating session; only current-wear 
   const pickedEvent=(await runtime.event(gs,'continuity',picked.processed_event_id)).processed_event;
   assert.equal((pickedEvent.content.app_event as {text:string}).text,'就选第3项：丙店');
   assert.deepEqual(runtime.paymentSource(pickedRun),{allowed:false,ride_allowed:false});
-  assert.equal(bodies.find(b=>JSON.parse(b.input).processed_event_id===picked.processed_event_id).memory_write,false);
+  assert.equal(Object.hasOwn(bodies.find(b=>JSON.parse(b.input).processed_event_id===picked.processed_event_id),'memory_write'),false);
   await assert.rejects(runtime.tool('paios_l3_commit',{context:{...context,run_id:pickedRun},args:{}}),/GESTURE_PROTECTED_ACTION_DENIED/);
   Object.assign(runs.get(pickedRun)!,{status:'completed',output:''});await runtime.result(gs,'continuity',picked.processed_event_id);
   const noRide=await answer('shake','no','ride');assert.equal(runtime.paymentSource(noRide.run).ride_allowed,false);await finishAnswer(noRide);
@@ -3322,8 +3360,10 @@ for(const detached of [false,true])for(const missing of [false,true])test(`a nor
   t.mock.method(sourceClient(native),'mirrorCallTurn',async(_d:ProcessedEvent,session:string)=>session);
   const runtime=new PersonalAIOSRuntime({storage,archive:new RawArchive(storage,8192),native,sourceAuthority:sources,skill:'fixed',max_read_bytes:8192,output:new OutputAuthority(storage,{listRunReceipts:async()=>({sources:[]})}),
     admission:new RunAdmission(storage,native,{max_pending_events:8,max_pending_bytes:100000,max_event_age_ms:10000,poll_interval_ms:5,native_idempotency_retention_ms:100000,policy_version:'mirror-origin'})});
-  const closures:Parameters<PersonalAIOSRuntime['closeCall']>[2][]=[],closeCall=runtime.closeCall.bind(runtime);
-  t.mock.method(runtime,'closeCall',async(...args:Parameters<PersonalAIOSRuntime['closeCall']>)=>{closures.push(args[2]);return closeCall(...args);});
+  const closures:Parameters<PersonalAIOSRuntime['closeCall']>[2][]=[],capture=runtime.captureCall.bind(runtime);
+  t.mock.method(runtime,'captureCall',async(...args:Parameters<PersonalAIOSRuntime['captureCall']>)=>{
+    const call=await capture(...args);return {...call,close:async(closed:Omit<Parameters<PersonalAIOSRuntime['closeCall']>[2],'call_id'>)=>{closures.push({...closed,call_id:args[2]});return call.close(closed);}};
+  });
   await runtime.configureTimeline({directory:join(root,'timeline')});
   const room=testRoom(),errors:unknown[]=[];let sink:import('../src/personal-aios-formal-text.ts').CallSink|undefined,detachedSinks=0;
   const bridge=createFormalTextIngress({participant:{roomPort:room,disconnect:async()=>{}} as unknown as LiveKitCloudParticipantPort,runtime,authority:f.authority,
@@ -3358,12 +3398,43 @@ for(const detached of [false,true])for(const missing of [false,true])test(`a nor
   assert.deepEqual(errors,[]);
 });
 
+for(const pressure of ['missing','invalid','overload'] as const)test(`PCM ${pressure} pressure bounds retained tasks and preserves the close barrier`,async()=>{
+  const room=testRoom(),gate=Promise.withResolvers<void>(),entered=Promise.withResolvers<void>(),errors:unknown[]=[],order:string[]=[];
+  const source={principal_id:`pcm-pressure-${pressure}`,device_id:'phone',device_type:'phone',capabilities:[]};
+  let held=false,current:string|undefined='wake',sink:import('../src/personal-aios-formal-text.ts').CallSink|undefined;
+  const runtime=callRuntime({watchActivity:async()=>()=>{},replayActivity:async()=>{},cameraReady:async()=>{},movementReady:async()=>{},
+    authenticate:async()=>{if(held){entered.resolve();await gate.promise;}return source;},terminalChanged:()=>{},
+    watchPayments:async()=>()=>{},watchReminders:async()=>()=>{},paymentDetach:async()=>{},watchAmbientTurns:async()=>()=>{},
+    formalVoice:async(_s:unknown,_m:unknown,consume:()=>Promise<unknown>)=>consume(),closeCall:async()=>{}} as unknown as PersonalAIOSRuntime);
+  const bridge=createFormalTextIngress({participant:{roomPort:room,disconnect:async()=>{}} as unknown as LiveKitCloudParticipantPort,
+    authority:{credentialForBootstrap:()=>({})} as never,runtime,max_packet_bytes:REALTIME_ASSISTANT_MAX_PACKET_BYTES,onError:error=>errors.push(error),
+    voice_call:{open:async()=>{},close:async()=>{if(!current)return false;current=undefined;order.push('close');return true;},pending:()=>current,
+      respond:async()=>false,pcm:async(_id,frame)=>{order.push(`pcm:${frame.seq}`);},attach:value=>{sink=value;return()=>{};}}});
+  const frame=(seq:number)=>({schema_version:FORMAL_TEXT_ENVELOPE_SCHEMA,operation:'call_pcm',session_id:'continuity',call_id:'wake',
+    seq,captured_at_ms:1000+seq*100,sample_rate:16000,pcm_s16le_base64:Buffer.alloc(3200).toString('base64')});
+  const send=(body:object)=>room.emit(RoomEvent.DataReceived,Buffer.from(JSON.stringify(body)),{identity:'terminal'},DataPacketKind.KIND_RELIABLE,FORMAL_TEXT_INPUT_TOPIC);
+  const allocation=new AsyncLocalStorage<{promises:number}>(),hook=createHook({init:(_id,type)=>{const counter=allocation.getStore();if(type==='PROMISE'&&counter)counter.promises++;}});
+  try{
+    await bridge.onBootstrapConnected({enabledMedia:{data:true},currentBinding:{credentialIdentity:'terminal',continuityId:'continuity'}} as unknown as RealtimeBootstrapConnectedInput);
+    await sink!.state('wake','opening',{mode:'manual'});held=true;send(frame(0));await entered.promise;
+    for(let seq=1;seq<=256;seq++)send(pressure==='missing'?{operation:'call_pcm'}:pressure==='invalid'?{...frame(seq),pcm_s16le_base64:'?'}:frame(seq));
+    const tail={promises:0};hook.enable();
+    allocation.run(tail,()=>{for(let seq=257;seq<1280;seq++)send(pressure==='missing'?{operation:'call_pcm'}:pressure==='invalid'?{...frame(seq),pcm_s16le_base64:'?'}:frame(seq));});
+    hook.disable();
+    assert.equal(tail.promises,0,'continued overload cannot allocate retained Promise work');
+    send({operation:'call_close',call_id:'wake'});gate.resolve();await eventually(()=>current===undefined);await bridge.close();
+    assert.equal(order.at(-1),'close');assert.equal(order.filter(value=>value==='close').length,1);
+    assert.deepEqual(order.filter(value=>value.startsWith('pcm:')),pressure==='overload'?Array.from({length:50},(_,seq)=>`pcm:${seq}`):['pcm:0']);
+    if(pressure==='overload')assert.equal(room.published.filter((packet:any)=>packet.operation==='rejected'&&packet.error_code==='VOICE_CALL_PCM_CAPACITY').length,1);
+  }finally{hook.disable();gate.resolve();await bridge.close();}
+});
+
 test('reliable wake PCM authenticates in receive order, bounds five seconds, and closes after queued frames',async()=>{
   const room=testRoom(),gate=Promise.withResolvers<void>(),entered=Promise.withResolvers<void>(),errors:unknown[]=[],order:string[]=[],frames:unknown[]=[],failures:string[]=[];
   const source={principal_id:'owner',device_id:'phone',device_type:'phone',channel:'rtc_typed_text',capabilities:['microphone','speaker','owner_unlock']};
   let held=false,auths=0,current:string|undefined='wake',sink:import('../src/personal-aios-formal-text.ts').CallSink|undefined;
-  const runtime={watchActivity:async()=>()=>{},replayActivity:async()=>{},cameraReady:async()=>{},movementReady:async()=>{},authenticate:async()=>{if(held){auths++;entered.resolve();await gate.promise;}return source;},terminalChanged:()=>{},
-    watchPayments:async()=>()=>{},watchReminders:async()=>()=>{},paymentDetach:async()=>{},watchAmbientTurns:async()=>()=>{},formalVoice:async(_s:unknown,_m:unknown,consume:()=>Promise<unknown>)=>consume(),closeCall:async()=>{}} as unknown as PersonalAIOSRuntime;
+  const runtime=callRuntime({watchActivity:async()=>()=>{},replayActivity:async()=>{},cameraReady:async()=>{},movementReady:async()=>{},authenticate:async()=>{if(held){auths++;entered.resolve();await gate.promise;}return source;},terminalChanged:()=>{},
+    watchPayments:async()=>()=>{},watchReminders:async()=>()=>{},paymentDetach:async()=>{},watchAmbientTurns:async()=>()=>{},formalVoice:async(_s:unknown,_m:unknown,consume:()=>Promise<unknown>)=>consume(),closeCall:async()=>{}} as unknown as PersonalAIOSRuntime);
   const bridge=createFormalTextIngress({participant:{roomPort:room,disconnect:async()=>{}} as unknown as LiveKitCloudParticipantPort,
     authority:{credentialForBootstrap:()=>({})} as never,runtime,max_packet_bytes:REALTIME_ASSISTANT_MAX_PACKET_BYTES,onError:error=>errors.push(error),
     voice_call:{open:async()=>{},close:async(id,_reason,code)=>{if(current!==id)return false;if(code)failures.push(code);order.push('close');current=undefined;return true;},pending:()=>current,respond:async()=>false,
@@ -3395,14 +3466,14 @@ for(const explicit of [true,false])for(const missing of [false,true])for(const o
   let clock=100000;const metrics:any[]=[],write=process.stderr.write.bind(process.stderr);
   t.mock.method(Date,'now',()=>clock);
   t.mock.method(process.stderr,'write',(chunk:string)=>{if(chunk.startsWith('{"voice_call_stage"'))metrics.push(JSON.parse(chunk));return write(chunk);});
-  const runtime={watchActivity:async()=>()=>{},replayActivity:async()=>{},movementReady:async()=>{},authenticate:async()=>{clock+=11;return source;},locate:async()=>{clock+=13;return undefined;},terminalChanged:()=>{},
+  const runtime=callRuntime({watchActivity:async()=>()=>{},replayActivity:async()=>{},movementReady:async()=>{},authenticate:async()=>{clock+=11;return source;},locate:async()=>{clock+=13;return undefined;},terminalChanged:()=>{},
     watchPayments:async()=>()=>{},watchReminders:async()=>()=>{},paymentDetach:async()=>{},watchAmbientTurns:async()=>()=>{},
     submitCallTurn:async(raw:any)=>{clock+=17;const turn=JSON.parse(raw.payload.toString());payloads.push({...turn,event_id:raw.event_id});order.push(turn.phase);
       return {processed_event:{processed_event_id:`d:${turn.phase}`},admission:turn.phase==='complete'?null:{run_id:'run'}};},
     subscribeResult:async(_s:unknown,_session:unknown,_id:unknown,_next:unknown,_error:unknown,options:any)=>{
       clock+=19;order.push('run_id');await options.on_admission({admission:{run_id:'run'}});
       if(observer==='blocked')await observing.promise;if(observer==='failed')throw new Error('OBSERVER_SETUP_FAILED');return()=>{};},
-    watchCallProgress:async()=>{},closeCall:async()=>{}} as unknown as PersonalAIOSRuntime;
+    watchCallProgress:async()=>{},closeCall:async()=>{}} as unknown as PersonalAIOSRuntime);
   const bridge=createFormalTextIngress({participant:{roomPort:room,disconnect:async()=>{}} as unknown as LiveKitCloudParticipantPort,
     authority:{credentialForBootstrap:()=>({})} as never,runtime,max_packet_bytes:REALTIME_ASSISTANT_MAX_PACKET_BYTES,onError:error=>errors.push(error),
     voice_call:{open:async()=>{},close:async()=>true,respond:async()=>false,attach:value=>{sink=value;return()=>{};}}});
@@ -3416,7 +3487,7 @@ for(const explicit of [true,false])for(const missing of [false,true])for(const o
     else completed=Promise.resolve(sink!.turn(turn,audio.promise));
     await eventually(()=>order.includes('run_id'));assert.deepEqual(order,['handoff','run_id']);
     const recorded=metrics.find(row=>row.voice_call_stage==='turn_recorded'),observed=metrics.find(row=>row.voice_call_stage==='handoff_observed');
-    assert.deepEqual([recorded.authenticate_ms,recorded.placed_ms,recorded.submit_ms,observed.observer_ms],[11,13,17,60]);
+    assert.deepEqual([recorded.authenticate_ms,recorded.placed_ms,recorded.submit_ms,observed.observer_ms],[0,13,17,49]);
     order.push('audio_resolved');const archived={raw_ref:'l5:audio',archive_revision:'revision',start_ms:1000,end_ms:2000};
     audio.resolve(missing?{status:'rejected',reason:new Error('CALL_TURN_ARCHIVE_REFERENCE_UNAVAILABLE')}:{status:'fulfilled',value:archived});await completed;
     assert.deepEqual(order,['handoff','run_id','audio_resolved','complete']);
@@ -3433,9 +3504,9 @@ for(const explicit of [true,false])for(const missing of [false,true])for(const o
 test('a failed mirror rejects the retained source seal and still releases its detached observation sink',async()=>{
   const room=testRoom(),failed=Promise.withResolvers<void>(),entered=Promise.withResolvers<void>(),closures:unknown[]=[];
   let sink:import('../src/personal-aios-formal-text.ts').CallSink|undefined,detached=0;
-  const runtime={watchActivity:async()=>()=>{},replayActivity:async()=>{},cameraReady:async()=>{},movementReady:async()=>{},authenticate:async()=>({principal_id:'owner',device_id:'phone',device_type:'phone',capabilities:[]}),locate:async()=>undefined,
+  const runtime=callRuntime({watchActivity:async()=>()=>{},replayActivity:async()=>{},cameraReady:async()=>{},movementReady:async()=>{},authenticate:async()=>({principal_id:'owner',device_id:'phone',device_type:'phone',capabilities:[]}),locate:async()=>undefined,
     terminalChanged:()=>{},watchPayments:async()=>()=>{},watchReminders:async()=>()=>{},paymentDetach:async()=>{},watchAmbientTurns:async()=>()=>{},submitCallTurn:async()=>{entered.resolve();await failed.promise;},
-    closeCall:async(_d:unknown,_s:unknown,closed:unknown)=>{closures.push(closed);}} as unknown as PersonalAIOSRuntime;
+    closeCall:async(_d:unknown,_s:unknown,closed:unknown)=>{closures.push(closed);}} as unknown as PersonalAIOSRuntime);
   const bridge=createFormalTextIngress({participant:{roomPort:room,disconnect:async()=>{}} as unknown as LiveKitCloudParticipantPort,
     authority:{credentialForBootstrap:()=>({})} as never,runtime,max_packet_bytes:REALTIME_ASSISTANT_MAX_PACKET_BYTES,onError:()=>{},
     voice_call:{open:async()=>{},close:async()=>true,respond:async()=>false,attach:value=>{sink=value;return()=>{detached++;};}}});
@@ -3451,15 +3522,15 @@ test('a failed mirror rejects the retained source seal and still releases its de
   }finally{failed.resolve();await bridge.close();}
 });
 
-test('same-continuity rejoin transfers future turns once while pending audio retains its original credential',async()=>{
+test('same-continuity rejoin transfers future turns once while pending audio retains its opening provenance',async()=>{
   for(const sameContinuity of [true,false]){
     const room=testRoom(),old={principal_id:'owner',device_id:'phone',device_type:'phone',capabilities:[]},fresh={...old};
     const audio=Promise.withResolvers<PromiseSettledResult<NonNullable<import('../src/voice-call-session.ts').CallTurn['audio']>>>();
     let retired=false,submitted=0,closed=0,pcm=0,sink:import('../src/personal-aios-formal-text.ts').CallSink|undefined;
-    const runtime={watchActivity:async()=>()=>{},replayActivity:async()=>{},cameraReady:async()=>{},movementReady:async()=>{},authenticate:async(credential:{epoch:number})=>{if(credential.epoch===0&&retired)throw new Error('SOURCE_BINDING_INACTIVE');return credential.epoch===0?old:fresh;},
+    const runtime=callRuntime({watchActivity:async()=>()=>{},replayActivity:async()=>{},cameraReady:async()=>{},movementReady:async()=>{},authenticate:async(credential:{epoch:number})=>{if(credential.epoch===0&&retired)throw new Error('SOURCE_BINDING_INACTIVE');return credential.epoch===0?old:fresh;},
       terminalChanged:()=>{},locate:async()=>undefined,watchPayments:async()=>()=>{},watchReminders:async()=>()=>{},paymentDetach:async()=>{},watchAmbientTurns:async()=>()=>{},
-      submitCallTurn:async(_raw:unknown,source:unknown)=>{assert.equal(source,fresh);submitted++;return {processed_event:{processed_event_id:'new-D'},admission:null};},
-      closeCall:async(source:unknown)=>{if(source!==fresh)throw new Error('SOURCE_BINDING_INACTIVE');closed++;}} as unknown as PersonalAIOSRuntime;
+      submitCallTurn:async(_raw:unknown,source:unknown)=>{assert.equal(source,old);submitted++;return {processed_event:{processed_event_id:'new-D'},admission:null};},
+      closeCall:async(source:unknown)=>{assert.equal(source,old);closed++;}} as unknown as PersonalAIOSRuntime);
     const bridge=createFormalTextIngress({participant:{roomPort:room,disconnect:async()=>{}} as unknown as LiveKitCloudParticipantPort,
       authority:{credentialForBootstrap:(input:RealtimeBootstrapConnectedInput)=>({epoch:Number(input.currentBinding.connectionEpoch)})} as never,
       runtime,max_packet_bytes:REALTIME_ASSISTANT_MAX_PACKET_BYTES,onError:()=>{},voice_call:{pending:()=> 'call',open:async()=>{},close:async()=>true,respond:async()=>false,pcm:async()=>{pcm++;},attach:value=>{sink=value;return()=>{};}}});
@@ -3467,7 +3538,7 @@ test('same-continuity rejoin transfers future turns once while pending audio ret
     const turn=(n:number)=>({call_id:'call',turn:n,user:'源录音',assistant:'',interrupted:true,speaker:'owner' as const,route:'front_only' as const});
     try{
       await bridge.onBootstrapConnected(input(0,'continuity'));const original=sink!;await original.state('call','opening',{mode:'manual'});
-      const pending=Promise.resolve(original.turn(turn(0),audio.promise)),rejected=assert.rejects(pending,/SOURCE_BINDING_INACTIVE/);retired=true;
+      const pending=Promise.resolve(original.turn(turn(0),audio.promise));retired=true;
       await bridge.onBootstrapConnected(input(1,sameContinuity?'continuity':'other-continuity'));const resumed=sink!;
       if(sameContinuity){room.emit(RoomEvent.DataReceived,Buffer.from(JSON.stringify({schema_version:FORMAL_TEXT_ENVELOPE_SCHEMA,
         operation:'call_pcm',session_id:'continuity',call_id:'call',seq:0,captured_at_ms:1000,sample_rate:16000,pcm_s16le_base64:Buffer.alloc(3200).toString('base64')})),
@@ -3475,20 +3546,21 @@ test('same-continuity rejoin transfers future turns once while pending audio ret
       await resumed.state('call','live',{mode:'manual'});
       if(sameContinuity){await Promise.all([original.turn(turn(1)),resumed.turn(turn(1))]);assert.equal(submitted,1,'only the authenticated new sink owns future turns');}
       else {await resumed.turn(turn(1));assert.equal(submitted,0,'another continuity cannot take the call');}
-      const seal=Promise.resolve(original.sealed!('call','button',1)),sealRejected=assert.rejects(seal,/SOURCE_BINDING_INACTIVE/);
-      const resumedSeal=Promise.resolve(resumed.sealed!('call','button',1));const resumedRejected=sameContinuity?assert.rejects(resumedSeal,/SOURCE_BINDING_INACTIVE/):resumedSeal;
+      const seal=Promise.resolve(original.sealed!('call','button',1));
+      const resumedSeal=Promise.resolve(resumed.sealed!('call','button',1));
       audio.resolve({status:'fulfilled',value:{raw_ref:'raw',archive_revision:'revision',start_ms:1,end_ms:2}});
-      await Promise.all([rejected,sealRejected,resumedRejected]);assert.equal(closed,sameContinuity?1:0);
-      await original.sealed!('call','button',1);await resumed.sealed!('call','button',1);assert.equal(closed,sameContinuity?1:0);
+      await Promise.all([pending,seal,resumedSeal]);assert.equal(closed,1);
+      assert.equal(submitted,sameContinuity?2:1,'old audio remains attributed to its opening call even across another continuity');
+      await original.sealed!('call','button',1);await resumed.sealed!('call','button',1);assert.equal(closed,1);
     }finally{audio.resolve({status:'rejected',reason:new Error('SOURCE_BINDING_INACTIVE')});await bridge.close();}
   }
 });
 
 test('authenticated current-call PCM failure emits failed once and closes; foreign and unauthorized packets cannot close it',async()=>{
   const room=testRoom(),errors:unknown[]=[],states:string[]=[],seals:string[]=[];let authorized=true,closed=0,appended=0,sink:import('../src/personal-aios-formal-text.ts').CallSink|undefined;
-  const runtime={watchActivity:async()=>()=>{},replayActivity:async()=>{},cameraReady:async()=>{},movementReady:async()=>{},authenticate:async()=>{if(!authorized)throw new Error('AUTH_DENIED');return {principal_id:'owner',device_id:'phone',device_type:'phone',capabilities:[]};},
+  const runtime=callRuntime({watchActivity:async()=>()=>{},replayActivity:async()=>{},cameraReady:async()=>{},movementReady:async()=>{},authenticate:async()=>{if(!authorized)throw new Error('AUTH_DENIED');return {principal_id:'owner',device_id:'phone',device_type:'phone',capabilities:[]};},
     terminalChanged:()=>{},watchPayments:async()=>()=>{},watchReminders:async()=>()=>{},paymentDetach:async()=>{},watchAmbientTurns:async()=>()=>{},
-    closeCall:async(_source:unknown,_session:string,meta:{reason:string})=>{seals.push(meta.reason);}} as unknown as PersonalAIOSRuntime;
+    closeCall:async(_source:unknown,_session:string,meta:{reason:string})=>{seals.push(meta.reason);}} as unknown as PersonalAIOSRuntime);
   const call=createVoiceCallSession({room:()=>({}),greeting:{enabled:false},
     createFront:()=>({connect:async()=>{},appendAudio:()=>{},appendImage:()=>{},respond:async()=>{},context:async()=>{},close:()=>{}}),
     createPlayout:()=>({open:async()=>{},push:()=>{},interrupt:()=>{},drain:async()=>{},close:async()=>{closed++;}}),
@@ -3541,8 +3613,7 @@ test(`a sealed call delivers its pending result ${rejoinFirst?'after authenticat
   const runtime=new PersonalAIOSRuntime({storage,archive:new RawArchive(storage,16384),native,sourceAuthority:sources,skill:'fixed',max_read_bytes:16384,
     output:new OutputAuthority(storage,{listRunReceipts:async()=>({sources:[]})}),...(notifier==='missing'?{}:{notify}),
     automatic_output:{onError:error=>errors.push(error)},admission});
-  let dId='';const submit=runtime.submitCallTurn.bind(runtime);
-  t.mock.method(runtime,'submitCallTurn',async(...args:Parameters<PersonalAIOSRuntime['submitCallTurn']>)=>{const accepted=await submit(...args);if(accepted.admission)dId=accepted.processed_event.processed_event_id;return accepted;});
+  let dId='';observeCallTurns(t,runtime,accepted=>{if(accepted.admission)dId=accepted.processed_event.processed_event_id;});
   await runtime.configureTimeline({directory:join(root,'timeline')});
   const room=testRoom();let sink:import('../src/personal-aios-formal-text.ts').CallSink|undefined;
   const bridge=createFormalTextIngress({participant:{roomPort:room,disconnect:async()=>{}} as unknown as LiveKitCloudParticipantPort,runtime,authority:f.authority,
@@ -3582,6 +3653,33 @@ test(`a sealed call delivers its pending result ${rejoinFirst?'after authenticat
   assert.ok(errors.every(error=>String(error).includes('SOURCE_OWNER_BINDING_DENIED')));
 });
 
+for(const delayed of [false,true])test(`ordinary enrollment exit needs no grant and stays after its request: delayed=${delayed}`,async t=>{
+  const f=fixture(),room=testRoom(),errors:unknown[]=[],order:string[]=[];
+  const source={principal_id:'owner',device_id:'glasses',device_type:'glasses',channel:'rtc_typed_text',capabilities:GLASSES_CAPABILITIES};
+  const entered=Promise.withResolvers<void>(),release=Promise.withResolvers<void>();let pending=false;
+  const runtime={watchActivity:async()=>()=>{},replayActivity:async()=>{},authenticate:async()=>source,cameraReady:async()=>{},movementReady:async()=>{},
+    watchPayments:async()=>()=>{},watchReminders:async()=>()=>{},watchAmbientTurns:async()=>()=>{},watchCare:async()=>()=>{},paymentDetach:async()=>{},terminalChanged:()=>{},
+    paymentInputBinding:()=>({}),formalVoice:async(_s:unknown,_m:unknown,consume:()=>Promise<unknown>)=>consume(),
+    paymentInput:async()=>{entered.resolve();if(delayed)await release.promise;pending=true;order.push('request');},
+    voiceEnrollmentControl:async(_s:unknown,action:string)=>{
+      if(action==='status')throw new ContractError('VOICEPRINT_DEVICE_REQUIRED',403);
+      assert.equal(action,'discard');pending=false;order.push('discard');
+      return {available:true,session_id:null,call_id:null,phase:'idle',recorded_ms:0,clean_speech_ms:0,target_speech_ms:30000,
+        issue:null,can_use:false,source_device:null,updated_at:null,owner:{enrolled:false,reenrollment_required:false,samples:0}};
+    }} as unknown as PersonalAIOSRuntime;
+  const bridge=createFormalTextIngress({participant:{roomPort:room,disconnect:async()=>{}} as unknown as LiveKitCloudParticipantPort,
+    authority:f.authority,runtime,max_packet_bytes:REALTIME_ASSISTANT_MAX_PACKET_BYTES,onError:error=>errors.push(error)});
+  t.after(()=>bridge.close());await bridge.onBootstrapConnected(f.input);
+  const send=(body:object)=>room.emit(RoomEvent.DataReceived,Buffer.from(JSON.stringify(body)),{identity:'terminal'},DataPacketKind.KIND_RELIABLE,FORMAL_TEXT_INPUT_TOPIC);
+  send({operation:'voiceprint_enrol_request',control_id:'request',purpose:'conversation'});await entered.promise;
+  if(!delayed)await eventually(()=>pending);
+  send({operation:'voice_enrollment_control',control_id:'exit',action:'discard'});
+  await new Promise(setImmediate);release.resolve();
+  await eventually(()=>room.published.some((p:any)=>p.control_id==='exit'));
+  assert.deepEqual(errors,[]);assert.deepEqual(order,['request','discard']);assert.equal(pending,false);
+  assert.ok(room.published.some((p:any)=>p.operation==='voice_enrollment_state'&&p.control_id==='exit'));
+});
+
 test('conversation enrollment uses archived call turns and check drains the final turn before assessment',{timeout:5000},async t=>{
   const f=fixture(),room=testRoom(),errors:unknown[]=[],order:string[]=[],received:unknown[]=[];
   const source={principal_id:'owner',device_id:'phone',device_type:'phone',channel:'rtc_typed_text',capabilities:['microphone','speaker','owner_unlock']};
@@ -3589,20 +3687,22 @@ test('conversation enrollment uses archived call turns and check drains the fina
   let state={available:true,session_id:'ven-draft',call_id:'call-one',phase:'collecting',recorded_ms:0,clean_speech_ms:0,target_speech_ms:30000,
     issue:null,can_use:false,source_device:{device_id:'phone',device_type:'phone'},updated_at:now,owner};
   let sink:import('../src/personal-aios-formal-text.ts').CallSink,current:string|undefined,tail:Promise<void>|undefined;
-  const runtime={watchActivity:async()=>()=>{},replayActivity:async()=>{},cameraReady:async()=>{},movementReady:async()=>{},authenticate:async()=>source,terminalChanged:()=>{},watchPayments:async()=>()=>{},watchReminders:async()=>()=>{},
+  const runtime=callRuntime({watchActivity:async()=>()=>{},replayActivity:async()=>{},cameraReady:async()=>{},movementReady:async()=>{},authenticate:async()=>source,terminalChanged:()=>{},watchPayments:async()=>()=>{},watchReminders:async()=>()=>{},
     paymentDetach:async()=>{},watchAmbientTurns:async()=>()=>{},locate:async()=>undefined,ownerInput:async()=>{},
     formalVoice:async(_s:unknown,_m:unknown,consume:()=>Promise<unknown>)=>consume(),closeCall:async()=>{order.push('sealed');},
     voiceEnrollmentCall:async(_s:unknown,id:string,call:string)=>{if(id!=='ven-draft'||call!==state.call_id)throw new ContractError('VOICE_ENROLLMENT_SESSION_NOT_FOUND',404);return '录入模式：每次问一个生活问题，顺着回答追问。';},
     voiceEnrollmentControl:async(_s:unknown,action:string,_id?:string,call?:string)=>{
       order.push(action);if(action==='start'||action==='resume')state={...state,phase:'collecting',call_id:call!,can_use:false,clean_speech_ms:action==='start'?0:state.clean_speech_ms};
       if(action==='pause'&&state.phase==='collecting')state={...state,phase:'paused'};
+      if(action==='pause'&&state.phase==='discarded')throw new ContractError('VOICEPRINT_DEVICE_REQUIRED',403);
+      if(action==='discard')state={...state,phase:'discarded',can_use:false,clean_speech_ms:0};
       if(action==='check')state={...state,phase:'checked',can_use:true};return state;
     },
     voiceEnrollmentTurn:async(_s:unknown,id:string,call:string,turn:number,audio:unknown)=>{
       received.push({id,call,turn,audio});order.push('collect');state={...state,clean_speech_ms:state.clean_speech_ms+16000,
         phase:call==='call-one'?'checked':'collecting',can_use:call==='call-one'};return state;
     },submitCallTurn:async()=>{throw Error('enrollment must not admit executable call turns');},
-  } as unknown as PersonalAIOSRuntime;
+  } as unknown as PersonalAIOSRuntime);
   const bridge=createFormalTextIngress({participant:{roomPort:room,disconnect:async()=>{}} as unknown as LiveKitCloudParticipantPort,
     authority:f.authority,runtime,max_packet_bytes:REALTIME_ASSISTANT_MAX_PACKET_BYTES,onError:e=>errors.push(e),
     voice_call:{pending:()=>current,respond:async()=>false,attach:value=>{sink=value;return()=>{};},
@@ -3635,6 +3735,14 @@ test('conversation enrollment uses archived call turns and check drains the fina
   archived.resolve({status:'fulfilled',value:audio});await tail;await eventually(()=>out().some(p=>p.control_id==='check'));
   assert.equal(received.length,2);assert.equal(out().at(-1).enrollment.clean_speech_ms,16000);
   assert.equal(out().at(-1).enrollment.phase,'checked');assert.deepEqual(errors,[]);
+  send({operation:'voice_enrollment_control',control_id:'last-start',action:'start',call_id:'call-three'});
+  await eventually(()=>out().some(p=>p.control_id==='last-start'));
+  send({operation:'call_open',call_id:'call-three',enrollment_session_id:'ven-draft'});await eventually(()=>current==='call-three');
+  send({operation:'voice_enrollment_control',control_id:'leave',action:'discard',enrollment_session_id:'ven-draft',call_id:'call-three'});
+  await eventually(()=>out().some(p=>p.control_id==='leave')||errors.length>0);
+  assert.deepEqual(errors,[]);assert.equal(current,undefined);
+  assert.deepEqual(order.slice(-3),['pause','sealed','discard'],'the final call is sealed before its grant is cancelled');
+  assert.equal(out().at(-1).enrollment.phase,'discarded');
 });
 
 test('full enrollment preview fits the existing reliable packet budget with maximum wire IDs',async()=>{
@@ -3794,7 +3902,7 @@ test('thinking mode: a silent brain turn (reply_mode none) ends the call thinkin
   const runtime=new PersonalAIOSRuntime({storage,archive:new RawArchive(storage,16384),admission,native,sourceAuthority:f.authority,skill:'fixed',max_read_bytes:16384,
     output:new OutputAuthority(storage,{listRunReceipts:async()=>({sources:[]})}),automatic_output:{onError:e=>errors.push(e)}});
   let dId='',sink:import('../src/personal-aios-formal-text.ts').CallSink|undefined;const statuses:string[]=[],settled=deferred<string>();
-  const submit=runtime.submitCallTurn.bind(runtime);t.mock.method(runtime,'submitCallTurn',async(...args:Parameters<PersonalAIOSRuntime['submitCallTurn']>)=>{const accepted=await submit(...args);if(accepted.admission)dId=accepted.processed_event.processed_event_id;return accepted;});
+  observeCallTurns(t,runtime,accepted=>{if(accepted.admission)dId=accepted.processed_event.processed_event_id;});
   const room=testRoom(),bridge=createFormalTextIngress({participant:{roomPort:room} as unknown as LiveKitCloudParticipantPort,runtime,authority:f.authority,
     max_packet_bytes:REALTIME_ASSISTANT_MAX_PACKET_BYTES,onError:e=>errors.push(e),voice_call:{pending:()=> 'call',open:async()=>{},close:async()=>true,
       conversationMode:()=> 'thinking',thinkingStatus:async(_call,status)=>{statuses.push(status);},thinkingSettled:async(call_id,id)=>{assert.equal(call_id,'call');settled.resolve(id);},
@@ -3819,7 +3927,7 @@ for(const delivery of ['spoken','interrupted','uncertain','silent'] as const)tes
   const runtime=new PersonalAIOSRuntime({storage,archive:new RawArchive(storage,16384),admission,native,sourceAuthority:f.authority,skill:'fixed',max_read_bytes:16384,
     output:new OutputAuthority(storage,{listRunReceipts:async()=>({sources:[]})}),automatic_output:{onError:e=>errors.push(e)}});
   await runtime.configureTimeline({directory:join(root,'timeline')});let dId='',sink:import('../src/personal-aios-formal-text.ts').CallSink|undefined;
-  const submit=runtime.submitCallTurn.bind(runtime);t.mock.method(runtime,'submitCallTurn',async(...args:Parameters<PersonalAIOSRuntime['submitCallTurn']>)=>{const accepted=await submit(...args);if(accepted.admission)dId=accepted.processed_event.processed_event_id;return accepted;});
+  observeCallTurns(t,runtime,accepted=>{if(accepted.admission)dId=accepted.processed_event.processed_event_id;});
   const room=testRoom(),reads:{text:string;target:unknown}[]=[],responded=deferred<void>(),settledIds:string[]=[];
   const bridge=createFormalTextIngress({participant:{roomPort:room} as unknown as LiveKitCloudParticipantPort,runtime,authority:f.authority,
     max_packet_bytes:REALTIME_ASSISTANT_MAX_PACKET_BYTES,onError:e=>errors.push(e),voice_call:{pending:()=> 'call',open:async()=>{},close:async()=>true,
@@ -4062,4 +4170,88 @@ test(`round-3 errand replay (${replay}): one owner report or an absorbed self-ch
   assert.deepEqual(events.filter(d=>d.content.app_event?.kind==='errand_delivery_failed'),[]);assert.deepEqual(failed,[]);
   assert.equal(creates,ordinary?1:0,'an active self-check absorbs before owner report admission');
   assert.equal(textSent,ordinary?1:0,'only published errand chunks enter OUT publication evidence');assert.deepEqual(errors,[]);
+});
+
+test('relaunch rejects an inactive source while fresh bootstrap replays its durable result without another native run',async t=>{
+  const f=fixture(),root=await fs.mkdtemp(join(tmpdir(),'formal-relaunch-')),storage=new PosixStorage(root);
+  const errors:unknown[]=[],rooms=[testRoom(),testRoom()];let creates=0;
+  const run:NativeRun={run_id:'relaunch-run',session_id:'continuity',conversation_session_id:'continuity',status:'running'};
+  const native:NativeClient={create:async()=>{creates++;return {...run};},status:async()=>({...run}),cancel:async()=>({...run})};
+  const admission=new RunAdmission(storage,native,{max_pending_events:8,max_pending_bytes:100000,max_event_age_ms:10000,poll_interval_ms:5,
+    native_idempotency_retention_ms:100000,policy_version:'relaunch'});
+  const runtime=new PersonalAIOSRuntime({storage,archive:new RawArchive(storage,8192),admission,native,sourceAuthority:f.authority,
+    output:new OutputAuthority(storage,{listRunReceipts:async()=>({sources:[]})}),skill:'fixed',max_read_bytes:8192,
+    automatic_output:{onError:error=>errors.push(error)}});
+  const participant={roomPort:rooms[0]!,disconnect:async()=>{}},bridge=createFormalTextIngress({participant:participant as unknown as LiveKitCloudParticipantPort,
+    runtime,authority:f.authority,max_packet_bytes:REALTIME_ASSISTANT_MAX_PACKET_BYTES,onError:error=>errors.push(error)});
+  t.after(async()=>{await bridge.close();await runtime.close();await fs.rm(root,{recursive:true,force:true});});
+  const send=(room:ReturnType<typeof testRoom>,body:unknown)=>room.emit(RoomEvent.DataReceived,Buffer.from(JSON.stringify(body)),{identity:'terminal'},DataPacketKind.KIND_RELIABLE,FORMAL_TEXT_INPUT_TOPIC);
+  const out=(room:ReturnType<typeof testRoom>,operation:string)=>room.published.filter((p:any)=>p.operation===operation) as any[];
+  await bridge.onBootstrapConnected(f.input);
+  send(rooms[0]!,{operation:'submit',event_id:'before-relaunch',captured_at:now,text:'controlled request'});
+  await eventually(()=>out(rooms[0]!,'accepted').some(p=>p.admission.run_id===run.run_id));
+  const dID=out(rooms[0]!,'accepted')[0]!.processed_event_id;
+  const original=await runtime.authenticate(f.authority.credentialForBootstrap(f.input));
+  await runtime.tool('paios_open_reply',{context:{run_id:run.run_id,session_id:'continuity',tool_call_id:'reply'},args:{reply_mode:'text'}});
+  f.setSessionState('terminal');
+  await assert.rejects(runtime.authenticate(f.authority.credentialForBootstrap(f.input)),/SOURCE_BINDING_INACTIVE/);
+  await assert.rejects(runtime.result(original,'continuity',dID),/SOURCE_BINDING_INACTIVE/);
+  send(rooms[0]!,{operation:'result',processed_event_id:dID});
+  await eventually(()=>errors.some(error=>String(error).includes('SOURCE_BINDING_INACTIVE')));
+  rooms[0]!.emit(RoomEvent.Disconnected);
+  Object.assign(run,{status:'completed',output:'controlled retained result'});
+  f.setSessionState('active');f.setRoute('route-2');
+  participant.roomPort=rooms[1]!;await bridge.onBootstrapConnected(f.input);
+  const retiredPackets=rooms[0]!.published.length;
+  send(rooms[1]!,{operation:'result',processed_event_id:dID,text_replay:'sealed'});
+  await eventually(()=>out(rooms[1]!,'text_chunk').some(p=>p.chunk.final));
+  assert.equal(out(rooms[1]!,'text_chunk').map(p=>p.chunk.text).join(''),'controlled retained result');
+  assert.equal(out(rooms[1]!,'result_header')[0]!.processed_event_id,dID);
+  assert.equal(rooms[0]!.published.length,retiredPackets,'the retired transport gets no replay');
+  assert.equal(creates,1,'binding churn does not lose or repeat the admitted work');
+});
+
+for(const tail of [false,true])test(`server call seal preserves its ${tail?'pending spoken turn and ':''}close observation after the opening source binding becomes inactive`,{timeout:15000},async t=>{
+  const sources=new FormalTerminalSources(),f=fixture(false,{primary:'phone',watch:'watch',client:'watch-client'},['text'],{type:'phone',registry:sources},true);
+  const root=await fs.mkdtemp(join(tmpdir(),'formal-inactive-call-seal-')),storage=new PosixStorage(root),errors:unknown[]=[];
+  const native:NativeClient={create:async body=>({run_id:'closed-run',session_id:body.session_id,conversation_session_id:body.session_id,status:'completed',output:''}),
+    status:async()=>({run_id:'closed-run',session_id:'continuity',conversation_session_id:'continuity',status:'completed',output:''}),cancel:async()=>{throw new Error('unused');}};
+  let mirrored=0;t.mock.method(sourceClient(native),'mirrorCallTurn',async(_d:ProcessedEvent,session:string)=>{mirrored++;return session;});
+  const admission=new RunAdmission(storage,native,{max_pending_events:8,max_pending_bytes:100000,max_event_age_ms:10000,poll_interval_ms:5,
+    native_idempotency_retention_ms:100000,policy_version:'inactive-call-seal'});
+  const runtime=new PersonalAIOSRuntime({storage,archive:new RawArchive(storage,8192),admission,native,sourceAuthority:sources,
+    output:new OutputAuthority(storage,{listRunReceipts:async()=>({sources:[]})}),skill:'fixed',max_read_bytes:8192});
+  await runtime.configureTimeline({directory:join(root,'timeline')});
+  const sinks=new Set<import('../src/personal-aios-formal-text.ts').CallSink>(),room=testRoom();
+  const call=createVoiceCallSession({room:()=>({}),vision:false,expressive:false,onError:error=>errors.push(error),
+    onState:async(...args)=>{await Promise.all([...sinks].map(sink=>sink.state(...args)));},onTranscript:()=>{},
+    onTurn:async(...args)=>{await Promise.all([...sinks].map(sink=>sink.turn(...args)));},
+    onSealed:async(...args)=>{await Promise.all([...sinks].map(sink=>sink.sealed?.(...args)));},
+    createPlayout:()=>({open:async()=>{},push:()=>{},interrupt:()=>{},drain:async()=>{},close:async()=>{}}),
+    createFront:()=>({connect:async()=>{},appendAudio:()=>{},appendImage:()=>{},respond:async()=>({completed:true}),context:async()=>{},close:()=>{}})});
+  const bridge=createFormalTextIngress({participant:{roomPort:room,disconnect:async()=>{}} as unknown as LiveKitCloudParticipantPort,
+    runtime,authority:f.authority,max_packet_bytes:REALTIME_ASSISTANT_MAX_PACKET_BYTES,onError:error=>errors.push(error),
+    voice_call:{...call,attach:sink=>{sinks.add(sink);return()=>{sinks.delete(sink);};}}});
+  t.after(async()=>{await Promise.allSettled([call.closeAll(),bridge.close()]);await runtime.close();await fs.rm(root,{recursive:true,force:true});});
+  await bridge.onBootstrapConnected(f.input);
+  room.emit(RoomEvent.DataReceived,Buffer.from(JSON.stringify({operation:'call_open',call_id:'inactive-seal'})),{identity:'terminal'},DataPacketKind.KIND_RELIABLE,FORMAL_TEXT_INPUT_TOPIC);
+  await eventually(()=>call.active()==='inactive-seal'&&room.published.some((p:any)=>p.operation==='call_state'&&p.state==='live'));
+  const audio=Promise.withResolvers<PromiseSettledResult<NonNullable<import('../src/voice-call-session.ts').CallTurn['audio']>>>();
+  const pending=Promise.allSettled(tail?[...sinks].map(sink=>sink.turn({call_id:'inactive-seal',turn:0,user:'controlled spoken turn',
+    assistant:'controlled spoken answer',interrupted:false,speaker:'owner',route:'front_only'},audio.promise)):[]);
+  f.setSessionState('terminal');
+  await assert.rejects(runtime.authenticate(f.authority.credentialForBootstrap(f.input)),/SOURCE_BINDING_INACTIVE/);
+  audio.resolve({status:'rejected',reason:new Error('CALL_TURN_ARCHIVE_REFERENCE_UNAVAILABLE')});await pending;
+  await Promise.allSettled([call.close('inactive-seal','disconnected')]);
+  await Promise.allSettled([call.closeAll()]);
+  const events=await Promise.all((await storage.list('processed-events')).map(async key=>JSON.parse(Buffer.from(await storage.read('processed-events',key)).toString())));
+  const turns=events.filter(d=>d.content.app_event?.kind==='voice_turn');
+  assert.equal(turns.length,tail?1:0,'already spoken text survives the delayed audio finalization');
+  assert.equal(mirrored,tail?1:0);
+  if(tail)assert.deepEqual(runtime.timeline!.page('actual-owner').items.map(item=>item.text),['controlled spoken turn','controlled spoken answer']);
+  const closed=events.filter(d=>d.content.app_event?.kind==='call_closed');
+  assert.equal(closed.length,1,'server-owned call close must outlive transport authorization');
+  assert.equal(closed[0].content.app_event.call_id,'inactive-seal');
+  assert.equal(closed[0].content.app_event.reason,'disconnected');
+  assert.deepEqual(closed[0].content.app_event.processed_event_ids,turns.map(d=>d.processed_event_id));
 });

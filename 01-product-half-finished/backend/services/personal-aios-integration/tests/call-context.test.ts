@@ -142,10 +142,20 @@ async function lookup(t:test.TestContext,reads:Partial<NativeClient>={},facts?:L
   const token='front-owner-fixture-token',other='front-other-fixture-token';
   const native=sourceClient({create:async()=>{throw new Error('lookup must not run an LLM');},status:async()=>{throw new Error('lookup must not poll runs');},
     cancel:async()=>{throw new Error('lookup must not cancel runs');},...reads});
+  const coreRows: L3Assertion[]=[];
+  if(profile&&facts){
+    for(const file of ['MEMORY.md','USER.md'] as const){
+      const entries=(await fs.readFile(join(profile.profile_home,'memories',file),'utf8')).split('\n§\n').filter(Boolean);
+      for(const [ordinal,text] of entries.entries())coreRows.push({...assertion('fact','core_profile.entry',''),
+        assertion_id:`core-${file}-${ordinal}`,value:{file,ordinal,text}});
+    }
+    await storage.publish('core-profile-migrations',digest({profile_home:profile.profile_home}),
+      Buffer.from(JSON.stringify({principal_id:profile.principal_id??OWNER,profile_home:profile.profile_home,files:[],assertions:[]})));
+  }
   const runtime=new PersonalAIOSRuntime({storage,native,archive:new RawArchive(storage,8192),admission:new RunAdmission(storage,native,
     {max_pending_events:8,max_pending_bytes:65536,max_event_age_ms:10000,poll_interval_ms:10,native_idempotency_retention_ms:86400000,policy_version:'lookup'}),
-    output:new OutputAuthority(storage),skill:'fixture',max_read_bytes:8192,health,...(profile?{native_memory_receipts:profile}:{}),...(facts?{l3:{query:async(owner:{principal_id:string})=>{
-      assert.equal(owner.principal_id,OWNER);return {assertions:facts};}} as never}:{}),devices:[
+    output:new OutputAuthority(storage),skill:'fixture',max_read_bytes:8192,health,...(profile?{core_profile:profile}:{}),...(facts?{l3:{query:async(owner:{principal_id:string},_id:unknown,_status:unknown,options?:{scope?:{purpose?:string}})=>{
+      assert.equal(owner.principal_id,OWNER);return {assertions:options?.scope?.purpose==='core_profile'?coreRows:facts,next_cursor:null};}} as never}:{}),devices:[
       {principal_id:OWNER,device_id:'phone',device_type:'phone',channel:'http',consent_ref:'fixture',route_version:'route',output_modes:['text'],token_sha256:sha256(token)},
       {principal_id:OTHER,device_id:'other',device_type:'phone',channel:'http',consent_ref:'fixture',route_version:'other-route',output_modes:['text'],token_sha256:sha256(other)}]});
   t.after(async()=>{await runtime.close();health.close();await fs.rm(root,{recursive:true,force:true});});
@@ -312,4 +322,12 @@ test('the native client reads recent sessions and latest messages from the main 
     assert.deepEqual(await client.messages('s 1', 40), [{role: 'user', content: 'x', timestamp: 1}]);
     assert.deepEqual(seen, ['GET /api/sessions?limit=8 true', 'GET /api/sessions/s%201/messages?order=latest&limit=40 true']);
   } finally {server.close();}
+});
+
+test('a generated memory volume keeps the native configured timezone without reading legacy memory', async t => {
+  const view=await home({user:['平台生成的称呼']}), configuration=await home({user:['旧原生称呼'],timezone:'America/New_York'});
+  t.after(()=>Promise.all([view,configuration].map(path=>fs.rm(path,{recursive:true,force:true}))));
+  const block=await buildCallContext(base({profile_home:view,configuration_home:configuration}),{principal_id:OWNER,session:'current'});
+  assert.ok(block.includes('平台生成的称呼')&&block.includes('America/New_York'),block);
+  assert.ok(!block.includes('旧原生称呼'));
 });

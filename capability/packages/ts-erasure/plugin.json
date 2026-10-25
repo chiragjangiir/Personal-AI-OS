@@ -1,0 +1,82 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "ts-erasure",
+  "version": "1.0.0",
+  "description": "按现有明确请求边界删除私有数据",
+  "extensions": {
+    "ai.yimi.capability": {
+      "schema": "yimi.capability.v1",
+      "receipt_schema": 1,
+      "compat": {
+        "hermes": ">=0.22.5 <0.24",
+        "gateway_api": 1
+      },
+      "maintainer": "lead",
+      "runtime": {
+        "server": "platform_ts",
+        "lazy": true,
+        "idle_timeout_seconds": 900,
+        "host": "shared"
+      },
+      "secrets": [
+        {
+          "name": "HERMES_INTERNAL_KEY"
+        }
+      ],
+      "network": {
+        "egress": []
+      },
+      "scopes": [
+        "owner"
+      ],
+      "tools": {
+        "paios_l3_forget": {
+          "effect": "delete",
+          "retry": "forbidden",
+          "check_with": "paios_l3_inspect",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:l3_forget",
+          "target": "$.assertion_id"
+        },
+        "paios_visual_delete": {
+          "effect": "delete",
+          "retry": "forbidden",
+          "check_with": "paios_visual_recall",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:visual_delete"
+        },
+        "paios_place_forget": {
+          "effect": "delete",
+          "retry": "forbidden",
+          "check_with": "paios_place_history",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:place_forget"
+        }
+      },
+      "staging": {
+        "fake": {
+          "command": "node",
+          "args": [
+            "fake/server.ts"
+          ]
+        }
+      },
+      "tests": {
+        "contract": "tests/contract.yaml"
+      },
+      "provenance": {
+        "source_commit": "decaff83c56b5e188b229a11e79b32106eeccf43",
+        "workshop_run": null,
+        "adapter_modules": [
+          "server/index.ts"
+        ]
+      }
+    }
+  }
+}

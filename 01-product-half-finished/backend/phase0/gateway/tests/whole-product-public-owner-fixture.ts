@@ -30,7 +30,6 @@ import {
 } from '../src/realtime-public-control-persistent-bearer-authority.ts';
 import {
   PERSISTENT_PROVIDER_READINESS_HORIZON_MS,
-  createPersistentPublicOwnerProtection,
   createPersistentT03AuthorityRecordReader,
   passiveProviderReadiness,
   runPersistentAudioFinalization,

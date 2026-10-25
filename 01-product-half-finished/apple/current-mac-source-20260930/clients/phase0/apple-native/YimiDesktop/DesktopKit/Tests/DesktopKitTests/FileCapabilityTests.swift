@@ -152,9 +152,9 @@ final class FileCapabilityTests: XCTestCase {
         try write("original", target)
         let desktop = try TestDesktop.make(store: store, resources: root)
         _ = try await desktop.authorize(folder: work, write: true)
-        let undo = store.appendingPathComponent("undo"), displaced = root.appendingPathComponent("held-undo")
+        let undo = store.appendingPathComponent("undo")
         await desktop.setInterleave { point in
-            if point == "staged" { try FileManager.default.moveItem(at: undo, to: displaced) }
+            if point == "staged" { try Data("backup allocation blocked".utf8).write(to: undo) }
         }
         let failed = try await desktop.call(id: "first", name: "write_file", arguments: ["path": .string(target.path), "content": "replacement"])
         XCTAssertEqual(failed.objectValue?["isError"]?.boolValue, true)
@@ -162,7 +162,7 @@ final class FileCapabilityTests: XCTestCase {
         let entries = try await desktop.audit(before: nil, limit: 100)
         let failedID = try XCTUnwrap(entries.first { $0.tool == "write_file" }?.id)
         await desktop.setInterleave { _ in }
-        try FileManager.default.moveItem(at: displaced, to: undo)
+        try FileManager.default.removeItem(at: undo)
         let next = try await desktop.call(id: "next", name: "write_file", arguments: ["path": .string(target.path), "content": "latest"])
         XCTAssertNotEqual(next.objectValue?["isError"]?.boolValue, true)
         _ = try TestDesktop.make(store: store, resources: root)
@@ -182,9 +182,9 @@ final class FileCapabilityTests: XCTestCase {
             try write("original", target); try write("replacement", incoming)
             let desktop = try TestDesktop.make(store: store, resources: root)
             _ = try await desktop.authorize(folder: work, write: true)
-            let undo = store.appendingPathComponent("undo"), displaced = root.appendingPathComponent("held-undo")
+            let undo = store.appendingPathComponent("undo")
             await desktop.setInterleave { point in
-                if point == "staged" { try FileManager.default.moveItem(at: undo, to: displaced) }
+                if point == "staged" { try Data("backup allocation blocked".utf8).write(to: undo) }
             }
             let id = "dt-" + auditID(), payload = Data("replacement".utf8)
             let sha = SHA256.hash(data: payload).map { String(format: "%02x", $0) }.joined()
@@ -198,7 +198,7 @@ final class FileCapabilityTests: XCTestCase {
             let audit = try AuditStore(store: store)
             let failed = try XCTUnwrap(audit.records(before: nil, limit: 100).first { $0.tool == "save_from_workshop" })
             XCTAssertNotNil(failed.undo?.replacement, "A post-swap failure must retain its recovery journal")
-            try FileManager.default.moveItem(at: displaced, to: undo)
+            try FileManager.default.removeItem(at: undo)
             await desktop.setInterleave { _ in }
             let recoveredDesktop: Desktop
             if restart { recoveredDesktop = try TestDesktop.make(store: store, resources: root) }

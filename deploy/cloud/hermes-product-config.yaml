@@ -1,31 +1,8 @@
-model:
-  default: deepseek-flash
-  provider: deepseek-paios
-  base_url: https://api.deepseek.com
-custom_providers:
-# deepseek-flash is the provider's alias for DeepSeek-V4.1-Flash.
-- name: deepseek-paios
-  base_url: https://api.deepseek.com
-  key_env: PAIOS_DEEPSEEK_API_KEY
-  api_mode: chat_completions
-  context_length: 262144
-  extra_body:
-    max_tokens: 8192
-    thinking:
-      type: enabled
-# This vision provider requires its native thinking configuration.
-- name: siliconflow-paios
-  base_url: https://api.siliconflow.cn/v1
-  key_env: PAIOS_SILICONFLOW_API_KEY
-  api_mode: chat_completions
-  extra_body:
-    max_tokens: 8192
 agent:
   max_tool_calls: 120
   tool_call_milestone_interval: 20
   api_max_retries: 1
   auto_recovery_cycles: 0
-  max_tokens: 8192
 delegation:
   max_concurrent_children: 3
   max_spawn_depth: 2
@@ -35,11 +12,13 @@ tool_loop_guardrails:
   hard_stop_enabled: true
 memory:
   provider: personal_aios
+  memory_enabled: false
+  user_profile_enabled: false
 cron:
   wrap_response: false
   allowed_scripts: [personal-aios-reminder.py, personal-aios-task.py]
 plugins:
-  enabled: [personal_aios]
+  enabled: [personal_aios, yimi-gateway]
   entries:
     personal_aios:
       allow_tool_override: true
@@ -66,9 +45,6 @@ tools:
 kanban:
   dispatch_in_gateway: false
 auxiliary:
-  vision:
-    provider: siliconflow-paios
-    model: zai-org/GLM-5.3-Flash
   title_generation:
     enabled: false
     model_upgrade_enabled: false

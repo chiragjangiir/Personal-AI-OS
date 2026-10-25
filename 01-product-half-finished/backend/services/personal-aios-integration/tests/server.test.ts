@@ -35,7 +35,7 @@ test('legacy care run tools retain native isolation across provider HTTP',{timeo
   const care=CareAuthority.open(join(folder,'care')),health=HealthStore.open(join(folder,'health')),journal=AmbientJournal.open(join(folder,'journal'));
   const runId='run_11111111111111111111111111111111',session='care-conversation',reply='听到你吸鼻子，先喝点温水好吗？';
   const accepted=Promise.withResolvers<{input:string}>(),notices:string[]=[];
-  let nativeRun:NativeRun={run_id:runId,session_id:`paios-care-${runId}`,conversation_session_id:session,status:'running',memory_write:false};
+  let nativeRun:NativeRun={run_id:runId,session_id:`paios-care-${runId}`,conversation_session_id:session,status:'running'};
   const native=sourceClient({create:async body=>{accepted.resolve(body);return nativeRun;},status:async()=>nativeRun,
     cancel:async()=>({...nativeRun,status:'cancelled'})});
   const assembly=createPersonalAIOSAssembly({storage:new PosixStorage(join(folder,'central')),native,skill:'Synthetic care decision',max_event_bytes:16384,max_read_bytes:16384,
@@ -58,7 +58,7 @@ test('legacy care run tools retain native isolation across provider HTTP',{timeo
   await fs.writeFile(request,JSON.stringify({url,key_file:key,run_id:runId,conversation_session_id:session,input:d,repo_root:root}));
   t.signal.throwIfAborted();
   const closed=Promise.withResolvers<void>();probeClosed=closed.promise;
-  const child=probeChild=spawn(python,[new URL('./native-memory-fixture.py',import.meta.url).pathname,home,'--care-http',request],
+  const child=probeChild=spawn(python,[new URL('./native-run-fixture.py',import.meta.url).pathname,home,'--care-http',request],
     {cwd:sourceRoot,env:{...process.env,PYTHONPATH:sourceRoot,HERMES_HOME:home,TMPDIR:folder,PYTHONPYCACHEPREFIX:join(folder,'pycache')},stdio:['ignore','pipe','pipe']});
   const stdout=await new Promise<string>((resolve,reject)=>{
     let output='',errors='',phase='startup',failure:Error|undefined,timer:ReturnType<typeof setTimeout>|undefined;
@@ -88,10 +88,10 @@ test('legacy care run tools retain native isolation across provider HTTP',{timeo
   assert.deepEqual(assembly.runtime.paymentSource(runId),{allowed:false,ride_allowed:false});
   for(const name of ['paios_ambient_journal_search','paios_l5_read','paios_l5_locate','paios_l3_query','paios_l3_inspect','paios_visual_recall','paios_people'])
     assert.equal(proof.results[name].error_code,'RUN_SCOPE_TOOL_DENIED',name);
-  assert.equal(proof.results.paios_open_reply.status,'opened');assert.equal(proof.isolation.memory_write,false);
+  assert.equal(proof.results.paios_open_reply.status,'opened');assert.equal(Object.hasOwn(proof.isolation,'memory_write'),false);
   assert.equal(proof.isolation.hidden,1);assert.equal(proof.isolation.memory_unchanged,true);
   assert.deepEqual(proof.isolation.listed_sessions,[],'care has no visible owner history');
-  assert.equal(proof.results.memory_write.success,false,'the real native memory executor refuses care writes');
+  assert.match(proof.results.memory_write.error,/scope|care/i,'the real native dispatcher refuses care writes');
   nativeRun={...nativeRun,status:'completed',output:reply};
   const result=await assembly.runtime.result(source,session,receipt.processed_event.processed_event_id);
   assert.equal(result.result.reply_text,reply);assert.deepEqual(notices,[],'legacy run completion does not independently trigger outreach');
@@ -508,7 +508,7 @@ test('workshop admission exports only the stored explicit request and denies own
   assert.equal(accepted.status,200);const d=accepted.body.processed_event,session=accepted.body.admission.session_id;
   assert.equal(d.content.app_event.origin_processed_event_id,original.processed_event_id);
   const build=await h.waitBound(d.processed_event_id,session),body=bodies.find(body=>body.run_scope==='build');
-  assert.ok(body);assert.equal(body.memory_write,false);assert.equal(body.turn_budget,'background');
+  assert.ok(body);assert.equal(Object.hasOwn(body,'memory_write'),false);assert.equal(body.turn_budget,'background');
   assert.deepEqual(JSON.parse(body.input),{kind:'build_task',input:'Make and test a unit converter.',build_origin:approved.body.build_origin});
   const buildContext={run_id:build,session_id:session,tool_call_id:'read-owner'};
   for(const name of ['paios_l5_read','paios_l3_query','paios_place_history'])

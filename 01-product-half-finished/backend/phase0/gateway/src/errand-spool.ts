@@ -28,7 +28,8 @@ export function parseErrandProgress(value: unknown): ErrandProgress & {principal
       !count(r.step, 0) || !count(r.max_steps, 1)) throw new Error('ERRAND_PROGRESS_INVALID');
   const principal_id = (raw as Record<string,unknown>).principal_id; identifier(principal_id);
   utc(r.started_at);
-  return {principal_id:principal_id as string,job_id: r.job_id, title: r.title, app: r.app, state: r.state!, started_at: r.started_at, step: r.step!, max_steps: r.max_steps!};
+  return {principal_id:principal_id as string,job_id: r.job_id, title: r.title, app: r.app, state: r.state!, started_at: r.started_at, step: r.step!, max_steps: r.max_steps!,
+    ...(r.capability_receipt!==undefined?{capability_receipt:r.capability_receipt}:{})};
 }
 
 export function parseErrandResult(value: unknown): ErrandResult {
@@ -62,6 +63,7 @@ export function parseErrandResult(value: unknown): ErrandResult {
   if (r.origin_processed_event_id !== undefined) identifier(r.origin_processed_event_id);
   utc(r.finished_at);
   return {principal_id:principal_id as string,job_id: r.job_id, task: r.task, success: r.success, answer: r.answer, finished_at: r.finished_at,
+    ...(r.capability_receipt!==undefined?{capability_receipt:r.capability_receipt}:{}),
     ...(findings !== undefined ? {partial_findings:{...findings,verified:[...findings.verified],not_verified:[...findings.not_verified]}} : {}),
     ...(r.app ? {app: r.app} : {}), ...(r.tier ? {tier: r.tier} : {}),
     ...(r.title !== undefined ? {title:r.title} : {}),

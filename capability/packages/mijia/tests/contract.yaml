@@ -1,0 +1,9 @@
+fixtures:
+  - {name: succeeded, tool: control_device, outcome: succeeded, expected: succeeded}
+  - {name: accepted, tool: control_device, outcome: accepted, expected: accepted}
+  - {name: transport, tool: control_device, outcome: unknown, expected: unknown}
+  - {name: login_required, tool: get_login_status, outcome: login_required, expected: waiting}
+  - {name: failed, tool: control_device, outcome: failed, expected: failed}
+  - {name: entrance_denied, tool: control_device, outcome: entrance_denied, expected: failed}
+  - {name: scene_incomplete, tool: run_scene, outcome: incomplete, expected: partial}
+  - {name: read_values, tool: read_device, outcome: succeeded, expected: succeeded}

@@ -186,7 +186,7 @@ struct CentralTextPacket: Equatable, Sendable {
 private final class CentralWireBundle: NSObject {}
 
 enum AssistantCentralTextWire {
-    static let contractSHA256 = "3a27bce857c0d7c21e46f414c38e4c88504babf375621d1fe7eb60fe43808fde"
+    static let contractSHA256 = "1fb23153ccf4478d64c9cff3a969a97477504bcfa49685a41320b8428de0a8f1"
     // Default JSONSerialization creates immutable containers and leaves.
     // This private value never escapes the schema owner and has no mutation API.
     private struct ImmutableContract: @unchecked Sendable {

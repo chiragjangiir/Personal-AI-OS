@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 const test=(name:string,run:()=>void)=>nodeTest(name,{skip:process.platform==='win32'?'Posix registry acceptance requires a Posix host':false},run);
 import { chmodSync, existsSync, linkSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync,
   rmSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs';
-import { join, win32 } from 'node:path';
+import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import * as source from '../src/rayneo-pairing-registry.ts';
 import type { PairingRegistryIo, RayneoPairingRecord } from '../src/rayneo-pairing-registry.ts';
@@ -82,9 +82,9 @@ test('private permission owner rejects a foreign uid without changing existing d
  finally{process.getuid=getuid;}assert.ok(readFileSync(f.path).equals(source.canonicalRayneoPairingRecordBytes(record())));});
 test('an aliased directory cannot provide a second path identity',()=>{const f=fixture();seed(f);const alias=f.root+'/alias';symlinkSync(f.directory,alias,'dir');
  assert.throws(()=>new source.RayneoPairingRegistry({path:alias+'/paired-device.v1.json'}).read(),/PAIRING_REGISTRY_NODE_INVALID/);});
-test('the default legacy constructor retains its Windows path with injected existing IO',()=>{
+test('the default constructor uses the configured Linux data root with injected existing IO',()=>{
  const seen:string[]=[];const noop=()=>undefined;const io:PairingRegistryIo={exists:(path:string)=>{seen.push(path);return false;},
    ensureDirectory:noop,list:()=>[],read:()=>Buffer.alloc(0),assertSafeDirectory:noop,assertSafeFile:noop,
    createNewFlushed:noop,applyAndVerifyProtectedAcl:noop,verifyProtectedAcl:noop,replaceWriteThrough:noop,remove:noop};
  assert.equal(new source.RayneoPairingRegistry({io}).read(),undefined);
- assert.deepEqual(seen,[win32.dirname(source.RAYNEO_PAIRING_REGISTRY_PATH)]);});
+ assert.deepEqual(seen,[dirname(source.RAYNEO_PAIRING_REGISTRY_PATH)]);});

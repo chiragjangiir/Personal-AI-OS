@@ -108,6 +108,7 @@ import {
 } from './realtime-public-control-apple-cycling-telemetry.ts';
 import {
   createRealtimeAcceptedUserActivityProduction,
+  type RealtimeAcceptedUserActivityOwnerEvent,
   type RealtimeAcceptedUserActivityProduction,
   type RealtimeAcceptedUserActivityProductionOptions,
 } from './realtime-accepted-user-activity-production.ts';
@@ -207,6 +208,7 @@ interface RealtimePublicControlPgCompositionCommonOptions {
   readonly canonicalApiOrigin?: string;
   readonly glassesEnrollment?: import('./realtime-public-control-controller.ts').RealtimePublicControlControllerOptions['glassesEnrollment'];
   readonly capabilityUpgrade?: import('./realtime-public-control-controller.ts').RealtimePublicControlControllerOptions['capabilityUpgrade'];
+  readonly wechatPreviews?: import('./realtime-public-control-controller.ts').RealtimePublicControlControllerOptions['wechatPreviews'];
   readonly ownerMac?: import('./realtime-public-control-controller.ts').RealtimePublicControlControllerOptions['ownerMac'];
   readonly appearanceImages?: import('./realtime-public-control-controller.ts').RealtimePublicControlControllerOptions['appearanceImages'];
   readonly place?: import('./realtime-public-control-controller.ts').RealtimePublicControlControllerOptions['place'];
@@ -977,16 +979,16 @@ export function createRealtimePublicControlPgComposition(
             ? {
                 ...options.acceptedUserActivity!,
                 sink: Object.freeze({
-                  recordAcceptedUserActivity: (activity: AcceptedUserActivity) =>
-                    boundAuthority.service.recordAcceptedUserActivity(activity),
+                  recordAcceptedUserActivity: (activity: AcceptedUserActivity, ownerEvent: Omit<RealtimeAcceptedUserActivityOwnerEvent, 'activity'>) =>
+                    boundAuthority.service.recordAcceptedUserActivity(activity, ownerEvent),
                 }),
                 equality: boundAuthority.ports.equality,
               }
             : {
                 source: t04Owner.source,
                 sink: Object.freeze({
-                  recordAcceptedUserActivity: (activity: AcceptedUserActivity) =>
-                    boundAuthority.service.recordAcceptedUserActivity(activity),
+                  recordAcceptedUserActivity: (activity: AcceptedUserActivity, ownerEvent: Omit<RealtimeAcceptedUserActivityOwnerEvent, 'activity'>) =>
+                    boundAuthority.service.recordAcceptedUserActivity(activity, ownerEvent),
                 }),
                 equality: boundAuthority.ports.equality,
                 purpose: 'cycling_assistant',
@@ -1082,6 +1084,7 @@ export function createRealtimePublicControlPgComposition(
       bearer: options.bearer,
       ...(options.glassesEnrollment ? {glassesEnrollment:options.glassesEnrollment} : {}),
       ...(options.capabilityUpgrade ? {capabilityUpgrade:options.capabilityUpgrade} : {}),
+      ...(options.wechatPreviews ? {wechatPreviews:options.wechatPreviews} : {}),
       ...(options.ownerMac ? {ownerMac:options.ownerMac} : {}),
       ...(options.appearanceImages ? {appearanceImages:options.appearanceImages} : {}),
       ...(options.place ? {place:options.place} : {}),

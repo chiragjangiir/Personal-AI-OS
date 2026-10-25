@@ -2,7 +2,7 @@
 
 [简体中文](architecture.zh-CN.md) · [Contributing](../CONTRIBUTING.md) · [First run](first-run.md)
 
-Yimi is a personal assistant that connects conversation, memory and tools across one person's devices. Version 0.0.1 contains the server and client source listed below. The server is built locally on a Linux host; the clients need their platform toolchains, and some vendor SDKs are obtained separately. External services such as cloud phones and avatar video are optional. The voice models come from Qwen; this project did not train them.
+Yimi is a personal assistant that connects conversation, memory and tools across one person's devices. Version 0.0.2 contains the server and client source listed below. The server is built locally on a Linux host; the clients need their platform toolchains, and some vendor SDKs are obtained separately. External services such as cloud phones and avatar video are optional. The voice models come from Qwen; this project did not train them.
 
 ## Where a request goes
 
@@ -37,7 +37,7 @@ The diagram shows the main path and who owns what; not every request touches eve
 | --- | --- |
 | `front` | Nginx, the public HTTPS entry (port 9443 by default), plus the WebRTC/TURN ports. Several services share its network namespace. |
 | `gateway` | One Node process, entry point `rayneo-persistent-production-entrypoint.ts`, hosting Gateway, Integration and the Qwen voice sessions. |
-| `hermes` | A pinned, patched Hermes Agent loading the `personal_aios` plugin. When configured, the phone executor, Mi Home and the Mac connection run here as MCP servers. |
+| `hermes` | Hermes Agent provides the native agent runtime and loads the platform and capability gateway plugins. When configured, the phone executor, Mi Home and the Mac connection run here as MCP servers. |
 | `livekit` | Realtime audio and video. |
 | `postgres` | Database-backed authorities. |
 | `workshop`, `workshop-link` | The isolated workshop: its own Docker network, a read-only root filesystem, memory and process limits, reachable only through `workshop-link`. |
@@ -53,6 +53,7 @@ Paths are relative to the public checkout.
 | --- | --- | --- |
 | Gateway | `01-product-half-finished/backend/phase0/gateway/src/rayneo-persistent-production-entrypoint.ts` | The server process entry; binds pairing, calls and output transport. Follow its imports instead of adding another entry point. |
 | Integration | `01-product-half-finished/backend/services/personal-aios-integration/src/main.ts`, then `runtime.ts` and `admission.ts` | Admits processed events, binds identity and request lineage, and coordinates memory, send consent (`effect-consent.ts`) and payment (`payment/`). |
+| Capability packages | `capability/packages/`, `capability/contracts/`, `capability/sdk/` | Packages use the shared gateway, consent authorities and receipt ledger; each can be enabled and rolled back individually. |
 | Hermes plugin | `integrations/hermes/personal_aios/__init__.py`, `run_api.py`, `producer.lock.json` | Registers product tools and execution gates with Hermes. `producer.lock.json` pins the Hermes version; `native-context.patch` holds the changes to it. |
 | Persona and skills | `integrations/hermes/personal_aios/persona/`, `errands/`, `shared-skills/`, `skills/personal-aios-main/` | Yimi's persona and the skills that teach her to use existing tools. `deploy/cloud/hermes-init.py` wires the skill directories into Hermes. |
 | Phone executor | `integrations/connectors/phone_executor/server.py`, `phone_apps.py`, `step_trace.py` | Runs bounded tasks with Mobilerun on a cloud phone or Android device and returns progress and outcome evidence. `payment_guard.py` stops ordinary task input at checkout or before an action that would charge; a bound payment intent hands control to the payment flow. |
@@ -79,7 +80,7 @@ Paths are relative to the public checkout.
 | Connector | An app or service integration exposed through an existing tool or MCP server. |
 | Skill | A discoverable `SKILL.md` that teaches tool use. It grants no permission and implements no enforcement gate. |
 | RawEvent / ProcessedEvent | The input/archive contract and the processed event admitted to the runtime. Preserve their lineage identifiers. |
-| L1–L5 | Memory layers: L1 current context, L2 Hermes native long-term memory, L3 structured assertions, L4 cross-device session history, L5 original event and media archives. Each has its own storage and deletion contract. |
+| L1–L5 | Memory layers: L1 current context, L2 the core-profile view generated from L3 for Hermes to read, L3 structured assertions, L4 cross-device session history, L5 original event and media archives. Each has its own storage and deletion contract. |
 | Run scope | The admitted execution scope, such as the user, an uncertain speaker, a guest or a build. Tool access follows the real scope. |
 | First-send consent | Durable, server-kept approval for the same principal, recipient and task type. A new recipient or task type needs a new confirmation; an external action the user did not request needs one every time. |
 | Payment intent | The server-side payment intent bound to one request; an intent is not a grant to pay. Default confirmation uses a signed card on an unlocked phone. Phone settings can enable voice confirmation on the phone or glasses and small automatic payments; both are off by default. Automatic payment requires an eligible voice request verified by voiceprint, a known payee, valid terminal locks and leases, and the applicable limits (defaults: ¥50 per order, ¥150 per day, with a 5-second undo window). An earlier payment or send approval cannot authorize a new payment. |

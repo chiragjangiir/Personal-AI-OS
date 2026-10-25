@@ -85,10 +85,11 @@ export function createOwnerMacSsh(options:{pool:Parameters<typeof revokePairedDe
     },
     revoked:(deviceId:string)=>remove(deviceId,true),
     resolve:async(runtime:Pick<PersonalAIOSRuntime,'scheduleContext'>,input:JsonRecord)=>{
-      check(Object.keys(input).every(k=>k==='_context'||k==='device_id')&&input._context&&typeof input._context==='object'&&
+      check(Object.keys(input).every(k=>k==='_context'||k==='device_id'||k==='read_only')&&input._context&&typeof input._context==='object'&&
+        (input.read_only===undefined||typeof input.read_only==='boolean')&&
         (input.device_id===undefined||typeof input.device_id==='string'),'OWNER_MAC_CONTEXT_REQUIRED',403);
       const owner=await runtime.scheduleContext(input._context as Parameters<PersonalAIOSRuntime['scheduleContext']>[0]);
-      check(owner.allow_owner_mutation===true,'OWNER_MAC_OWNER_REQUIRED',403);
+      check(input.read_only===true||owner.allow_owner_mutation===true,'OWNER_MAC_OWNER_REQUIRED',403);
       const devices=(await readActivePairedDevices(options.pool)).filter(row=>row.userId===owner.principal_id&&row.deviceType==='mac'&&
         (input.device_id===undefined||row.deviceId===input.device_id));
       check(devices.length===1,'OWNER_MAC_SELECTION_REQUIRED',409);

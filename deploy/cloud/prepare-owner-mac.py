@@ -31,8 +31,9 @@ def protected(path, content):
         stream.write(content)
     path.chmod(0o600)
 relay_file = root / 'owner-mac-relay.json'
-if relay_file.exists():
-    relay = json.loads(relay_file.read_text())
+relay_text = relay_file.read_text() if relay_file.exists() else ''
+if relay_text:
+    relay = json.loads(relay_text)
     if (relay['server_addr'], relay['server_port'], relay['admin_port'], relay['visitor_port_start'], relay['visitor_port_end']) != (args.relay_host, args.relay_port, args.admin_port, args.visitor_port_start, args.visitor_port_end):
         raise ValueError('Existing relay binding differs; migrate explicitly instead of rotating paired Macs')
 else:

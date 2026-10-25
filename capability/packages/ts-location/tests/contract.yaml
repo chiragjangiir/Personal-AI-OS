@@ -1,0 +1,231 @@
+{
+  "schema": "yimi.package.contract.v1",
+  "cases": [
+    {
+      "id": "paios_place_history",
+      "tool": "paios_place_history",
+      "args": {
+        "view": "visits",
+        "time_zone": "Asia/Shanghai",
+        "from": "2026-10-23T00:00:00.000Z",
+        "until": "2026-10-24T12:00:00.000Z"
+      },
+      "raw": {
+        "view": "visits",
+        "time_zone": "Asia/Shanghai",
+        "items": [],
+        "next_cursor": null
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "paios_geofences",
+      "tool": "paios_geofences",
+      "args": {
+        "action": "list"
+      },
+      "raw": {
+        "version": 0,
+        "items": []
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "paios_ride",
+      "tool": "paios_ride",
+      "args": {
+        "action": "status"
+      },
+      "raw": {
+        "ride_mode": false
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "paios_navigate",
+      "tool": "paios_navigate",
+      "args": {
+        "destination": "公司",
+        "mode": "bicycling"
+      },
+      "raw": {
+        "nav_id": "nav",
+        "revision": 1,
+        "destination": "公司",
+        "mode": "bicycling",
+        "distance_m": 1250.5,
+        "eta_s": 302,
+        "phone_status": "route_sent",
+        "glasses_status": "route_sent"
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "paios_senses",
+      "tool": "paios_senses",
+      "args": {
+        "sense": "heart_rate"
+      },
+      "raw": {
+        "status": "known_sample",
+        "measurement_requested": false,
+        "value": 72,
+        "unit": "count/min",
+        "source": "HealthKit",
+        "observed_at": "2026-10-24T12:00:00.000Z",
+        "age_ms": 1234,
+        "sample_id": "sample"
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "ride-pending",
+      "tool": "paios_ride",
+      "args": {
+        "action": "start"
+      },
+      "raw": {
+        "status": "pending",
+        "action": "start",
+        "phone_status": "not_connected",
+        "phone_recording": "unconfirmed",
+        "glasses_status": "not_connected"
+      },
+      "expected": {
+        "state": "accepted"
+      }
+    },
+    {
+      "id": "nav-timeout",
+      "tool": "paios_navigate",
+      "args": {
+        "destination": "超时目的地",
+        "mode": "bicycling"
+      },
+      "raw": {
+        "status": "failed",
+        "error_code": "TERMINAL_TOOL_TIMEOUT",
+        "deadline_ms": 40000
+      },
+      "expected": {
+        "state": "unknown"
+      }
+    },
+    {
+      "id": "location-observed",
+      "tool": "paios_senses",
+      "args": {
+        "sense": "phone_location"
+      },
+      "raw": {
+        "status": "observed",
+        "location": {
+          "lat": 30,
+          "lng": 120,
+          "observed_at": "2026-10-24T12:00:00.000Z"
+        }
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "nav-stop",
+      "tool": "paios_navigate",
+      "args": {
+        "action": "stop"
+      },
+      "raw": {
+        "status": "stopped"
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "nav-no-alternative",
+      "tool": "paios_navigate",
+      "args": {
+        "action": "switch"
+      },
+      "raw": {
+        "status": "no_alternative",
+        "nav_id": "n",
+        "revision": 1
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "no-phone",
+      "tool": "paios_senses",
+      "args": {
+        "sense": "phone_location"
+      },
+      "raw": {
+        "status": "unavailable",
+        "error_code": "PHONE_NOT_CONNECTED"
+      },
+      "expected": {
+        "state": "unknown"
+      }
+    },
+    {
+      "id": "camera-deferred",
+      "tool": "paios_senses",
+      "args": {
+        "sense": "phone_camera"
+      },
+      "raw": {
+        "status": "unavailable",
+        "error_code": "CAMERA_APP_INACTIVE",
+        "pending": true,
+        "frame_id": "f"
+      },
+      "expected": {
+        "state": "waiting"
+      }
+    },
+    {
+      "id": "camera-observed",
+      "tool": "paios_senses",
+      "args": {
+        "sense": "glasses_photo"
+      },
+      "raw": {
+        "status": "observed",
+        "frame_id": "frame",
+        "visual_frame_id": "visual"
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    },
+    {
+      "id": "geofence-remove",
+      "tool": "paios_geofences",
+      "args": {
+        "action": "remove",
+        "region_id": "place"
+      },
+      "raw": {
+        "version": 2,
+        "items": []
+      },
+      "expected": {
+        "state": "succeeded"
+      }
+    }
+  ]
+}

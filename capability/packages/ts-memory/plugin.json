@@ -1,0 +1,136 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "ts-memory",
+  "version": "1.0.0",
+  "description": "归档、记忆及私有观察的查询与更新",
+  "extensions": {
+    "ai.yimi.capability": {
+      "schema": "yimi.capability.v1",
+      "receipt_schema": 1,
+      "compat": {
+        "hermes": ">=0.22.5 <0.24",
+        "gateway_api": 1
+      },
+      "maintainer": "lead",
+      "runtime": {
+        "server": "platform_ts",
+        "lazy": true,
+        "idle_timeout_seconds": 900,
+        "host": "shared"
+      },
+      "secrets": [
+        {
+          "name": "HERMES_INTERNAL_KEY"
+        }
+      ],
+      "network": {
+        "egress": []
+      },
+      "scopes": [
+        "owner"
+      ],
+      "tools": {
+        "paios_l5_read": {
+          "effect": "observe",
+          "retry": "forbidden",
+          "check_with": "paios_l5_locate",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:l5_read"
+        },
+        "paios_l5_locate": {
+          "effect": "observe",
+          "retry": "forbidden",
+          "check_with": "paios_l5_locate",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:l5_locate"
+        },
+        "paios_l3_query": {
+          "effect": "observe",
+          "retry": "forbidden",
+          "check_with": "paios_l3_query",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:l3_query"
+        },
+        "paios_l3_inspect": {
+          "effect": "observe",
+          "retry": "forbidden",
+          "check_with": "paios_l3_inspect",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:l3_inspect"
+        },
+        "paios_l3_commit": {
+          "effect": "owner_data",
+          "retry": "forbidden",
+          "check_with": "paios_l3_inspect",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:l3_commit",
+          "target": "$.assertion.assertion_id"
+        },
+        "paios_ambient_journal_search": {
+          "effect": "observe",
+          "retry": "forbidden",
+          "check_with": "paios_ambient_journal_search",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:ambient_journal_search"
+        },
+        "paios_visual_recall": {
+          "effect": "observe",
+          "retry": "forbidden",
+          "check_with": "paios_visual_recall",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:visual_recall"
+        },
+        "paios_visual_analyze": {
+          "effect": "observe",
+          "retry": "forbidden",
+          "check_with": "paios_visual_analyze",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:visual_analyze"
+        },
+        "paios_contacts_search": {
+          "effect": "observe",
+          "retry": "forbidden",
+          "check_with": "paios_contacts_search",
+          "context_inject": [
+            "_context"
+          ],
+          "task_type": "platform:contacts_search"
+        }
+      },
+      "staging": {
+        "fake": {
+          "command": "node",
+          "args": [
+            "fake/server.ts"
+          ]
+        }
+      },
+      "tests": {
+        "contract": "tests/contract.yaml"
+      },
+      "provenance": {
+        "source_commit": "decaff83c56b5e188b229a11e79b32106eeccf43",
+        "workshop_run": null,
+        "adapter_modules": [
+          "server/index.ts"
+        ]
+      }
+    }
+  }
+}

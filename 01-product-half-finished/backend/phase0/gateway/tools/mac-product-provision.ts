@@ -19,6 +19,7 @@ import { loadHostConfiguration } from '../../../services/personal-aios-integrati
 import type { ProductResourceConfiguration } from '../src/rayneo-persistent-production-entrypoint.ts';
 import { createRayneoLocalOwnerPolicyStore, parseConfiguredOwnerPolicy, RAYNEO_LOCAL_OWNER_POLICY_PATH } from '../src/rayneo-demo-owner-projection.ts';
 import { pairDevice, revokePairedDevice } from '../src/paired-device-registration.ts';
+import {releaseCoreProfile, coreProfileReleaseFailure} from '../src/core-profile-release.ts';
 
 const MIGRATIONS = resolve(new URL('../../../migrations', import.meta.url).pathname);
 
@@ -139,10 +140,16 @@ async function revoke(configPath:string,deviceId:string|undefined) {
 }
 
 const parsed = args(process.argv.slice(2));
+try {
 const result = parsed.command === 'init' ? await init(parsed.root, parsed.configPath)
-  : parsed.command === 'migrate' ? await migrate(parsed.configPath)
+  : parsed.command === 'migrate' ? {...await migrate(parsed.configPath), core_profile: await releaseCoreProfile(parsed.configPath, 'migrate')}
   : parsed.command === 'config' ? config(parsed.configPath)
   : parsed.command === 'pair' ? await pair(parsed.root, parsed.configPath, parsed.registration)
   : parsed.command === 'revoke' ? await revoke(parsed.configPath,parsed.deviceId)
   : (() => { throw new Error('MAC_PROVISION_COMMAND_INVALID'); })();
 process.stdout.write(JSON.stringify(result) + '\n');
+} catch (error) {
+  if (parsed.command !== 'migrate') throw error;
+  process.stdout.write(JSON.stringify({core_profile: coreProfileReleaseFailure(error)}) + '\n');
+  process.exitCode = 1;
+}

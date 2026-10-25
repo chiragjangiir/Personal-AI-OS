@@ -692,7 +692,12 @@ export function createVoiceCallSession(options: {
       }}:{}),
       ownerEngaged:()=>ownerEngaged(c),pending:()=>acknowledgePending(c),
       get thinkingAtCommit(){return c.output.thinkingAtCommit===true;},
-      ...(options.classifySpeech?{classify:options.classifySpeech}:{}),score:(samples,signal)=>options.turns!.score(samples,signal),now,
+      ...(options.classifySpeech?{classify:async(text:string,signal:AbortSignal,references:TurnAudioReferences)=>{
+        if(!c.source||!c.continuity)return options.classifySpeech!(text,signal);
+        const archived=(await Promise.all(references)).map(ref=>'event' in ref?ref.event:'legacy_original' in ref?ref.legacy_original.event:undefined).find(Boolean);
+        check(archived,'CALL_CLASSIFIER_ARCHIVE_REQUIRED',403);
+        return options.classifySpeech!(text,signal,{kind:'call',principal_id:c.source.principal_id,device_id:c.source.device_id,call_id:c.id,continuity:c.continuity,raw_ref:archived.raw_ref,archive_revision:archived.archive_revision});
+      }}:{}),score:(samples,signal)=>options.turns!.score(samples,signal),now,
       interrupt:()=>interrupt(c,true,true),onError:fail,playbackReady:()=>releaseHeld(c),
       context:text=>{if(c.wakePending||c.automatic)return Promise.resolve();remember(c,'通话背景',text);return c.connected&&!c.guestTurn&&c.identity==='owner'?c.front.hear?.(text)??Promise.resolve():Promise.resolve();},
       observation:(text,speaker,references)=>observationTurn(c,text,speaker,references),

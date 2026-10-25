@@ -23,7 +23,7 @@ test('Windows ACL construction uses SID objects so service and built-in identiti
   assert.doesNotMatch(source, /FileSystemAccessRule\(\$identity,/u);
 });
 
-const PATH = 'D:\\fixture\\paired-device.v1.json';
+const PATH = '/fixture/paired-device.v1.json';
 const PAIRED_AT = '2026-08-12T03:00:00.000Z';
 const REVOKED_AT = '2026-08-12T03:01:00.000Z';
 
@@ -53,8 +53,8 @@ class FakeIo implements PairingRegistryIo {
   exists(path: string): boolean { return this.files.has(path) || this.directories.has(path); }
   ensureDirectory(path: string): void { this.calls.push(`mkdir:${path}`); this.directories.add(path); }
   list(path: string): readonly string[] {
-    const prefix = path + '\\';
-    return [...this.files.keys()].filter((candidate) => candidate.startsWith(prefix) && !candidate.slice(prefix.length).includes('\\'))
+    const prefix = path + '/';
+    return [...this.files.keys()].filter((candidate) => candidate.startsWith(prefix) && !candidate.slice(prefix.length).includes('/'))
       .map((candidate) => candidate.slice(prefix.length));
   }
   read(path: string): Buffer {
@@ -111,7 +111,7 @@ test('atomic pairing applies protected ACL before write-through replace and exac
     pairedAtUtc: PAIRED_AT,
   });
   assert.deepEqual(record, pairedRecord());
-  assert.ok(io.calls.includes('safe-dir:D:\\fixture'));
+  assert.ok(io.calls.includes('safe-dir:/fixture'));
   assert.equal(io.directories.has('.'), false);
   assert.deepEqual(registry.read(), record);
   assert.equal(io.files.has(PATH + '.new'), false);
@@ -163,18 +163,18 @@ test('revoke increments generation and records only the closed public dispositio
 
 test('partial or foreign registry directory contents fail closed', () => {
   const io = new FakeIo();
-  io.directories.add('D:\\fixture');
+  io.directories.add('/fixture');
   io.files.set(PATH + '.new', Buffer.from('{}'));
   const registry = new RayneoPairingRegistry({ path: PATH, io });
   assert.throws(() => registry.read(), /PARTIAL_WRITE/u);
   io.files.delete(PATH + '.new');
-  io.files.set('D:\\fixture\\foreign.txt', Buffer.from('x'));
+  io.files.set('/fixture/foreign.txt', Buffer.from('x'));
   assert.throws(() => registry.read(), /FOREIGN_ENTRY/u);
 });
 
 test('existing registry ACL drift fails closed without applying a repair', () => {
   const io = new FakeIo();
-  io.directories.add('D:\\fixture');
+  io.directories.add('/fixture');
   io.files.set(PATH, canonicalRayneoPairingRecordBytes(pairedRecord()));
   io.failVerifyAclPath = PATH;
   const registry = new RayneoPairingRegistry({ path: PATH, io });

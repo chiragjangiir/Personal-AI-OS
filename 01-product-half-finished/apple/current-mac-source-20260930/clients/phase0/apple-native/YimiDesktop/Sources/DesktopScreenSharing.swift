@@ -19,7 +19,7 @@ final class DesktopScreenSharing: ObservableObject {
         defer { busy = false }
         do {
             windows = try await WindowSharing.windows()
-            if windows.isEmpty { error = "没有可共享的窗口。请打开窗口后重试。" }
+            if windows.isEmpty { error = "没有可共享的窗口，请先打开一个窗口再试。" }
             else { choosing = true }
         } catch { self.error = (error as? WindowSharingError)?.localizedDescription ?? WindowSharingError.unavailable.localizedDescription }
     }
@@ -43,7 +43,7 @@ struct DesktopScreenSharingControls: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
-                Label(sharing.windowTitle.map { "正在共享：\($0)" } ?? "窗口共享未开启",
+                Label(sharing.windowTitle.map { "正在共享：\($0)" } ?? "未共享窗口",
                       systemImage: "rectangle.on.rectangle")
                     .lineLimit(2).textSelection(.enabled)
                     .accessibilityIdentifier("desktop.sharing.status")

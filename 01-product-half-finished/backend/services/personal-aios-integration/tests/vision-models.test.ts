@@ -147,3 +147,20 @@ test('front search forwards only the public query to the native search endpoint'
     }) as typeof fetch);
   assert.deepEqual(await client.searchCall('public question'),{success:true,data:{web:[]}});
 });
+
+test('auxiliary RPC carries the exact admitted execution without accepting an owner field',async()=>{
+  const source={run_id:'bound-run',session_id:'canonical-session'},requests:any[]=[];
+  const http:typeof fetch=async(url,options)=>{
+    requests.push({url:String(url),body:JSON.parse(String(options!.body))});
+    return String(url).endsWith('/call-intent')?new Response(JSON.stringify({stop:false,guests:'unchanged',directed:true,hangup:false})):new Response('caption');
+  };
+  const client=new HermesClient('http://127.0.0.1:8642','a'.repeat(24),1000,4096,undefined,http);
+  await client.classifyCall('current utterance',undefined,source);
+  await client.analyzeVision(Buffer.from('jpeg'),'current frame',undefined,source);
+  assert.deepEqual(requests.map(request=>request.body._model_context),[source,source]);
+  const proof={kind:'call' as const,raw_ref:'l5:exact-audio',archive_revision:'exact-revision',principal_id:'source-owner',device_id:'source-device',call_id:'exact-call',continuity:'canonical-session'};
+  await client.classifyCall('current utterance',undefined,proof);
+  assert.deepEqual(requests.at(-1).body.source_context,proof);
+  assert.equal(requests.at(-1).body._model_context,undefined);
+  assert.ok(requests.every(request=>!('owner' in request.body)));
+});

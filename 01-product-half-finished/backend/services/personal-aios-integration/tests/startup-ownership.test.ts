@@ -150,10 +150,10 @@ test('synchronous admin connect and asynchronous end failures retain first cause
 test('host configuration binds relative paths and environment ports to the mounted root, without embedding secrets', async t => {
   const f=await fixture(t); const previous=process.env.PAIOS_CONFIG_ROOT;
   process.env.PAIOS_CONFIG_ROOT=f.root; t.after(()=>{if(previous===undefined)delete process.env.PAIOS_CONFIG_ROOT;else process.env.PAIOS_CONFIG_ROOT=previous;});
-  await fs.writeFile(join(f.root,'config'),JSON.stringify({hermes_key_file:'secrets/hermes.key',port:'${PAIOS_TEST_SERVICE_PORT}',
+  await fs.writeFile(join(f.root,'config'),JSON.stringify({hermes_key_file:'secrets/hermes.key',native_profile_home:'native',port:'${PAIOS_TEST_SERVICE_PORT}',
     instructions:'literal ${PAIOS_PERSONA_TEXT}',persona:'${PAIOS_PERSONA_TEXT}'}));
   process.env.PAIOS_TEST_SERVICE_PORT='18661'; t.after(()=>{delete process.env.PAIOS_TEST_SERVICE_PORT;});
-  assert.deepEqual(await loadHostConfiguration(join(f.root,'config')),{hermes_key_file:join(f.root,'secrets/hermes.key'),port:18661,
+  assert.deepEqual(await loadHostConfiguration(join(f.root,'config')),{hermes_key_file:join(f.root,'secrets/hermes.key'),native_profile_home:join(f.root,'native'),port:18661,
     instructions:'literal ${PAIOS_PERSONA_TEXT}',persona:'${PAIOS_PERSONA_TEXT}'});
   delete process.env.PAIOS_TEST_SERVICE_PORT;
   await assert.rejects(loadHostConfiguration(join(f.root,'config')),/HOST_CONFIG_ENV_REQUIRED:PAIOS_TEST_SERVICE_PORT/);
@@ -170,7 +170,7 @@ test('cloud migration config preserves exact origin aliases and permits an empty
 test('tracked Mac product snapshot passes the real central startup checks before deployment', async t => {
   const f=await fixture(t);
   const snapshot=await loadHostConfiguration(new URL('../../../../../deploy/mac-product/mac-product.json',import.meta.url).pathname) as CentralProvisionConfiguration;
-  const {native_memory_receipts,voiceprint,...portable}=snapshot;
+  const {core_profile,voiceprint,...portable}=snapshot;
   const config={...portable,storage_root:f.config.storage_root,lock_file:f.config.lock_file,
     hermes_key_file:f.config.hermes_key_file,internal_key_file:f.config.internal_key_file,skill_file:f.config.skill_file,
     voice_frontend:{...snapshot.voice_frontend!,key_file:f.config.hermes_key_file}};
@@ -178,4 +178,25 @@ test('tracked Mac product snapshot passes the real central startup checks before
   if(turn&&process.env.PAIOS_MODEL_ROOT)for(const file of [turn.model,turn.thinking_sound])file.path=join(process.env.PAIOS_MODEL_ROOT,'turns',basename(file.path));
   const provision=await provisionCentralResources(config);
   try {assert.ok(provision.resources.tts);} finally {await provision.release();}
+});
+
+test('central native binding uses the Hermes home independently of the generated profile volume', async t => {
+  const f=await fixture(t), view=join(f.root,'generated'), nativeHome=join(f.root,'native');
+  await fs.mkdir(view);await fs.mkdir(nativeHome);
+  const originalFetch=globalThis.fetch;
+  let responseHome=nativeHome;
+  globalThis.fetch=async()=>Response.json({schema:'hermes.run.v2',
+    shape_sha256:(await import('../src/hermes-client.ts')).NATIVE_RUN_SHAPE_SHA256,
+    profile_home:responseHome,run_id:'run-1',session_id:'session-1',conversation_session_id:'session-1',status:'completed'});
+  const provision=await provisionCentralResources({...f.config,admission:{max_pending_events:32,max_pending_bytes:65536,
+    max_event_age_ms:1000,poll_interval_ms:1000,native_idempotency_retention_ms:86400000,policy_version:'fixture'},
+    core_profile:{enabled:true,profile_home:view,native_profile_home:nativeHome}});
+  try {
+    const native=provision.resources.native;
+    assert.equal((await native.status('run-1')).profile_home,nativeHome);
+    responseHome=view;
+    await assert.rejects(native.status('run-1'),/HERMES_NATIVE_RUN_VERSION_OR_SCOPE_INVALID/);
+    assert.equal(provision.resources.core_profile?.profile_home,view);
+    assert.equal(provision.resources.core_profile?.source_profile_home,nativeHome);
+  } finally {globalThis.fetch=originalFetch;await provision.release();}
 });

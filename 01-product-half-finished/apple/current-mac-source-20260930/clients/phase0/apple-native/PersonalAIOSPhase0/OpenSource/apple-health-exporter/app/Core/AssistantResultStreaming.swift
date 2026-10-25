@@ -1337,11 +1337,11 @@ struct AssistantCentralTextConsumer: Sendable {
            let submitted = next.pending.removeValue(forKey: ready) {
             try next.retireCurrent()
             let waiting = next.pending, deliveries = next.retained, controls = next.controls
-            // A call, voice turn and errand feed live beside the submission they replace; a new D never ends them.
-            let liveCall = next.call, liveVoice = next.voiceTurn, liveErrands = next.errands, liveOwner = next.ownerVoice
+            // Session projections live beside the submission they replace; a new D never ends them.
+            let liveCall = next.call, liveVoice = next.voiceTurn, liveErrands = next.errands, liveOwner = next.ownerVoice, liveActivities = next.activities
             next = submitted
             next.pending = waiting; next.retained = deliveries; next.controls = controls
-            next.call = liveCall; next.voiceTurn = liveVoice; next.errands = liveErrands; next.ownerVoice = liveOwner
+            next.call = liveCall; next.voiceTurn = liveVoice; next.errands = liveErrands; next.ownerVoice = liveOwner; next.activities = liveActivities
         }
         if operation == "accepted", let event {
             next.voiceTurn.admissionObserved(eventID: event)

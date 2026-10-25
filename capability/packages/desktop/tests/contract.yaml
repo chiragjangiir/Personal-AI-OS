@@ -1,0 +1,729 @@
+{
+  "schema": "mac-contract.v1",
+  "cases": [
+    {
+      "id": "list_allowed_directories-success",
+      "tool": "list_allowed_directories",
+      "args": {},
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"directories\": [{\"path\": \"/Granted\", \"label\": \"文档\", \"write\": true}]}"
+          }
+        ],
+        "structuredContent": {
+          "directories": [
+            {
+              "path": "/Granted",
+              "label": "文档",
+              "write": true
+            }
+          ]
+        }
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "list_directory-success",
+      "tool": "list_directory",
+      "args": {
+        "path": "/Granted"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"text\": \"[FILE] report.txt\"}"
+          }
+        ],
+        "structuredContent": {
+          "content": "[FILE] report.txt"
+        }
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "list_directory_with_sizes-success",
+      "tool": "list_directory_with_sizes",
+      "args": {
+        "path": "/Granted"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"text\": \"[FILE] report.txt 12 B\\nTotal: 1 files, 0 directories\\nCombined size: 12 B\"}"
+          }
+        ],
+        "structuredContent": {
+          "content": "[FILE] report.txt 12 B\nTotal: 1 files, 0 directories\nCombined size: 12 B"
+        }
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "search_files-success",
+      "tool": "search_files",
+      "args": {
+        "path": "/Granted",
+        "pattern": "*.txt"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"text\": \"/Granted/report.txt\"}"
+          }
+        ],
+        "structuredContent": {
+          "content": "/Granted/report.txt"
+        }
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "get_file_info-success",
+      "tool": "get_file_info",
+      "args": {
+        "path": "/Granted/report.txt"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"text\": \"size: 12\\nisFile: true\"}"
+          }
+        ],
+        "structuredContent": {
+          "content": "size: 12\nisFile: true"
+        }
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "read_text_file-success",
+      "tool": "read_text_file",
+      "args": {
+        "path": "/Granted/report.txt"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"text\": \"报告正文\"}"
+          }
+        ],
+        "structuredContent": {
+          "content": "报告正文"
+        }
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "find_files-success",
+      "tool": "find_files",
+      "args": {
+        "folder": "/Granted"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"files\": [{\"path\": \"/Granted/report.txt\", \"name\": \"report.txt\", \"size\": 12, \"modified\": \"2026-10-24T00:00:00Z\", \"kind\": \"text\"}], \"truncated\": false}"
+          }
+        ],
+        "structuredContent": {
+          "files": [
+            {
+              "path": "/Granted/report.txt",
+              "name": "report.txt",
+              "size": 12,
+              "modified": "2026-10-24T00:00:00Z",
+              "kind": "text"
+            }
+          ],
+          "truncated": false
+        }
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "extract_text-success",
+      "tool": "extract_text",
+      "args": {
+        "path": "/Granted/report.pdf"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"path\": \"/Granted/report.pdf\", \"text\": \"提取正文\", \"truncated\": false}"
+          }
+        ],
+        "structuredContent": {
+          "path": "/Granted/report.pdf",
+          "text": "提取正文",
+          "truncated": false
+        }
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "create_directory-success",
+      "tool": "create_directory",
+      "args": {
+        "path": "/Granted/new"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"text\": \"Successfully created directory /Granted/new\"}"
+          }
+        ],
+        "structuredContent": {
+          "content": "Successfully created directory /Granted/new"
+        }
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "write_file-success",
+      "tool": "write_file",
+      "args": {
+        "path": "/Granted/report.txt",
+        "content": "正文"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"text\": \"Successfully wrote to /Granted/report.txt\"}"
+          }
+        ],
+        "structuredContent": {
+          "content": "Successfully wrote to /Granted/report.txt"
+        }
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "edit_file-success",
+      "tool": "edit_file",
+      "args": {
+        "path": "/Granted/report.txt",
+        "edits": [
+          {
+            "oldText": "旧",
+            "newText": "新"
+          }
+        ]
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"text\": \"-旧\\n+新\"}"
+          }
+        ],
+        "structuredContent": {
+          "content": "-旧\n+新"
+        }
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "move_file-success",
+      "tool": "move_file",
+      "args": {
+        "source": "/Granted/report.txt",
+        "destination": "/Granted/new/report.txt"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"text\": \"Successfully moved /Granted/report.txt to /Granted/new/report.txt\"}"
+          }
+        ],
+        "structuredContent": {
+          "content": "Successfully moved /Granted/report.txt to /Granted/new/report.txt"
+        }
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "trash-success",
+      "tool": "trash",
+      "args": {
+        "paths": [
+          "/Granted/report.txt"
+        ]
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"files\": [{\"path\": \"/Granted/report.txt\", \"trash_path\": \"/Trash/report.txt-uuid\"}]}"
+          }
+        ],
+        "structuredContent": {
+          "files": [
+            {
+              "path": "/Granted/report.txt",
+              "trash_path": "/Trash/report.txt-uuid"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "upload_to_workshop-success",
+      "tool": "upload_to_workshop",
+      "args": {
+        "path": "/Granted/report.txt"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"transfer_id\": \"11111111111111111111111111111111\", \"size\": 12, \"sha256\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"workshop_path\": \"/owner/in/11111111111111111111111111111111/report.txt\"}"
+          }
+        ],
+        "structuredContent": {
+          "transfer_id": "11111111111111111111111111111111",
+          "size": 12,
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workshop_path": "/owner/in/11111111111111111111111111111111/report.txt"
+        }
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "save_from_workshop-success",
+      "tool": "save_from_workshop",
+      "args": {
+        "workshop_path": "/owner/out/11111111111111111111111111111111/report.txt"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"path\": \"/Documents/依米/report.txt\", \"size\": 12, \"sha256\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}"
+          }
+        ],
+        "structuredContent": {
+          "path": "/Documents/依米/report.txt",
+          "size": 12,
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "window_capture-success",
+      "tool": "window_capture",
+      "args": {
+        "question": "What is shown?"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"description\":\"一个编辑窗口\"}"
+          }
+        ],
+        "structuredContent": {
+          "window_id": 17,
+          "title": "Editor",
+          "width": 800,
+          "height": 600
+        }
+      },
+      "expect": {
+        "state": "succeeded",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "edit-preview",
+      "tool": "edit_file",
+      "args": {
+        "path": "/Granted/report.txt",
+        "edits": [
+          {
+            "oldText": "旧",
+            "newText": "新"
+          }
+        ],
+        "dryRun": true
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"text\": \"diff preview\"}"
+          }
+        ],
+        "structuredContent": {
+          "content": "diff preview"
+        }
+      },
+      "expect": {
+        "state": "succeeded",
+        "effects": 0,
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "read-truncated",
+      "tool": "read_text_file",
+      "args": {
+        "path": "/Granted/report.txt"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"text\": \"部分正文\", \"truncated\": true}"
+          }
+        ],
+        "structuredContent": {
+          "truncated": true,
+          "content": "部分正文"
+        }
+      },
+      "expect": {
+        "state": "partial",
+        "retry": "forbidden"
+      }
+    },
+    {
+      "id": "desktop_timeout",
+      "tool": "write_file",
+      "args": {
+        "path": "/Granted/report.txt",
+        "content": "正文"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\": {\"code\": \"DESKTOP_TIMEOUT\", \"retryable\": false}}"
+          }
+        ],
+        "structuredContent": {
+          "error": {
+            "code": "DESKTOP_TIMEOUT",
+            "retryable": false
+          }
+        },
+        "isError": true
+      },
+      "expect": {
+        "state": "unknown",
+        "retry": "after_check",
+        "effects": 0
+      }
+    },
+    {
+      "id": "desktop_disconnected",
+      "tool": "write_file",
+      "args": {
+        "path": "/Granted/report.txt",
+        "content": "正文"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\": {\"code\": \"DESKTOP_DISCONNECTED\", \"retryable\": false}}"
+          }
+        ],
+        "structuredContent": {
+          "error": {
+            "code": "DESKTOP_DISCONNECTED",
+            "retryable": false
+          }
+        },
+        "isError": true
+      },
+      "expect": {
+        "state": "unknown",
+        "retry": "after_check",
+        "effects": 0
+      }
+    },
+    {
+      "id": "desktop_revoked",
+      "tool": "write_file",
+      "args": {
+        "path": "/Granted/report.txt",
+        "content": "正文"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\": {\"code\": \"DESKTOP_REVOKED\", \"retryable\": false}}"
+          }
+        ],
+        "structuredContent": {
+          "error": {
+            "code": "DESKTOP_REVOKED",
+            "retryable": false
+          }
+        },
+        "isError": true
+      },
+      "expect": {
+        "state": "unknown",
+        "retry": "after_check",
+        "effects": 0
+      }
+    },
+    {
+      "id": "desktop_cancelled",
+      "tool": "write_file",
+      "args": {
+        "path": "/Granted/report.txt",
+        "content": "正文"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\": {\"code\": \"DESKTOP_CANCELLED\", \"retryable\": false}}"
+          }
+        ],
+        "structuredContent": {
+          "error": {
+            "code": "DESKTOP_CANCELLED",
+            "retryable": false
+          }
+        },
+        "isError": true
+      },
+      "expect": {
+        "state": "unknown",
+        "retry": "after_check",
+        "effects": 0
+      }
+    },
+    {
+      "id": "desktop_audit_store",
+      "tool": "write_file",
+      "args": {
+        "path": "/Granted/report.txt",
+        "content": "正文"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\": {\"code\": \"DESKTOP_AUDIT_STORE\", \"retryable\": false}}"
+          }
+        ],
+        "structuredContent": {
+          "error": {
+            "code": "DESKTOP_AUDIT_STORE",
+            "retryable": false
+          }
+        },
+        "isError": true
+      },
+      "expect": {
+        "state": "unknown",
+        "retry": "after_check",
+        "effects": 0
+      }
+    },
+    {
+      "id": "guard_consent_denied",
+      "tool": "write_file",
+      "args": {
+        "path": "/Granted/report.txt",
+        "content": "正文"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\": {\"code\": \"GUARD_CONSENT_DENIED\", \"retryable\": false}}"
+          }
+        ],
+        "structuredContent": {
+          "error": {
+            "code": "GUARD_CONSENT_DENIED",
+            "retryable": false
+          }
+        },
+        "isError": true
+      },
+      "expect": {
+        "state": "failed",
+        "retry": "forbidden",
+        "effects": 0
+      }
+    },
+    {
+      "id": "guard_path_not_authorized",
+      "tool": "write_file",
+      "args": {
+        "path": "/Granted/report.txt",
+        "content": "正文"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\": {\"code\": \"GUARD_PATH_NOT_AUTHORIZED\", \"retryable\": false}}"
+          }
+        ],
+        "structuredContent": {
+          "error": {
+            "code": "GUARD_PATH_NOT_AUTHORIZED",
+            "retryable": false
+          }
+        },
+        "isError": true
+      },
+      "expect": {
+        "state": "failed",
+        "retry": "forbidden",
+        "effects": 0
+      }
+    },
+    {
+      "id": "desktop_offline",
+      "tool": "write_file",
+      "args": {
+        "path": "/Granted/report.txt",
+        "content": "正文"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\": {\"code\": \"DESKTOP_OFFLINE\", \"retryable\": false}}"
+          }
+        ],
+        "structuredContent": {
+          "error": {
+            "code": "DESKTOP_OFFLINE",
+            "retryable": false
+          }
+        },
+        "isError": true
+      },
+      "expect": {
+        "state": "failed",
+        "retry": "forbidden",
+        "effects": 0
+      }
+    },
+    {
+      "id": "desktop_busy",
+      "tool": "write_file",
+      "args": {
+        "path": "/Granted/report.txt",
+        "content": "正文"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\": {\"code\": \"DESKTOP_BUSY\", \"retryable\": false}}"
+          }
+        ],
+        "structuredContent": {
+          "error": {
+            "code": "DESKTOP_BUSY",
+            "retryable": false
+          }
+        },
+        "isError": true
+      },
+      "expect": {
+        "state": "failed",
+        "retry": "forbidden",
+        "effects": 0
+      }
+    },
+    {
+      "id": "transfer_integrity",
+      "tool": "write_file",
+      "args": {
+        "path": "/Granted/report.txt",
+        "content": "正文"
+      },
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\": {\"code\": \"TRANSFER_INTEGRITY\", \"retryable\": false}}"
+          }
+        ],
+        "structuredContent": {
+          "error": {
+            "code": "TRANSFER_INTEGRITY",
+            "retryable": false
+          }
+        },
+        "isError": true
+      },
+      "expect": {
+        "state": "unknown",
+        "retry": "after_check",
+        "effects": 0
+      }
+    }
+  ]
+}

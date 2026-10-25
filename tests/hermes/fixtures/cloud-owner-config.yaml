@@ -92,6 +92,7 @@ skills:
   external_dirs:
   - /opt/paios/integrations/hermes/personal_aios/errands
   - /opt/paios/integrations/hermes/personal_aios/shared-skills
+  - /opt/paios/capability/packages/mijia/skills
 security:
   allow_private_urls: false
   acked_advisories:
@@ -151,7 +152,7 @@ mcp_servers:
   mijia:
     command: /opt/hermes/.venv/bin/python
     args:
-    - /opt/paios/integrations/hermes/personal_aios/mijia.py
+    - /opt/paios/capability/packages/mijia/server/mijia.py
     env:
       HERMES_HOME: /opt/data
     timeout: 120

@@ -20,10 +20,10 @@ final class DesktopVoiceStatusTests: XCTestCase {
         var call = CentralCall(), media = AssistantMediaSnapshot()
         media.wakeArmed = true; media.wake = .waitingForAudio
         await accept(call, media, phase: .inactive)
-        XCTAssertNotEqual(model.voiceStatusTitle, "本地待命 · 仅本机")
+        XCTAssertNotEqual(model.voiceStatusTitle, "等你唤醒 · 仅本机")
         media.wake = .localReady
         await accept(call, media, phase: .standby)
-        XCTAssertEqual(model.voiceStatusTitle, "本地待命 · 仅本机")
+        XCTAssertEqual(model.voiceStatusTitle, "等你唤醒 · 仅本机")
         call.id = "mac-call"; call.state = "opening"
         await accept(call, media, phase: .connecting)
         call.state = "live"; media.callMicrophone = .on; media.microphone = .on

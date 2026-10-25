@@ -400,3 +400,21 @@ test('background place route is exact and bounded, validates formal location, an
   assert.equal(uploads,1);assert.equal(edges,4);assert.equal(participant.connects,0);assert.equal(owner.bootstrapCalls,0);
   await instance.close();
 });
+
+test('passive WeChat upload uses paired bearer and edge authentication independently of SSH',async t=>{
+  const {runtime}=makeRuntime();let uploads=0,bearers=0,edges=0;
+  const value={device_id:'mac',batch_id:'fixture',previews:[]};
+  const receipt={schema:'paios.wechat-previews-response.v1',batch_id:'fixture',accepted_ids:[]};
+  const instance=new RealtimePublicControlController({enabled:true,controlHost:'example.invalid',runtime,
+    edge:{authorize:async()=>{edges++;}},bearer:{authorize:async input=>{
+      assert.equal(input.token,'opaque-control-capability-123456');assert.equal(input.operation,'bootstrap');
+      assert.deepEqual(input.request,value);bearers++;return {principal:'owner',deviceId:'mac'};
+    }},wechatPreviews:async(bearer,body)=>{assert.equal(bearer.deviceId,body.device_id);uploads++;return receipt;}});
+  t.after(()=>instance.close());const path='/v1/mac/wechat/previews';
+  assert.equal(instance.matches('POST',path),true);assert.equal(instance.matches('GET',path),false);
+  const response=responseCapture();await instance.handle(requestFor(value,path),response.response);
+  assert.equal(response.status,202);assert.deepEqual(JSON.parse(response.body!),receipt);assert.equal(uploads,1);
+  assert.equal(edges,1);assert.equal(bearers,1);
+  const noAuth=requestFor(value,path);noAuth.rawHeaders.splice(-2);const denied=responseCapture();
+  await instance.handle(noAuth,denied.response);assert.equal(denied.status,401);assert.equal(uploads,1);
+});

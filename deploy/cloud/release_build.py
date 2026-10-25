@@ -29,7 +29,7 @@ SUITE_FIXTURES = (
 )
 NODE_TEST = 'node --test --test-concurrency=1 --test-reporter=spec'
 NATIVE_GATEWAY = ('mac-product-provision-config', 'self-mcp')
-NATIVE_INTEGRATION = ('cron-lineage', 'native-producer-contract', 'native-memory-receipts', 'standing-watch', 'voiceprint-authority')
+NATIVE_INTEGRATION = ('cron-lineage', 'native-producer-contract', 'standing-watch', 'voiceprint-authority')
 CARE_NATIVE = '^legacy care run tools retain native isolation across provider HTTP$'
 # Cross-native consumers run with Hermes Python and the exact gateway backend; ordinary JS keeps shipped Node 24.
 SUITES = {

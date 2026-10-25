@@ -23,11 +23,12 @@ from tools.file_operations import ShellFileOperations
 MAX_COPY = 25 * 1024 * 1024
 
 
-def resolve(context, device_id):
+def resolve(context, device_id, read_only=False):
     port = os.environ['PAIOS_INTEGRATION_PORT']
     token = Path('/run/secrets/hermes-internal.key').read_text().strip()
     request = Request(f'http://127.0.0.1:{port}/internal/owner-mac/resolve',
-        data=json.dumps({'_context': context, **({'device_id': device_id} if device_id else {})}).encode(),
+        data=json.dumps({'_context': context, **({'device_id': device_id} if device_id else {}),
+                         **({'read_only': True} if read_only else {})}).encode(),
         headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'})
     with urlopen(request, timeout=10) as response:
         binding = json.load(response)
@@ -37,8 +38,8 @@ def resolve(context, device_id):
 
 
 @contextmanager
-def environment(context, device_id):
-    binding = resolve(context, device_id)
+def environment(context, device_id, read_only=False):
+    binding = resolve(context, device_id, read_only=True) if read_only else resolve(context, device_id)
     root = Path(os.environ.get('PAIOS_OWNER_MAC_ROOT', '/run/owner-mac')) / binding['device_id']
     env = SSHEnvironment(host=os.environ.get('PAIOS_OWNER_MAC_HOST', '127.0.0.1'),
         user=binding['ssh_user'], port=binding['visitor_port'], cwd=binding['home'],
@@ -53,7 +54,7 @@ def environment(context, device_id):
         env.cleanup()
 
 
-def create_server():
+def create_server(observe=False):
     mcp = MCPServer('owner_mac')
 
     @mcp.tool()
@@ -67,7 +68,7 @@ def create_server():
     @mcp.tool()
     def read(path: str, context: dict, device_id: str = '', offset: int = 1, limit: int = 2000) -> dict:
         """Read a text file on the paired owner Mac using native Hermes file operations."""
-        with environment(context, device_id) as env:
+        with (environment(context, device_id, read_only=True) if observe else environment(context, device_id)) as env:
             return asdict(ShellFileOperations(env).read_file(path, offset=offset, limit=limit))
 
     @mcp.tool()
@@ -80,7 +81,7 @@ def create_server():
     def fetch(path: str, context: dict, device_id: str = '') -> dict:
         """Copy a file (at most 25 MB) from the paired owner Mac into this cloud host; returns the cloud path for
         native tools such as vision_analyze. The bytes never pass through the conversation."""
-        with environment(context, device_id) as env:
+        with (environment(context, device_id, read_only=True) if observe else environment(context, device_id)) as env:
             done = env.execute(f'test -f {shlex.quote(path)} && head -c {MAX_COPY + 1} < {shlex.quote(path)} | base64', timeout=120)
         if done['returncode'] != 0:
             raise RuntimeError(done['output'][-500:])

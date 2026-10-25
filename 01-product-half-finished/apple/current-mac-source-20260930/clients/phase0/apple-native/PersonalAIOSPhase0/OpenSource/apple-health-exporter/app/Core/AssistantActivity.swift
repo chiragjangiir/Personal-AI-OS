@@ -16,7 +16,7 @@ struct CentralActivityProgress: Codable, Equatable, Sendable {
 }
 
 struct CentralActivityCard: Codable, Equatable, Sendable, Identifiable {
-    enum State: String, Codable, Sendable { case running, succeeded, failed, partial, cancelled }
+    enum State: String, Codable, Sendable { case running, succeeded, failed, partial, cancelled, unknown, waiting }
     enum Source: String, Codable, Sendable { case agent_intent, subagent_goal, tool_status, generic }
     struct Counts: Codable, Equatable, Sendable {
         let total: Int
@@ -25,10 +25,12 @@ struct CentralActivityCard: Codable, Equatable, Sendable, Identifiable {
         let failed: Int
         let cancelled: Int
         let partial: Int?
+        var unknown: Int? = nil
+        var waiting: Int? = nil
     }
     struct Item: Codable, Equatable, Sendable, Identifiable {
         enum Kind: String, Codable, Sendable { case subagent, errand, task }
-        enum State: String, Codable, Sendable { case running, succeeded, failed, partial, cancelled }
+        enum State: String, Codable, Sendable { case running, succeeded, failed, partial, cancelled, unknown, waiting }
         let id: String
         let kind: Kind
         let state: State
@@ -46,6 +48,8 @@ struct CentralActivityCard: Codable, Equatable, Sendable, Identifiable {
             case .failed: return "未办成"
             case .partial: return "部分完成"
             case .cancelled: return "已取消"
+            case .unknown: return "结果待核对"
+            case .waiting: return "正在等待"
             }
         }
     }
@@ -75,7 +79,7 @@ struct ActivityPresentation: Identifiable, Equatable, Sendable {
     var card: CentralActivityCard { update.card }
     var processedEventID: String { update.processed_event_id }
     func elapsed(at now: Date) -> Int {
-        card.elapsed_ms + (card.state == .running ? Int(max(0, now.timeIntervalSince(arrivedAt)) * 1000) : 0)
+        card.elapsed_ms + (card.state == .running || card.state == .waiting ? Int(max(0, now.timeIntervalSince(arrivedAt)) * 1000) : 0)
     }
     func slowSeconds(at now: Date) -> Int? {
         guard card.state == .running else { return nil }
@@ -96,6 +100,8 @@ struct ActivityPresentation: Identifiable, Equatable, Sendable {
         case .failed: return "结果待核对"
         case .partial: return "部分完成"
         case .cancelled: return "已取消"
+        case .unknown: return "结果待核对"
+        case .waiting: return "正在等待"
         }
     }
     var pill: String {
@@ -129,4 +135,33 @@ struct CentralActivityStore: Equatable, Sendable {
             cards[index] = next
         } else { cards.append(next) }
     }
+}
+
+/// Index anchors once for the whole history, including rows outside the visible tail.
+struct YimiActivityLayout {
+    let replyProcessedIDs: Set<String>
+    private(set) var under: [String: [ActivityPresentation]] = [:]
+    private(set) var unanchored: [ActivityPresentation] = []
+    private var anchors: [String: String] = [:]
+
+    init(items: [YimiItem], activities: [ActivityPresentation], consumer: AssistantCentralTextConsumer?) {
+        guard !activities.isEmpty else { replyProcessedIDs = []; return }
+        let needed = Set(activities.map(\.processedEventID))
+        var requests: [String: [String]] = [:], replies: [String: [String]] = [:]
+        for item in items {
+            if item.kind == .her, let id = item.processedEventID, needed.contains(id) { replies[id, default: []].append(item.id) }
+            if item.kind == .me, let id = item.activityProcessedEventID(consumer: consumer), needed.contains(id) { requests[id, default: []].append(item.id) }
+        }
+        replyProcessedIDs = Set(replies.keys)
+        for activity in activities {
+            let rows = (activity.collapsed(replyProcessedIDs: replyProcessedIDs) ? replies : requests)[activity.processedEventID] ?? []
+            if rows.isEmpty { unanchored.append(activity) }
+            else {
+                anchors[activity.id] = rows[0]
+                for row in rows { under[row, default: []].append(activity) }
+            }
+        }
+    }
+
+    func anchor(for activity: ActivityPresentation) -> String? { anchors[activity.id] }
 }

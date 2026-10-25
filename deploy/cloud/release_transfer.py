@@ -23,6 +23,7 @@ import tarfile
 import tempfile
 
 import release_build
+import release_inventory
 import release_source
 
 ROLES = ('gateway', 'hermes', 'front', 'workshop', 'watchdog')
@@ -171,17 +172,68 @@ def publish_decisions(config):
 
 
 def publish(config, state):
+    if not (remote := config.get('exchange_remote')):
+        return
     path = Path(config['incoming']) / 'production.json'
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     release_build.write(path, state)
-    rsync(config, '-t', str(path), config['exchange_remote'] + 'production.json')
+    if 'sync' in state:
+        for relative in state['sync']['files']:
+            rsync(config, '-rt', '--delay-updates', str(path.parent / relative), remote + 'sync/')
+    rsync(config, '-t', str(path), remote + 'production.json')
+
+
+def production_package(host, state):
+    """Publish the same immutable source/images/config that production actually runs, for parity restore."""
+    root = Path(host.config['incoming'])
+    folder = root / 'sync'
+    folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+    image_key = hashlib.sha256(json.dumps(state['service_images'], sort_keys=True).encode()).hexdigest()
+    archive = folder / ('images-' + image_key + '.tar')
+    receipt = archive.with_suffix('.json')
+    if not archive.exists():
+        partial = archive.with_suffix('.partial')
+        save(sorted(set(state['service_images'].values())), partial, host.config.get('disk_guard_bytes', 12_000_000_000))
+        release_build.write(receipt, {'sha256': sha256(partial)})
+        partial.replace(archive)
+    bundle = folder / ('source-' + state['commit'] + '.bundle')
+    if not bundle.exists():
+        release_source.git(host.config['repo'], 'update-ref', 'refs/paios/production', state['commit'])
+        release_source.git(host.config['repo'], 'bundle', 'create', str(bundle), 'refs/paios/production')
+    gateway = host.definition(host.release('current'))['services']['gateway']
+    source = next(m['source'] for m in gateway['volumes'] if m['target'] == '/etc/paios/cloud.json')
+    data = Path(source).read_bytes()
+    config_file = folder / ('config-' + hashlib.sha256(data).hexdigest() + '.json')
+    if not config_file.exists():
+        config_file.write_bytes(data)
+        config_file.chmod(0o600)
+    inventory = release_inventory.export(host, state)
+    return {'files': ['sync/' + p.name for p in (archive, bundle, config_file)] + [inventory['file']],
+            'images_sha256': json.loads(receipt.read_text())['sha256'], 'inventory_sha256': inventory['sha256']}
+
+
+def production_inputs(config, state):
+    """Verify/load a production archive using the same image authority as candidate transfer."""
+    files = [Path(config['exchange']) / relative for relative in state['sync']['files']]
+    archive, bundle, cloud, inventory = files
+    if sha256(archive) != state['sync']['images_sha256']:
+        raise ValueError('TRANSFER_DIGEST_MISMATCH')
+    if sha256(inventory) != state['sync']['inventory_sha256']:
+        raise ValueError('TRANSFER_INVENTORY_DIGEST_MISMATCH')
+    if any(not present(image) for image in state['service_images'].values()):
+        subprocess.run(['docker', 'load', '-i', str(archive)], check=True, capture_output=True)
+    if missing := [name for name, image in state['service_images'].items() if not present(image)]:
+        raise ValueError('TRANSFER_ID_MISMATCH: ' + ', '.join(missing))
+    release_source.fetch(config['repo'], bundle)
+    return json.loads(cloud.read_text()), inventory
 
 
 def fetch(config, done):
     """Pull every package not yet decided here; partial transfers resume on the next run."""
     excluded = [arg for request_id in sorted(done) for arg in ('--exclude', '/candidates/' + request_id + '/')]
     rsync(config, '-rt', '--partial-dir=.partial', '--delay-updates', '--exclude', '/.*', *excluded,
-          '--include', '/notices/***', '--include', '/requests.json', '--include', '/candidates/***', '--exclude', '/*',
+          '--include', '/notices/***', '--include', '/requests.json', '--include', '/parity.json',
+          '--include', '/candidates/***', '--exclude', '/*',
           config['exchange_remote'], str(Path(config['incoming'])) + '/')
 
 

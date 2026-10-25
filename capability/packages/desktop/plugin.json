@@ -1,0 +1,166 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "desktop",
+  "version": "1.0.0",
+  "description": "Existing paired Mac file relay with capability receipts.",
+  "extensions": {
+    "ai.yimi.capability": {
+      "schema": "yimi.capability.v1",
+      "receipt_schema": 1,
+      "compat": {
+        "hermes": ">=0.22.5 <0.24",
+        "gateway_api": 1
+      },
+      "maintainer": "lead",
+      "secrets": [
+        {
+          "name": "PAIOS_HERMES_INTERNAL_KEY"
+        }
+      ],
+      "network": {
+        "egress": []
+      },
+      "scopes": [
+        "owner"
+      ],
+      "provenance": {
+        "source_commit": "decaff83c56b5e188b229a11e79b32106eeccf43",
+        "workshop_run": null,
+        "adapter_modules": [
+          "server/receipt.ts",
+          "server/package.ts"
+        ]
+      },
+      "runtime": {
+        "server": "desktop",
+        "lazy": true,
+        "idle_timeout_seconds": 900,
+        "host": "shared"
+      },
+      "tools": {
+        "list_allowed_directories": {
+          "effect": "observe",
+          "task_type": "desktop:list_allowed_directories",
+          "retry": "after_check",
+          "check_with": "list_allowed_directories"
+        },
+        "list_directory": {
+          "effect": "observe",
+          "task_type": "desktop:list_directory",
+          "retry": "after_check",
+          "check_with": "list_directory",
+          "target": "$.path"
+        },
+        "list_directory_with_sizes": {
+          "effect": "observe",
+          "task_type": "desktop:list_directory_with_sizes",
+          "retry": "after_check",
+          "check_with": "list_directory_with_sizes",
+          "target": "$.path"
+        },
+        "search_files": {
+          "effect": "observe",
+          "task_type": "desktop:search_files",
+          "retry": "after_check",
+          "check_with": "search_files",
+          "target": "$.path"
+        },
+        "get_file_info": {
+          "effect": "observe",
+          "task_type": "desktop:get_file_info",
+          "retry": "after_check",
+          "check_with": "get_file_info",
+          "target": "$.path"
+        },
+        "read_text_file": {
+          "effect": "observe",
+          "task_type": "desktop:read_text_file",
+          "retry": "after_check",
+          "check_with": "read_text_file",
+          "target": "$.path"
+        },
+        "find_files": {
+          "effect": "observe",
+          "task_type": "desktop:find_files",
+          "retry": "after_check",
+          "check_with": "find_files",
+          "target": "$.folder"
+        },
+        "extract_text": {
+          "effect": "observe",
+          "task_type": "desktop:extract_text",
+          "retry": "after_check",
+          "check_with": "extract_text",
+          "target": "$.path"
+        },
+        "create_directory": {
+          "effect": "owner_data",
+          "task_type": "desktop:create_directory",
+          "retry": "after_check",
+          "check_with": "get_file_info",
+          "target": "$.path"
+        },
+        "write_file": {
+          "effect": "owner_data",
+          "task_type": "desktop:write_file",
+          "retry": "after_check",
+          "check_with": "read_text_file",
+          "target": "$.path"
+        },
+        "edit_file": {
+          "effect": "owner_data",
+          "task_type": "desktop:edit_file",
+          "retry": "after_check",
+          "check_with": "read_text_file",
+          "target": "$.path"
+        },
+        "move_file": {
+          "effect": "owner_data",
+          "task_type": "desktop:move_file",
+          "retry": "after_check",
+          "check_with": "get_file_info",
+          "target": "$.destination"
+        },
+        "trash": {
+          "effect": "owner_data",
+          "task_type": "desktop:trash",
+          "retry": "after_check",
+          "check_with": "get_file_info",
+          "target": "$.paths"
+        },
+        "upload_to_workshop": {
+          "effect": "owner_data",
+          "task_type": "desktop:upload_to_workshop",
+          "retry": "after_check",
+          "check_with": "get_file_info",
+          "target": "$.path"
+        },
+        "save_from_workshop": {
+          "effect": "owner_data",
+          "task_type": "desktop:save_from_workshop",
+          "retry": "after_check",
+          "check_with": "get_file_info",
+          "target": "$.folder"
+        },
+        "window_capture": {
+          "effect": "observe",
+          "task_type": "desktop:window_capture",
+          "retry": "after_check",
+          "check_with": "window_capture",
+          "target": "$.window_id"
+        }
+      },
+      "staging": {
+        "fake": {
+          "command": "python3",
+          "args": [
+            "fake/server.py"
+          ]
+        }
+      },
+      "tests": {
+        "contract": "tests/contract.yaml"
+      }
+    }
+  }
+}

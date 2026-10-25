@@ -1,3 +1,5 @@
+import { GATEWAY_CONFIG_ROOT } from './gateway-runtime-paths.ts';
+import { resolve } from 'node:path';
 import { timingSafeEqual } from 'node:crypto';
 import { TextDecoder } from 'node:util';
 
@@ -13,7 +15,7 @@ export const PERSISTENT_PUBLIC_BEARER_AUTHORITY_SCHEMA =
   'paios.realtime_public_control_bearer_authority.v1' as const;
 
 export const PERSISTENT_PUBLIC_BEARER_AUTHORITY_RECORD_PATH =
-  'D:\\AI\\personal ai os\\.runtime\\phase0-roaming\\windows\\config\\realtime-public-control-bearer-authority.v1.json' as const;
+  resolve(GATEWAY_CONFIG_ROOT, 'realtime-public-control-bearer-authority.v1.json');
 
 const MIN_RECORD_BYTES = 2;
 const MAX_RECORD_BYTES = 16_384;

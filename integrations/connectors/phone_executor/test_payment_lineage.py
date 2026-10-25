@@ -33,10 +33,16 @@ class Lineage(unittest.IsolatedAsyncioTestCase):
         self.enterContext(patch.object(server,'_jobs',{}))
 
     def test_capture_follows_each_gateway_rename(self):
-        for previous, following in (('done','notified'), ('notified','delivered')):
+        for previous, following in (('done','notified'), ('notified','delivered'),
+                                    ('done','delivery-failed'), ('notified','delivery-failed'),
+                                    ('delivery-failed','invalid')):
             with self.subTest(previous=previous):
                 seed(self.folder)
                 original = Path(self.folder, OWNER['of_job']+'.delivered.json')
+                record = json.loads(original.read_text())
+                record.update(success=False, answer='unknown', finished_at='2026-10-16T05:01:00.000Z',
+                              delivery_failure={'error_code':'ERRAND_REPORT_NOT_DELIVERED', 'failed_at':'2026-10-16T05:02:00.000Z'})
+                original.write_text(json.dumps(record))
                 moving = original.with_name(OWNER['of_job']+'.'+previous+'.json')
                 original.rename(moving)
                 read = Path.read_text
@@ -46,6 +52,86 @@ class Lineage(unittest.IsolatedAsyncioTestCase):
                     return read(path, *args, **kwargs)
                 with patch.object(Path, 'read_text', rename_before_open):
                     self.assertEqual(payment_lineage.capture(self.folder, {**SCOPE, 'goal':FIXTURE['task']}), self.owner)
+
+    def test_delivery_failure_preserves_owner_and_scoped_clear_facts(self):
+        for state in ('delivery-failed', 'invalid'):
+            with self.subTest(state=state):
+                source = Path(self.folder, OWNER['of_job']+'.delivered.json')
+                seed(self.folder)
+                record = json.loads(source.read_text())
+                record.update(success=False, answer='unknown', finished_at='2026-10-16T05:01:00.000Z',
+                              delivery_failure={'error_code':'ERRAND_REPORT_NOT_DELIVERED', 'failed_at':'2026-10-16T05:02:00.000Z'})
+                source.write_text(json.dumps(record))
+                failed = source.with_name(OWNER['of_job']+'.'+state+'.json')
+                source.rename(failed)
+                server._recover_interrupted()
+                self.assertEqual(payment_lineage.capture(self.folder, {**SCOPE, 'goal':FIXTURE['task']}), self.owner)
+                for change in ({'payment_reconciliation':FIXTURE['payment_reconciliation']}, {'payment_page_left':True}):
+                    clear = {**FIXTURE, **change, 'delivery_failure':record['delivery_failure'], 'finished_at':'2026-10-16T06:00:00.000Z'}
+                    clear_path = Path(self.folder, FIXTURE['job_id']+'.'+state+'.json')
+                    clear_path.write_text(json.dumps(clear))
+                    self.assertIsNone(payment_lineage.capture(self.folder, {**SCOPE, 'goal':FIXTURE['task']}))
+                    clear_path.unlink()
+                failed.unlink()
+
+    def test_unverified_quarantine_cannot_clear_payment_owner(self):
+        Path(self.folder, FIXTURE['job_id']+'.invalid.json').write_text(json.dumps(FIXTURE))
+        self.assertEqual(payment_lineage.capture(self.folder, {**SCOPE, 'goal':FIXTURE['task']}), self.owner)
+
+    def test_malformed_quarantine_does_not_hide_valid_unknown_owner(self):
+        path = Path(self.folder, FIXTURE['job_id']+'.invalid.json')
+        for content in ('{broken', 'null', '42', '[]'):
+            with self.subTest(content=content):
+                path.write_text(content)
+                self.assertEqual(payment_lineage.capture(self.folder, {**SCOPE, 'goal':FIXTURE['task']}), self.owner)
+
+    def test_corrupted_delivery_failure_quarantine_fails_closed(self):
+        record = {**FIXTURE, 'finished_at':'2026-10-16T06:00:00.000Z', 'success':'corrupted',
+                  'delivery_failure':{'error_code':'ERRAND_REPORT_NOT_DELIVERED', 'failed_at':'2026-10-16T06:01:00.000Z'}}
+        Path(self.folder, FIXTURE['job_id']+'.invalid.json').write_text(json.dumps(record))
+        with self.assertRaisesRegex(ValueError, 'ERRAND_TERMINAL_UNREADABLE'):
+            payment_lineage.capture(self.folder, {**SCOPE, 'goal':FIXTURE['task']})
+
+    async def test_failed_delivery_dispatch_recaptures_and_checks_bound_order(self):
+        from dataclasses import replace
+        from payment_checkpoint import PaymentBinding
+        from test_payment_checkpoint import CARD
+        current = replace(CARD, payment_statuses=('支付状态：待支付',), page_title='订单详情')
+        bound = PaymentBinding(current.order_id, current.payee, current.amount_fen,
+                               current.order_namespace, current.item_identity, current.item_facts)
+        @contextlib.asynccontextmanager
+        async def lease():
+            yield
+        for state in ('delivery-failed', 'invalid'):
+            with self.subTest(state=state), contextlib.ExitStack() as stack:
+                owner = seed(self.folder, payment_lineage.remember(bound))
+                source = Path(self.folder, OWNER['of_job']+'.delivered.json')
+                record = json.loads(source.read_text())
+                record.update(success=False, answer='unknown', finished_at='2026-10-16T05:01:00.000Z',
+                              delivery_failure={'error_code':'ERRAND_REPORT_NOT_DELIVERED', 'failed_at':'2026-10-16T05:02:00.000Z'})
+                source.write_text(json.dumps(record))
+                failed = source.with_name(OWNER['of_job']+'.'+state+'.json')
+                source.rename(failed)
+                stack.callback(failed.unlink)
+                jid = FIXTURE['job_id']
+                job = {**SCOPE, 'goal':FIXTURE['task'], 'state':'waiting', 'tier':'deterministic'}
+                stack.enter_context(patch.object(server, '_jobs', {jid:job}))
+                token = server._job_id.set(jid)
+                stack.callback(server._job_id.reset, token)
+                for name, value in {'PHONE_PROVIDER':'adb', '_one_phone':asyncio.Lock(), '_device_lease':lease,
+                        '_online':lambda *_:True, '_owner_active':lambda:False, '_preflight':lambda *_:None,
+                        '_ensure_unlocked':lambda *_:None, '_ensure_cn_identity':lambda **_:None,
+                        '_sleep_later':lambda:None, '_at_checkout':lambda:True}.items():
+                    stack.enter_context(patch.object(server, name, value))
+                shell = stack.enter_context(patch.object(server, '_shell', return_value='null'))
+                stack.enter_context(patch.object(server, '_driver', AsyncMock(return_value=object())))
+                stack.enter_context(patch.object(server, '_agent', AsyncMock(return_value={'success':True, 'answer':'done'})))
+                screen = stack.enter_context(patch.object(server, '_payment_screen', AsyncMock(return_value=current)))
+                result = await server._errand_task(FIXTURE['task'], 10, None, None, None, SCOPE['app'], 'fast')
+                self.assertEqual(job['payment_owner'], owner)
+                screen.assert_awaited_once()
+                self.assertEqual(result['payment_reconciliation'], {**FIXTURE['payment_reconciliation'], 'state':'unpaid'})
+                self.assertFalse(any(any(word in str(call) for word in ('BACK','HOME','monkey','force-stop')) for call in shell.call_args_list))
 
     def test_capture_follows_both_renames_and_keeps_clear_record(self):
         moving = Path(self.folder, FIXTURE['job_id']+'.done.json')

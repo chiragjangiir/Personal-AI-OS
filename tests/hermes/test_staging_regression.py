@@ -85,6 +85,23 @@ def test_enabled_payment_fails_isolation(tmp_path, monkeypatch):
                              {name: service['image'] for name, service in services.items()}})
 
 
+def test_isolation_checks_running_native_generations_after_target_projection_check(tmp_path, monkeypatch):
+    projections = {group: {'environment_id': 'staging-fixture', 'profile': profile, 'revision': 2,
+                         'group': group, 'configured': True} for group, profile in [('brain', 'owner'), ('build', 'workshop')]}
+    monkeypatch.setattr(regression, 'preflight', lambda *args: projections)
+    cloud = tmp_path / 'cloud.json'
+    cloud.write_text(json.dumps({'payment': {'enabled': False, 'staging': True},
+                                'product_resources': {'staging_effect_sink_file': 'fixture'}}))
+    services = {name+'-staging': {'image': name, 'environment': {'PAIOS_STAGE': 'staging'}} for name in ('gateway', 'hermes')}
+    stale = {group: {key: value for key, value in receipt.items() if key != 'configured'} for group, receipt in projections.items()}
+    stale['brain']['revision'] = 1
+    stack = SimpleNamespace(settings={}, definition={'services': services}, config_mount=lambda: cloud,
+                            run=lambda *args, **kwargs: SimpleNamespace(stdout=json.dumps(stale)))
+    with pytest.raises(ValueError, match='Running Hermes model-settings generation'):
+        regression.isolation(stack, {'stores_verified': True, 'model_settings': projections,
+                             'candidate_images': {name: service['image'] for name, service in services.items()}})
+
+
 @pytest.mark.parametrize('provider', ['agentbay', 'off'])
 def test_fixture_hook_preserves_model_and_existing_fake_phone_environment(tmp_path, monkeypatch, provider):
     import yaml

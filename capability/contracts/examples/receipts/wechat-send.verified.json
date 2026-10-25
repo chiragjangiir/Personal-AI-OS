@@ -1,0 +1,30 @@
+{
+  "receipt": 1,
+  "status": {
+    "state": "succeeded",
+    "started_at": "2026-10-24T13:03:10Z",
+    "ended_at": "2026-10-24T13:03:12Z"
+  },
+  "effects": [
+    {
+      "kind": "send",
+      "target": "weixin:wxid_fixture_zhangsan",
+      "action": "text",
+      "verification": "verified",
+      "evidence": "Fixture: the last chat message matches the sent text.",
+      "ref": "wx:local:5521"
+    }
+  ],
+  "values": [],
+  "content": [],
+  "unknowns": [
+    {
+      "about": "recipient_read",
+      "why": "WeChat does not provide read receipts."
+    }
+  ],
+  "next": {
+    "retry": "forbidden",
+    "waiting_on": "none"
+  }
+}

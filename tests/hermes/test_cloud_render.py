@@ -12,14 +12,99 @@ from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 from io import BytesIO
 import runpy
+import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 CANONICAL = "https://bj.xn--fsq092h.xn--0zwm56d:9443"
 
 
 class CloudRenderTests(unittest.TestCase):
+    def test_owner_mac_initializes_empty_bootstrap_placeholder_without_rotating_keys(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            secrets = Path(temporary)
+            environment = dict(os.environ, PAIOS_PHONE_PROVIDER="off")
+            subprocess.run([sys.executable, str(ROOT / "deploy/cloud/prepare-secrets.py"),
+                            "--secrets-dir", str(secrets), "--public-host", "fixture.invalid",
+                            "--public-ipv4", "192.0.2.10"], env=environment, check=True, capture_output=True)
+            relay = secrets / "owner-mac-relay.json"
+            self.assertEqual(relay.read_bytes(), b"")
+            command = [sys.executable, str(ROOT / "deploy/cloud/prepare-owner-mac.py"),
+                       "--secrets-dir", str(secrets), "--relay-host", "fixture.invalid"]
+            subprocess.run(command, check=True, capture_output=True)
+            original = relay.read_bytes()
+            configured = json.loads(original)
+            self.assertTrue(configured["token"] and configured["admin_password"])
+            self.assertEqual(relay.stat().st_mode & 0o777, 0o600)
+            subprocess.run(command, check=True, capture_output=True)
+            self.assertEqual(relay.read_bytes(), original)
+            failed = subprocess.run(command[:-1] + ["different.invalid"], capture_output=True)
+            self.assertNotEqual(failed.returncode, 0)
+            self.assertEqual(relay.read_bytes(), original)
+
+    def test_owner_mac_rejects_nonempty_invalid_configuration_without_overwriting_it(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            secrets = Path(temporary)
+            relay = secrets / "owner-mac-relay.json"
+            for content in (" ", "{invalid", "{}"):
+                relay.write_text(content)
+                failed = subprocess.run([sys.executable, str(ROOT / "deploy/cloud/prepare-owner-mac.py"),
+                    "--secrets-dir", str(secrets), "--relay-host", "fixture.invalid"], capture_output=True)
+                self.assertNotEqual(failed.returncode, 0)
+                self.assertEqual(relay.read_text(), content)
+                self.assertFalse((secrets / "owner-mac-frps.toml").exists())
+
+    def single_host_overlay(self):
+        class ComposeLoader(yaml.SafeLoader):
+            pass
+        ComposeLoader.add_constructor("!override", lambda loader, node: loader.construct_sequence(node))
+        ComposeLoader.add_constructor("!reset", lambda loader, node: loader.construct_mapping(node))
+        return yaml.load((ROOT / "deploy/cloud/compose.single-host.yaml").read_text(), Loader=ComposeLoader)
+
+    def test_single_host_keeps_owner_mac_shared_directory_permissions(self):
+        services = self.single_host_overlay()["services"]
+        self.assertIn("${PAIOS_SECRETS_DIR:?}/owner-mac:/run/owner-mac", services["gateway"]["volumes"])
+        self.assertIn("${PAIOS_SECRETS_DIR:?}/owner-mac:/run/owner-mac:ro", services["hermes"]["volumes"])
+        self.assertIn("${PAIOS_SECRETS_DIR:?}:/run/secrets:ro", services["gateway"]["volumes"])
+        # Hermes mounts only its own key files, never the whole secrets directory (deploy-credential isolation).
+        self.assertNotIn("${PAIOS_SECRETS_DIR:?}:/run/secrets:ro", services["hermes"]["volumes"])
+        self.assertIn("${PAIOS_SECRETS_DIR:?}/hermes-api.key:/run/secrets/hermes-api.key:ro", services["hermes"]["volumes"])
+
+    def test_single_host_preserves_bounded_workshop_and_output_volumes(self):
+        base = yaml.safe_load((ROOT / "deploy/cloud/compose.yaml").read_text())
+        overlay = self.single_host_overlay()
+        for name in ("workshop-data", "desktop-out", "workshop-snapshots"):
+            final = {**base["volumes"][name], **overlay.get("volumes", {}).get(name, {})}
+            self.assertEqual(final["driver_opts"], base["volumes"][name]["driver_opts"])
+
+    def test_first_run_prepares_bounded_workshop_before_starting_services(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            cloud = root / "deploy/cloud"
+            cloud.mkdir(parents=True)
+            shutil.copyfile(ROOT / "deploy/cloud/build.sh", cloud / "build.sh")
+            env = cloud / "fixture.env"
+            env.write_text("PAIOS_SECRETS_DIR=secrets\nPAIOS_TLS_DIR=tls\nPAIOS_PUBLIC_HOST=fixture.invalid\n"
+                           "PAIOS_PUBLIC_IPV4=192.0.2.10\nPAIOS_ENABLE_PHONE=0\n"
+                           "PAIOS_GATEWAY_IMAGE=fixture-gateway:test\nPAIOS_HERMES_IMAGE=fixture-hermes:test\n"
+                           "PAIOS_FRONT_IMAGE=fixture-front:test\nPAIOS_WORKSHOP_IMAGE=fixture-workshop:test\n")
+            bin_dir = root / "bin"
+            bin_dir.mkdir()
+            calls = root / "commands.jsonl"
+            for tool, code in (("docker", ""), ("python3", "sys.exit(73)")):
+                target = bin_dir / tool
+                target.write_text(f"#!{sys.executable}\nimport json,sys\nfrom pathlib import Path\n"
+                    f"with Path({str(calls)!r}).open('a') as out: out.write(json.dumps(sys.argv)+'\\n')\n" + code)
+                target.chmod(0o755)
+            result = subprocess.run(["sh", str(cloud / "build.sh"), "--up", "--env-file", str(env)],
+                env={**os.environ, "PATH": str(bin_dir) + ":" + os.environ["PATH"]}, capture_output=True)
+            self.assertEqual(result.returncode, 73, result.stdout + result.stderr)
+            rows = [json.loads(line) for line in calls.read_text().splitlines()]
+            self.assertEqual(rows[-1][1:], ["migrate.py", "prepare-workshop", "--compose", "compose.yaml",
+                                           "--env-file", str(env)])
+            self.assertFalse(any("up" in row or "Dockerfile.gateway" in row for row in rows))
+
     def copy_renderer(self, root):
-        for relative in ("deploy/cloud/prepare-build.py", "deploy/cloud/cloud.json",
+        for relative in ("deploy/cloud/prepare-build.py", "deploy/cloud/staging_config.py", "deploy/cloud/cloud.json",
                          "deploy/cloud/front.conf.in",
                          "deploy/cloud/paios_roaming_guard.js.in"):
             target = root / relative

@@ -1,11 +1,12 @@
 import type {RegisteredDevice} from '../source-authority.ts';
+import {readFileSync} from 'node:fs';
 import type {VoiceResources,VoiceRecord,VoiceFrontend,VoiceGrant,VoiceCandidate} from '../voice/contracts.ts';
 import type {AudioConsumptionOwner} from './audio-consumption.ts';
 import {ContinuousMediaSource,type ContinuousCandidate,type ContinuousBudget} from './continuous-source.ts';
 import type {VadStreamFactory} from './silero-stream.ts';
 import {TURN_WINDOW_MAX_MS} from '../voiceprint/contracts.ts';
 import { canonical,digest,sha256,check,ContractError, id, validateRange,validateProcessed, type ArchivedEvent, type ProcessedEvent, type RawEvent,
-  type MediaSegment, type TimeRange, type TrustedContext } from '../contracts.ts';
+  type MediaSegment, type TimeRange, type TrustedContext, type AudioCapture } from '../contracts.ts';
 import { RawArchive } from '../archive.ts';
 import { publishRawRecord, requireRawAvailable, StreamArchive, type TrackChunk, type StreamManifest } from '../stream-archive.ts';
 import type { StoragePort } from '../storage.ts';
@@ -16,6 +17,9 @@ import {selectedAudioTimeline} from './sample-timeline.ts';
 import {finalizeSampleSignals} from './sample-results.ts';
 import type {SampleAudioResult, SampleVadCandidate} from './sample-results.ts';
 import {legacyVadCandidate, publishVadEvidence, vadRefsForCandidate} from './vad-evidence.ts';
+
+const watchDurationToleranceMs=JSON.parse(readFileSync(new URL('../../../../../../integrations/contracts/watch-http.v1.json',import.meta.url),'utf8'))
+  .transport.utterance.max_duration_difference_ms as number;
 
 export interface MediaVadPort {
   candidates(request: WorkerRequest, signal: AbortSignal): Promise<SampleVadCandidate[] | SampleAudioResult[]>;
@@ -238,22 +242,23 @@ export class MediaService {
     try { return await completion.promise; }
     finally { this.operations.delete(completion.promise); }
   }
-  append(raw: RawEvent, trusted: TrustedContext, chunk: TrackChunk,publicationWaitSignal?:AbortSignal,onDurable?:()=>void) {
-    return this.admitted(signal => this.appendAdmitted(raw, trusted, chunk, signal,false,publicationWaitSignal,onDurable));
+  append(raw: RawEvent, trusted: TrustedContext, chunk: TrackChunk,publicationWaitSignal?:AbortSignal,onDurable?:()=>void,capture?:AudioCapture) {
+    capture=capture&&structuredClone(capture);
+    return this.admitted(signal => this.appendAdmitted(raw, trusted, chunk, signal,false,publicationWaitSignal,onDurable,capture));
   }
-  appendBatch(inputs:{raw:RawEvent;chunk:TrackChunk}[],trusted:TrustedContext,limit:{max_chunks:number;max_bytes:number},publicationWaitSignal?:AbortSignal,onDurable?:()=>void){
-    inputs=structuredClone(inputs);trusted=structuredClone(trusted);
+  appendBatch(inputs:{raw:RawEvent;chunk:TrackChunk}[],trusted:TrustedContext,limit:{max_chunks:number;max_bytes:number},publicationWaitSignal?:AbortSignal,onDurable?:()=>void,capture?:AudioCapture){
+    inputs=structuredClone(inputs);trusted=structuredClone(trusted);capture=capture&&structuredClone(capture);
     return this.admitted(async signal=>{
       check(!signal.aborted,'MEDIA_CANCELLED',409);
       check(inputs.length>0&&inputs.every(x=>x.raw.media_type!=='muxed_av'&&x.chunk.format==='pcm_s16le:16000:1'&&x.chunk.modality==='audio'),'MEDIA_FORMAT_UNSUPPORTED',422);
       check(trusted.submission==='observation','MEDIA_OBSERVATION_REQUIRED',403);
       const append=async()=>{check(!signal.aborted,'MEDIA_CANCELLED',409);
         check(inputs.length<=limit.max_chunks&&inputs.reduce((n,x)=>n+x.raw.payload.length,0)<=limit.max_bytes,'STREAM_BATCH_BUDGET',413);
-        return this.config.archive.admitStreamBatch(inputs,trusted,limit);};
+        return this.config.archive.admitStreamBatch(inputs,this.captureContext(trusted,capture),limit);};
       if(this.config.withAppendBatchAdmission){const admitted=await this.config.withAppendBatchAdmission(inputs,trusted,append);
         for(const input of inputs)input.raw.payload=new Uint8Array();onDurable?.();return this.config.archive.waitPublished(admitted,publicationWaitSignal);}
       check(this.config.fixtureOnly===true&&!this.config.withAppendAdmission,'MEDIA_BATCH_AUTHORITY_NOT_CONFIGURED',503);
-      const archived=await this.config.streamArchive.appendBatch(inputs.map(x=>({event:x.raw,chunk:x.chunk,trusted,received_at:new Date().toISOString()})),limit);
+      const archived=await this.config.streamArchive.appendBatch(inputs.map(x=>({event:x.raw,chunk:x.chunk,trusted:this.captureContext(trusted,capture),received_at:new Date().toISOString()})),limit);
       onDurable?.();return archived;
     });
   }
@@ -270,22 +275,23 @@ export class MediaService {
     // Snapshot before any asynchronous source lookup; published bytes must be the admitted bytes.
     return structuredClone({raw,trusted,chunk});
   }
-  private admitSource(raw:RawEvent,trusted:TrustedContext,chunk:TrackChunk){
+  private captureContext(trusted:TrustedContext,capture?:AudioCapture):TrustedContext{return capture?{...trusted,audio_capture:capture}:trusted;}
+  private admitSource(raw:RawEvent,trusted:TrustedContext,chunk:TrackChunk,capture?:AudioCapture){
     check(this.config.withAppendAdmission,'MEDIA_AUTHORITY_NOT_CONFIGURED',503);
-    return this.config.withAppendAdmission(raw,trusted,chunk,()=>this.config.archive.admitStream(raw,trusted,chunk));
+    return this.config.withAppendAdmission(raw,trusted,chunk,()=>this.config.archive.admitStream(raw,this.captureContext(trusted,capture),chunk));
   }
   /** Archive-only producers acknowledge the durable ingress without waiting for journal publication. */
   admitArchive(raw:RawEvent,trusted:TrustedContext,chunk:TrackChunk){
     return this.admitted(async signal=>{check(!signal.aborted,'MEDIA_CANCELLED',409);
       ({raw,trusted,chunk}=this.prepareAppend(raw,trusted,chunk,true));return this.admitSource(raw,trusted,chunk);});
   }
-  private async appendAdmitted(raw: RawEvent, trusted: TrustedContext, chunk: TrackChunk, signal: AbortSignal, archiveOnly=false,publicationWaitSignal?:AbortSignal,onDurable?:()=>void) {
+  private async appendAdmitted(raw: RawEvent, trusted: TrustedContext, chunk: TrackChunk, signal: AbortSignal, archiveOnly=false,publicationWaitSignal?:AbortSignal,onDurable?:()=>void,capture?:AudioCapture) {
     check(!signal.aborted, 'MEDIA_CANCELLED', 409);
     ({raw,trusted,chunk}=this.prepareAppend(raw,trusted,chunk,archiveOnly));
     // The archive authority owns publication, immutable sequence races and raw metadata binding.
-    if (this.config.withAppendAdmission){const admitted=await this.admitSource(raw,trusted,chunk);raw.payload=new Uint8Array();onDurable?.();return this.config.archive.waitPublished(admitted,publicationWaitSignal);}
+    if (this.config.withAppendAdmission){const admitted=await this.admitSource(raw,trusted,chunk,capture);raw.payload=new Uint8Array();onDurable?.();return this.config.archive.waitPublished(admitted,publicationWaitSignal);}
     check(this.config.fixtureOnly === true, 'MEDIA_AUTHORITY_NOT_CONFIGURED', 503);
-    const archived=await this.config.streamArchive.append(raw,trusted,new Date().toISOString(),chunk);
+    const archived=await this.config.streamArchive.append(raw,this.captureContext(trusted,capture),new Date().toISOString(),chunk);
     onDurable?.();return archived;
   }
   processVoice(source:RegisteredDevice,operation:string,request:MediaProcessRequest,signal:AbortSignal,firstTranscript?: (record:VoiceRecord)=>Promise<void>):Promise<MediaProcessResult> {
@@ -308,7 +314,7 @@ export class MediaService {
         const first=chunks[0]!,last=chunks.at(-1)!;
         check(first.source_range.kind==='interval'&&last.source_range.kind==='interval'&&request.time_range.kind==='interval','audio_invalid',422);
         const actual=last.source_range.end_ms-first.source_range.start_ms,declared=request.time_range.end_ms-request.time_range.start_ms;
-        check(actual<=30000,'audio_too_long',413);check(Math.abs(actual-declared)<=1,'audio_invalid',422);
+        check(actual<=30000,'audio_too_long',413);check(Math.abs(actual-declared)<=watchDurationToleranceMs,'audio_invalid',422);
         request={...request,time_range:{...request.time_range,end_ms:request.time_range.start_ms+actual},clock_maps:[{modality:'audio',track_id:first.track_id,stream_epoch:first.stream_epoch,
           source_timebase_id:first.source_range.timebase_id,target_timebase_id:request.time_range.timebase_id,
           offset_ms:request.time_range.start_ms-first.source_range.start_ms,drift_ppm:0,uncertainty_ms:0,basis_ref:derived.ref}]};

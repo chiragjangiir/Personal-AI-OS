@@ -66,10 +66,10 @@ async function fixture(t:test.TestContext,lines:Line[],turns:Turn[]=[],options:{
   const voice=new Float32Array(16);voice[5]=1;await registry.identify(voice,{speech_ms:3000,observed_at:new Date(T0).toISOString(),mode:'observe'});
   // Runs of one session are sequential: a run stays running (its tools callable) until the test finishes it.
   // A finished run may carry its final reply text (sealed by automatic output, as in production).
-  const bodies:{input:string;instructions:string;session_id:string;memory_write:boolean;run_scope?:string;guest_key?:string;care_decision?:true;model_options?:{reasoning:{enabled:boolean}};run_id:string}[]=[],finished=new Map<string,string|undefined>();
+  const bodies:{input:string;instructions:string;session_id:string;run_scope?:string;guest_key?:string;care_decision?:true;model_options?:{reasoning:{enabled:boolean}};run_id:string}[]=[],finished=new Map<string,string|undefined>();
   const native:NativeClient={create:async(body,key)=>{const run_id=`run-${sha256(key).slice(0,12)}`;bodies.push({...structuredClone(body),run_id});
     return {run_id,session_id:body.care_decision?`paios-care-${run_id}`:body.session_id,conversation_session_id:body.session_id,status:'running',
-      ...(body.care_decision?{memory_write:false}:{})};},
+      ...(body.care_decision?{}:{})};},
     status:async id=>({run_id:id,session_id:'continuity',conversation_session_id:'continuity',status:finished.has(id)?'completed':'running',
       ...(finished.get(id)?{output:finished.get(id)!}:{})}),
     cancel:async id=>({run_id:id,session_id:'continuity',conversation_session_id:'continuity',status:'cancelled'})};
@@ -254,7 +254,7 @@ test('ambient speech is journaled and never runs; a verified owner\'s wake turn 
   assert.equal(new Set(entries.map(e=>e.conversation_id)).size,1);
   const [run]=await f.runs(1);const d=run!.d;
   assert.deepEqual([d.revision,d.intent_class,d.reply_hint,d.processing.path_id],[2,'explicit_request','respond','ambient_wake_request']);
-  assert.deepEqual([runScope(d),principalAttribution(d),run!.run_scope,run!.memory_write,run!.session_id],['owner','owner_voice',undefined,true,'continuity']);
+  assert.deepEqual([runScope(d),principalAttribution(d),run!.run_scope,Object.hasOwn(run!,'memory_write'),run!.session_id],['owner','owner_voice',undefined,false,'continuity']);
   const wake=wakeOf(d);assert.equal(wake.text,'帮我查一下周末北京的天气');assert.equal(wake.wake,'依米');
   assert.equal(wake.wake_processed_event_id,entries[2]!.processed_event_id);
   assert.deepEqual(wake.context!.entries.map(e=>[e.speaker,e.text]),[['说话人#1','我们周末去爬山吧'],['主人','好啊，去香山']]);
@@ -312,7 +312,7 @@ test('another speaker addressing Yimi stays restricted without journal context a
   await f.hear(1);await f.runtime.ownerInput(f.phone);await f.hear(1);const [run]=await f.runs(1);
   await f.runtime.scheduledDelivery({captured_at:new Date().toISOString(),principal_id:'owner',device_id:'glasses',id:'guest-does-not-activate',text:'主人的提醒'});
   assert.deepEqual(outreach,['phone']);
-  assert.deepEqual([runScope(run!.d),run!.run_scope,run!.memory_write],['owner_uncertain','owner_uncertain',false]);
+  assert.deepEqual([runScope(run!.d),run!.run_scope,Object.hasOwn(run!,'memory_write')],['owner_uncertain','owner_uncertain',false]);
   assert.equal(run!.guest_key,undefined);assert.deepEqual(await f.runtime.voiceConfirmations(f.phone),[]);
   assert.equal(wakeOf(run!.d).text,'你好，今天几号');assert.equal(wakeOf(run!.d).context,undefined);
   assert.equal(run!.input.includes('银行'),false,'nothing of the owner\'s journal reaches a guest run');
@@ -495,7 +495,7 @@ test('another speaker follow-up stays restricted; unrelated speech first ends th
   [{text:'今天几号',speaker:'speaker:1'},{text:'那明天星期几',speaker:'speaker:1'}]);
   await f.hear(1);const [asked]=await f.runs(1);await f.reply(asked!,'今天是十月九号。');
   await f.hear(1);const [,follow]=await f.runs(2);
-  assert.deepEqual([runScope(follow!.d),follow!.run_scope,follow!.guest_key,follow!.memory_write],['owner_uncertain','owner_uncertain',undefined,false]);
+  assert.deepEqual([runScope(follow!.d),follow!.run_scope,follow!.guest_key,Object.hasOwn(follow!,'memory_write')],['owner_uncertain','owner_uncertain',undefined,false]);
   assert.equal((follow!.d.content.wake_request as unknown as FollowUpRequest).context,undefined);
   await f.reply(follow!,'明天是星期六。');
   await f.hear();await new Promise(resolve=>setTimeout(resolve,50));await f.runs(2);
@@ -757,7 +757,7 @@ for(const speaker of ['owner_uncertain','speaker:1',undefined])test(`directed wa
  await f.runtime.watchVoiceConfirmations(f.phone,async pending=>{prompts.push(pending);},error=>{throw error;});
  await f.runtime.watchAmbientVoice(f.glasses,'continuity',async()=>true,{active:()=>true,identified:async(_id,_d,identity)=>{identities.push(identity);return true;}});
  await f.hear();const [run]=await f.runs(1);
- assert.equal(runScope(run!.d),'owner_uncertain');assert.equal(run!.run_scope,'owner_uncertain');assert.equal(run!.memory_write,false);
+ assert.equal(runScope(run!.d),'owner_uncertain');assert.equal(run!.run_scope,'owner_uncertain');assert.equal(Object.hasOwn(run!,'memory_write'),false);
  assert.equal(wakeOf(run!.d).context,undefined);assert.equal(run!.input.includes('私人的旁边聊天'),false);
  const fact=JSON.parse(run!.input).voice_confirmation;
  if(speaker!=='owner_uncertain'){

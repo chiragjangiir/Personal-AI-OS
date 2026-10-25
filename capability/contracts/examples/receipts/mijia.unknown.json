@@ -1,0 +1,32 @@
+{
+  "receipt": 1,
+  "status": {
+    "state": "unknown",
+    "started_at": "2026-10-24T13:03:10Z",
+    "ended_at": "2026-10-24T13:03:12Z",
+    "reason_code": "MIJIA_DISCONNECTED"
+  },
+  "effects": [
+    {
+      "kind": "physical",
+      "target": "mijia:fixture:living-room-ac",
+      "action": "power_on",
+      "verification": "unknown",
+      "evidence": "Fixture: the connection dropped before acknowledgement.",
+      "ref": null
+    }
+  ],
+  "values": [],
+  "content": [],
+  "unknowns": [
+    {
+      "about": "device_power",
+      "why": "No acknowledgement or readback is available."
+    }
+  ],
+  "next": {
+    "retry": "after_check",
+    "waiting_on": "none",
+    "check_with": "read_device"
+  }
+}

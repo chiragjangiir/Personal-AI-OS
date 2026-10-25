@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "owner_mac": {
+      "command": "python3",
+      "args": [
+        "${PLUGIN_ROOT}/server/main.py"
+      ],
+      "type": "stdio"
+    }
+  },
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json"
+}

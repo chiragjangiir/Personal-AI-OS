@@ -1,6 +1,7 @@
 import AppKit
 import Darwin
 import DesktopKit
+import Security
 
 /// Owns only the paired account's OpenSSH processes; Desktop owns pause state.
 @MainActor final class DesktopOwnerSSH {
@@ -17,20 +18,27 @@ import DesktopKit
     private var lease: Task<Void, Never>?
     private let embedded: EmbeddedCUA
     private let session: URLSession
-    init(directory: URL, session: URLSession = ProductionRealtimePublicControlProvider.makeSession()) {
-        self.directory = directory; self.session = session
+    private let revocations: any DesktopRevocationPersisting
+    private var revocationRetry: Task<Void, Never>?
+    private let sleep: @Sendable (Duration) async throws -> Void
+    init(directory: URL, session: URLSession = ProductionRealtimePublicControlProvider.makeSession(),
+         revocations: any DesktopRevocationPersisting = KeychainDesktopRevocations(),
+         sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }) {
+        self.directory = directory; self.session = session; self.revocations = revocations; self.sleep = sleep
         embedded = EmbeddedCUA(directory: directory)
     }
     func update(pairing: RealtimeDevicePairing?, paused: Bool, report: @escaping (String) -> Void) {
         lease?.cancel()
         do { try stop() } catch { report(error.localizedDescription); return }
         guard let pairing else { return }
+        do { if try hasPendingRevocation(pairing) { return } }
+        catch { report(DesktopUserFacingError.message(error)); return }
         lease = Task {
             do {
                 if paused { _ = try await request(pairing, action: "pause", body: [:]); return }
                 if !UserDefaults.standard.bool(forKey: "desktop.ownerSSHExplained") {
                     let alert = NSAlert(); alert.messageText = "依米可以使用你的 Mac 账户"
-                    alert.informativeText = "配对后，依米能读取、批量修改原文件，运行你安装的工具。暂停电脑操作会立即断开；已经完成的修改不会撤销。文件权限不足时，请在系统设置中给依米开启完全磁盘访问。付款和首次发送信息仍按原规则确认。"
+                    alert.informativeText = "配对后，依米以你的 Mac 账户身份操作：能读取、批量修改原文件，运行你安装的工具。暂停电脑操作会立即断开，已完成的修改不会撤销。文件打不开时，可在系统设置中为依米开启“完全磁盘访问”。每笔付款仍要你确认；第一次给某个人发某类信息前，也会先问你。"
                     alert.addButton(withTitle: "知道了"); alert.runModal()
                     UserDefaults.standard.set(true, forKey: "desktop.ownerSSHExplained")
                 }
@@ -57,6 +65,7 @@ import DesktopKit
                     try await Task.sleep(for: .seconds(30))
                 }
             } catch is CancellationError {} catch let error as URLError where error.code == .cancelled {} catch {
+                guard !Task.isCancelled else { return }
                 do { try stop() } catch { report(error.localizedDescription) }
                 report("Mac 账户连接不可用：" + error.localizedDescription)
             }
@@ -64,7 +73,40 @@ import DesktopKit
     }
     func revoke(_ pairing: RealtimeDevicePairing) async throws {
         lease?.cancel(); try stop()
-        _ = try await request(pairing, action: "revoke", body: [:])
+        try rememberRevocation(pairing)
+        try await retryRevocations()
+    }
+    func rememberRevocation(_ pairing: RealtimeDevicePairing) throws {
+        let intent = DesktopRevocation(origin: pairing.origin, deviceID: pairing.deviceID, token: pairing.token)
+        var pending = try revocations.load()
+        if !pending.contains(intent) { pending.append(intent); try revocations.save(pending) }
+    }
+    func hasPendingRevocation(_ pairing: RealtimeDevicePairing) throws -> Bool {
+        try revocations.load().contains { $0.deviceID == pairing.deviceID && $0.token == pairing.token }
+    }
+    func retryRevocations() async throws {
+        for intent in try revocations.load() {
+            _ = try await request(origin: intent.origin, deviceID: intent.deviceID, token: intent.token, action: "revoke", body: [:])
+            var remaining = try revocations.load(); remaining.removeAll { $0 == intent }; try revocations.save(remaining)
+        }
+    }
+    func resumeRevocations(report: @escaping (String?) -> Void) {
+        guard revocationRetry == nil else { return }
+        revocationRetry = Task { [weak self, sleep] in
+            var attempt = 0
+            defer { self?.revocationRetry = nil }
+            while !Task.isCancelled {
+                do {
+                    guard let self else { return }
+                    try await retryRevocations()
+                    if try revocations.load().isEmpty { report(nil); return }
+                    continue
+                }
+                catch { report("这台电脑已停止连接；云端解绑待重试：" + DesktopUserFacingError.message(error)) }
+                do { try await sleep(AssistantReconnectBackoff.delay(attempt: attempt)); attempt += 1 }
+                catch { return }
+            }
+        }
     }
     func stop() throws {
         let embeddedStop = Result { try embedded.stop() }
@@ -80,14 +122,19 @@ import DesktopKit
     }
     func shutdown() { lease?.cancel(); do { try stop() } catch { NSLog("SSH shutdown failed: %@", error.localizedDescription) } }
     private func request(_ pairing: RealtimeDevicePairing, action: String, body: [String: String]) async throws -> Data {
-        var request = URLRequest(url: URL(string: pairing.origin + "/v1/mac/ssh/" + action)!)
+        try await request(origin: pairing.origin, deviceID: pairing.deviceID, token: pairing.token, action: action, body: body)
+    }
+    private func request(origin: String, deviceID: String, token: String, action: String, body: [String: String]) async throws -> Data {
+        var request = URLRequest(url: URL(string: origin + "/v1/mac/ssh/" + action)!)
         request.httpMethod = "POST"; request.timeoutInterval = 20
-        request.setValue("Bearer " + pairing.token, forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer " + token, forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: body.merging(["device_id": pairing.deviceID]) { _, id in id })
+        request.httpBody = try JSONSerialization.data(withJSONObject: body.merging(["device_id": deviceID]) { _, id in id })
         let (data, response) = try await session.data(for: request, delegate: RealtimeNoRedirectDelegate())
         guard let response = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
-        guard response.statusCode == 200 else { throw NSError(domain: "OwnerMacSSH", code: response.statusCode, userInfo: [NSLocalizedDescriptionKey: "SSH provision HTTP \(response.statusCode)"]) }
+        if action == "revoke", let code = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String,
+           RealtimePublicControlAdapterError.unexpectedHTTPStatus(response.statusCode, code).isPairingRevoked { return data }
+        guard response.statusCode == 200 else { throw NSError(domain: "OwnerMacSSH", code: response.statusCode, userInfo: [NSLocalizedDescriptionKey: "账户连接请求失败（HTTP \(response.statusCode)）"]) }
         return data
     }
     private func start(_ config: Provision) throws {
@@ -149,5 +196,48 @@ import DesktopKit
         let process = Process(); process.executableURL = URL(fileURLWithPath: path); process.arguments = arguments
         process.standardOutput = FileHandle.nullDevice; process.standardError = FileHandle.standardError
         try process.run(); return process
+    }
+}
+
+
+struct DesktopRevocation: Codable, Equatable {
+    let origin: String
+    let deviceID: String
+    let token: String
+}
+protocol DesktopRevocationPersisting {
+    func load() throws -> [DesktopRevocation]
+    func save(_ intents: [DesktopRevocation]) throws
+}
+/// Separate from active pairing: these credentials can only enter the revoke request path.
+final class KeychainDesktopRevocations: DesktopRevocationPersisting {
+    private let service: String
+    init(service: String = KeychainRealtimeDevicePairingStore.service) { self.service = service }
+    private var query: [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
+         kSecAttrAccount as String: "desktop-pending-revocations", kSecAttrSynchronizable as String: false,
+         kSecUseDataProtectionKeychain as String: false]
+    }
+    func load() throws -> [DesktopRevocation] {
+        var lookup = query; lookup[kSecReturnData as String] = true; lookup[kSecMatchLimit as String] = kSecMatchLimitOne
+        var item: CFTypeRef?
+        let result = SecItemCopyMatching(lookup as CFDictionary, &item)
+        if result == errSecItemNotFound { return [] }
+        guard result == errSecSuccess, let data = item as? Data else { throw RealtimeDevicePairingError.unavailable }
+        return try JSONDecoder().decode([DesktopRevocation].self, from: data)
+    }
+    func save(_ intents: [DesktopRevocation]) throws {
+        if intents.isEmpty {
+            let result = SecItemDelete(query as CFDictionary)
+            guard result == errSecSuccess || result == errSecItemNotFound else { throw RealtimeDevicePairingError.unavailable }
+            return
+        }
+        let data = try JSONEncoder().encode(intents)
+        let result = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+        if result == errSecSuccess { return }
+        guard result == errSecItemNotFound else { throw RealtimeDevicePairingError.unavailable }
+        var item = query; item[kSecValueData as String] = data
+        item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        guard SecItemAdd(item as CFDictionary, nil) == errSecSuccess else { throw RealtimeDevicePairingError.unavailable }
     }
 }

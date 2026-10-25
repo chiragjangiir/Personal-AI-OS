@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS locks(
   device_id TEXT PRIMARY KEY, principal_id TEXT NOT NULL, device_type TEXT NOT NULL CHECK(device_type IN ('phone','glasses')),
   enabled INTEGER NOT NULL, relock_s INTEGER, updated_at_ms INTEGER NOT NULL) STRICT;
 CREATE TABLE IF NOT EXISTS device_keys(
-  device_id TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('device','user')), principal_id TEXT NOT NULL,
+  device_id TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('device','user','model_settings','model_settings_pending')), principal_id TEXT NOT NULL,
   public_x963_b64 TEXT NOT NULL, created_at_ms INTEGER NOT NULL, revoked_at_ms INTEGER,
   PRIMARY KEY(device_id, role)) STRICT;
 CREATE TABLE IF NOT EXISTS voice_attempts(
@@ -82,7 +82,16 @@ export class PaymentStore {
   public readonly db:DatabaseSync;
   private constructor(db:DatabaseSync){this.db=db;}
   static open(directory:string):PaymentStore {
-    return new PaymentStore(openOwnerDatabase(directory,'payment.sqlite',DDL,'paios.payment-store.v1','PAYMENT_STORE'));
+    const store=new PaymentStore(openOwnerDatabase(directory,'payment.sqlite',DDL,'paios.payment-store.v1','PAYMENT_STORE'));
+    const table=store.db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='device_keys'").get() as {sql:string};
+    if(!table.sql.includes("'model_settings_pending'"))store.tx(()=>store.db.exec(`
+      ALTER TABLE device_keys RENAME TO device_keys_previous;
+      CREATE TABLE device_keys(device_id TEXT NOT NULL,role TEXT NOT NULL CHECK(role IN ('device','user','model_settings','model_settings_pending')),
+        principal_id TEXT NOT NULL,public_x963_b64 TEXT NOT NULL,created_at_ms INTEGER NOT NULL,revoked_at_ms INTEGER,
+        PRIMARY KEY(device_id,role)) STRICT;
+      INSERT INTO device_keys SELECT * FROM device_keys_previous;
+      DROP TABLE device_keys_previous;`));
+    return store;
   }
   close():void {if(this.db.isOpen)this.db.close();}
   tx<T>(fn:()=>T):T {return inTransaction(this.db,fn);}

@@ -30,12 +30,6 @@
         "conversation_session_id": {
           "type": "string"
         },
-        "memory_write": {
-          "type": [
-            "boolean",
-            "null"
-          ]
-        },
         "granted_toolsets": {
           "type": "array",
           "uniqueItems": true,
@@ -60,8 +54,6 @@
         },
         "native_final_response": {},
         "native_final_response_error": {},
-        "memory_receipt_source": {},
-        "native_memory_receipt_error": {},
         "approval": {
           "$ref": "#/$defs/approval"
         },
@@ -180,162 +172,6 @@
         "last_tool_message_id",
         "previous_message_id",
         "previous_message_role"
-      ]
-    },
-    "summary": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "schema": {
-          "const": "hermes.memory_receipt.v1"
-        },
-        "profile_home": {
-          "type": "string"
-        },
-        "run_id": {
-          "type": "string"
-        },
-        "session_id": {
-          "type": "string"
-        },
-        "receipt_ref": {
-          "type": "string"
-        },
-        "attempt_ref": {
-          "type": "string"
-        },
-        "tool_call_id": {
-          "type": "string"
-        },
-        "operation": {
-          "type": "string"
-        },
-        "target": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string"
-        },
-        "created_at": {
-          "type": "number"
-        },
-        "settled_at": {
-          "type": [
-            "number",
-            "null"
-          ]
-        },
-        "pending_id": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "predecessor_ref": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      },
-      "required": [
-        "schema",
-        "profile_home",
-        "run_id",
-        "session_id",
-        "receipt_ref",
-        "attempt_ref",
-        "tool_call_id",
-        "operation",
-        "target",
-        "status",
-        "created_at",
-        "settled_at",
-        "pending_id",
-        "predecessor_ref"
-      ]
-    },
-    "receipt": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "kind": {
-          "const": "l2"
-        },
-        "receipt_ref": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string"
-        },
-        "summary": {
-          "$ref": "#/$defs/summary"
-        }
-      },
-      "required": [
-        "kind",
-        "receipt_ref",
-        "status",
-        "summary"
-      ]
-    },
-    "memory": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "schema": {
-          "const": "hermes.memory_source.v2"
-        },
-        "source": {
-          "const": "l2"
-        },
-        "profile_home": {
-          "type": "string"
-        },
-        "run_id": {
-          "type": "string"
-        },
-        "session_id": {
-          "type": "string"
-        },
-        "status": {
-          "enum": [
-            "complete",
-            "partial",
-            "failed"
-          ]
-        },
-        "error": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "receipts": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/receipt"
-          },
-          "maxItems": 256
-        },
-        "unsettled_attempts": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/summary"
-          },
-          "maxItems": 256
-        }
-      },
-      "required": [
-        "schema",
-        "source",
-        "profile_home",
-        "run_id",
-        "session_id",
-        "status",
-        "error",
-        "receipts",
-        "unsettled_attempts"
       ]
     },
     "approval": {

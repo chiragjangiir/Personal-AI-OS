@@ -1,0 +1,697 @@
+{
+  "providers": [
+    {
+      "id": "deepseek-paios",
+      "display_name": "DeepSeek 官方",
+      "wire_protocol": "chat_completions",
+      "base_url": "https://api.deepseek.com",
+      "credential_ref": "deepseek",
+      "usage_capability": "balance"
+    },
+    {
+      "id": "opencode-paios",
+      "display_name": "OpenCode Go",
+      "wire_protocol": "chat_completions",
+      "base_url": "https://opencode.ai/zen/go/v1",
+      "credential_ref": "opencode",
+      "usage_capability": "subscription",
+      "session_affinity": "x-opencode-session"
+    },
+    {
+      "id": "siliconflow-paios",
+      "display_name": "SiliconFlow",
+      "wire_protocol": "chat_completions",
+      "base_url": "https://api.siliconflow.cn/v1",
+      "credential_ref": "siliconflow",
+      "usage_capability": "unknown"
+    },
+    {
+      "id": "paios-builder",
+      "display_name": "OpenCode 独立构建",
+      "wire_protocol": "chat_completions",
+      "base_url": "https://opencode.ai/zen/go/v1",
+      "credential_ref": "opencode",
+      "session_affinity": "x-opencode-session"
+    },
+    {
+      "id": "local-runtime",
+      "display_name": "本地模型资产（只读）",
+      "wire_protocol": "local_onnx",
+      "base_url": "",
+      "credential_ref": null
+    },
+    {
+      "id": "executor-deepseek",
+      "display_name": "手机执行器 DeepSeek（只读）",
+      "wire_protocol": "chat_completions",
+      "base_url": "https://api.deepseek.com",
+      "credential_ref": "deepseek",
+      "usage_capability": "balance"
+    },
+    {
+      "id": "executor-siliconflow",
+      "display_name": "手机执行器 SiliconFlow（只读）",
+      "wire_protocol": "chat_completions",
+      "base_url": "https://api.siliconflow.cn/v1",
+      "credential_ref": "siliconflow",
+      "usage_capability": "unknown"
+    }
+  ],
+  "roles": [
+    {
+      "id": "brain",
+      "profile": "owner",
+      "provider_ref": "deepseek-paios",
+      "model_id": "deepseek-flash",
+      "parameters": {
+        "context_limit": 262144,
+        "max_output_tokens": 8192,
+        "thinking": {
+          "enabled": true
+        }
+      },
+      "ordered_fallbacks": [
+        {
+          "provider_ref": "opencode-paios",
+          "model_id": "deepseek-v4.1-flash",
+          "parameters": {
+            "context_limit": 262144,
+            "max_output_tokens": 8192,
+            "thinking": {
+              "enabled": true
+            }
+          }
+        }
+      ],
+      "activation_boundary": "brain_idle"
+    },
+    {
+      "id": "delegation",
+      "profile": "owner",
+      "provider_ref": "opencode-paios",
+      "model_id": "deepseek-v4.1-flash",
+      "parameters": {
+        "context_limit": 262144,
+        "max_output_tokens": 8192,
+        "thinking": {
+          "enabled": true
+        }
+      },
+      "ordered_fallbacks": [
+        {
+          "provider_ref": "deepseek-paios",
+          "model_id": "deepseek-flash",
+          "parameters": {
+            "context_limit": 262144,
+            "max_output_tokens": 8192,
+            "thinking": {
+              "enabled": true
+            }
+          }
+        }
+      ],
+      "activation_boundary": "brain_idle"
+    },
+    {
+      "id": "call.intent",
+      "profile": "owner",
+      "inherit_from": "brain",
+      "parameters": {
+        "max_output_tokens": 128,
+        "temperature": 0,
+        "thinking": {
+          "enabled": false
+        }
+      },
+      "ordered_fallbacks": [
+        {
+          "provider_ref": "opencode-paios",
+          "model_id": "deepseek-v4.1-flash",
+          "parameters": {
+            "context_limit": 262144,
+            "max_output_tokens": 128,
+            "thinking": {
+              "enabled": false
+            },
+            "temperature": 0
+          }
+        }
+      ],
+      "activation_boundary": "brain_idle"
+    },
+    {
+      "id": "auxiliary.vision",
+      "profile": "owner",
+      "provider_ref": "siliconflow-paios",
+      "model_id": "zai-org/GLM-5.3-Flash",
+      "parameters": {
+        "max_output_tokens": 8192
+      },
+      "ordered_fallbacks": [],
+      "activation_boundary": "brain_idle"
+    },
+    {
+      "id": "auxiliary.compression",
+      "profile": "owner",
+      "inherit_from": "brain",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "brain_idle"
+    },
+    {
+      "id": "auxiliary.skills_hub",
+      "profile": "owner",
+      "inherit_from": "brain",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "brain_idle"
+    },
+    {
+      "id": "auxiliary.approval",
+      "profile": "owner",
+      "inherit_from": "brain",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "brain_idle"
+    },
+    {
+      "id": "auxiliary.review",
+      "profile": "owner",
+      "inherit_from": "brain",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "brain_idle"
+    },
+    {
+      "id": "auxiliary.mcp",
+      "profile": "owner",
+      "inherit_from": "brain",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "brain_idle"
+    },
+    {
+      "id": "auxiliary.title_generation",
+      "profile": "owner",
+      "disabled": true,
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "brain_idle"
+    },
+    {
+      "id": "auxiliary.memory_query_rewrite",
+      "profile": "owner",
+      "inherit_from": "brain",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "brain_idle"
+    },
+    {
+      "id": "auxiliary.tts_audio_tags",
+      "profile": "owner",
+      "inherit_from": "brain",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "brain_idle"
+    },
+    {
+      "id": "auxiliary.triage_specifier",
+      "profile": "owner",
+      "inherit_from": "brain",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "brain_idle"
+    },
+    {
+      "id": "auxiliary.kanban_decomposer",
+      "profile": "owner",
+      "inherit_from": "brain",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "brain_idle"
+    },
+    {
+      "id": "auxiliary.profile_describer",
+      "profile": "owner",
+      "inherit_from": "brain",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "brain_idle"
+    },
+    {
+      "id": "auxiliary.goal_judge",
+      "profile": "owner",
+      "inherit_from": "brain",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "brain_idle"
+    },
+    {
+      "id": "auxiliary.curator",
+      "profile": "owner",
+      "inherit_from": "brain",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "brain_idle"
+    },
+    {
+      "id": "auxiliary.monitor",
+      "profile": "owner",
+      "inherit_from": "brain",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "brain_idle"
+    },
+    {
+      "id": "auxiliary.background_review",
+      "profile": "owner",
+      "inherit_from": "brain",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "brain_idle"
+    },
+    {
+      "id": "auxiliary.moa_reference",
+      "profile": "owner",
+      "inherit_from": "brain",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "brain_idle"
+    },
+    {
+      "id": "auxiliary.moa_aggregator",
+      "profile": "owner",
+      "inherit_from": "brain",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "brain_idle"
+    },
+    {
+      "id": "cron",
+      "profile": "owner",
+      "inherit_from": "brain",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "brain_idle"
+    },
+    {
+      "id": "build.workshop",
+      "profile": "workshop",
+      "provider_ref": "deepseek-paios",
+      "model_id": "deepseek-flash",
+      "parameters": {
+        "context_limit": 262144,
+        "max_output_tokens": 8192,
+        "thinking": {
+          "enabled": true
+        }
+      },
+      "ordered_fallbacks": [
+        {
+          "provider_ref": "opencode-paios",
+          "model_id": "deepseek-v4.1-flash",
+          "parameters": {
+            "context_limit": 262144,
+            "max_output_tokens": 8192,
+            "thinking": {
+              "enabled": true
+            }
+          }
+        }
+      ],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "delegation",
+      "profile": "workshop",
+      "provider_ref": "opencode-paios",
+      "model_id": "deepseek-v4.1-flash",
+      "parameters": {
+        "context_limit": 262144,
+        "max_output_tokens": 8192,
+        "thinking": {
+          "enabled": true
+        }
+      },
+      "ordered_fallbacks": [
+        {
+          "provider_ref": "deepseek-paios",
+          "model_id": "deepseek-flash",
+          "parameters": {
+            "context_limit": 262144,
+            "max_output_tokens": 8192,
+            "thinking": {
+              "enabled": true
+            }
+          }
+        }
+      ],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "auxiliary.vision",
+      "profile": "workshop",
+      "provider_ref": "siliconflow-paios",
+      "model_id": "zai-org/GLM-5.3-Flash",
+      "parameters": {
+        "max_output_tokens": 8192
+      },
+      "ordered_fallbacks": [],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "auxiliary.compression",
+      "profile": "workshop",
+      "inherit_from": "build.workshop",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "auxiliary.skills_hub",
+      "profile": "workshop",
+      "inherit_from": "build.workshop",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "auxiliary.approval",
+      "profile": "workshop",
+      "inherit_from": "build.workshop",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "auxiliary.review",
+      "profile": "workshop",
+      "inherit_from": "build.workshop",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "auxiliary.mcp",
+      "profile": "workshop",
+      "inherit_from": "build.workshop",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "auxiliary.title_generation",
+      "profile": "workshop",
+      "disabled": true,
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "auxiliary.memory_query_rewrite",
+      "profile": "workshop",
+      "inherit_from": "build.workshop",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "auxiliary.tts_audio_tags",
+      "profile": "workshop",
+      "inherit_from": "build.workshop",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "auxiliary.triage_specifier",
+      "profile": "workshop",
+      "inherit_from": "build.workshop",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "auxiliary.kanban_decomposer",
+      "profile": "workshop",
+      "inherit_from": "build.workshop",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "auxiliary.profile_describer",
+      "profile": "workshop",
+      "inherit_from": "build.workshop",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "auxiliary.goal_judge",
+      "profile": "workshop",
+      "inherit_from": "build.workshop",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "auxiliary.curator",
+      "profile": "workshop",
+      "inherit_from": "build.workshop",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "auxiliary.monitor",
+      "profile": "workshop",
+      "inherit_from": "build.workshop",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "auxiliary.background_review",
+      "profile": "workshop",
+      "inherit_from": "build.workshop",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "auxiliary.moa_reference",
+      "profile": "workshop",
+      "inherit_from": "build.workshop",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "auxiliary.moa_aggregator",
+      "profile": "workshop",
+      "inherit_from": "build.workshop",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "cron",
+      "profile": "workshop",
+      "inherit_from": "build.workshop",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "build.workshop",
+      "profile": "builder",
+      "provider_ref": "paios-builder",
+      "model_id": "deepseek-v4.1-flash",
+      "parameters": {
+        "context_limit": 262144,
+        "max_output_tokens": 8192
+      },
+      "ordered_fallbacks": [],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "build.repair",
+      "profile": "builder",
+      "inherit_from": "build.workshop",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "auxiliary.compression",
+      "profile": "builder",
+      "provider_ref": "paios-builder",
+      "model_id": "deepseek-v4.1-flash",
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "build_idle"
+    },
+    {
+      "id": "executor.fast.manager",
+      "profile": "executor",
+      "provider_ref": "executor-deepseek",
+      "model_id": "deepseek-flash",
+      "read_only": true,
+      "parameters": {
+        "thinking": {
+          "enabled": false
+        },
+        "temperature": 0.2
+      },
+      "ordered_fallbacks": [],
+      "activation_boundary": "read_only"
+    },
+    {
+      "id": "executor.fast.executor",
+      "profile": "executor",
+      "provider_ref": "executor-deepseek",
+      "model_id": "deepseek-flash",
+      "read_only": true,
+      "parameters": {
+        "thinking": {
+          "enabled": false
+        },
+        "temperature": 0.1
+      },
+      "ordered_fallbacks": [],
+      "activation_boundary": "read_only"
+    },
+    {
+      "id": "executor.fast.fast_agent",
+      "profile": "executor",
+      "provider_ref": "executor-deepseek",
+      "model_id": "deepseek-flash",
+      "read_only": true,
+      "parameters": {
+        "thinking": {
+          "enabled": false
+        },
+        "temperature": 0.2
+      },
+      "ordered_fallbacks": [],
+      "activation_boundary": "read_only"
+    },
+    {
+      "id": "executor.fast.app_opener",
+      "profile": "executor",
+      "provider_ref": "executor-deepseek",
+      "model_id": "deepseek-flash",
+      "read_only": true,
+      "parameters": {
+        "thinking": {
+          "enabled": false
+        },
+        "temperature": 0
+      },
+      "ordered_fallbacks": [],
+      "activation_boundary": "read_only"
+    },
+    {
+      "id": "executor.fast.structured_output",
+      "profile": "executor",
+      "provider_ref": "executor-deepseek",
+      "model_id": "deepseek-flash",
+      "read_only": true,
+      "parameters": {
+        "thinking": {
+          "enabled": false
+        },
+        "temperature": 0
+      },
+      "ordered_fallbacks": [],
+      "activation_boundary": "read_only"
+    },
+    {
+      "id": "executor.thorough",
+      "profile": "executor",
+      "provider_ref": "executor-siliconflow",
+      "model_id": "zai-org/GLM-5.3-Flash",
+      "read_only": true,
+      "parameters": {
+        "temperature": 0.2,
+        "thinking": {
+          "enabled": true,
+          "budget": 1024
+        }
+      },
+      "ordered_fallbacks": [],
+      "activation_boundary": "read_only"
+    },
+    {
+      "id": "local.vad",
+      "profile": "local",
+      "provider_ref": "local-runtime",
+      "model_id": "silero_vad.onnx",
+      "read_only": true,
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "read_only"
+    },
+    {
+      "id": "local.asr",
+      "profile": "local",
+      "provider_ref": "local-runtime",
+      "model_id": "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/model.int8.onnx",
+      "read_only": true,
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "read_only"
+    },
+    {
+      "id": "local.speaker",
+      "profile": "local",
+      "provider_ref": "local-runtime",
+      "model_id": "3dspeaker-eres2netv2",
+      "read_only": true,
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "read_only"
+    },
+    {
+      "id": "local.kws",
+      "profile": "local",
+      "provider_ref": "local-runtime",
+      "model_id": "sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01",
+      "read_only": true,
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "read_only"
+    },
+    {
+      "id": "local.tagging",
+      "profile": "local",
+      "provider_ref": "local-runtime",
+      "model_id": "sherpa-onnx-zipformer-audio-tagging-2024-04-09/model.int8.onnx",
+      "read_only": true,
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "read_only"
+    },
+    {
+      "id": "local.turn",
+      "profile": "local",
+      "provider_ref": "local-runtime",
+      "model_id": "smart-turn-v3.2-cpu.onnx",
+      "read_only": true,
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "read_only"
+    },
+    {
+      "id": "local.faces",
+      "profile": "local",
+      "provider_ref": "local-runtime",
+      "model_id": "YuNet-2023mar+SFace-2021dec",
+      "read_only": true,
+      "parameters": {},
+      "ordered_fallbacks": [],
+      "activation_boundary": "read_only"
+    }
+  ]
+}

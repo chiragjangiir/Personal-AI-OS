@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "desktop": {
+      "url": "http://127.0.0.1:${PAIOS_INTEGRATION_PORT}/internal/desktop/mcp",
+      "headers": {
+        "Authorization": "Bearer ${PAIOS_HERMES_INTERNAL_KEY}"
+      },
+      "type": "streamable-http"
+    }
+  },
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json"
+}

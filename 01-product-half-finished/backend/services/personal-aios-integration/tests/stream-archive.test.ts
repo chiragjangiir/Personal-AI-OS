@@ -110,7 +110,7 @@ test('L5 packed hot/cold preserves mic, reply, full frame, upload and old revisi
   assert.ok(final);
   const receipt=await archive.moveCold(2);assert.ok(receipt.segments>=1&&receipt.segments<=2);assert.ok(receipt.cold_bytes<receipt.hot_bytes);
   assert.ok((await fs.readdir(join(hot,'objects'))).length>0,'verified young copies retain hot bytes');
-  await assert.rejects(archive.moveCold(1),/INVALID_HOT_DAYS/);
+  await assert.rejects(archive.moveCold(0),/INVALID_HOT_DAYS/);
   const fileKey=sha256(Buffer.from('owner file bytes')),oldTime=new Date(Date.now()-3*86400000);
   await fs.utimes(join(hot,'objects',fileKey),oldTime,oldTime);
   const reused=await archive.archive({...raw(Buffer.from('owner file bytes')),event_id:'file-reused',media_type:'file',mime:'application/pdf',representation:'uploaded_original'},trusted);
@@ -523,4 +523,18 @@ test('an already-cold object reused by a live session survives normal and emerge
   assert.equal(await storage.monitorReserve(),false,'pressure remains explicit when live originals cannot be evicted');
   assert.deepEqual(Buffer.from(await storage.readHot('objects',key)),payload,'emergency eviction preserves the active source');
   assert.deepEqual(Buffer.from((await archive.readExactChunk(live.event,chunk(0),payload.length)).bytes),payload);
+});
+
+test('maintenance head checkpoints do not own the live append queue or mutate its cached journal',async t=>{
+  const {archive}=await fixture(t),first=await archive.append(raw(),trusted,at,chunk(0));
+  const entered=Promise.withResolvers<void>(),resume=Promise.withResolvers<void>();let paused=false;
+  const maintenance=archive.head(first.event.raw_ref,{checkpoint:async()=>{if(!paused){paused=true;entered.resolve();await resume.promise;}}});
+  await entered.promise;
+  try {
+    const second=await archive.append(raw(),trusted,at,chunk(1));
+    assert.equal((await archive.head(second.event.raw_ref))!.revision,2);
+  } finally {resume.resolve();}
+  assert.equal((await maintenance)!.revision,2);
+  await assert.rejects(archive.head(first.event.raw_ref,{checkpoint:async()=>{throw new Error('IDLE_BUDGET_EXHAUSTED');}}),/IDLE_BUDGET_EXHAUSTED/);
+  assert.equal((await archive.head(first.event.raw_ref))!.revision,2);
 });

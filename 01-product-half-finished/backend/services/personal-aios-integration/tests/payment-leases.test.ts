@@ -105,6 +105,68 @@ test('approval admission preserves the full owner-scoped live set and reuses fre
  assert.deepEqual(await ids(),[freshTime]);assert.deepEqual(await ids(otherPhone),[]);
 });
 
+test('cancelling an enrollment removes only this principal, device and kind, records it, and clears an already issued grant',async t=>{
+ const f=await paymentFixture(t),leases=f.authority.leases;
+ const other={...glasses,device_id:'other-glasses'},foreign={...glasses,principal_id:'other-owner'};
+ for(const source of [other,foreign]){f.terminals.connect(source,'session');f.terminals.wear(source,true,0);}
+ const cancelled=await leases.requestApproval(glasses,'voice_enrollment');
+ const payment=await leases.requestApproval(glasses,'voiceprint_enrol');
+ const foreignId=await leases.requestApproval(foreign,'voice_enrollment');
+ await leases.cancelApproval(glasses,'voice_enrollment');
+ assert.deepEqual((await leases.approvals(phone)).map(a=>a.approval_id),[payment]);
+ const another=await leases.requestApproval(other,'voice_enrollment');
+ await leases.cancelApproval(glasses,'voice_enrollment');
+ assert.deepEqual((await leases.approvals(phone)).map(a=>a.approval_id),[payment,another]);
+ assert.deepEqual((await leases.approvals({...phone,principal_id:'other-owner'})).map(a=>a.approval_id),[foreignId]);
+ await assert.rejects(leases.decideApproval(phone,{approval_id:cancelled,decision:'deny'}),{message:'APPROVAL_NOT_FOUND',status:404});
+ const event=f.authority.store.events().find(e=>e.kind==='approval_cancelled')!;
+ assert.deepEqual(event.data,{approval_id:cancelled,kind:'voice_enrollment',target_device_id:glasses.device_id});
+ await f.approve(payment);
+ await f.approve(await leases.requestApproval(glasses,'voice_enrollment'));
+ await leases.cancelApproval(glasses,'voice_enrollment');
+ assert.equal(await leases.enrolment(glasses,false,'voice_enrollment'),undefined);assert.ok(await leases.enrolment(glasses));
+});
+
+test('cancelling while Face ID verification is in flight prevents its later synchronous grant commit',async t=>{
+ const f=await paymentFixture(t),leases=f.authority.leases;
+ const id=await leases.requestApproval(glasses,'voice_enrollment'),a=(await leases.approvals(phone))[0]!;
+ const entered=Promise.withResolvers<void>(),release=Promise.withResolvers<void>(),verify=f.authority.keys.verify.bind(f.authority.keys);
+ t.mock.method(f.authority.keys,'verify',async(...args:Parameters<PaymentKeys['verify']>)=>{
+  const verified=await verify(...args);entered.resolve();await release.promise;return verified;
+ });
+ const pending=leases.decideApproval(phone,{approval_id:id,decision:'approve',...fixtureSigned(f.user,{purpose:'approval',device_id:phone.device_id,
+  nonce:a.nonce,approval_id:id,kind:a.kind,target_device_id:glasses.device_id,decision:'approve'})});
+ try{
+  await entered.promise;await leases.cancelApproval(glasses,'voice_enrollment');release.resolve();
+  await assert.rejects(pending,{message:'APPROVAL_NOT_FOUND',status:404});
+  assert.equal(await leases.enrolment(glasses,false,'voice_enrollment'),undefined);
+  assert.equal(f.authority.store.events().filter(e=>e.kind==='enrolment_grant_issued').length,0);
+ }finally{release.resolve();await pending.catch(()=>{});}
+});
+
+test('discarding an ordinary supplement consumes only its grant; clearing a source clears both grant kinds',async t=>{
+ const f=await paymentFixture(t),leases=f.authority.leases;
+ const other={...glasses,device_id:'other-glasses'};
+ f.terminals.connect(other,'other-session');f.terminals.wear(other,true,0);
+ const approve=async(source:RegisteredDevice,kind:'voiceprint_enrol'|'voice_enrollment')=>{
+  const id=await leases.requestApproval(source,kind),a=(await leases.approvals(phone)).find(a=>a.approval_id===id)!;
+  await leases.decideApproval(phone,{approval_id:id,decision:'approve',...fixtureSigned(f.user,{purpose:'approval',device_id:phone.device_id,
+   nonce:a.nonce,approval_id:id,kind,target_device_id:source.device_id,decision:'approve'})});
+ };
+ for(const source of [glasses,other])for(const kind of ['voiceprint_enrol','voice_enrollment'] as const)await approve(source,kind);
+ await leases.consumeEnrolment(glasses,'discarded','voice_enrollment');
+ assert.equal(await leases.enrolment(glasses,false,'voice_enrollment'),undefined);
+ assert.ok(await leases.enrolment(glasses));
+ await approve(glasses,'voice_enrollment');
+ leases.clear(glasses,'source_inactive');
+ for(const kind of ['voiceprint_enrol','voice_enrollment'] as const){
+  assert.equal(await leases.enrolment(glasses,false,kind),undefined);
+  assert.ok(await leases.enrolment(other,false,kind));
+ }
+ leases.clear(other,'source_inactive');await leases.presence(phone,'locked');
+ assert.equal(leases.nextDeadline(),undefined,'cleared grants leave no authorization deadline behind');
+});
+
 for(const ordering of ['pending verification','verified before commit'] as const)test(`locked presence cancels ${ordering} with real P-256 keys and no lease`,async t=>{
  const f=await paymentFixture(t);await f.locks();await f.authority.leases.presence(phone,'locked');
  const startedBefore=f.authority.store.db.prepare("SELECT count(*) AS n FROM events WHERE kind='lease_started' AND device_id='phone'").get()!.n;

@@ -8,7 +8,7 @@ import {HermesClient,NativeNotAcceptedError} from './native-source-fixture.ts';
 import {ContractError} from '../src/contracts.ts';
 import {provisionCentralResources,type CentralProvisionConfiguration} from '../src/main.ts';
 const wire=JSON.parse(readFileSync(new URL('./fixtures/native-final-response/native-run-version-fixtures.json',import.meta.url),'utf8')).cli.running;
-const body={input:'controlled D',instructions:'controlled skill',session_id:'session',memory_write:false};
+const body={input:'controlled D',instructions:'controlled skill',session_id:'session'};
 const token='fixture-native-budget-token-abcdefghijkl';
 async function fixture(t:test.TestContext,handler:(req:IncomingMessage,res:ServerResponse)=>void,budget:number,timeout=3000){
  const server=createServer((req,res)=>{assert.equal(req.headers.authorization,`Bearer ${token}`);if(req.url?.startsWith('/v1/runs'))assert.equal(req.headers['x-hermes-run-contract'],'hermes.run.v2');req.resume();handler(req,res);});

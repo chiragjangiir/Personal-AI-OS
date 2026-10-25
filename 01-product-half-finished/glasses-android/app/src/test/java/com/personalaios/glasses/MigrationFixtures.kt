@@ -94,9 +94,11 @@ internal fun Enrollment.seed(value: JSONObject) = importPairing(value.toString()
 internal class FakeControl(url: URL, private val respond: (FakeControl) -> Pair<Int, String>) : HttpURLConnection(url) {
     val bytes = ByteArrayOutputStream()
     var disconnected = false
+    var date: String? = null
     private var result: Pair<Int, String>? = null
     override fun getOutputStream() = bytes
     override fun getResponseCode(): Int = (result ?: respond(this).also { result = it }).first
+    override fun getHeaderField(name: String): String? = if (name.equals("Date", ignoreCase = true)) date else null
     override fun getInputStream() = (result ?: respond(this).also { result = it }).second.byteInputStream()
     override fun getErrorStream() = inputStream
     override fun disconnect() { disconnected = true }

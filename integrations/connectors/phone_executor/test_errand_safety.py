@@ -32,7 +32,9 @@ class Errands(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.dir = tempfile.TemporaryDirectory()
         self.spool = Path(self.dir.name)
-        for patch in (mock.patch.object(server, "SPOOL", str(self.spool)), mock.patch.object(server, "_online", lambda *_: True)):
+        for patch in (mock.patch.object(server, "SPOOL", str(self.spool)),
+                      mock.patch.dict(os.environ, {"PAIOS_PHONE_LOCK_DIR": str(self.spool)}),
+                      mock.patch.object(server, "_online", lambda *_: True)):
             patch.start()
             self.addCleanup(patch.stop)
         self.addCleanup(self.dir.cleanup)
@@ -473,8 +475,6 @@ class Errands(unittest.IsolatedAsyncioTestCase):
 
     async def test_repeated_cancel_and_lost_caller_wait_for_cleanup_and_keep_phone_lease(self):
         identity = f'cancel-test-{os.getpid()}'
-        lock = Path('/tmp') / f'paios-phone-cancel_test_{os.getpid()}.lock'
-        self.addCleanup(lock.unlink, missing_ok=True)
         for route in ('agent', 'ride cancellation'):
             running, cleaning, release = asyncio.Event(), asyncio.Event(), asyncio.Event()
             self.addCleanup(release.set)
@@ -505,6 +505,7 @@ class Errands(unittest.IsolatedAsyncioTestCase):
                  mock.patch.object(server, '_preflight', return_value=False), mock.patch.object(server, '_ensure_unlocked'), \
                  mock.patch.object(server, '_ensure_cn_identity'), mock.patch.object(server, '_at_checkout', return_value=False), \
                  mock.patch.object(server, '_sleep_later'):
+                lock = server._device_lock_path()
                 jid = (await server.phone_task(GOAL, repeat=True, principal_id="owner", effect={"kind": "external", "task_type": "purchase_errand", "requested": True}))['job_id']
                 await asyncio.wait_for(running.wait(), 1)
                 first = asyncio.create_task(server.phone_cancel(jid))
@@ -631,8 +632,8 @@ class Guard(unittest.TestCase):
 
 class Lease(unittest.IsolatedAsyncioTestCase):
     async def test_a_second_holder_of_the_same_phone_waits_and_then_gives_up(self):
-        self.addCleanup((Path('/tmp') / f'paios-phone-test_{os.getpid()}.lock').unlink, missing_ok=True)
-        with mock.patch.object(server, "PHONE_SERIAL", f"test-{os.getpid()}"), mock.patch.object(server, "OWNER_WAIT_S", 1):
+        with tempfile.TemporaryDirectory() as locks, mock.patch.dict(os.environ, {"PAIOS_PHONE_LOCK_DIR": locks}), \
+             mock.patch.object(server, "PHONE_SERIAL", f"test-{os.getpid()}"), mock.patch.object(server, "OWNER_WAIT_S", 1):
             async with server._device_lease():
                 with mock.patch.object(server, "SERIAL", "192.0.2.2:5555"), self.assertRaises(RuntimeError) as busy:
                     async with server._device_lease():
@@ -684,12 +685,9 @@ class CloudExecutor(unittest.IsolatedAsyncioTestCase):
         self.dir = tempfile.TemporaryDirectory()
         self.addCleanup(self.dir.cleanup)
         self.lock = Path(self.dir.name) / 'agentbay.lock'
-        real_open = os.open
-        def local_open(path, *args):
-            return real_open(self.lock if str(path) == '/tmp/paios-phone-agentbay.lock' else path, *args)
         for p in (mock.patch.dict(sys.modules, {'agentbay_phone': self.provider}), mock.patch.object(self.s, 'SPOOL', None),
                   mock.patch.object(self.s, 'CONFIG', str(Path(self.dir.name) / 'config.yaml')),
-                  mock.patch.object(self.s.os, 'open', local_open),
+                  mock.patch.object(self.s, '_device_lock_path', return_value=self.lock),
                   mock.patch.object(self.s, '_owner_active', side_effect=AssertionError('physical owner guard')),
                   mock.patch.object(self.s, '_ensure_unlocked', side_effect=AssertionError('physical PIN unlock')),
                   mock.patch.object(self.s, '_sleep_later', side_effect=AssertionError('physical sleep')),

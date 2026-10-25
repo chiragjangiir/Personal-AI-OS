@@ -2,6 +2,7 @@ import { canonical, check, ContractError, digest, type ProcessedEvent } from '..
 import type {TerminalCapability} from '../source-authority.ts';
 import type { StoragePort } from '../storage.ts';
 import type {NativeApproval,NativeApprovalResult,OwnerConfirmation} from '../hermes-client.ts';
+import type {FrozenCall} from '../capability/consent/call.ts';
 
 export interface CapabilityUpgradeRequest {
   principal_id:string; device_id:string; capabilities:readonly TerminalCapability[]; grant_ref:Record<string,unknown>;
@@ -9,7 +10,8 @@ export interface CapabilityUpgradeRequest {
 export interface VoiceConfirmation {
   schema: 'paios.voice-confirmation.v1'; confirmation_id: string; principal_id: string; session_id: string;
   processed_event_id: string; source_device_id: string; created_at_ms: number; expires_at_ms: number;
-  kind?:'native_approval'|'capability_upgrade'; capability_upgrade?:CapabilityUpgradeRequest; native_run_id?:string; approval_request_id?:string; text?:string;
+  kind?:'native_approval'|'capability_upgrade'|'capability_call'; capability_upgrade?:CapabilityUpgradeRequest; native_run_id?:string; approval_request_id?:string; text?:string;
+  capability_call?:FrozenCall;
 }
 export interface VoiceConfirmationDecision {
   schema: 'paios.voice-confirmation-decision.v1'; confirmation_id: string; device_id: string; confirmed_at: string;
@@ -32,6 +34,9 @@ export class VoiceConfirmations {
   private readonly watchers = new Map<string, Set<() => void>>();
   private expiry: ReturnType<typeof setTimeout> | undefined;
   private opening: Promise<void> = Promise.resolve();
+  private callExpiry:((record:VoiceConfirmation)=>Promise<void>)|undefined;
+  setCallExpiryHandler(handler:((record:VoiceConfirmation)=>Promise<void>)|undefined):void {this.callExpiry=handler;this.schedule();}
+  callExpired(record:VoiceConfirmation):boolean {return record.expires_at_ms<=this.now();}
   constructor(storage: StoragePort, options: {ttl_ms?: number; max_pending?: number; now?: () => number} = {}) {
     this.storage = storage; this.ttlMs = options.ttl_ms ?? 120000; this.maxPending = options.max_pending ?? 64;
     this.now = options.now ?? Date.now;
@@ -45,7 +50,8 @@ export class VoiceConfirmations {
   /** Expired records leave the list; their principals' watchers hear about it. */
   private prune(at: number): void {
     const gone = new Set<string>();
-    for (const [key, record] of this.pending) if (record.expires_at_ms <= at) {this.pending.delete(key); this.waiting.get(key)?.(false); gone.add(record.principal_id);}
+    for (const [key, record] of this.pending) if (record.expires_at_ms <= at) {this.pending.delete(key); this.waiting.get(key)?.(false); gone.add(record.principal_id);
+      if(record.kind==='capability_call')void this.callExpiry?.(record).catch(()=>{});}
     for (const principal of gone) this.changed(principal);
   }
   private changed(principal: string): void {
@@ -54,7 +60,7 @@ export class VoiceConfirmations {
   /** One timer for the earliest expiry while anyone watches, so a prompt disappears when it can no longer be answered. */
   private schedule(): void {
     if (this.expiry) {clearTimeout(this.expiry); this.expiry = undefined;}
-    if ((!this.watchers.size&&!this.waiting.size) || !this.pending.size) return;
+    if ((!this.watchers.size&&!this.waiting.size&&!this.callExpiry) || !this.pending.size) return;
     const next = Math.min(...[...this.pending.values()].map(record => record.expires_at_ms));
     this.expiry = setTimeout(() => {this.expiry = undefined; this.prune(this.now()); this.schedule();}, Math.max(0, next - this.now()) + 5);
     this.expiry.unref?.();
@@ -91,12 +97,17 @@ export class VoiceConfirmations {
     this.opening=opened.then(()=>{},()=>{});
     return opened;
   }
-  private async withdraw(record:VoiceConfirmation):Promise<void> {
+  private async withdraw(record:VoiceConfirmation,reason?:NativeApprovalResult['reason']):Promise<void> {
     const decision:VoiceConfirmationDecision={schema:'paios.voice-confirmation-decision.v1',confirmation_id:record.confirmation_id,
-      device_id:record.source_device_id,confirmed_at:new Date(this.now()).toISOString(),choice:'deny'};
+      device_id:record.source_device_id,confirmed_at:new Date(this.now()).toISOString(),choice:'deny',...(reason?{reason}:{})};
     await this.storage.publish('voice-confirmation-decisions',record.confirmation_id,Buffer.from(canonical(decision)));
     this.pending.delete(record.confirmation_id);this.waiting.get(record.confirmation_id)?.(false);
     this.changed(record.principal_id);this.schedule();
+    if(record.kind==='capability_call')await this.callExpiry?.(record);
+  }
+  async cancelCalls(principal:string,processedEventId:string):Promise<void>{
+    for(const record of this.pending.values())if(record.kind==='capability_call'&&record.principal_id===principal&&
+      record.processed_event_id===processedEventId)await this.withdraw(record,'interrupted');
   }
   private async openIdentity(d: ProcessedEvent, session: string, text?:string, signal?:AbortSignal): Promise<VoiceConfirmation> {
     const at = this.now(), confirmation_id = digest({principal_id: d.principal_id, processed_event_id: d.processed_event_id});
@@ -124,15 +135,16 @@ export class VoiceConfirmations {
     this.prune(this.now());
     return [...this.pending.values()].filter(record => record.principal_id === principal).map(record => ({...record}));
   }
-  private async approvalRecord(d:ProcessedEvent,session:string,runId:string,approval:NativeApproval):Promise<VoiceConfirmation> {
+  private async approvalRecord(d:ProcessedEvent,session:string,runId:string,approval:NativeApproval,call?:FrozenCall):Promise<VoiceConfirmation> {
     const confirmation_id=nativeApprovalId(d.principal_id,runId,approval.request_id);
     const proposed:VoiceConfirmation={schema:'paios.voice-confirmation.v1',confirmation_id,principal_id:d.principal_id,
       session_id:session,processed_event_id:d.processed_event_id,source_device_id:d.device_id,created_at_ms:this.now(),
-      expires_at_ms:approval.expires_at_ms,kind:'native_approval',native_run_id:runId,approval_request_id:approval.request_id,text:approval.question};
+      expires_at_ms:approval.expires_at_ms,kind:call?'capability_call':'native_approval',native_run_id:runId,approval_request_id:approval.request_id,text:approval.question,
+      ...(call?{capability_call:call}:{})};
     const record=JSON.parse(Buffer.from(await this.storage.publish('voice-confirmations',confirmation_id,Buffer.from(canonical(proposed)))).toString('utf8')) as VoiceConfirmation;
-    check(record.kind==='native_approval'&&record.native_run_id===runId&&record.approval_request_id===approval.request_id&&record.principal_id===d.principal_id&&
+    check(record.kind===proposed.kind&&record.native_run_id===runId&&record.approval_request_id===approval.request_id&&record.principal_id===d.principal_id&&
       record.processed_event_id===d.processed_event_id&&record.session_id===session&&record.text===approval.question&&
-      record.expires_at_ms===approval.expires_at_ms,'VOICE_CONFIRMATION_CONFLICT',409);
+      record.expires_at_ms===approval.expires_at_ms&&(!call||canonical(record.capability_call)===canonical(call)),'VOICE_CONFIRMATION_CONFLICT',409);
     return record;
   }
   async openApproval(d:ProcessedEvent,session:string,runId:string,approval:NativeApproval):Promise<boolean> {
@@ -140,6 +152,24 @@ export class VoiceConfirmations {
     if(record.expires_at_ms<=this.now()||this.pending.has(record.confirmation_id)||
       await this.read('voice-confirmation-decisions',record.confirmation_id))return false;
     this.pending.set(record.confirmation_id,record);this.changed(record.principal_id);this.schedule();return true;
+  }
+  /** Uses the same card, TTL and first-winner store as native approval, without a native wait. */
+  async openCall(call:FrozenCall,requestId:string,question:string):Promise<VoiceConfirmation> {
+    const key=nativeApprovalId(call.admission.d.principal_id,call.consent.context.run_id,requestId);
+    const prior=await this.read<VoiceConfirmation>('voice-confirmations',key);
+    const record=await this.approvalRecord(call.admission.d,call.consent.context.session_id,call.consent.context.run_id,
+      {request_id:requestId,question,expires_at_ms:prior?.expires_at_ms??this.now()+this.ttlMs},call);
+    if(!await this.read('voice-confirmation-decisions',key)){
+      if(record.expires_at_ms<=this.now())await this.callExpiry?.(record);
+      else {this.pending.set(key,record);this.changed(record.principal_id);this.schedule();}
+    }
+    return record;
+  }
+  async expireCall(record:VoiceConfirmation):Promise<VoiceConfirmationDecision> {
+    check(record.kind==='capability_call'&&record.expires_at_ms<=this.now(),'VOICE_CONFIRMATION_NOT_EXPIRED',409);
+    return JSON.parse(Buffer.from(await this.storage.publish('voice-confirmation-decisions',record.confirmation_id,Buffer.from(canonical({
+      schema:'paios.voice-confirmation-decision.v1',confirmation_id:record.confirmation_id,device_id:record.source_device_id,
+      confirmed_at:new Date(this.now()).toISOString(),choice:'deny',reason:'timeout'})))).toString());
   }
   async openCapabilityUpgrade(request:CapabilityUpgradeRequest,text:string):Promise<{
     record:VoiceConfirmation; approved:boolean; opened:boolean;
@@ -194,17 +224,19 @@ export class VoiceConfirmations {
     return record;
   }
   /** The confirming device's tap. Expired and foreign records are refused; a repeat by the same device replays. */
-  async decide(confirmationId: unknown, device: {principal_id: string; device_id: string},choice:'approve'|'deny'='approve'):
+  async decide(confirmationId: unknown, device: {principal_id: string; device_id: string;device_type?:string},choice:'approve'|'deny'='approve'):
     Promise<{record: VoiceConfirmation; decision: VoiceConfirmationDecision}> {
     const record = await this.record(confirmationId,device.principal_id);
-    check(!record.kind||record.kind==='capability_upgrade','VOICE_CONFIRMATION_KIND_INVALID');
+    check(!record.kind||record.kind==='capability_upgrade'||record.kind==='capability_call','VOICE_CONFIRMATION_KIND_INVALID');
     const key=record.confirmation_id;
     let decision = await this.read<VoiceConfirmationDecision>('voice-confirmation-decisions', key);
     if (!decision) {
       const at = this.now();
       check(at < record.expires_at_ms, 'VOICE_CONFIRMATION_EXPIRED', 410);
       const proposed: VoiceConfirmationDecision = {schema: 'paios.voice-confirmation-decision.v1', confirmation_id: key,
-        device_id: device.device_id, confirmed_at: new Date(at).toISOString(),...(choice==='deny'?{choice:'deny' as const}:{})};
+        device_id: device.device_id, confirmed_at: new Date(at).toISOString(),...(choice==='deny'?{choice:'deny' as const}:{}),
+        ...(record.kind==='capability_call'?{confirmation:{confirmation_id:key,confirmed_by:device.principal_id,
+          surface:{device_id:device.device_id,device_type:device.device_type!},confirmed_at:new Date(at).toISOString()}}:{})};
       decision = JSON.parse(Buffer.from(await this.storage.publish('voice-confirmation-decisions', key,
         Buffer.from(canonical(proposed)))).toString('utf8')) as VoiceConfirmationDecision;
     }

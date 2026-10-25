@@ -133,10 +133,56 @@ struct YimiConversationStore: Sendable {
     }
 }
 
+/// Published/cache snapshots share storage. Updating an ID copies one small dictionary, not the entire history index.
+private struct YimiItemPositions {
+    private var buckets = Array(repeating: [String: Int](), count: 32)
+    subscript(id: String) -> Int? {
+        get { buckets[Int(UInt(bitPattern: id.hashValue) % UInt(buckets.count))][id] }
+        set { buckets[Int(UInt(bitPattern: id.hashValue) % UInt(buckets.count))][id] = newValue }
+    }
+}
+
 /// The durable conversation used by chat and call captions. Call records keep metadata, never a second transcript.
 struct YimiConversationTimeline {
     private(set) var items: [YimiItem] = []
+    private var positions = YimiItemPositions()
+    private var positionBase = 0
+    private var callMembers: [String: [String]] = [:]
+    private var unsettled = Set<String>()
+    private var serverCount = 0, recordCount = 0
+    private var newestSeq = 0
+    private var newestLocalDate = Date.distantPast
+    private(set) var revision = UUID()
+    private var previousRevision: UUID?
+    private var changedIDs = Set<String>(), removedIDs = Set<String>()
+    private var mergedRevision: UUID?
+    private var mergedOwner: String?
     var chatItems: [YimiItem] { items.filter { $0.kind == .call ? $0.recordKind == .call : $0.recordKind != .call } }
+
+    private func position(_ id: String) -> Int? { positions[id].map { $0 - positionBase } }
+    func item(id: String) -> YimiItem? { position(id).map { items[$0] } }
+
+    /// A terminal snapshot is a source revision, independent of local sends and call captions.
+    /// Live one-item packets use their delta; missed revisions and restored pages reconcile by ID.
+    @discardableResult
+    mutating func merge(_ incoming: YimiConversationTimeline, ownerIdentity: String?, includeLocal: Bool = true) -> Bool {
+        guard mergedRevision != incoming.revision || mergedOwner != ownerIdentity else { return false }
+        let before = revision
+        let incremental = mergedOwner == ownerIdentity && mergedRevision == incoming.previousRevision
+        let removed = incremental ? incoming.removedIDs : Set(items.compactMap { item in
+            item.seq != nil && item.delivery == nil && item.ownerIdentity == ownerIdentity &&
+                incoming.positions[item.id] == nil ? item.id : nil
+        })
+        remove(ids: Set(removed.filter { id in
+            guard let item = item(id: id) else { return false }
+            return item.seq != nil && item.delivery == nil && item.ownerIdentity == ownerIdentity
+        }))
+        let updates = incremental ? incoming.changedIDs.compactMap { incoming.item(id: $0) }
+            .sorted { incoming.positions[$0.id]! < incoming.positions[$1.id]! } : incoming.items
+        for item in updates where includeLocal || item.seq != nil { upsert(item, preserveDelivery: item.seq != nil) }
+        mergedRevision = incoming.revision; mergedOwner = ownerIdentity
+        return revision != before
+    }
 
     init(items: [YimiItem] = []) {
         let ambientReplies = Set(items.filter { $0.id.hasPrefix("me-ambient-") }.map { "her-" + $0.id.dropFirst("me-ambient-".count) })
@@ -162,91 +208,175 @@ struct YimiConversationTimeline {
     }
 
     mutating func upsert(_ incoming: YimiItem, preserveDelivery: Bool = false) {
+        if let index = position(incoming.id), items[index] == incoming {
+            if incoming.seq != nil {
+                let settled = settleReply(incoming)
+                if !settled.isEmpty { changed(settled) }
+            }
+            return
+        }
         var item = incoming
-        if let index = items.firstIndex(where: { $0.id == item.id }) {
-            item.date = items[index].date
-            item.submissionEventID = item.submissionEventID ?? items[index].submissionEventID
-            item.submissionProcessedID = item.submissionProcessedID ?? items[index].submissionProcessedID
-            if preserveDelivery, items[index].delivery != nil {
-                item.delivery = items[index].delivery
-                item.queued = items[index].queued
-                item.submissionEventID = items[index].submissionEventID
-                item.submissionProcessedID = items[index].submissionProcessedID
+        if let index = position(item.id) {
+            let old = items[index]
+            item.date = old.date
+            item.submissionEventID = item.submissionEventID ?? old.submissionEventID
+            item.submissionProcessedID = item.submissionProcessedID ?? old.submissionProcessedID
+            if preserveDelivery, old.delivery != nil {
+                item.delivery = old.delivery
+                item.queued = old.queued
+                item.submissionEventID = old.submissionEventID
+                item.submissionProcessedID = old.submissionProcessedID
             }
-            if item.seq == nil { items[index] = item; return }
+            guard item != old else { return }
+            // A server item's unique sequence and retained timestamp fix its position.
+            if item.seq == old.seq {
+                items[index] = item
+                if item.callID != old.callID || item.turn != old.turn || item.role != old.role { reindex() }
+                updateUnsettled(item)
+                changed(item.seq == nil ? [item.id] : settleReply(item).union([item.id]))
+                return
+            }
             items.remove(at: index)
+            reindex()
         }
-        if let callID = item.callID, let turn = item.turn,
-                  let index = items.firstIndex(where: { existing in
-                      guard existing.callID == callID, let existingTurn = existing.turn else { return false }
-                      return existingTurn > turn || (existingTurn == turn && Self.roleOrder(existing.role) > Self.roleOrder(item.role))
-                  }) {
-            items.insert(item, at: index)
-        } else if let seq = item.seq, let index = items.firstIndex(where: {
-            $0.seq.map { $0 > seq } ?? ($0.date > item.date)
-        }) {
-            items.insert(item, at: index)
-        } else {
-            items.append(item)
-        }
-        if item.kind == .her {
-            for index in items.indices where items[index].queued == true &&
-                items[index].submissionProcessedID.map({ item.id == "her-" + $0 }) == true {
-                items[index].delivery = nil; items[index].queued = nil
+        var insertion: Int?
+        if let callID = item.callID, item.turn != nil {
+            let members = callMembers[callID] ?? []
+            if let last = members.last, Self.follows(items[position(last)!], item) {
+                if let next = members.first(where: { Self.follows(items[position($0)!], item) }) { insertion = position(next) }
             }
         }
-        // Server history follows its 5000-item retention; local calls keep their existing record budget.
-        let serverItems = items.filter { $0.seq != nil }
-        if serverItems.count > 5000 {
-            let retired = Set(serverItems.prefix(serverItems.count - 5000).map(\.id))
-            items.removeAll { retired.contains($0.id) }
+        if insertion == nil, let seq = item.seq, seq < newestSeq || item.date < newestLocalDate {
+            insertion = items.firstIndex { $0.seq.map { $0 > seq } ?? ($0.date > item.date) }
         }
-        let records = items.filter { $0.seq == nil && $0.callID == nil }
-        if records.count > 600 {
-            let retired = Set(records.prefix(records.count - 600).map(\.id))
-            items.removeAll { retired.contains($0.id) || $0.callID.map { retired.contains("call-" + $0) } == true }
+        if let insertion {
+            items.insert(item, at: insertion); reindex()
+        } else {
+            items.append(item); index(item, at: items.count - 1)
+        }
+        let touched = settleReply(item).union([item.id])
+        // Server history follows its 5000-item retention; local calls keep their existing record budget.
+        var retired = Set<String>()
+        if serverCount > 5000 {
+            retired.formUnion(items.lazy.filter { $0.seq != nil }.prefix(serverCount - 5000).map(\.id))
+        }
+        if recordCount > 600 {
+            let records = Set(items.lazy.filter { $0.seq == nil && $0.callID == nil }.prefix(recordCount - 600).map(\.id))
+            retired.formUnion(items.compactMap { records.contains($0.id) || $0.callID.map { records.contains("call-" + $0) } == true ? $0.id : nil })
+        }
+        if !retired.isEmpty { discard(retired) }
+        changed(touched.subtracting(retired), removed: retired)
+    }
+
+    private mutating func updateUnsettled(_ item: YimiItem) {
+        if item.delivery == .sending || item.queued == true { unsettled.insert(item.id) }
+        else { unsettled.remove(item.id) }
+    }
+    private mutating func settleReply(_ item: YimiItem) -> Set<String> {
+        guard item.kind == .her else { return [] }
+        var settled = Set<String>()
+        for id in unsettled {
+            let index = position(id)!
+            if items[index].queued == true && items[index].submissionProcessedID.map({ item.id == "her-" + $0 }) == true {
+                items[index].delivery = nil; items[index].queued = nil
+                unsettled.remove(id); settled.insert(id)
+            }
+        }
+        return settled
+    }
+    private mutating func index(_ item: YimiItem, at index: Int) {
+        positions[item.id] = index + positionBase
+        if let callID = item.callID { callMembers[callID, default: []].append(item.id) }
+        if let seq = item.seq { serverCount += 1; newestSeq = max(newestSeq, seq) }
+        else {
+            newestLocalDate = max(newestLocalDate, item.date)
+            if item.callID == nil { recordCount += 1 }
+        }
+        updateUnsettled(item)
+    }
+    private mutating func reindex() {
+        positions = YimiItemPositions(); positionBase = 0; callMembers = [:]; unsettled = []
+        serverCount = 0; recordCount = 0; newestSeq = 0; newestLocalDate = .distantPast
+        for (offset, item) in items.enumerated() { index(item, at: offset) }
+    }
+    private mutating func changed(_ ids: Set<String>, removed: Set<String> = []) {
+        previousRevision = revision; revision = UUID()
+        changedIDs = ids; removedIDs = removed
+    }
+    mutating func remove(ids: Set<String>) {
+        let removed = ids.filter { positions[$0] != nil }
+        guard !removed.isEmpty else { return }
+        discard(removed)
+        changed([], removed: removed)
+    }
+    private mutating func discard(_ removed: Set<String>) {
+        // Advancing server retention removes the oldest prefix. Its surviving ID positions stay valid.
+        if items.prefix(removed.count).allSatisfy({ removed.contains($0.id) && $0.callID == nil }) {
+            for item in items.prefix(removed.count) {
+                positions[item.id] = nil; unsettled.remove(item.id)
+                if item.seq != nil { serverCount -= 1 } else { recordCount -= 1 }
+            }
+            items.removeFirst(removed.count); positionBase += removed.count
+        } else {
+            items.removeAll { removed.contains($0.id) }; reindex()
         }
     }
 
     mutating func removeServerItems(seqs: Set<Int>, before: Int) {
-        items.removeAll { item in item.seq.map { seqs.contains($0) || $0 < before } == true }
+        remove(ids: Set(items.compactMap { item in item.seq.map { seqs.contains($0) || $0 < before } == true ? item.id : nil }))
     }
 
     private static func roleOrder(_ role: String?) -> Int { role == "user" ? 0 : role == "assistant" ? 1 : 2 }
+    private static func follows(_ existing: YimiItem, _ incoming: YimiItem) -> Bool {
+        guard let turn = existing.turn else { return false }
+        return turn > incoming.turn! || (turn == incoming.turn! && roleOrder(existing.role) > roleOrder(incoming.role))
+    }
 
-    mutating func accept(_ call: CentralCall, at date: Date = Date()) {
+    mutating func accept(_ call: CentralCall, at date: Date = Date(), ownerIdentity: String? = nil) {
         guard let callID = call.id else { return }
         let id = "call-" + callID
         let lines = call.lines.filter { $0.callID == callID }
-        if let record = items.first(where: { $0.id == id }) {
+        if let record = item(id: id) {
             var record = record
             record.via = call.isAmbient ? "ambient" : "call"
+            record.ownerIdentity = ownerIdentity
             if !call.isActive, record.endedAt == nil { record.endedAt = date }
             upsert(record)
         } else if call.isActive || !lines.isEmpty {
             upsert(YimiItem(id: id, kind: .call, text: "", date: date, endedAt: call.isActive ? nil : date,
-                via: call.isAmbient ? "ambient" : "call"))
+                via: call.isAmbient ? "ambient" : "call", ownerIdentity: ownerIdentity))
         }
+        let via = call.isAmbient ? "ambient" : "call"
         for line in lines {
-            upsert(YimiItem(id: "call-" + line.id, kind: line.role == "user" ? .me : .her, text: line.text,
-                date: date, via: call.isAmbient ? "ambient" : "call", callID: callID, turn: line.turn, role: line.role, privacy: line.privacy))
+            let id = "call-" + line.id
+            // The ID fixes call, turn and role. A growing live window changes only some retained lines.
+            if let saved = item(id: id), saved.text == line.text, saved.via == via,
+               saved.privacy == line.privacy, saved.ownerIdentity == ownerIdentity { continue }
+            upsert(YimiItem(id: id, kind: line.role == "user" ? .me : .her, text: line.text,
+                date: date, via: via, callID: callID, turn: line.turn, role: line.role, privacy: line.privacy,
+                ownerIdentity: ownerIdentity))
         }
     }
 
-    mutating func accept(_ reply: CentralAmbientReply, at date: Date = Date()) {
+    mutating func accept(_ reply: CentralAmbientReply, at date: Date = Date(), ownerIdentity: String? = nil) {
         let mine = "me-ambient-" + reply.id, hers = "her-" + reply.id
         let heard = reply.heard.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !heard.isEmpty, !items.contains(where: { $0.id == mine }) {
-            let item = YimiItem(id: mine, kind: .me, text: heard, date: date, via: "ambient")
-            if let index = items.firstIndex(where: { $0.id == hers }) { items.insert(item, at: index) }
+        if !heard.isEmpty, positions[mine] == nil {
+            let item = YimiItem(id: mine, kind: .me, text: heard, date: date, via: "ambient", ownerIdentity: ownerIdentity)
+            if let index = position(hers) { items.insert(item, at: index); reindex(); changed([mine]) }
             else { upsert(item) }
         }
-        upsert(YimiItem(id: hers, kind: .her, text: QwenHandoff.split(reply.text).display, date: date, via: "ambient", privacy: reply.privacy))
+        upsert(YimiItem(id: hers, kind: .her, text: QwenHandoff.split(reply.text).display, date: date, via: "ambient", privacy: reply.privacy,
+            ownerIdentity: ownerIdentity))
+        if var heard = item(id: mine) { heard.ownerIdentity = ownerIdentity; upsert(heard) }
     }
 
     /// Server admission settles both typed and spoken rows, including a queued row merged into shared history.
-    mutating func settleTypedSends(_ consumer: AssistantCentralTextConsumer) {
-        for item in items where item.kind == .me && (item.delivery == .sending || item.queued == true) {
+    @discardableResult mutating func settleTypedSends(_ consumer: AssistantCentralTextConsumer) -> Bool {
+        let before = revision
+        for id in unsettled {
+            let item = item(id: id)!
+            guard item.kind == .me else { continue }
             guard item.via == nil || item.via == "text" || item.submissionEventID != nil else { continue }
             var settled = item
             let event = item.submissionEventID ?? String(item.id.dropFirst("me-".count))
@@ -255,11 +385,12 @@ struct YimiConversationTimeline {
             } else { settled.delivery = .unconfirmed }
             if settled != item { upsert(settled) }
         }
+        return revision != before
     }
 
     mutating func accept(_ candidate: CentralVoiceCandidate, eventID: String? = nil, at date: Date = Date()) -> String {
         let id = "me-voice-" + candidate.id
-        if var item = items.first(where: { $0.id == id }) {
+        if var item = item(id: id) {
             if item.submissionEventID == nil, let eventID {
                 item.submissionEventID = eventID; item.delivery = .sending; upsert(item)
             }
@@ -272,7 +403,7 @@ struct YimiConversationTimeline {
 
     func callLines(_ callID: String?) -> [YimiItem] {
         guard let callID else { return [] }
-        return items.filter { $0.callID == callID && $0.kind != .call }
+        return (callMembers[callID] ?? []).compactMap { item(id: $0) }.filter { $0.kind != .call }
     }
 }
 
@@ -350,5 +481,23 @@ struct YimiChatWindow: Equatable {
         let allShown = !hides(loaded)
         limit += Self.step
         return allShown
+    }
+}
+
+/// Replies wait here until their durable timeline is visible. Owned by the conversation's MainActor.
+@MainActor final class YimiRenderedACKQueue {
+    private var acked = Set<String>()
+    private(set) var pending: [String: CentralTextPresentation] = [:]
+    func enqueue(_ presentation: CentralTextPresentation, id: String) {
+        if presentation.isFinal, !acked.contains(id) { pending[id] = presentation }
+    }
+    func drain(visible: Bool, save: () async -> Bool, send: (CentralTextPresentation) async -> Void) async {
+        let batch = pending
+        guard visible, !batch.isEmpty, await save() else { return }
+        for (id, presentation) in batch where pending[id] == presentation {
+            pending.removeValue(forKey: id)
+            guard acked.insert(id).inserted else { continue }
+            await send(presentation)
+        }
     }
 }

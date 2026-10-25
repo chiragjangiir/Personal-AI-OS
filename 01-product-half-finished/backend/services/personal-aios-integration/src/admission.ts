@@ -102,6 +102,8 @@ export class RunAdmission {
   }
   private ready: Promise<void> | undefined;
   private runOwner: ((entry: AdmissionEntry) => Promise<void>) | undefined;
+  private catalogGrants:(d:ProcessedEvent)=>string[]=()=>[];
+  setCatalogGrants(provider:(d:ProcessedEvent)=>string[]):void{this.catalogGrants=provider;}
   setRunOwner(owner: (entry: AdmissionEntry) => Promise<void>): void {
     check(!this.runOwner, 'ADMISSION_RUN_OWNER_CONFLICT'); this.runOwner=owner;
   }
@@ -111,6 +113,11 @@ export class RunAdmission {
   }
   private stateOwner: ((entry:AdmissionEntry,native?:NativeRun)=>Promise<void>)|undefined;
   private workOwner:((principal:string)=>void)|undefined;
+  private paidAdmission:((entry:AdmissionEntry)=>boolean)|undefined;
+  setPaidAdmission(owner:(entry:AdmissionEntry)=>boolean):void {this.paidAdmission=owner;}
+  resumePaidWork():void {
+    for(const session of new Set([...this.entries.values()].map(entry=>entry.record.session_id)))this.pump(session);
+  }
   setWorkOwner(owner:(principal:string)=>void):void {this.workOwner=owner;}
   setStateOwner(owner:(entry:AdmissionEntry,native?:NativeRun)=>Promise<void>):void {
     check(!this.stateOwner,'ADMISSION_STATE_OWNER_CONFLICT');this.stateOwner=owner;
@@ -401,6 +408,7 @@ export class RunAdmission {
       if (['retryable', 'reconcile_required'].includes(entry.record.state)) this.reentries.add(key);
       return;
     }
+    if(!entry.record.run_id&&['pending','retryable'].includes(entry.record.state)&&this.paidAdmission&&!this.paidAdmission(entry))return;
     const owner = entry.record.conversation_released?undefined:this.sessions.get(executionLane(entry));
     if (owner !== undefined && owner !== key) return;
     if(!entry.record.conversation_released)this.sessions.set(executionLane(entry), key);
@@ -478,8 +486,7 @@ export class RunAdmission {
         // has not reached native and must not consume retries or imply unknown acceptance.
         const handoff = (d.content.app_event as {handoff?: {thinking?: unknown}} | undefined)?.handoff;
         if (handoff !== undefined) check(handoff.thinking === 'enabled' || handoff.thinking === 'disabled', 'INVALID_HANDOFF_THINKING');
-        const body = {...input, grant_toolsets: await ownerActionGrant(d, this.ownerOrigin), instructions: skill, session_id: record.session_id,
-          memory_write: !isBuildTask(d) && !careDecision(d) && principalAttribution(d) !== null && principalAttribution(d) !== 'owner_gesture',
+        const body = {...input, grant_toolsets: [...new Set([...await ownerActionGrant(d, this.ownerOrigin),...this.catalogGrants(d)])], instructions: skill, session_id: record.session_id,
           ...(['background_scheduled', 'background_place'].includes(d.source.channel) ? {turn_budget: 'background' as const} : {}),
           ...(handoff ? {model_options: {reasoning: {enabled: handoff.thinking === 'enabled'}}} : {}),
           ...(careDecision(d) ? {care_decision: true as const, model_options: {reasoning: {enabled: false as const}}} : {})};
@@ -601,11 +608,22 @@ export class RunAdmission {
   }
   private finalize(key:string,entry:AdmissionEntry,native?:NativeRun):Promise<void> {
     // The retained admission input is the durable output obligation; terminal recovery never executes it.
+    const first=Promise.withResolvers<void>();
     const output=(async()=>{
-      await this.terminalOwner?.(structuredClone(entry),native?structuredClone(native):undefined);
-      await this.storage.removePending(key);
-    })().catch(()=>undefined);
-    this.owned.add(output);void output.then(()=>this.owned.delete(output));return output;
+      for(let attempt=0;;attempt++){
+        try {
+          await this.terminalOwner?.(structuredClone(entry),native?structuredClone(native):undefined);
+          await this.storage.removePending(key);
+          return;
+        } catch(error) {
+          if(this.closed||!(error instanceof ContractError)||error.status!==503)return;
+        } finally {first.resolve();}
+        // Delivery recovery keeps the same retained input, but releases native execution after the first attempt.
+        await this.pause(Math.min(30000,Math.max(NATIVE_STREAM_RECONNECT_MIN_MS,this.policy.poll_interval_ms)*2**Math.min(attempt,5)));
+        if(this.closed)return;
+      }
+    })();
+    this.owned.add(output);void output.then(()=>this.owned.delete(output));return first.promise;
   }
   private async cancelUnsent(key: string, entry: AdmissionEntry): Promise<void> {
     entry.record.retry_reason = 'cancelled_before_send'; delete entry.record.next_attempt_at_ms;
@@ -620,6 +638,12 @@ export class RunAdmission {
   find(runId: string, sessionId?: string): AdmissionEntry | undefined {
     const entry = [...this.entries.values()].find(e => e.record.run_id === runId && (sessionId===undefined||e.record.session_id === sessionId));
     return entry ? structuredClone(entry) : undefined;
+  }
+  modelUsageSource(runId:string,sessionId:string):AdmissionEntry|undefined {
+    const bound=runId?this.find(runId,sessionId):undefined;if(bound)return bound;
+    const pending=[...this.entries.values()].filter(entry=>entry.record.session_id===sessionId&&
+      !entry.record.run_id&&entry.record.state==='submitting');
+    return pending.length===1?structuredClone(pending[0]):undefined;
   }
   taskTargets(principal:string) {
     return [...this.entries.values()].filter(e=>e.record.principal_id===principal&&

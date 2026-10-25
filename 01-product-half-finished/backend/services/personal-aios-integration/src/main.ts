@@ -2,6 +2,7 @@ import type {ThinkingModeConfiguration} from './voice/contracts.ts';
 import {AsyncLocalStorage} from 'node:async_hooks';
 import {RuntimeEventStore,installRuntimeEventStore,emitRuntimeEvent} from './self-events.ts';
 import {PaymentAuthority} from './payment/authority.ts';
+import {openModelSettingsResources,type ModelSettingsConfiguration} from './model-settings-resources.ts';
 import {OwnerOverride} from './owner-override.ts';
 import {parsePaymentConfig} from './payment/config.ts';
 import {PAYMENT_MAX_ENROLMENT_CHARS} from './payment/wire-budget.ts';
@@ -48,6 +49,7 @@ function validThinkingMode(value:unknown):value is ThinkingModeConfiguration {
 }
 
 export interface CentralProvisionConfiguration {
+  model_settings?:ModelSettingsConfiguration;
   identity?:{owner_override_ttl_s?:number};
   payment?:unknown;
   storage_root: string; lock_file: string; port: number;
@@ -71,7 +73,7 @@ export interface CentralProvisionConfiguration {
   hermes_base_url: string; hermes_key_file: string; internal_key_file: string; skill_file: string;
   native_request_timeout_ms: number; http_request_timeout_ms: number; max_request_bytes: number;
   max_event_bytes: number; max_read_bytes: number; admission: AdmissionPolicy;
-  native_memory_receipts?: {enabled:true; profile_home:string};
+  core_profile?: {enabled:true; profile_home:string; native_profile_home?:string};
   /** Host voiceprint registry (owner + other-person profiles, `<storage_root>/voiceprints`). */
   voiceprint?: {speaker_model: {file: string; dim: number}; thresholds?: Partial<VoiceprintThresholds>; max_clusters?: number;
     scoring?: VoiceprintScoringConfig; trust_window_ms?: number;
@@ -84,8 +86,8 @@ export interface CentralProvisionConfiguration {
 export const CENTRAL_PROVISION_CONFIGURATION_FIELDS = Object.freeze({
   storage_root:true, lock_file:true, port:true, hermes_base_url:true, hermes_key_file:true, internal_key_file:true, skill_file:true,
   native_request_timeout_ms:true, http_request_timeout_ms:true, max_request_bytes:true, max_event_bytes:true, max_read_bytes:true,
-  admission:true, model_route:false, tts:false, formal_voice:false, voice_frontend:false, native_memory_receipts:false,
-  voiceprint:false, ambient:false, visual:false, archive_tiering:false, shutdown_drain_ms:false, session_folding:false, payment:false, identity:false,
+  admission:true, model_route:false, tts:false, formal_voice:false, voice_frontend:false, core_profile:false,
+  voiceprint:false, ambient:false, visual:false, archive_tiering:false, shutdown_drain_ms:false, session_folding:false, payment:false, identity:false,model_settings:false,
 } satisfies {[K in keyof CentralProvisionConfiguration]-?: {} extends Pick<CentralProvisionConfiguration,K> ? false : true});
 export type CentralProvisionResources = Omit<PersonalAIOSAssemblyResources, 'devices' | 'sourceAuthority' | 'media' | 'output'> & {self_events?:RuntimeEventStore;tts?: DashScopeTts; formal_voice?: CentralProvisionConfiguration['formal_voice']};
 interface Configuration extends CentralProvisionConfiguration {
@@ -163,7 +165,7 @@ export async function provisionCentralResources(config: CentralProvisionConfigur
     settings.cold!==null&&typeof settings.cold==='object'&&Object.keys(settings.cold).sort().join(',')==='password_file,url,username'&&
     typeof settings.cold.url==='string'&&typeof settings.cold.username==='string'&&settings.cold.username.length>0&&
     typeof settings.cold.password_file==='string'&&isAbsolute(settings.cold.password_file)&&
-    Number.isSafeInteger(settings.hot_days??2)&&(settings.hot_days??2)>=2&&Number.isSafeInteger(settings.min_free_bytes??1073741824)&&
+    Number.isSafeInteger(settings.hot_days??2)&&(settings.hot_days??2)>=1&&Number.isSafeInteger(settings.min_free_bytes??1073741824)&&
     (settings.min_free_bytes??1073741824)>0&&Number.isSafeInteger(settings.min_free_inodes??10000)&&
     (settings.min_free_inodes??10000)>0&&(settings.max_upload_kbps===undefined||Number.isSafeInteger(settings.max_upload_kbps)&&
     settings.max_upload_kbps>0),'INVALID_ARCHIVE_TIERING');
@@ -206,14 +208,14 @@ export async function provisionCentralResources(config: CentralProvisionConfigur
     'VOICE_FRONTEND_CONFIGURATION_INVALID');
   const turnConfig=voice?.call?.turn_manager===undefined?undefined:parseCallTurnConfiguration(voice.call.turn_manager,voice.call.model,voice.call.voice);
   check(!config.tts || voice, 'TTS_VOICE_FRONTEND_REQUIRED');
-  const memory = config.native_memory_receipts;
+  const memory = config.core_profile;
   check(memory === undefined || memory !== null && typeof memory === 'object' && !Array.isArray(memory) &&
-    Object.keys(memory).sort().join(',') === 'enabled,profile_home' && memory.enabled === true &&
-    typeof memory.profile_home === 'string' && isAbsolute(memory.profile_home) && normalize(memory.profile_home) === memory.profile_home,
-    'NATIVE_MEMORY_CONFIG_INVALID');
-  // Hermes reports profile_home as its resolved HERMES_HOME; an unresolved spelling would reject every native response.
+    Object.keys(memory).every(key => ['enabled','profile_home','native_profile_home'].includes(key)) && memory.enabled === true &&
+    [memory.profile_home, memory.native_profile_home ?? memory.profile_home].every(home =>
+      typeof home === 'string' && isAbsolute(home) && normalize(home) === home),
+    'CORE_PROFILE_CONFIG_INVALID');
   if (memory) check(await fs.realpath(memory.profile_home).then(real => real === memory.profile_home, () => false) &&
-    (await fs.stat(memory.profile_home)).isDirectory(), 'NATIVE_MEMORY_PROFILE_UNRESOLVED');
+    (await fs.stat(memory.profile_home)).isDirectory(), 'CORE_PROFILE_HOME_UNRESOLVED');
   const print = config.voiceprint;
   check(print === undefined || print !== null && typeof print === 'object' && !Array.isArray(print) &&
     Object.keys(print).every(key => ['speaker_model', 'thresholds', 'max_clusters', 'confirmation_ttl_ms','encryption_key_file','enrolment_sentences','scoring','trust_window_ms'].includes(key)) &&
@@ -240,12 +242,14 @@ export async function provisionCentralResources(config: CentralProvisionConfigur
     care: CareAuthority | undefined,payment:PaymentAuthority|undefined,visual:VisualMemory|undefined,locations:DeviceLocations|undefined,ownerOverride:OwnerOverride|undefined;
   let turnModel:Awaited<ReturnType<typeof openTurnModel>>|undefined;
   let disk:PosixStorage|undefined,selfEvents:RuntimeEventStore|undefined,detachSelf:(()=>void)|undefined;
+  let modelSettings:ReturnType<typeof openModelSettingsResources>|undefined;
   // The provisioning owner's release flushes write-behind voiceprint state and closes the journal before the lock goes.
   const release = async () => {
     const settled = await Promise.allSettled([Promise.resolve().then(()=>visual?.close()),Promise.resolve().then(()=>turnModel?.close())]);
     settled.push(...await Promise.allSettled([tts, voiceprint, journal, health, contacts, care,locations,payment,ownerOverride].map(owner => Promise.resolve().then(() => owner?.close()))));
     try{await disk?.close();}catch(reason){settled.push({status:'rejected',reason});}
     detachSelf?.();
+    modelSettings?.close();
     try {await selfEvents?.close();} catch(reason) {settled.push({status:'rejected',reason});}
     try {await lock();} catch (reason) {settled.push({status: 'rejected', reason});}
     const errors = settled.filter(result => result.status === 'rejected').map(result => result.reason);
@@ -253,6 +257,7 @@ export async function provisionCentralResources(config: CentralProvisionConfigur
   };
   try {
     const storage = disk = new PosixStorage(config.storage_root,tier?{cold:tier.cold,min_free_bytes:tier.min_free_bytes,min_free_inodes:tier.min_free_inodes}:{});
+    await storage.recoverPending();
     selfEvents=new RuntimeEventStore({directory:join(storage.root,'runtime-events'),onError:error=>emitRuntimeEvent({central_text_failed:'RUNTIME_EVENT_STORE_FAILED',code:(error as NodeJS.ErrnoException).code,at:Date.now()})});
     await selfEvents.flush();detachSelf=installRuntimeEventStore(selfEvents);
     ownerOverride=new OwnerOverride({storage,...(process.env.PAIOS_SECRET_ROOT?{secret_root:process.env.PAIOS_SECRET_ROOT}:{}),
@@ -264,6 +269,9 @@ export async function provisionCentralResources(config: CentralProvisionConfigur
     care = CareAuthority.open(join(storage.root, 'care'));
     locations=DeviceLocations.open(join(storage.root,'location'));
     payment=PaymentAuthority.open(join(storage.root,'payment'),{config:paymentConfig,owner_override_active:()=>ownerOverride!.active()});
+    const modelServiceKey=config.model_settings?await key(config.model_settings.service_key_file):undefined;
+    check(modelServiceKey===undefined||modelServiceKey!==internalKey&&modelServiceKey!==nativeKey,'MODEL_SETTINGS_SERVICE_KEY_NOT_SEPARATE');
+    if(config.model_settings&&modelServiceKey)modelSettings=openModelSettingsResources(storage.root,config.model_settings,config.hermes_base_url,modelServiceKey);
     if(print&&speakerModel){
       const registryOptions={policy:{...(print.trust_window_ms!==undefined?{trust_window_ms:print.trust_window_ms}:{}),...(print.thresholds?{thresholds:print.thresholds}:{}),...(print.max_clusters!==undefined?{max_clusters:print.max_clusters}:{})}};
       voiceprint=new VoiceprintRegistry(storage,speakerModel,{...registryOptions,scoring:configuredScoring(print.scoring,speakerModel),
@@ -274,7 +282,7 @@ export async function provisionCentralResources(config: CentralProvisionConfigur
       sample_rate: config.tts.sample_rate, ...(config.tts.endpoint ? {endpoint: config.tts.endpoint} : {}),
       ...(config.tts.instruction ? {instruction: config.tts.instruction} : {})}) : undefined;
     let native: HermesClient | undefined;
-    const nativeClient=()=>native??=new HermesClient(config.hermes_base_url,nativeKey,config.native_request_timeout_ms,config.max_read_bytes,memory?.profile_home);
+    const nativeClient=()=>native??=new HermesClient(config.hermes_base_url,nativeKey,config.native_request_timeout_ms,config.max_read_bytes,memory?.native_profile_home??memory?.profile_home);
     let callTurns:Parameters<typeof createQwenVoiceResources>[0]['callTurns'];
     if(turnConfig?.enabled){
       turnModel=await openTurnModel(turnConfig.model);await verifyModelFile(turnConfig.thinking_sound);
@@ -290,15 +298,16 @@ export async function provisionCentralResources(config: CentralProvisionConfigur
       const {faces,embedding:embeddingConfig,...retention}=config.visual,embedding=new DashScopeEmbedding({
         ...parseEmbeddingConfiguration(embeddingConfig,{endpoint:voice.endpoint}),region:voice.region,apiKey:voiceKey});
       visual=await VisualMemory.open(join(storage.root,'visual-memory'),{embedImage:(bytes,signal)=>embedding.embedImage(bytes,signal),
-        embedQuery:text=>embedding.embedQuery(text),describe:(bytes,signal)=>describeVision((bytes,prompt,signal)=>nativeClient().analyzeVision(bytes,prompt,signal),bytes,signal)},
+        embedQuery:text=>embedding.embedQuery(text),describe:(bytes,signal,context)=>describeVision((bytes,prompt,signal)=>nativeClient().analyzeVision(bytes,prompt,signal,context),bytes,signal)},
         retention,voiceprint,faces?new CpuFaceEngine(faces):undefined,storage.cold);
     }
     const resources: CentralProvisionResources = {
       storage,self_events:selfEvents,owner_override:ownerOverride,session_folding:config.session_folding??true, get native() {return nativeClient();},
       ...(tier?{archive_tiering:{hot_days:tier.hot_days,max_upload_kbps:tier.max_upload_kbps}}:{}),
       ...(visual?{visual_memory:visual}:{}),
-      // One provisioned L2 receipt source: the native client scope and the runtime receipt reader share this profile.
-      ...(memory ? {native_memory_receipts: Object.freeze({enabled: true as const, profile_home: memory.profile_home})} : {}),
+      // The native identity stays bound to Hermes; the generated view is writable only by the platform.
+      ...(memory ? {core_profile: Object.freeze({enabled: true as const, profile_home: memory.profile_home,
+        source_profile_home: memory.native_profile_home ?? memory.profile_home})} : {}),
       payment,payment_ports:{enrolment_sentences:print?.enrolment_sentences??[
         '依米，明天早上八点提醒我开会。','今天中午我想吃一碗牛肉面，不要香菜。','帮我看看周末的天气，适不适合去爬山。',
         '我刚才和老王聊的那个项目，下周一要交方案。','给我妈发个消息，说我晚上七点到家。','最近睡眠不太好，晚上总是醒好几次。',
@@ -308,7 +317,7 @@ export async function provisionCentralResources(config: CentralProvisionConfigur
       ...(tts ? {tts} : {}),
       ...(config.formal_voice ? {formal_voice:{...config.formal_voice}} : {}),
       ...(voice && voiceKey ? {voice: createQwenVoiceResources({
-        ...(callTurns?{callTurns}:{}),classifyCall:(text,signal)=>nativeClient().classifyCall(text,signal),searchCall:(query,signal)=>nativeClient().searchCall(query,signal),
+        ...(callTurns?{callTurns}:{}),classifyCall:(text,signal,context)=>nativeClient().classifyCall(text,signal,context),searchCall:(query,signal)=>nativeClient().searchCall(query,signal),
         configuration: {usable: true, provider: voice.provider, model: voice.model, ...(voice.dialect ? {dialect: voice.dialect} : {}), ...(voice.transcription_model ? {transcription_model: voice.transcription_model} : {}), region: voice.region,
           endpoint: voice.endpoint, voice: voice.voice, instructions: voice.instructions, apiKey: voiceKey,
           ...(voice.call ? {call: {model: voice.call.model, voice: voice.call.voice, ...(voice.call.dialect ? {dialect: voice.call.dialect} : {}), ...(voice.call.transcription_model ? {transcription_model: voice.call.transcription_model} : {}),
@@ -322,7 +331,8 @@ export async function provisionCentralResources(config: CentralProvisionConfigur
         ...createFormalVoiceAuthority(storage),
         onError: error => console.error('VOICE_FRONTEND_FAILED', error instanceof Error ? error.message : 'unknown')})} : {}),
       admission: config.admission, skill, max_event_bytes: config.max_event_bytes, max_read_bytes: config.max_read_bytes,
-      http: {internal_token: internalKey,...(paymentKey?{payment_key:paymentKey}:{}), max_request_bytes: config.max_request_bytes,
+      ...(modelSettings?{model_settings:modelSettings}:{}),
+      http: {internal_token: internalKey,...(paymentKey?{payment_key:paymentKey}:{}),...(modelServiceKey?{model_settings_key:modelServiceKey}:{}), max_request_bytes: config.max_request_bytes,
         resource_snapshot:()=>({turn:turnModel?.snapshot()??null,visual:visual?.resourceSnapshot()??null}),
         request_timeout_ms: config.http_request_timeout_ms, ...(config.model_route ? {model_route: config.model_route} : {})},
     };

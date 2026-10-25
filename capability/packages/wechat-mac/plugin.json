@@ -1,0 +1,93 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "wechat-mac",
+  "version": "1.0.0",
+  "description": "Existing messaging transports with gateway consent and receipt v1.",
+  "extensions": {
+    "ai.yimi.capability": {
+      "schema": "yimi.capability.v1",
+      "receipt_schema": 1,
+      "compat": {
+        "hermes": ">=0.22.5 <0.24",
+        "gateway_api": 1
+      },
+      "maintainer": "lead",
+      "runtime": {
+        "server": "wechat-mac",
+        "lazy": true,
+        "idle_timeout_seconds": 900,
+        "host": "shared"
+      },
+      "secrets": [],
+      "network": {
+        "egress": []
+      },
+      "scopes": [
+        "owner"
+      ],
+      "tools": {
+        "wechat_send_text": {
+          "effect": "send",
+          "target": "$.recipient",
+          "task_type": "wechat_send_text",
+          "retry": "after_check",
+          "check_with": "wechat_read_recent",
+          "context_inject": [
+            "context",
+            "idempotency_key"
+          ]
+        },
+        "wechat_send_file": {
+          "effect": "send",
+          "target": "$.recipient",
+          "task_type": "wechat_send_file",
+          "retry": "after_check",
+          "check_with": "wechat_read_recent",
+          "context_inject": [
+            "context",
+            "idempotency_key"
+          ]
+        },
+        "wechat_reply": {
+          "effect": "send",
+          "target": "$.recipient",
+          "task_type": "wechat_reply",
+          "retry": "after_check",
+          "check_with": "wechat_read_recent",
+          "context_inject": [
+            "context",
+            "idempotency_key"
+          ]
+        },
+        "wechat_read_recent": {
+          "effect": "observe",
+          "target": "$.recipient",
+          "retry": "forbidden",
+          "context_inject": [
+            "context"
+          ]
+        }
+      },
+      "staging": {
+        "fake": {
+          "command": "python3",
+          "args": [
+            "-m",
+            "capability.hosts.python",
+            "capability.packages.wechat-mac.fake.server"
+          ]
+        }
+      },
+      "tests": {
+        "contract": "tests/contract.yaml"
+      },
+      "provenance": {
+        "source_commit": "decaff83c56b5e188b229a11e79b32106eeccf43",
+        "workshop_run": null,
+        "adapter_modules": [
+          "server/server.py"
+        ]
+      }
+    }
+  }
+}

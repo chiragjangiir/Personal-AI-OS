@@ -92,3 +92,48 @@ final class YimiConversationStoreTests: XCTestCase {
     }
 
 }
+
+
+extension YimiConversationStoreTests {
+    @MainActor func testExt13RenderedDrainKeepsRepliesQueuedWhileAwaitingACK() async throws {
+        let fixture = try CentralTextTestFixture(); var consumer = try fixture.consumer()
+        for chunk in try fixture.chunks() { try consumer.accept(chunk) }
+        let presentation = try XCTUnwrap(consumer.presentation)
+        let queue = YimiRenderedACKQueue()
+        queue.enqueue(presentation, id: "a")
+        var sent: [String] = []
+        await queue.drain(visible: true, save: { true }, send: { _ in
+            sent.append("a")
+            await Task.yield()
+            queue.enqueue(presentation, id: "b")
+        })
+        XCTAssertNotNil(queue.pending["b"], "The ACK for a must not erase b")
+        await queue.drain(visible: true, save: { true }, send: { _ in sent.append("b") })
+        XCTAssertEqual(sent, ["a", "b"])
+        XCTAssertTrue(queue.pending.isEmpty)
+    }
+}
+
+
+extension YimiConversationStoreTests {
+    @MainActor func testExt13RenderedDrainOnlyACKsItsDurableSnapshot() async throws {
+        let fixture = try CentralTextTestFixture(); var consumer = try fixture.consumer()
+        for chunk in try fixture.chunks() { try consumer.accept(chunk) }
+        let presentation = try XCTUnwrap(consumer.presentation), queue = YimiRenderedACKQueue()
+        queue.enqueue(presentation, id: "a")
+        var sends = 0
+        await queue.drain(visible: true, save: {
+            queue.enqueue(presentation, id: "b")
+            return true
+        }, send: { _ in sends += 1 })
+        XCTAssertEqual(sends, 1)
+        XCTAssertNotNil(queue.pending["b"])
+        await queue.drain(visible: false, save: { XCTFail("Hidden chat must not drain"); return true }, send: { _ in XCTFail("Hidden chat must not ACK") })
+        await queue.drain(visible: true, save: { false }, send: { _ in XCTFail("Unsaved chat must not ACK") })
+        XCTAssertNotNil(queue.pending["b"])
+        await queue.drain(visible: true, save: { true }, send: { _ in sends += 1 })
+        XCTAssertEqual(sends, 2)
+        queue.enqueue(presentation, id: "b")
+        XCTAssertTrue(queue.pending.isEmpty, "Same reply version is ACKed once")
+    }
+}

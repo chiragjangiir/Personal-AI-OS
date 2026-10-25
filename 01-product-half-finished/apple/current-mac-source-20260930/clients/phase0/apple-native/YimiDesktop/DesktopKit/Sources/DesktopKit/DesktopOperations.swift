@@ -64,7 +64,7 @@ extension Desktop {
             if cap.info == nil {
                 let stage = try FileStage(target: cap, directory: true), fd = try stage.fileDescriptor(makeDirectory: true); close(fd)
                 record.undo = UndoRecord(kind: "create", originalPath: cap.committedPath); try recordAudit(record)
-                try await interleave("staged"); try checkCommit(epoch); bind(&record, info: try stage.commit(), path: cap.committedPath)
+                try await commitStage(stage, epoch: epoch, record: &record)
             } else if cap.info!.st_mode & S_IFMT != S_IFDIR { throw ToolFailure("GUARD_EXISTS", "目标已存在") }
             return FileText.value("Successfully created directory " + args["path"]!.stringValue!)
         case "move_file":
@@ -89,34 +89,16 @@ extension Desktop {
     nonisolated static func mtime(_ info: stat) -> Double { Double(info.st_mtimespec.tv_sec) + Double(info.st_mtimespec.tv_nsec) / 1e9 }
     func prepareWrite(_ cap: FileCapability, audit: String) async throws -> UndoRecord {
         guard cap.info != nil else { return UndoRecord(kind: "create", originalPath: cap.committedPath) }
-        let source = try cap.requireFile()
-        let directory = store.appendingPathComponent("undo").appendingPathComponent(audit)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
-        let backup = directory.appendingPathComponent((cap.path as NSString).lastPathComponent)
-        try await Self.offActor {
-            let parent = open(directory.path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
-            guard parent >= 0 else { throw GuardPath.posix(backup.path) }; defer { close(parent) }
-            if fclonefileat(source, parent, backup.lastPathComponent, 0) != 0 {
-                guard [EXDEV, ENOTSUP, EINVAL].contains(errno) else { throw GuardPath.posix(backup.path) }
-                let fd = openat(parent, backup.lastPathComponent, O_RDWR | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
-                guard fd >= 0 else { throw GuardPath.posix(backup.path) }; defer { close(fd) }
-                _ = try Self.copyDescriptor(source, to: fd, maximum: cap.info!.st_size)
-            }
-            let saved = openat(parent, backup.lastPathComponent, O_RDONLY | O_NOFOLLOW | O_CLOEXEC)
-            guard saved >= 0 else { throw GuardPath.posix(backup.path) }; defer { close(saved) }
-            guard fsync(saved) == 0, fsync(parent) == 0 else { throw GuardPath.posix(backup.path) }
-            for ancestor in [directory.deletingLastPathComponent(), directory.deletingLastPathComponent().deletingLastPathComponent()] {
-                let fd = open(ancestor.path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
-                guard fd >= 0 else { throw GuardPath.posix(ancestor.path) }; defer { close(fd) }
-                guard fsync(fd) == 0 else { throw GuardPath.posix(ancestor.path) }
-            }
-            try Task.checkCancellation()
-        }
+        _ = try cap.requireFile()
+        let backup = store.appendingPathComponent("undo").appendingPathComponent(audit).appendingPathComponent((cap.path as NSString).lastPathComponent)
         return UndoRecord(kind: "overwrite", originalPath: cap.path, backupPath: backup.path, previousDevice: UInt64(UInt32(bitPattern: cap.info!.st_dev)), previousInode: cap.info!.st_ino, previousSize: cap.info!.st_size, previousMtime: Self.mtime(cap.info!))
     }
     @discardableResult func commitStage(_ stage: FileStage, epoch: UInt64, record: inout AuditRecord) async throws -> stat {
         try await interleave("staged"); try checkCommit(epoch)
-        record.undo?.replacement = try stage.replacementRecord(); try recordAudit(record)
+        let intent = try stage.replacementRecord()
+        if record.undo?.kind == "create" { record.undo?.creation = intent }
+        else { record.undo?.replacement = intent }
+        try recordAudit(record)
         let info = try stage.commit(checkpoint: fileCheckpoint)
         bind(&record, info: info, path: stage.target.committedPath)
         try await finishBackup(stage, record: &record)

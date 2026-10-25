@@ -54,12 +54,12 @@ test('the internal call source attributes identified owner speech; the same exte
   assert.throws(() => validateProcessed({...call, user_identity: 'someone-else'}), /D_ORIGIN_MISMATCH/);
 });
 
-test('native memory_write follows attribution: typed prompt and owner call turn true, plain observation false', async t => {
+test('attributed turns never request a native memory writer', async t => {
   const {storage, accept} = await setup(t);
   const bodies: {session: string; memory_write: boolean}[] = [];
   const native = {
-    async create(body: {session_id: string; memory_write: boolean}): Promise<NativeRun> {
-      bodies.push({session: body.session_id, memory_write: body.memory_write});
+    async create(body: {session_id: string}): Promise<NativeRun> {
+      bodies.push({session: body.session_id, memory_write: Object.hasOwn(body,'memory_write')});
       return {run_id: `run-${bodies.length}`, session_id: body.session_id, conversation_session_id: body.session_id, status: 'completed'};
     },
     async status(runId: string): Promise<NativeRun> { return {run_id: runId, session_id: `s${runId.slice(4)}`, conversation_session_id: `s${runId.slice(4)}`, status: 'completed'}; },
@@ -73,7 +73,7 @@ test('native memory_write follows attribution: typed prompt and owner call turn 
   for (let i = 0; i < 400 && bodies.length < 3; i++) await new Promise(resolve => setTimeout(resolve, 5));
   // Join owned admission work before the temporary storage root is removed.
   await admission.close();
-  assert.deepEqual(Object.fromEntries(bodies.map(b => [b.session, b.memory_write])), {s1: true, s2: true, s3: false});
+  assert.deepEqual(Object.fromEntries(bodies.map(b => [b.session, b.memory_write])), {s1: false, s2: false, s3: false});
 });
 
 test('L3 subject port: an owner call turn may name the principal as known_person; an unattributed observation may not', async t => {

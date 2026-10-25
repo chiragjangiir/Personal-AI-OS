@@ -15,14 +15,16 @@ import {randomBytes} from 'node:crypto';
 import {DatabaseSync,backup} from 'node:sqlite';
 import {PosixStorage} from './storage.ts';
 import {OriginalAdmission} from './original-admission.ts';
-import {finalizeSession,recoverFinalSessions} from './session-finalization.ts';
+import {finalizeSession} from './session-finalization.ts';
+import {discoverSessionRecords} from './session-discovery.ts';
 import type {CallAudioTrack,FinalSession} from './session-records.ts';
 export type {CallAudioTrack} from './session-records.ts';
 import {performance} from 'node:perf_hooks';
 
 type TierRecord=Omit<ColdRecord,'bytes'>;
-export interface TierUploadPolicy {busy?:()=>boolean;max_upload_kbps?:number}
+export interface TierUploadPolicy {busy?:()=>boolean;max_upload_kbps?:number;budget_ms?:number}
 class TierUploadDeferred extends Error {}
+class MaintenanceClosed extends Error {}
 
 type Capture=({kind:'stream'|'unknown';raw:Omit<RawEvent,'payload'>|Omit<UnknownClockRaw,'payload'>;chunk:TrackChunk}|
   {kind:'original';raw:Omit<RawEvent,'payload'>})&{trusted:TrustedContext;received_at:string;binding?:unknown};
@@ -62,6 +64,15 @@ export class RawArchive implements OriginalArchive {
   private tierNext:TierRecord|undefined;
   private nextUploadAt=0;
   private evictionAfter='';
+  private foldWork:Promise<void>|undefined;
+  private foldResume:(()=>void)|undefined;
+  private foldPaused=Promise.withResolvers<void>();
+  private maintenanceDeadline=0;
+  private maintenanceBusy:()=>boolean=()=>false;
+  private legacyDiscovered=false;
+  private readonly folding={enabled:true,phase:'idle',sessions_remaining:0,files_remaining:0,completed:0,
+    discovery:{scanned:0,adopted:0,unresolved:0},
+    active_raw_ref:null as string|null,last_error:null as string|null,observed_at:null as string|null};
   private removal:((principal:string,processed:readonly string[],rawRefs:readonly string[])=>void|Promise<void>)|undefined;
   async setRemoval(owner:(principal:string,processed:readonly string[],rawRefs:readonly string[])=>void|Promise<void>):Promise<void> {
     check(!this.removal,'ARCHIVE_REMOVAL_OWNER_CONFLICT');this.removal=owner;
@@ -105,7 +116,8 @@ export class RawArchive implements OriginalArchive {
       this.notify('L5_CAPTURE_PAUSED',(record as Capture|undefined)?.trusted.principal_id);},
       record=>requireRawAvailable(storage,this.captureRef(record as Capture)),async record=>{
         const capture=record as Capture,ref=this.captureRef(capture);
-        if(this.endingSessions.has(ref)||capture.kind==='stream'&&await storage.readFinal?.(ref))await this.finalizeSession(ref);
+        if(this.endingSessions.has(ref))await this.endSession(ref);
+        if(capture.kind==='stream'&&await storage.readFinal?.(ref))await storage.resumeFinalCleanup?.(ref);
       });
     if(storage instanceof PosixStorage){storage.setReservePolicy(async bytes=>{await this.evictCold(Date.now(),true,bytes);});
       storage.setAlert(error=>this.notify(error instanceof Error?error.message:String(error)));}
@@ -115,8 +127,8 @@ export class RawArchive implements OriginalArchive {
     const work=Promise.resolve().then(()=>this.alert(reason,principal));this.alertWork.add(work);
     void work.catch(()=>console.warn('L5_OWNER_ALERT_UNDELIVERED')).finally(()=>this.alertWork.delete(work));
   }
-  setHotDays(days=2){check(Number.isSafeInteger(days)&&days>=2,'INVALID_HOT_DAYS');this.hotDays=days;}
-  setSessionFolding(enabled:boolean){this.sessionFolding=enabled;}
+  setHotDays(days=2){check(Number.isSafeInteger(days)&&days>=1,'INVALID_HOT_DAYS');this.hotDays=days;}
+  setSessionFolding(enabled:boolean){this.sessionFolding=enabled;this.folding.enabled=enabled;}
   async prepareCapture(){await this.storage.prepareCapture?.();}
   /** Only the producer's publication wait detaches. The admitted original and its retry job remain durable. */
   waitPublished<T>(admitted:{key:string|string[];commit:Promise<T>},signal?:AbortSignal):Promise<T>{
@@ -140,7 +152,7 @@ export class RawArchive implements OriginalArchive {
       }
       for(const [principal,refs] of deleted)await this.deleteMany(refs,principal);
       for(const key of await this.storage.listHot?.('session-ends')??[])this.endingSessions.add(`l5:${key}`);
-      await this.admission.recover();await recoverFinalSessions(this.storage,this.streams,this.sessionFolding);
+      await this.admission.recover();
     })().catch(error=>{this.recovery=undefined;throw error;});
   }
   finalizeSession(rawRef:string,endedBy='source_exhausted'){
@@ -148,8 +160,15 @@ export class RawArchive implements OriginalArchive {
     return this.exclusively(async()=>{const final=await finalizeSession(this.storage,this.streams,rawRef,endedBy,this.sessionFolding);
       if(final||!this.sessionFolding)this.endingSessions.delete(rawRef);return final;});
   }
+  /** Acquisition records only the end intent. The maintenance tick owns physical folding. */
+  endSession(rawRef:string,endedBy='source_exhausted'){
+    this.endingSessions.add(rawRef);
+    // The existing original-write fence serializes this short fact; remote packing must not delay call/PTT closure.
+    const end=finalizeSession(this.storage,this.streams,rawRef,endedBy,false);
+    this.lifecycle=Promise.all([this.lifecycle,end]).catch(()=>undefined);return end;
+  }
   async close(){this.closing=true;try{await Promise.allSettled([this.recovery]);await this.admission.close();}
-    finally{await this.lifecycle;await this.tierScan?.return(null);while(this.alertWork.size)await Promise.allSettled([...this.alertWork]);}}
+    finally{this.foldResume?.();await this.foldWork;await this.lifecycle;await this.tierScan?.return(null);while(this.alertWork.size)await Promise.allSettled([...this.alertWork]);}}
   async admitStream(raw:RawEvent,trusted:TrustedContext,chunk:TrackChunk){
     ({raw,trusted,chunk}=structuredClone({raw,trusted,chunk}));const received_at=this.now();
     this.streams.validateInput(raw,trusted,received_at,chunk);
@@ -252,7 +271,72 @@ export class RawArchive implements OriginalArchive {
       received:record.event.received_at as string,objects:[{hash:record.payload_sha256 as string,format:record.chunk.format as string}]};
   }
   /** Physical tiers preserve every namespace/key and the immutable archive proofs. No clock or media reclassification. */
-  packingSnapshot(){return (this.storage as PosixStorage).cold?.snapshot()??null;}
+  packingSnapshot(){const cold=(this.storage as PosixStorage).cold?.snapshot();
+    return {...cold,active:cold?.active??0,queued:cold?.queued??0,folding:this.maintenanceSnapshot()};}
+  maintenanceSnapshot(){return {...this.folding,discovery:{...this.folding.discovery},files_scope:'tracked loose records in pending folds; refreshed between sessions'};}
+  private foldCheckpoint=async()=>{
+    await new Promise<void>(resolve=>setImmediate(resolve));
+    while(!this.closing&&(this.maintenanceBusy()||performance.now()>=this.maintenanceDeadline)){
+      this.folding.phase='yielded';
+      const gate=Promise.withResolvers<void>();this.foldResume=()=>gate.resolve();this.foldPaused.resolve();await gate.promise;
+    }
+    if(this.closing)throw new MaintenanceClosed();
+  };
+  /** One resumable sweep on the existing maintenance clock; durable intents remain the recovery authority. */
+  private async foldSessions(now:number){
+    this.folding.phase='discovering';
+    if(!this.legacyDiscovered){
+      await discoverSessionRecords(this.storage,this.foldCheckpoint,state=>{this.folding.discovery=state;});
+      this.legacyDiscovered=true;
+    }
+    const refs=new Set([...(await this.storage.pendingFinals?.()??[]),...(await this.storage.listHot?.('session-ends')??[]).map(k=>`l5:${k}`)]);
+    const candidates:{ref:string;at:number;files:number;idle:boolean}[]=[];
+    for(const ref of await this.storage.activeSessionRefs?.()??[]){await this.foldCheckpoint();refs.add(ref);}
+    for(const ref of refs){
+      await this.foldCheckpoint();let at:number,idle=false;
+      try{at=await this.storage.modifiedAt!('session-ends',ref.slice(3));}
+      catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;
+        const final=await this.storage.readFinal?.(ref);
+        if(final)at=0;
+        else{const head=await this.streams.head(ref,{checkpoint:this.foldCheckpoint});if(!head)continue;
+          at=head.chunks.reduce((latest,c)=>Math.max(latest,Date.parse(c.received_at)),-Infinity);if(at>now-30*60000)continue;idle=true;}}
+      candidates.push({ref,at,files:await this.storage.sessionRecordCount?.(ref)??0,idle});
+    }
+    candidates.sort((a,b)=>a.at-b.at||a.ref.localeCompare(b.ref));
+    this.folding.sessions_remaining=candidates.length;this.folding.files_remaining=candidates.reduce((n,c)=>n+c.files,0);
+    this.folding.observed_at=new Date(now).toISOString();
+    for(const candidate of candidates){
+      await this.foldCheckpoint();this.folding.phase='folding';this.folding.active_raw_ref=candidate.ref;
+      try{
+        const final=await finalizeSession(this.storage,this.streams,candidate.ref,'idle_timeout',true,
+          {checkpoint:this.foldCheckpoint,...(candidate.idle?{idle_before:now-30*60000}:{})});
+        if(final){this.folding.completed++;this.folding.sessions_remaining--;this.folding.files_remaining-=candidate.files;this.endingSessions.delete(candidate.ref);}
+      }catch(error){if(error instanceof MaintenanceClosed)throw error;
+        this.folding.last_error=`${candidate.ref}: ${error instanceof Error?error.message:String(error)}`;this.notify('L5_SESSION_FOLD_FAILED');}
+    }
+    this.folding.active_raw_ref=null;this.folding.phase='idle';
+  }
+  maintenance(hotDays=this.hotDays,now=Date.now(),upload:TierUploadPolicy={}){
+    return this.exclusively(async()=>{
+      this.setHotDays(hotDays);const started=performance.now(),budget=upload.budget_ms??5000,deadline=started+budget;
+      // Folding and cold packing share this tick's budget, so a large fold cannot starve evacuation.
+      this.maintenanceDeadline=started+budget*((this.storage as PosixStorage).cold?0.5:1);
+      this.maintenanceBusy=upload.busy??(()=>false);
+      if(this.closing||this.maintenanceBusy())return;
+      if(this.sessionFolding){
+        this.foldPaused=Promise.withResolvers<void>();
+        if(!this.foldWork)this.foldWork=this.foldSessions(now).catch(error=>{
+          if(!(error instanceof MaintenanceClosed)){this.folding.last_error=error instanceof Error?error.message:String(error);this.notify('L5_SESSION_FOLD_FAILED');}
+        }).finally(()=>{this.foldWork=undefined;this.foldResume=undefined;});
+        else{this.foldResume?.();this.foldResume=undefined;}
+        await Promise.race([this.foldWork,this.foldPaused.promise]);
+      }
+      if((this.storage as PosixStorage).cold&&!this.maintenanceBusy()&&performance.now()<deadline){
+        await this.moveColdOwned({...upload,budget_ms:deadline-performance.now()});
+        if(!this.maintenanceBusy()&&performance.now()<deadline)await this.evictCold(now,false,0,()=>this.maintenanceBusy()||performance.now()>=deadline);
+      }
+    });
+  }
   async moveCold(hotDays=2,now=Date.now(),upload:TierUploadPolicy={}):Promise<{segments:number;hot_bytes:number;cold_bytes:number}>{
     this.setHotDays(hotDays);return this.exclusively(async()=>{const result=await this.moveColdOwned(upload);
       await this.evictCold(now,false);return result;}).catch(error=>{
@@ -269,7 +353,10 @@ export class RawArchive implements OriginalArchive {
       // Referenced originals precede metadata so a paused upload cannot strand an unpacked object.
       yield {namespace:'objects',key:final.object_hash};
       for(const object of final.retained_objects??[])yield {namespace:'objects',key:object.key,format:object.format};
-      yield {namespace:'session-finals',key};
+      // Bounded folds leave overflow and later processing proofs at their original keys in the same owner ledger.
+      for(const record of await this.storage.sessionRecords?.(final.raw_ref,true)??[])yield record;
+      // The existing rollback readers cap a decoded cold object at 64 MiB; SQLite still owns oversized metadata.
+      if(await this.storage.hotSize!('session-finals',key)<=64*1024*1024)yield {namespace:'session-finals',key};
     }
     for await(const key of this.storage.hotKeys!('manifests')){
       let record:ReturnType<RawArchive['sourceMetadata']>;
@@ -288,10 +375,11 @@ export class RawArchive implements OriginalArchive {
     try{
       // At most two 2048-record / 8-MiB packs per tick. One existing object may be up to the 64-MiB codec limit.
       // A retained directory iterator bounds discovery too; restart safely rescans the authoritative cold index.
-      while(segments<2&&!finished&&scanned<8192&&performance.now()-started<5000){
+      while(segments<2&&!finished&&scanned<8192&&performance.now()-started<(upload.budget_ms??5000)){
         if(upload.busy?.()||Date.now()<this.nextUploadAt)break;
         const records:ColdRecord[]=[],ids=new Set<string>();let size=0;
-        while(records.length<2048&&scanned<8192&&performance.now()-started<5000){
+        while(records.length<2048&&scanned<8192&&performance.now()-started<(upload.budget_ms??5000)){
+          if(upload.busy?.())throw new TierUploadDeferred();
           if(!this.tierNext){const next=await scan.next();
             if(next.done){finished=true;this.tierScan=undefined;break;}
             scanned++;if(!next.value)continue;this.tierNext=next.value;}
@@ -314,12 +402,13 @@ export class RawArchive implements OriginalArchive {
     }catch(error){await this.tierScan?.return(null);this.tierScan=undefined;this.tierNext=undefined;
       if(error instanceof TierUploadDeferred)return {segments,hot_bytes,cold_bytes};throw error;}
   }
-  private async evictCold(now:number,emergency:boolean,pendingBytes=0){
+  private async evictCold(now:number,emergency:boolean,pendingBytes=0,yieldWork=()=>false){
     const disk=this.storage as PosixStorage,cold=disk.cold;if(!cold)return 0;
     const before=now-this.hotDays*86400000;let freed=0,removed=0;
     let packs=await cold.packs(true,this.evictionAfter,8);
     if(packs.length===0&&this.evictionAfter){this.evictionAfter='';packs=await cold.packs(true,'',8);}
     for(const pack of packs){
+      if(yieldWork())break;
       if(emergency&&await disk.reserveFits(pendingBytes))break;
       this.evictionAfter=pack.key;
       const selection=[];
@@ -329,9 +418,10 @@ export class RawArchive implements OriginalArchive {
       let verified:Awaited<ReturnType<typeof cold.verifiedRecords>>;
       try{verified=await cold.verifiedRecords(selection);}
       catch(error){this.notify('L5_COLD_VERIFICATION_FAILED');throw new AggregateError([error],'L5_COLD_VERIFICATION_FAILED');}
-      // Raise the owner notice before crossing the 48-hour promise, outside the original-write fence.
+      // Raise the owner notice before crossing the configured hot window, outside the original-write fence.
       if(emergency&&verified.length)await this.alert('L5_HOT_WINDOW_EMERGENCY');
       for(const record of verified){
+        if(yieldWork())return freed;
         const remove=async()=>{
           if(emergency&&await disk.reserveFits(pendingBytes))return false;
           const current=(await cold.locations([record]))[0];
@@ -502,6 +592,13 @@ export class RawArchive implements OriginalArchive {
     }
     for(const input of pending){if(targets.has(input.ref))remove.push({namespace:'raw-ingress',key:input.key});else preserved.add(input.hash);}
     for(const ref of liveRefs)for(const record of await this.storage.sessionRecords?.(ref)??[])sharedRecords.add(`${record.namespace}:${record.key}`);
+    // Legacy peers may not yet have an owner ledger. Their durable route still owns its shared span.
+    for(const key of await this.storage.list('audio-consumer-routes')){
+      const route=JSON.parse(Buffer.from(await this.storage.read('audio-consumer-routes',key)).toString());
+      if(!liveRefs.has(route.raw_ref)||deleted.has(route.raw_ref))continue;
+      check(key===digest([route.principal_id,route.device_id,route.raw_ref]),'AUDIO_ROUTE_CONFLICT',409);
+      sharedRecords.add(`audio-consumer-spans:${digest([route.principal_id,route.device_id,route.source_scope,route.capture_span])}`);
+    }
     for(const final of removedFinals)for(const record of final.records)if(sharedRecords.has(`${record.namespace}:${record.key}`)){
       check(this.storage.publishRestored,'OWNER_DELETE_SHARED_RECORD_PUBLICATION_REQUIRED',503);
       await this.storage.publishRestored(record.namespace,record.key,await this.storage.read(record.namespace,record.key));

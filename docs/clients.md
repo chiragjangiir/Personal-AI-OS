@@ -1,6 +1,6 @@
 # Build the clients
 
-Personal-AI-OS 0.0.1 provides source build instructions for iPhone, Mac, Apple Watch and Android glasses. Vendor SDKs and wake-word model weights are acquired separately. This release contains no prebuilt client binaries. Server setup is in [the documentation directory](./).
+Personal-AI-OS 0.0.2 provides source build instructions for iPhone, Mac, Apple Watch and Android glasses. Vendor SDKs and wake-word model weights are acquired separately. This release contains no prebuilt client binaries. Server setup is in [the documentation directory](./).
 
 Run commands from the repository root. Set these shell variables for the source directories:
 

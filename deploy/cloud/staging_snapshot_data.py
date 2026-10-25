@@ -11,25 +11,32 @@ OMIT = {'.env', '.op.env', 'config.yaml', 'auth.json', 'credentials.json', 'back
         'plugins', 'cache', 'logs', 'voiceprints', '.snapshots', '.raw-ingress-reserve'}
 
 
+def staging_private_path(relative):
+    """Deployment credentials and executable model transport never cross environments."""
+    for name in Path(relative).parts:
+        if (name in {'.env', '.op.env', 'config.yaml', 'auth.json', 'credentials.json',
+                     'auth', '.auth', '.credentials.json', 'credentials', 'oauth', 'auth-pool', 'auth_pool',
+                     '.claude', '.codex', '.qwen', '.aws', 'backups',
+                     'provider-tokens', 'transport-overrides.json', 'model-overrides.json',
+                     'model_catalog.json', 'model_overrides.json', 'model-settings', 'model-projections', 'vault', 'secrets'}
+                or name.startswith(('.env.', 'auth.json.', 'config.yaml.', 'model-settings.', 'model-settings-'))
+                or name.endswith(('.key', '.pem', '.password'))):
+            return True
+    return False
+
+
 def home_config(source, destination):
     import yaml
     config = yaml.safe_load(Path(source).read_text())
-    fields = ('model', 'providers', 'custom_providers', 'fallback_providers', 'timezone')
-    credentials = {'api_key', 'token', 'password', 'access_token', 'secret', 'authorization',
-                   'api-key', 'x-api-key', 'extra_headers'}
-    def scrub(value):
-        if isinstance(value, dict):
-            return {key: scrub(child) for key, child in value.items() if key.lower() not in credentials}
-        if isinstance(value, list):
-            return [scrub(child) for child in value]
-        if isinstance(value, str) and '://' in value:
-            from urllib.parse import parse_qsl, urlsplit
-            url = urlsplit(value)
-            if url.username or url.password or any(key.lower() in credentials | {'key'} for key, _ in parse_qsl(url.query)):
-                raise ValueError('Model config URL must not contain inline credentials or query secrets')
-        return value
-    Path(destination).write_text(json.dumps(scrub({key: config[key] for key in fields if key in config}), indent=2))
+    Path(destination).write_text(json.dumps({key: config[key] for key in ('timezone', '_config_version') if key in config}, indent=2))
     Path(destination).chmod(0o600)
+    # Source registrations remain inspectable in staging, without enabling external executors or plugins.
+    registry = Path(destination).parent / '.paios-production-registry.json'
+    registry.write_text(json.dumps({'mcp_servers': sorted(config.get('mcp_servers', {}))}))
+    plugins = Path(source).parent / 'plugins'
+    dormant = Path(destination).parent / '.paios-production-plugins'
+    if plugins.exists():
+        copy_tree(plugins, dormant)
 
 
 def sqlite_counts(path):
@@ -58,7 +65,7 @@ def copy_tree(source, destination, hermes=False):
     for directory, folders, files in os.walk(source, followlinks=False, onerror=walk_error):
         parent = Path(directory)
         relative = parent.relative_to(source)
-        folders[:] = [name for name in folders if name not in OMIT and not name.startswith('.pending-')
+        folders[:] = [name for name in folders if name not in OMIT and not staging_private_path(relative / name) and not name.startswith('.pending-')
                       and not (parent / name).is_symlink()
                       and not (hermes and relative == Path('.') and name not in HOME_ROOTS)
                       and not (not hermes and relative == Path('.') and name == 'central-storage')]
@@ -66,7 +73,7 @@ def copy_tree(source, destination, hermes=False):
         target.mkdir(parents=True, exist_ok=True, mode=0o700)
         for name in files:
             path = parent / name
-            if (path.is_symlink() or name in OMIT or name.startswith(('.env.', '.pending-'))
+            if (path.is_symlink() or name in OMIT or staging_private_path(relative / name) or name.startswith(('.env.', '.pending-'))
                     or name.endswith(('-wal', '-shm', '.key', '.pem', '.password'))
                     or hermes and relative == Path('.') and name not in HOME_ROOTS):
                 continue
@@ -102,7 +109,7 @@ def copy_auxiliary(source, destination, omit_raw=False):
            'owner-deletions', 'cold.sqlite', 'cold.sqlite-wal', 'cold.sqlite-shm', 'visual-memory',
            'session-finals', 'session-ends', 'session-records.sqlite', 'session-records.sqlite-wal', 'session-records.sqlite-shm'}
     for path in Path(source).iterdir():
-        if path.name in raw or path.name in OMIT or path.name.startswith(('.pending-', '.cold-read-')):
+        if path.name in raw or path.name in OMIT or staging_private_path(path.name) or path.name.startswith(('.pending-', '.cold-read-')):
             continue
         if omit_raw and (path.name in RAW_CONSUMER_STORES or path.name.startswith(RAW_CONSUMER_PREFIXES)):
             continue
@@ -133,7 +140,11 @@ def inventory(root):
 
 
 def verify(root, expected):
-    if inventory(root) != expected:
+    actual = inventory(root)
+    for name in actual['files']:
+        if name != 'hermes-home/config.yaml' and staging_private_path(name):
+            raise ValueError('Snapshot contains environment credentials or transport: ' + name)
+    if actual != expected:
         raise ValueError('Restored file/SQLite row counts differ from captured stores')
 
 

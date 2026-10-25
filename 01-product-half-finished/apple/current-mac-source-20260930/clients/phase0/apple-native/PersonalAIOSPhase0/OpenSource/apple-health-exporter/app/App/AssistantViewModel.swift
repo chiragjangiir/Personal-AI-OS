@@ -24,6 +24,7 @@ final class AssistantViewModel: ObservableObject {
     let ownerOverride = YimiOwnerOverrideModel()
     private var ownerOverrideObservation: AnyCancellable?
     let payment: YimiPaymentModel
+    let modelSettings = AssistantModelSettingsModel()
     private var paymentObservation: AnyCancellable?
     private var avatarLoadedObservation: AnyCancellable?
     private var avatarObservation: AnyCancellable?
@@ -396,6 +397,8 @@ final class AssistantViewModel: ObservableObject {
     @Published private(set) var promptState = AssistantPromptComposerState.inactive
 
     @Published private(set) var terminalState = CentralTerminalState()
+    private let terminalCacheWriter = CentralTerminalCacheWriter()
+    private var terminalCacheVersion: UInt64 = 0
     func revokeTerminal(_ id: String) async {
         do { try await coordinator.revokeTerminal(deviceID: id) } catch { lastError = Self.message(for: error) }
     }
@@ -530,9 +533,13 @@ final class AssistantViewModel: ObservableObject {
                         YimiAvatarStore.shared.bind(owner)
                         if state.avatarReceived { YimiAvatarStore.shared.accept(state.avatar, ownerIdentity: state.ownerIdentity, eventID: state.avatarEventID, profileVersion: state.avatarVersion); self?.acknowledgeLoadedAppearance() }
                     }
-                    if let writableCache {
-                        do { try state.encodedCache().write(to: writableCache, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]) }
-                        catch { self?.lastError = "共享对话缓存未保存：" + Self.message(for: error) }
+                    if let writableCache, let self {
+                        self.terminalCacheVersion &+= 1
+                        let version = self.terminalCacheVersion
+                        Task(priority: .utility) {
+                            do { try await self.terminalCacheWriter.write(state, version: version, to: writableCache) }
+                            catch { self.lastError = "共享对话缓存未保存：" + Self.message(for: error) }
+                        }
                     }
                 }
             }
@@ -1285,6 +1292,11 @@ final class AssistantViewModel: ObservableObject {
 
     private func configureObservers() async {
         payment.connect(coordinator)
+        modelSettings.signer = { [weak self] bytes, deviceID in
+            guard let self else { throw ModelSettingsError.changed }
+            return try await self.payment.signModelSettings(bytes, deviceID: deviceID)
+        }
+        modelSettings.connect(coordinator)
         ownerOverride.connect(coordinator)
         await coordinator.setCentralTextObserver { [weak self] consumer in
             Task { @MainActor in self?.consumeCentralState(consumer) }

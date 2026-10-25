@@ -1225,7 +1225,7 @@ extension AssistantCentralTextTests {
 
 
 extension AssistantCentralTextTests {
-    func testConversationOrdersCallTurnsAndUpdatesBothSurfacesWithoutDuplicates() {
+    func testConversationOrdersCallTurnsAndUpdatesBothSurfacesWithoutDuplicates() throws {
         let date = Date(timeIntervalSince1970: 100)
         var timeline = YimiConversationTimeline()
         var call = CentralCall(id: "one", state: "live", lines: [
@@ -1234,6 +1234,9 @@ extension AssistantCentralTextTests {
             .init(callID: "one", turn: 0, role: "assistant", text: "第一句回复", interrupted: false),
             .init(callID: "one", turn: 1, role: "user", text: "第二句", interrupted: false),
             .init(callID: "one", turn: 0, role: "user", text: "第一句", interrupted: false)])
+        var opening = call
+        opening.state = "opening"
+        timeline.accept(opening, at: date)
         timeline.accept(call, at: date)
         XCTAssertEqual(timeline.callLines("one").map(\.text), ["第一句", "第一句回复", "补充", "第二句", "第二句回复"])
         call.lines[2] = .init(callID: "one", turn: 0, role: "assistant", text: "第一句完整回复", interrupted: false)
@@ -1248,6 +1251,11 @@ extension AssistantCentralTextTests {
         call.state = "closed"
         timeline.accept(call, at: date.addingTimeInterval(10))
         XCTAssertEqual(timeline.items.first?.endedAt, date.addingTimeInterval(10))
+        var restored = YimiConversationTimeline(items: try JSONDecoder().decode([YimiItem].self, from: JSONEncoder().encode(timeline.items)))
+        restored.accept(call, at: date.addingTimeInterval(15))
+        XCTAssertEqual(restored.items.filter { $0.kind == .call }.map(\.id), ["call-one"])
+        XCTAssertEqual(restored.chatItems.map(\.id), ["call-one"])
+        XCTAssertEqual(restored.items.first?.endedAt, date.addingTimeInterval(10))
     }
 
     func testConversationKeepsLongCallsAndSeparatesCallsThatRestartAtTurnZero() {

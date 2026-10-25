@@ -183,7 +183,9 @@ def _lease(purpose, extra_budget_s=0):
                 return phone
         _dispose(phone, sync=phone._ready)
     syncs = phone_apps.contexts(_client, _check)
-    policy = LifecyclePolicy(manual_release=True) if purpose == "login" else LifecyclePolicy(idle_release_timeout=10, max_runtime=MAX_RUNTIME_MIN)
+    # The owner logs in by hand through the view link, which the SDK may not count as activity: a login phone is
+    # released only by its runtime cap or an explicit delete, never by an earlier idle timer.
+    policy = LifecyclePolicy(idle_release_timeout=MAX_RUNTIME_MIN if purpose == "login" else 10, max_runtime=MAX_RUNTIME_MIN)
     create_started = time.monotonic()
     session = _check(_client.create(CreateSessionParams(image_id=image,
                                                        context_syncs=syncs[-1:], lifecycle_policy=policy))).session

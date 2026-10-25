@@ -4,7 +4,7 @@ struct YimiWatchRideSummaryView: View {
     @ObservedObject var workout: WatchWorkoutCoordinator
     @ObservedObject var store: WatchYimiStore
     private var figures: WatchRideSummaryFigures? {
-        workout.summary.map { WatchRideSummaryFigures.resolve(phone: store.state?.ride?.metrics, local: $0) }
+        workout.summary.map { WatchRideSummaryFigures.resolve(phone: store.state?.ride, local: $0) }
     }
     var body: some View {
         ScrollView {
@@ -12,7 +12,7 @@ struct YimiWatchRideSummaryView: View {
                 if workout.snapshot.state == .finished {
                     Label("已存进「健康」", systemImage: "checkmark").font(.footnote).foregroundStyle(Yimi.ok)
                     if let figures { YimiWatchRideSummaryFigures(figures: figures) }
-                    if let commentary = store.state?.ride?.text, !commentary.isEmpty {
+                    if let commentary = figures?.commentary, !commentary.isEmpty {
                         Text(commentary).font(.callout).padding(9)
                             .background(Yimi.surface, in: RoundedRectangle(cornerRadius: Yimi.Radius.watchCard))
                     } else {

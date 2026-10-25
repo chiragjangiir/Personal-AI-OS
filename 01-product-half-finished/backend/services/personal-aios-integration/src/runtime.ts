@@ -1,4 +1,13 @@
-import {effectConsent} from './effect-consent.ts';
+import {refreshCoreProfile} from './memory/core-profile.ts';
+import type {ModelSettingsAuthority} from './model-settings.ts';
+import {ModelSettingsControl} from './model-settings-control.ts';
+import {modelSettingsState,modelSettingsPage,type ModelSettingsPageRequest} from './model-settings-view.ts';
+import {effectConsent,confirmFrozenEffect} from './effect-consent.ts';
+import type {PhoneReceiptLifecycle} from './capability/phone/lifecycle.ts';
+import {CapabilityConfirmations,type ConfirmationPorts,type ProtectedAuthorities} from './capability/consent/confirmation.ts';
+import type {FrozenCall} from './capability/consent/call.ts';
+import {wechatPreviewBatch,wechatPreviewEvent} from './wechat-previews.ts';
+import {defaultCacheWriteBilling,type CacheWriteBilling,type ModelUsage,type UsageAttempt,type BudgetNotice,type ModelUsageSource,type ModelWireAttempt} from './model-usage.ts';
 import {channel} from 'node:diagnostics_channel';
 import {AsyncLocalStorage} from 'node:async_hooks';
 import type { AvatarProfileToolPort } from './avatar-tool.ts';
@@ -31,7 +40,7 @@ import { RawArchive } from './archive.ts';
 import { UnifiedIngress } from './ingress.ts';
 import { RunAdmission, type AdmissionEntry, type Admission } from './admission.ts';
 import { HermesClient, NATIVE_RUN_SCOPE_TOOLS,NATIVE_TERMINAL_STATUSES,nativeConversationSession, type NativeClient, type NativeRun, type Reminder } from './hermes-client.ts';
-import type { StoragePort } from './storage.ts';
+import {PosixStorage,type StoragePort} from './storage.ts';
 import { OutputAuthority, errandDeliveryFacts, type OutputContext, type OpenReplyRequest, type ReceiptSourceRead, type RunReceiptRead, type ServiceReceipt } from './output.ts';
 import { MemoryToolAuthority, type MemoryConfirmationRequest, type MemoryQuery } from './memory/tools.ts';
 import type { Scope, L3Command } from './memory/contracts.ts';
@@ -46,6 +55,17 @@ import { enabledToolSchemas } from './tool-contracts.ts';
 import {Timeline,buildTimelineContext,type TimelineContextSources,type TimelineOptions} from './timeline.ts';
 import {coalescedPublication} from './publication.ts';
 import {ActivityProjection,type ActivityCard,type ActivityUpdate,type ActivitySaved} from './activity.ts';
+import {CapabilityGateway, structuredResult, toolEffect, type GatewayCall, type GatewayBinding} from './capability/gateway.ts';
+import {packageSelection,type PackageTool} from './capability/packages.ts';
+import {CapabilityRegistry} from './capability/registry/registry.ts';
+import {EnabledPackages} from './capability/registry/selection.ts';
+import {capabilityRegistryRoute} from './capability/registry/api.ts';
+import {workshopRegistrationRunner} from './capability/registry/workshop.ts';
+import {recordFacts,renderFacts} from './capability/renderer.ts';
+import {PhoneReceiptLifecycle as PhoneLifecycle} from './capability/phone/lifecycle.ts';
+import {phoneGatewayPort} from './capability/phone/gateway-port.ts';
+import {decideConsent} from './capability/consent/decision.ts';
+import type {EffectKind,Receipt} from '../../../../../capability/sdk/ts/receipt.ts';
 import {activityTitle} from './activity-title.ts';
 import {OwnerDataIngest} from './owner-data-ingest.ts';
 import { buildCallContext, memoryEntries, history, clip, safe, fact } from './call-context.ts';
@@ -74,6 +94,7 @@ export interface WatchAudioMetadata {codec:string;sample_rate_hz:number;channels
 export type WatchUtteranceReply={status:'heard';turn_id:string;heard:string}|{status:'failed';turn_id:string;reason:string};
 export type WatchTurnReply={status:'working';turn_id:string}|{status:'replied';turn_id:string;text:string}|{status:'failed';turn_id:string;reason:string};
 type WatchIntent={fingerprint:string;session:string;operation:string;metadata:WatchAudioMetadata;pair_version:string;turn_id:string;raw:Omit<RawEvent,'payload'>};
+type MediaAppendLifecycle={onDurable:()=>void;beforeConsume:Promise<unknown>;consume?:boolean;resetConsume?:boolean;audioPurpose?:'request'|'voiceprint'};
 export type MediaAppendResult=Awaited<ReturnType<MediaService['append']>>&{
   processing_admission?:{status:'queued'|'duplicate'|'failed'|'skipped'|'awaiting_window';consumer?:'audit_only'|'voice';error_code?:string};processing_receipt_ref?:string|null};
 /** Where a wake turn is admitted: the device it was heard on and that device's continuity session. */
@@ -82,6 +103,7 @@ interface TurnHost {source: RegisteredDevice; session: string}
 /** `say`: no one woke it; 依米 opens it to say this line first (proactive care). */
 export interface AmbientVoiceWake {id:string;text:string;heard_at:string;start_ms:number;end_ms:number;say?:string;say_message_id?:string;intent?:VoiceOpenIntent;conversation_mode?:'chat'|'thinking'}
 export type AmbientVoiceIdentity='pending'|'owner'|'owner_uncertain'|'guest';
+type CallClosed={call_id:string;reason:string;final_turn:number;processed_event_ids:string[];closed_at:string};
 /** Directed unverified speech may request biometric confirmation; unknown observations keep the front pending. */
 export function ambientVoiceIdentity(d:ProcessedEvent):AmbientVoiceIdentity {
   if(directedVoice(d))return runScope(d);
@@ -135,23 +157,25 @@ function buildInputText(d:ProcessedEvent):string|null {
   return typeof text==='string'&&text.trim()?text:null;
 }
 export interface ErrandResult {principal_id:string;job_id:string;task:string;app?:string;tier?:string;success:boolean;answer:string;finished_at:string;
+  capability_receipt?:unknown;
   partial_findings?:{verified:string[];not_verified:string[];last_screen_text:string;truncated:boolean};
   origin_processed_event_id?:string;title?:string;evidence_ref?:{tool:'phone_status';job_id:string};self_check_of?:string;
   terminal_reason?:'completed'|'cancelled_by_user'|'failed'|'error'|'timed_out'|'interrupted';retryable?:boolean;payment_intent?:string;
   payment_reconciliation?:{of_job:string;intent_id:string;state:'paid'|'unpaid'|'unknown'}}
-export interface ErrandProgress {job_id:string;title:string;app:string;state:'waiting'|'running'|'stopping';started_at:string;step:number;max_steps:number}
-interface TaskFailure {failure_source:'cron'|'workshop';job_id:string;title:string;task:string;answer:string;
+export interface ErrandProgress {job_id:string;title:string;app:string;state:'waiting'|'running'|'stopping';started_at:string;step:number;max_steps:number;capability_receipt?:unknown}
+interface TaskFailure {failure_source:'cron'|'workshop'|'errand';job_id:string;title:string;task:string;answer:string;
   terminal_reason:'failed'|'error'|'timed_out'|'interrupted';
   evidence_ref:{tool:'cronjob_manage';action:'list';job_id:string}|{tool:'session_search';session_id:string;run_id:string}
-    |{tool:'skills_hub';action:'release_status';request_id:string}}
+    |{tool:'skills_hub';action:'release_status';request_id:string}|{tool:'phone_status';job_id:string}}
 type ReleaseRequestEvent=({type:'task_failure';failure:TaskFailure}|{
   type:'release_approval_required';base:string;commit:string;paths:string[]})&{request_id:string;origin_processed_event_id:string};
 function requireTaskFailure(f:TaskFailure,job:string):void {
   const ref=f?.evidence_ref;
-  check(f&&['cron','workshop'].includes(f.failure_source)&&['failed','error','timed_out','interrupted'].includes(f.terminal_reason)&&
+  check(f&&['cron','workshop','errand'].includes(f.failure_source)&&['failed','error','timed_out','interrupted'].includes(f.terminal_reason)&&
     typeof f.title==='string'&&f.title.length>0&&[...f.title].length<=40&&typeof f.task==='string'&&f.task.length<=4000&&
     typeof f.answer==='string'&&f.answer.length<=4000&&ref&&typeof ref==='object'&&
-    (ref.tool==='cronjob_manage'&&ref.action==='list'&&ref.job_id===job||
+    (ref.tool==='phone_status'&&f.failure_source==='errand'&&ref.job_id===job||
+     ref.tool==='cronjob_manage'&&ref.action==='list'&&ref.job_id===job||
      ref.tool==='session_search'&&typeof ref.session_id==='string'&&ref.session_id.length>0&&ref.session_id.length<=512&&typeof ref.run_id==='string'||
      ref.tool==='skills_hub'&&ref.action==='release_status'&&ref.request_id===job&&/^[0-9a-f]{12}$/.test(ref.request_id)),
     'TASK_FAILURE_INVALID');
@@ -173,14 +197,16 @@ export class PersonalAIOSRuntime {
   timeline:Timeline|undefined;
   private readonly storage: StoragePort; private readonly archive: RawArchive; private readonly ingress: UnifiedIngress;
   private readonly admission: RunAdmission; private readonly native: NativeClient; private readonly output: OutputAuthority;
+  readonly capabilityGateway: CapabilityGateway;
   private readonly sourceAuthority: SourceDeviceAuthority; private readonly skill: string; private readonly maxReadBytes: number;
   private readonly routes: OutputTargetAuthority;
   private readonly memory: MemoryToolAuthority | undefined;
   private readonly l3: L3Service | undefined;
   private readonly actions: ActionAuthority | undefined;
   private readonly media: MediaService | undefined;
-  private readonly nativeMemoryProfile: string | undefined;
-  private readonly nativeMemoryPrincipal: string | undefined;
+  private readonly coreProfileHome: string | undefined;
+  private readonly coreProfileSourceHome: string | undefined;
+  private readonly coreProfilePrincipal: string | undefined;
   private readonly quarantineAdmission:QuarantineAdmission|undefined;
   private readonly payment:PaymentAuthority|undefined;
   private readonly paymentDevices=new Map<string,RegisteredDevice>();
@@ -193,7 +219,40 @@ export class PersonalAIOSRuntime {
   private readonly photoRequests=new PhotoRequests();
   private capturePolicyValidator:ValidateFunction|undefined;
   private readonly confirmations: VoiceConfirmations;
+  capabilityConsent:CapabilityConfirmations|undefined;
+  capabilityRegistry:CapabilityRegistry|undefined;
+  private capabilityPackages:EnabledPackages|undefined;
+  private capabilityPackagesReady:Promise<void>|undefined;
+  private toolAdmission(context:ToolCall['context']):AdmissionEntry|undefined {
+    return this.capabilityConsent?.executing(context)?.admission??this.admission.find(context.run_id,context.session_id);
+  }
+  /** Called once by the enabled-package gateway composition; its transports and ledger remain authoritative. */
+  async attachCapabilityConsent(ports:Omit<ConfirmationPorts,'gates'>&ProtectedAuthorities,recover=true):Promise<void>{
+    check(!this.capabilityConsent,'CAPABILITY_CONSENT_ALREADY_ATTACHED',409);
+    const shared={admission:this.admission,storage:this.storage,ownerOrigin:(d:ProcessedEvent)=>this.ownerOrigin(d),
+      paymentSource:(run:string)=>this.paymentSource(run)};
+    this.capabilityConsent=new CapabilityConfirmations(this.storage,this.confirmations,{...ports,gates:(call,approved)=>({
+      spend:(_consent,approval)=>ports.spend(call,approval),selfChange:(_consent,approval)=>ports.selfChange(call,approval),
+      effectConsent:(context,effect,_approved,rideOk,requestId,confirmation)=>approved?
+        confirmFrozenEffect(shared,call.admission,context,effect,rideOk===true,requestId!,confirmation!):
+        effectConsent(shared,context,effect,false,rideOk)
+    })});
+    if(recover)await this.capabilityConsent.recover();
+  }
+  /** The gateway attaches this ledger reference to the new run; ordinary admission and output own delivery. */
+  async capabilityFollowUp(call:FrozenCall,view:{receipt_ref:string;model_view:string},eventId:string){
+    const d=call.admission.d,session=call.consent.context.session_id;
+    check(this.sourceAuthority.scheduled,'SCHEDULE_SOURCE_REQUIRED',503);
+    const source=await this.sourceAuthority.scheduled(d.principal_id,d.device_id);
+    const event=await this.publish('capability-followup-inputs',digest({principal_id:d.principal_id,eventId}),{
+      captured_at:new Date().toISOString(),...view,origin_processed_event_id:d.processed_event_id});
+    check(event.receipt_ref===view.receipt_ref&&event.origin_processed_event_id===d.processed_event_id,'CAPABILITY_FOLLOWUP_CONFLICT',409);
+    return this.submit({schema_version:EVENT_SCHEMA,event_id:eventId,device_id:source.device_id,device_type:source.device_type,
+      captured_at:event.captured_at,source:{channel:source.channel},media_type:'app_event',mime:'application/json',representation:'uploaded_original',
+      payload:Buffer.from(canonical({kind:'capability_result',...event}))},source,session,false);
+  }
   private readonly capabilityGrants:{approve(request:CapabilityUpgradeRequest):Promise<void>}|undefined;
+  private phoneReceipts:PhoneReceiptLifecycle|undefined;
   private readonly enrollment: VoiceprintEnrollment | undefined;
   private readonly turnWorkWatchers=new Set<{principal:string;changed:()=>void}>();
   private readonly openCallWork=new Set<string>();
@@ -270,13 +329,14 @@ export class PersonalAIOSRuntime {
     result:Promise<{status:'finalized'}|{status:'not_finalized';reason:string}>}>();
   constructor(options: {storage: StoragePort; archive: RawArchive; admission: RunAdmission; native: NativeClient;
     output: OutputAuthority; devices?: FixtureRegisteredDevice[]; sourceAuthority?: SourceDeviceAuthority; skill: string; max_read_bytes: number; l3?: L3Service;
-    voice?:VoiceResources; audio_route?:(source:RegisteredDevice,event:ArchivedEvent)=>Promise<AudioRoute|undefined>; quarantine_admission?:QuarantineAdmission; actions?: ActionAuthority; media?: MediaService; continuous_context?:(source:RegisteredDevice,event:ArchivedEvent,chunk:TrackChunk)=>Promise<ContinuousContext>; automatic_output?: {onError:(error:unknown)=>void}; native_memory_receipts?: {enabled: true; profile_home: string; principal_id?:string};
+    voice?:VoiceResources; audio_route?:(source:RegisteredDevice,event:ArchivedEvent)=>Promise<AudioRoute|undefined>; quarantine_admission?:QuarantineAdmission; actions?: ActionAuthority; media?: MediaService; continuous_context?:(source:RegisteredDevice,event:ArchivedEvent,chunk:TrackChunk)=>Promise<ContinuousContext>; automatic_output?: {onError:(error:unknown)=>void}; core_profile?: {enabled: true; profile_home: string; source_profile_home?:string; principal_id?:string};
     payment?:PaymentAuthority; payment_ports?:Partial<Pick<PaymentPorts,'openPayWindow'|'enrolment_sentences'|'forget'>>; payment_devices?:(principal:string)=>Promise<RegisteredDevice[]>;
     payment_clock_map?:PaymentVoiceVerifierOptions['clock_map'];
     speech_detector?:PaymentVoiceVerifierOptions['detector'];
     voiceprint?: VoiceprintRegistry; owner_override?:OwnerOverride; voice_confirmation?: {ttl_ms: number}; ambient_journal?: AmbientJournal; visual_memory?:VisualMemory; health?: HealthStore; contacts?: ContactsStore; locations?:DeviceLocations;
     avatar?:AvatarProfileToolPort;
     capability_grants?:{approve(request:CapabilityUpgradeRequest):Promise<void>};
+    phone_receipts?:PhoneReceiptLifecycle;
     navigation?:Navigation;movement?:Pick<ConstructorParameters<typeof Movement>[0],'now'|'ride_hr_alert_bpm'|'hrProfile'|'pending_ttl_ms'>;
     realtime_busy?:()=>boolean;
     /** The composition's one speech engine (media setup `speech`); with a registry it enrolls the owner from the phone. */
@@ -332,6 +392,7 @@ export class PersonalAIOSRuntime {
     this.stagingOutreach = options.staging_outreach;
     this.care = options.care; this.notify = options.notify; this.callHeard = options.call_heard;
     this.capabilityGrants=options.capability_grants;
+    this.phoneReceipts=options.phone_receipts;
     this.confirmations = new VoiceConfirmations(options.storage, options.voice_confirmation ?? {});
     const speech = options.speech;
     const detector=options.speech_detector??(speech?new SherpaSileroStreamFactory(speech):undefined);
@@ -344,6 +405,17 @@ export class PersonalAIOSRuntime {
     this.ambient = options.ambient_journal ? new AmbientLane(options.ambient_journal, {...(options.call_heard ? {call_heard: options.call_heard} : {}),
       ...(options.ambient_clock ? {now: options.ambient_clock} : {}),voice_active:(principal,device,wake)=>this.ambientVoiceActive(principal,device,wake)}) : undefined;
     this.admission = options.admission;this.admission.setOwnerOrigin(d=>this.ownerOrigin(d)); this.native = options.native; this.output = options.output;
+    this.capabilityGateway = new CapabilityGateway(options.storage,(binding,call,tool,effect,target)=>this.capabilityConsent?
+      this.capabilityConsent.decide(this.frozenCapability(binding,call,tool,effect,target)):decideConsent({
+      effectConsent:(context,value,approved,rideOk,requestId,confirmation)=>this.effectConsent(context,value,approved,rideOk,requestId,confirmation),
+      spend:async()=>({action:'block',message:'CAPABILITY_SPEND_REQUIRES_PAYMENT_AUTHORITY'}),
+      selfChange:async()=>({action:'block',message:'CAPABILITY_SELF_CHANGE_REQUIRES_RELEASE_AUTHORITY'})},
+      {context:{run_id:call.api_request_id,session_id:call.session_id,tool_call_id:call.tool_call_id},effect:effect as EffectKind,target,
+        task_type:tool.task_type??`${tool.package}:${tool.name}`,owner_requested:call.args.owner_requested===true,
+        scope_allowed:true,consent_required:true,invocation:binding.invocation}));
+    this.output.setCapabilityGateway(this.capabilityGateway);
+    this.admission.setCatalogGrants(d=>runScope(d)==='owner'&&!isBuildTask(d)&&
+      [...this.capabilityGateway.tools.values()].some(tool=>tool.server==='desktop')?['desktop']:[]);
     this.admission.setVoiceConfirmation(d=>this.voiceConfirmationFact(d));
     this.routes = new OutputTargetAuthority(options.storage);
     this.actions = options.actions;
@@ -400,11 +472,12 @@ export class PersonalAIOSRuntime {
         'call_owned':this.realtimeBusy()?'defer':'process';
     }):undefined;
     check(options.native instanceof HermesClient, 'NATIVE_CLIENT_AUTHORITY_REQUIRED');
-    const memoryConfig=options.native_memory_receipts;
+    const memoryConfig=options.core_profile;
     if (memoryConfig) check(memoryConfig.enabled===true && typeof memoryConfig.profile_home==='string' &&
-      isAbsolute(memoryConfig.profile_home) && normalize(memoryConfig.profile_home)===memoryConfig.profile_home, 'NATIVE_MEMORY_CONFIG_INVALID');
-    this.nativeMemoryProfile=memoryConfig?.profile_home;
-    this.nativeMemoryPrincipal=memoryConfig?.principal_id;if(this.nativeMemoryPrincipal!==undefined)id(this.nativeMemoryPrincipal);
+      isAbsolute(memoryConfig.profile_home) && normalize(memoryConfig.profile_home)===memoryConfig.profile_home, 'CORE_PROFILE_CONFIG_INVALID');
+    this.coreProfileHome=memoryConfig?.profile_home;
+    this.coreProfileSourceHome=memoryConfig?.source_profile_home;
+    this.coreProfilePrincipal=memoryConfig?.principal_id;if(this.coreProfilePrincipal!==undefined)id(this.coreProfilePrincipal);
     check(!(options.devices && options.sourceAuthority), 'SOURCE_AUTHORITIES_CONFLICT');
     this.sourceAuthority = options.sourceAuthority ?? new StaticFixtureDeviceAuthority(options.devices ?? []); this.skill = options.skill; this.maxReadBytes = options.max_read_bytes;
     this.l3 = options.l3;
@@ -438,11 +511,24 @@ export class PersonalAIOSRuntime {
     },this.admission.outputBudget);
     this.admission.setWorkOwner(principal=>this.emitTurnWork(principal));
     this.admission.setRunOwner(async entry=>{
+      const app=entry.d.content.app_event as {kind?:string;receipt_ref?:string;job_id?:string}|undefined;
+      if(this.phoneReceipts?.enabled()&&app?.kind==='errand_result'&&app.job_id)
+        await this.phoneReceipts.context({principal_id:entry.d.principal_id,run_id:entry.record.run_id!},[app.job_id]);
+      if(app?.kind==='capability_result'&&app.receipt_ref){
+        const records=await this.capabilityGateway.ledger.referenced(entry.d.principal_id,app.receipt_ref);
+        await this.capabilityGateway.ledger.carry({principal_id:entry.d.principal_id,run_id:entry.record.run_id!},records);
+      }
       if(entry.d.origin==='explicit_user_prompt'&&runScope(entry.d)==='owner')
         await this.output.openAdmittedPrompt(await this.outputContext(entry.d,entry.record.session_id,entry.record.run_id!));
     });
     const activityError=options.automatic_output?.onError??console.error;
     this.admission.setEventOwner(async(entry,event)=>{
+      for(const fact of [event,...event.activity_events??[],...event.run?.activity_events??[]])if(fact.event==='model.usage'){
+        check(typeof fact.text==='string','MODEL_USAGE_JOURNAL_INVALID',502);
+        const attempt=JSON.parse(fact.text) as Record<string,unknown>;
+        check(attempt.run_id===entry.record.run_id&&attempt.session_id===entry.record.session_id,'MODEL_USAGE_ADMISSION_REQUIRED',403);
+        await this.recordModelWireAttempt(attempt);
+      }
       if(event.event==='message.interim'&&event.text?.trim()&&(entry.d.content.app_event as {kind?:string}|undefined)?.kind==='voice_turn'){
         const progress=this.progressFor(entry.record.run_id!);if(progress.listeners.size)for(const listener of progress.listeners)listener(event.text);else progress.pending.push(event.text);
       }
@@ -455,7 +541,9 @@ export class PersonalAIOSRuntime {
     this.admission.setStateOwner(async (entry,native)=>{
       if(['completed','failed','cancelled','expired'].includes(entry.record.state)){
         await this.refreshErrands?.();
-        const activity=await this.activityFor(entry);activity?.settle(entry.record.state,native?.updated_at===undefined?undefined:native.updated_at*1000);
+        const activity=await this.activityFor(entry);
+        if(activity)activity.receipts(await this.capabilityGateway.ledger.current({principal_id:entry.d.principal_id,run_id:entry.record.run_id!}));
+        activity?.settle(entry.record.state,native?.updated_at===undefined?undefined:native.updated_at*1000);
         // A run that never used a tool has no card to keep.
         if(activity&&!activity.card)this.activities.delete(digest([entry.record.principal_id,entry.record.session_id,entry.record.processed_event_id]));
         const progress=this.callProgress.get(entry.record.run_id!);for(const listener of progress?.listeners??[])listener();this.callProgress.delete(entry.record.run_id!);
@@ -468,6 +556,7 @@ export class PersonalAIOSRuntime {
       const key=this.resultKey(entry.d.principal_id,entry.record.session_id,entry.d.processed_event_id);
       await Promise.allSettled([...(this.resultListeners.get(key)??[])].map(listener=>listener(undefined,entry)));
       try {await this.nativeConfirmations(entry,native);} catch(error){options.automatic_output?.onError(error);throw error;}
+      if(['completed','failed','cancelled','expired'].includes(entry.record.state))await this.applyModelSettings();
     });
     if (options.automatic_output) this.admission.setTerminalOwner(async (entry,native) => {
       try {await this.finalizeTerminal(entry,native);} catch(error) {options.automatic_output!.onError(error);if(entry.record.run_id)throw error;}
@@ -504,7 +593,39 @@ export class PersonalAIOSRuntime {
         }
         return {current:this.locations.fresh(principal,device),last_known:this.locations.lastKnown(principal,device)};
       },
-      memory: async () => (await Promise.all((['USER.md', 'MEMORY.md'] as const).map(file => memoryEntries(this.nativeMemoryProfile, file)))).flat()});
+      memory: async () => (await Promise.all((['USER.md', 'MEMORY.md'] as const).map(file => memoryEntries(this.coreProfileHome, file)))).flat()});
+  }
+  private modelSettings:ModelSettingsAuthority|undefined;
+  private modelSettingsControls:ModelSettingsControl|undefined;
+  private readonly modelSettingsWatchers=new Set<()=>void>();
+  get modelSettingsAuthority(){return this.modelSettings;}
+  installModelSettings(authority:ModelSettingsAuthority):void {
+    check(this.payment&&this.deviceInventory,'MODEL_SETTINGS_DEVICE_AUTHORITY_REQUIRED',503);
+    this.modelSettings=authority;this.modelSettingsControls=new ModelSettingsControl({authority,keys:this.payment.keys,
+      revalidate:source=>this.registered(source,true),devices:principal=>this.deviceInventory!(principal),
+      usage:source=>this.modelUsage?.summary(authority.environment_id,source.principal_id)??null});
+  }
+  async modelSettingsControl(source:RegisteredDevice,body:Record<string,unknown>):Promise<unknown> {
+    check(this.modelSettingsControls&&!this.closing,'MODEL_SETTINGS_UNAVAILABLE',503);
+    const result=await this.modelSettingsControls.dispatch(source,body);
+    if(typeof body.statement_b64==='string'&&['model_settings_commit','model_settings_undo','model_settings_set_key'].includes(String(body.operation))){await this.applyModelSettings();return modelSettingsState(this.modelSettings!);}
+    return result;
+  }
+  async modelSettingsWatch(device:RegisteredDevice,notify:(state:Record<string,unknown>)=>Promise<void>):Promise<()=>void> {
+    const source=await this.registered(device,true);check(this.modelSettings&&!this.closing,'MODEL_SETTINGS_UNAVAILABLE',503);
+    check(source.device_type==='phone'||source.device_type==='mac','MODEL_SETTINGS_TERMINAL_NOT_ALLOWED',403);
+    const authority=this.modelSettings;
+    const publisher=coalescedPublication(async signal=>{await this.registered(source,true);
+      if(!signal.aborted)await notify(modelSettingsState(authority));},error=>{stop();
+      emitRuntimeEvent({kind:'model_settings_watch',code:error instanceof ContractError?error.code:'MODEL_SETTINGS_WATCH_FAILED'});});
+    const unwatch=authority.watch(()=>publisher.push());
+    const stop=()=>{publisher.stop();unwatch();this.modelSettingsWatchers.delete(stop);};
+    this.modelSettingsWatchers.add(stop);publisher.push();return stop;
+  }
+  async applyModelSettings() {
+    if(!this.modelSettings||this.closing)return;
+    await Promise.all((['brain','build'] as const).map(group=>this.modelSettings!.activateIdle(group,true)));
+    this.modelSettings.checkpointPendingKeys();const groups=this.modelSettings.read().groups;return [groups.brain,groups.build];
   }
   get paymentAuthority(){return this.payment;}
   async verifyMacPairing(device:RegisteredDevice,input:Record<string,unknown>,nonce:string,keyDigest:string):Promise<void>{
@@ -581,8 +702,21 @@ export class PersonalAIOSRuntime {
     })();
     this.mediaWork.add(work);void work.then(()=>this.mediaWork.delete(work),()=>this.mediaWork.delete(work));return work;
   }
+  /** Acknowledgement means durable raw evidence and admission, not a completed model answer. */
+  async wechatPreviews(principal:string,device:string,value:unknown) {
+    check(!this.closing,'RUNTIME_CLOSED',503);
+    const batch=wechatPreviewBatch(value);
+    check(batch.device_id===device,'WECHAT_MAC_REQUIRED',403);
+    check(this.sourceAuthority.scheduled,'SCHEDULE_SOURCE_REQUIRED',503);
+    const source=await this.sourceAuthority.scheduled(principal,device);
+    check(source.device_type==='mac','WECHAT_MAC_REQUIRED',403);
+    check(!this.realtimeBusy()&&![...this.openCallWork].some(key=>(JSON.parse(key) as string[])[0]===principal),'WECHAT_CALL_BUSY',409);
+    for(const preview of batch.previews)await this.submit(wechatPreviewEvent(preview,source),source,
+      `wechat-previews:${digest([principal,device])}`,false);
+    return {schema:'paios.wechat-previews-response.v1',batch_id:batch.batch_id,accepted_ids:batch.previews.map(preview=>preview.id)};
+  }
   toolSchemas() {return enabledToolSchemas({memory: this.memory !== undefined, actions: this.actions !== undefined,
-    ambient: this.ambient !== undefined, visual:this.visual!==undefined,voiceprint: this.voiceprint !== undefined, health: this.health !== undefined, contacts: this.contacts !== undefined,places:true,movement:true,desktop_queue:!!this.timeline});}
+    ambient: this.ambient !== undefined, visual:this.visual!==undefined,voiceprint: this.voiceprint !== undefined, health: this.health !== undefined, contacts: this.contacts !== undefined,places:true,movement:true,desktop_queue:!!this.timeline,model_settings:!!this.modelSettings});}
   async cameraReady(device:RegisteredDevice) {
     const source=await this.capableDevice(device,'camera','CAMERA_DEVICE_REQUIRED');
     if(source.device_type==='phone')await this.photoRequests.resume(source.device_id);
@@ -843,11 +977,7 @@ export class PersonalAIOSRuntime {
     return archived.archive_status === 'durable';
   }
   async resolveReceipt(ref: string, context: OutputContext) {
-    if (ref.startsWith('memory-receipt:') || ref.startsWith('memory-attempt:')) {
-      if (!this.nativeMemoryProfile) return null;
-      const source = await this.native.memory(context.run_id, {conversation_session_id:context.session_id,profile_home:this.nativeMemoryProfile});
-      return source.receipts.find(receipt => receipt.receipt_ref === ref) ?? null;
-    }
+    if (ref.startsWith('memory-receipt:') || ref.startsWith('memory-attempt:')) return null;
     if (ref.startsWith('action:')) {
       if (!this.actions) return null;
       const receipt = await this.actions.resolveReceipt({...context, authenticated: true}, ref);
@@ -871,7 +1001,6 @@ export class PersonalAIOSRuntime {
           status:receipt.status,kind:'action' as const,summary:JSON.parse(canonical(receipt)) as Json}));
         return {source:'action' as const,status:'complete' as const,error:null,receipts};
       }} : {})},
-      {source:'l2', ...(this.nativeMemoryProfile ? {read:async()=>this.native.memory(context.run_id, {conversation_session_id:context.session_id,profile_home:this.nativeMemoryProfile!})} : {})},
     ];
     // Independent durable authorities must all be queried even when another source fails.
     const settled = await Promise.allSettled(sources.map(async source => source.read ? source.read() : null));
@@ -889,8 +1018,10 @@ export class PersonalAIOSRuntime {
     const source = await this.registered(device);
     id(session);
     if(signal?.aborted)return '';
+    await this.refreshCoreProfile(source.principal_id);
     const profile=this.memoryProfile(source.principal_id);
-    const context=await buildCallContext({...(profile ? {profile_home: profile} : {}),
+    const context=await buildCallContext({...(profile ? {profile_home: profile,
+      ...(this.coreProfileSourceHome?{configuration_home:this.coreProfileSourceHome}:{})} : {}),
       ...(timeZone?{time_zone:timeZone}:{}),...(signal?{signal}:{}),
       ...(this.l3 ? {l3: this.l3} : {}), ...this.timelineSources(source.principal_id,session,signal),
       ...(this.health ? {recentHealth: (principal: string) => recentHealthLine(this.health!, principal,Date.now(),timeZone)} : {}),
@@ -911,6 +1042,7 @@ export class PersonalAIOSRuntime {
     // A call close carries sealed turn references, not a new request. Its admission never waits on live native history,
     // so a gateway shutdown mid-call persists it and the native run continues after restart.
     if(runScope(d)!=='owner'||isBuildTask(d)||(d.content.app_event as {kind?:string}|undefined)?.kind==='call_closed')return this.skill;
+    await this.refreshCoreProfile(d.principal_id);
     // Native already owns call history. Snapshot the local timeline without waiting for native history reads.
     const call=d.content.app_event as {kind?:string;phase?:string;route?:string}|undefined;
     const sources=call?.kind==='voice_turn'&&(call.phase==='handoff'||call.route==='handoff')?
@@ -919,9 +1051,9 @@ export class PersonalAIOSRuntime {
     const context=await buildTimelineContext(sources,d.principal_id,session);
     return context?`${this.skill}\n${context}`:this.skill;
   }
-  /** The native memory profile belongs to its configured principal, or to the deployment's one owner when none is configured. */
+  /** The generated core profile belongs to its configured principal, or to the deployment's one owner. */
   private memoryProfile(principal:string):string|undefined {
-    return this.nativeMemoryProfile&&(!this.nativeMemoryPrincipal||this.nativeMemoryPrincipal===principal)?this.nativeMemoryProfile:undefined;
+    return this.coreProfileHome&&(!this.coreProfilePrincipal||this.coreProfilePrincipal===principal)?this.coreProfileHome:undefined;
   }
   private async sessionOwner(session:string):Promise<string|undefined> {
     try {return (JSON.parse(new TextDecoder().decode(await this.storage.read('session-owners',digest({session_id:session})))) as
@@ -1056,8 +1188,9 @@ export class PersonalAIOSRuntime {
   async confirmMemory(device: RegisteredDevice, request: MemoryConfirmationRequest, scope: Scope) {
     device = await this.capableDevice(device,'owner_unlock','MEMORY_UI_CONFIRMATION_REQUIRED');
     check(this.memory, 'MEMORY_NOT_CONFIGURED', 503);
-    return this.memory.confirm(request, {authenticated: true, principal_id: device.principal_id,
+    const receipt=await this.memory.confirm(request, {authenticated: true, principal_id: device.principal_id,
       source: 'explicit_user_ui', consent_ref: `confirm:${digest({device: device.device_id, request})}`, scope});
+    await this.refreshCoreProfile(device.principal_id);return receipt;
   }
   async memoryProposals(device:RegisteredDevice,session:string,dId:string) {
     device=await this.registered(device);check(this.memory,'MEMORY_NOT_CONFIGURED',503);
@@ -1146,10 +1279,21 @@ export class PersonalAIOSRuntime {
   }
   /** The live-call producer supplies identity; possession of a paired device is not speech identity. */
   async submitCallTurn(raw: RawEvent, device: RegisteredDevice, session: string) {
-    const source=await this.registered(device);
+    return this.submitCallTurnTrusted(raw,await this.registered(device),session);
+  }
+  /** A server call owns its captured turns and close observation after the transport lease ends. */
+  async captureCall(device:RegisteredDevice,session:string,call_id:string) {
+    const source=sourceSnapshot(await this.registered(device));id(session);id(call_id);
+    return Object.freeze({source,
+      locate:()=>this.locations.fresh(source.principal_id,source.device_id),
+      turn:(raw:RawEvent)=>this.submitCallTurnTrusted(raw,source,session,call_id),
+      close:(closed:Omit<CallClosed,'call_id'>)=>this.closeCallTrusted(source,session,{...closed,call_id})});
+  }
+  private async submitCallTurnTrusted(raw:RawEvent,source:RegisteredDevice,session:string,call_id?:string) {
     check(raw.media_type==='app_event'&&raw.mime==='application/json','CALL_TURN_PAYLOAD_INVALID');
     const turn=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(raw.payload));
     check(turn?.kind==='voice_turn'&&typeof turn.user==='string','CALL_TURN_PAYLOAD_INVALID');
+    check(call_id===undefined||turn.call_id===call_id,'CALL_TURN_BINDING_DENIED',403);
     check(turn.phase===undefined||turn.phase==='handoff'||turn.phase==='complete'&&typeof turn.handoff_event_id==='string','CALL_TURN_PHASE_INVALID');
     const speaker=turn.speaker??'unknown';
     check(speaker==='unknown'||parseSpeakerLabel(speaker)!==undefined,'CALL_SPEAKER_INVALID');
@@ -1467,11 +1611,20 @@ export class PersonalAIOSRuntime {
     }
     return valid.sort((a,b)=>this.terminals(a.principal).findIndex(s=>s.device_id===a.source.device_id)-this.terminals(b.principal).findIndex(s=>s.device_id===b.source.device_id));
   }
+  private async errandReportFailure(principal:string,job:string):Promise<unknown> {
+    const cached=this.errandReports.get(job)?.failure;if(cached)return cached;
+    let archived:ArchivedEvent;
+    try {archived=await this.archive.locate(`l5:${digest({principal_id:principal,event_id:`errand-delivery-failed:${job}`})}`,principal);}
+    catch(error){if(error instanceof ContractError&&error.code==='RAW_REF_NOT_FOUND')return;throw error;}
+    const failure=JSON.parse(Buffer.from(await this.archive.read(archived.raw_ref,principal,archived.archive_revision)).toString('utf8'));
+    return failure.stage===undefined?new ContractError(failure.error_code,409):
+      new DeliveryStageError(failure.error_code,409,failure.stage,failure.reason);
+  }
   /** Any attached terminal carries a finished errand to the main agent, the highest-ranked one first; errandReply then picks the
    *  terminal that shows her report. Throws RUN_NOT_ACCEPTED when the result's own event ended without a run (definitive). */
   async deliverErrand(result:ErrandResult,onError:(error:unknown)=>void):Promise<boolean|'pending'|'absorbed'> {
     await this.activityErrand(result.principal_id,result);
-    const failure=this.errandReports.get(result.job_id)?.failure;if(failure)throw failure;
+    const failure=await this.errandReportFailure(result.principal_id,result.job_id);if(failure)throw failure;
     if(result.self_check_of&&await this.native.routeSelfcheckResult(result))return 'absorbed';
     let pending=false;
     if(!this.errandReports.get(result.job_id)?.delivered)for(const watcher of await this.connectedTerminals(result.principal_id,onError)){
@@ -1504,7 +1657,8 @@ export class PersonalAIOSRuntime {
       const outcome=await this.submitErrand({schema_version:EVENT_SCHEMA,event_id:previous.event_id,captured_at:previous.captured_at,
         device_id:previous.device_id,device_type:previous.device_type,source:previous.source,media_type:'app_event',mime:'application/json',
         representation:'uploaded_original',payload:Buffer.from(await this.archive.read(previous.raw_ref,result.principal_id,previous.archive_revision))},source,session);
-      check(!['failed','expired','cancelled'].includes(outcome.admission.state),'ERRAND_FAILURE_NOT_ADMITTED',409);return true;
+      check(!['failed','expired','cancelled'].includes(outcome.admission.state),'ERRAND_FAILURE_NOT_ADMITTED',409);
+      this.errandReports.delete(result.job_id);return true;
     }
     const record=original?await this.admission.readOnly(result.principal_id,session,original.processed_event_id):undefined;
     const publication=original&&record?.run_id?await this.output.textPublication(await this.outputContext(original,record.session_id,record.run_id)):undefined;
@@ -1523,7 +1677,8 @@ export class PersonalAIOSRuntime {
         ...(result.payment_intent?{payment_intent:result.payment_intent}:{}),
         ...(original?{result_processed_event_id:original.processed_event_id,result_raw_ref:original.raw_ref}:{})}))},source,session);
     check(!['failed','expired','cancelled'].includes(outcome.admission.state),'ERRAND_FAILURE_NOT_ADMITTED',409);
-    // Admitting the failure observation must not reopen the original report's subscription.
+    // The durable failure observation keeps the original report closed after its transient error retires.
+    this.errandReports.delete(result.job_id);
     return true;
   }
   async errandTextSent(source:RegisteredDevice,session:string,processedEvent:string,chunk:import('./output.ts').TextChunk):Promise<void> {
@@ -1589,13 +1744,23 @@ export class PersonalAIOSRuntime {
     return false; // The spool owns notification submission; it keeps that duty replayable too.
   }
 
-  /** Cross-conversation report context comes from the existing errand D and OUT journal. */
-  async errandReportContext(context:{run_id:string;session_id:string},jobIds:unknown) {
+  private errandReportEntry(context:{run_id:string;session_id:string},jobIds:unknown) {
     id(context.run_id);id(context.session_id);
     const entry=this.admission.find(context.run_id,context.session_id);
     check(entry,'ERRAND_REPORT_RUN_BINDING_REQUIRED',403);
     check(runScope(entry.d)==='owner'&&(entry.d.content.app_event as {kind?:unknown}|undefined)?.kind!=='proactive_care','ERRAND_REPORT_OWNER_REQUIRED',403);
     check(Array.isArray(jobIds)&&jobIds.length<=16&&jobIds.every(job=>typeof job==='string'&&job.length>0&&job.length<=128),'ERRAND_REPORT_JOB_IDS_INVALID');
+    return entry;
+  }
+  /** The gateway route selects this interface when the phone family's receipt path is composed. */
+  async receiptErrandReportContext(context:{run_id:string;session_id:string},jobIds:unknown) {
+    if(!this.phoneReceipts?.enabled())return this.errandReportContext(context,jobIds);
+    const entry=this.errandReportEntry(context,jobIds);
+    return this.phoneReceipts.context({principal_id:entry.d.principal_id,run_id:context.run_id},jobIds as string[]);
+  }
+  /** Cross-conversation report context comes from the existing errand D and OUT journal. */
+  async errandReportContext(context:{run_id:string;session_id:string},jobIds:unknown) {
+    const entry=this.errandReportEntry(context,jobIds);
     const principal=entry.d.principal_id;
     const prior_reports:{job_id:string;source:{session_id:string|null;run_id:string|null;processed_event_id:string}|null;
       source_event:Json|null;
@@ -1630,10 +1795,17 @@ export class PersonalAIOSRuntime {
     return {prior_reports};
   }
 
+  private async refreshCoreProfile(principal:string) {
+    const home=this.memoryProfile(principal);
+    if(!home||!this.l3)return;
+    await refreshCoreProfile({principal_id:principal,profile_home:home,...(this.coreProfileSourceHome?{source_profile_home:this.coreProfileSourceHome}:{}),
+      storage:this.storage,archive:this.archive,l3:this.l3});
+  }
+
   async scheduleContext(context:ToolCall['context']&{self_check?:{id:string;source:string;title?:string;evidence_ref?:Json}}) {
     id(context.run_id);id(context.session_id);id(context.tool_call_id);
-    const entry=this.admission.find(context.run_id,context.session_id);
-    check(entry&&!['completed','cancelled','expired','failed'].includes(entry.record.state),'SCHEDULE_RUN_BINDING_REQUIRED',403);
+    const entry=this.toolAdmission(context);
+    check(entry&&(!['completed','cancelled','expired','failed'].includes(entry.record.state)||this.capabilityConsent?.executing(context)),'SCHEDULE_RUN_BINDING_REQUIRED',403);
     check(runScope(entry.d)==='owner'&&(entry.d.content.app_event as {kind?:unknown}|undefined)?.kind!=='proactive_care','SCHEDULE_OWNER_REQUIRED',403);
     const target=await this.routes.read(entry.d);
     const scheduled=entry.d.content.app_event as {kind?:string;job_id?:string;occurrence_id?:string}|undefined;
@@ -1660,7 +1832,7 @@ export class PersonalAIOSRuntime {
   async phoneTaskContext(context:ToolCall['context']) {
     const origin=await this.scheduleContext(context);
     const binding={principal_id:origin.principal_id,job_id:`job-${digest({principal_id:origin.principal_id,...context}).slice(0,12)}`,
-      origin_processed_event_id:origin.origin_processed_event_id};
+      origin_processed_event_id:origin.origin_processed_event_id,run_id:context.run_id,session_id:context.session_id};
     // The executor/spool is not an authorization writer. Bind its job before dispatch, outside its writable volume.
     return this.publish('errand-origins',digest({principal_id:binding.principal_id,job_id:binding.job_id}),binding);
   }
@@ -1708,9 +1880,130 @@ export class PersonalAIOSRuntime {
   async remindersChanged(principal:string):Promise<void> {
     id(principal);await Promise.all([...this.reminderWatchers].filter(w=>w.principal===principal).map(w=>w.push()));
   }
+  private modelUsage:ModelUsage|undefined;
+  private modelUsageEnvironment:string|undefined;
+  installModelUsage(usage:ModelUsage,environment:string):void {
+    this.modelUsage=usage;this.modelUsageEnvironment=environment;
+    this.admission.setPaidAdmission(({d})=>{
+      const identity=principalAttribution(d);
+      return usage.admission(environment,d.principal_id,identity!==null&&identity!=='owner_gesture').allowed;
+    });
+  }
+  resumeModelUsageWork():void {this.admission.resumePaidWork();}
+  async recoverModelUsage():Promise<void> {
+    if(this.modelUsage&&this.modelUsageEnvironment)await this.modelUsage.recover(this.modelUsageEnvironment);
+  }
+  async modelUsageRecord(attempt:UsageAttempt,billing?:CacheWriteBilling):Promise<void> {
+    check(this.modelUsage&&attempt.environment===this.modelUsageEnvironment,'MODEL_USAGE_ENVIRONMENT_REQUIRED',503);
+    await this.modelUsage.record(attempt,billing);
+  }
+  private async modelUsageSourceContext(wire:Record<string,unknown>):Promise<ModelUsageSource> {
+    const context=wire.source_context as Exclude<ModelUsageSource,{kind:'settings_probe'}>;
+    check(context&&typeof context==='object'&&!Array.isArray(context)&&['capture','call','run'].includes(context.kind),'MODEL_USAGE_SOURCE_INVALID');
+    const fields=context.kind==='run'?['kind','run_id','session_id','principal_id','processed_event_id']:
+      ['kind','raw_ref','archive_revision','principal_id','device_id',...(context.kind==='call'?['call_id','continuity']:[])];
+    check(Object.keys(context).length===fields.length&&Object.keys(context).every(field=>fields.includes(field)),'MODEL_USAGE_SOURCE_INVALID');
+    id(context.principal_id);
+    if(context.kind!=='run')check(wire.role===(context.kind==='capture'?'auxiliary.vision':'call.intent'),'MODEL_USAGE_SOURCE_ROLE_DENIED',403);
+    if(context.kind==='run'){
+      id(context.run_id);id(context.session_id);id(context.processed_event_id);
+      check(wire.run_id===context.run_id&&wire.session_id===context.session_id,'MODEL_USAGE_SOURCE_INVALID');
+    }else{
+      id(context.device_id);check(wire.run_id===''&&wire.session_id===context.raw_ref,'MODEL_USAGE_SOURCE_INVALID');
+      check(typeof context.raw_ref==='string'&&/^l5:[a-f0-9]{64}$/u.test(context.raw_ref)&&
+        typeof context.archive_revision==='string'&&/^[a-f0-9]{64}$/u.test(context.archive_revision),'MODEL_USAGE_SOURCE_INVALID');
+      if(context.kind==='call'){id(context.call_id);id(context.continuity);}
+    }
+    const saved=typeof wire.attempt_id==='string'?this.modelUsage!.sourceAttempt(String(wire.environment),context.principal_id,wire.attempt_id):undefined;
+    if(saved?.source_context){check(canonical(saved.source_context)===canonical(context),'MODEL_USAGE_SOURCE_MISMATCH',403);return saved.source_context;}
+    if(context.kind==='run'){
+      const record=await this.admission.readOnly(context.principal_id,context.session_id,context.processed_event_id);
+      check(record?.run_id===context.run_id&&record.session_id===context.session_id,'MODEL_USAGE_ADMISSION_REQUIRED',403);
+      const d=await this.processed(record.principal_id,record.processed_event_id);
+      check(runScope(d)==='owner'&&!isBuildTask(d),'MODEL_USAGE_SOURCE_ROLE_DENIED',403);return {...context,principal_id:d.principal_id};
+    }
+    const archived=await this.archive.locate(context.raw_ref,context.principal_id);
+    check(archived.device_id===context.device_id&&archived.archive_revision===context.archive_revision&&
+      archived.media_type===(context.kind==='capture'?'visual':'audio'),'MODEL_USAGE_SOURCE_MISMATCH',403);
+    if(context.kind==='call')check((await this.archive.readCallBindings(context.call_id,context.principal_id)).some(binding=>binding.raw_ref===context.raw_ref),
+      'MODEL_USAGE_CALL_SOURCE_MISMATCH',403);
+    return {...context,principal_id:archived.principal_id,device_id:archived.device_id};
+  }
+  async recordModelWireAttempt(body:Record<string,unknown>):Promise<void> {
+    const allowed=['attempt_id','request_id','environment','profile','revision','provider_id','model_id','role','run_id','session_id',
+      'base_url','captured_at','status','input_tokens','output_tokens','cost','fallback_reason','original_usage','phase','source_context'];
+    check(Object.keys(body).every(key=>allowed.includes(key)),'MODEL_USAGE_FIELDS_INVALID');
+    for(const key of ['attempt_id','request_id','environment','profile','provider_id','role','session_id'])id(body[key]);
+    check(typeof body.run_id==='string'&&typeof body.model_id==='string'&&body.model_id.length>0&&body.model_id.length<=200&&
+      typeof body.base_url==='string'&&Number.isSafeInteger(body.revision)&&Number(body.revision)>0&&
+      ['started','completed','failed','cancelled'].includes(String(body.status)),'MODEL_USAGE_ATTEMPT_INVALID');
+    check(body.source_context?body.phase===(body.status==='started'?'started':'terminal'):body.phase===undefined&&body.status!=='started','MODEL_USAGE_PHASE_INVALID');
+    if(body.run_id)id(body.run_id);utc(body.captured_at);
+    const wire=body as unknown as ModelWireAttempt,authority=this.modelSettingsAuthority;
+    check(wire.cost&&typeof wire.cost==='object'&&!Array.isArray(wire.cost)&&
+      Object.keys(wire.cost).length===3&&Object.keys(wire.cost).every(key=>['kind','amount','currency'].includes(key))&&
+      typeof wire.cost.currency==='string','MODEL_USAGE_COST_INVALID');
+    check(authority&&this.modelUsage,'MODEL_SETTINGS_UNAVAILABLE',503);
+    const archiveSource=body.source_context?await this.modelUsageSourceContext(body):undefined;
+    const source=archiveSource?undefined:this.admission.modelUsageSource(wire.run_id,wire.session_id);
+    check(source||archiveSource,'MODEL_USAGE_ADMISSION_REQUIRED',403);
+    const roles=authority.readRevision(wire.revision).snapshot.roles,definition=roles.find(role=>role.profile===wire.profile&&role.id===wire.role);
+    const ownerProfiles=new Set(roles.filter(role=>role.id==='brain'&&role.activation_boundary==='brain_idle').map(role=>role.profile));
+    const build=definition?.activation_boundary==='build_idle';
+    check(definition&&(archiveSource?(archiveSource.kind==='run'&&build||ownerProfiles.has(wire.profile)):build||!isBuildTask(source!.d)&&ownerProfiles.has(wire.profile)),'MODEL_USAGE_PROFILE_DENIED',403);
+    const resolution=authority.resolve(wire.environment,wire.profile,wire.role,wire.revision);
+    const route=[resolution,...resolution.ordered_fallbacks].find(route=>route.provider?.id===wire.provider_id&&route.model_id===wire.model_id&&route.provider.base_url===wire.base_url);
+    check(!resolution.disabled&&route,'MODEL_USAGE_ROUTE_DENIED',403);
+    const usage=wire.original_usage??{},numericKeys=['prompt_tokens','completion_tokens','input_tokens','output_tokens','cache_read_input_tokens',
+      'cache_creation_input_tokens','cached_tokens','reasoning_tokens'];
+    check(usage&&typeof usage==='object'&&!Array.isArray(usage)&&Object.entries(usage).every(([key,value])=>
+      numericKeys.includes(key)&&Number.isSafeInteger(value)&&value>=0),'MODEL_USAGE_RAW_USAGE_INVALID');
+    check(wire.fallback_reason===undefined||['rate_limit','provider_error','timeout','authentication_error','model_not_found'].includes(wire.fallback_reason),
+      'MODEL_USAGE_FALLBACK_REASON_INVALID');
+    const identity=source?principalAttribution(source.d):null,owner=archiveSource?.principal_id??source!.d.principal_id;
+    const ownerChat=archiveSource?archiveSource.kind==='call':identity!==null&&identity!=='owner_gesture'&&!isBuildTask(source!.d)&&!build&&wire.role!=='delegation';
+    if(body.phase==='started')check(this.modelUsage.admission(wire.environment,owner,ownerChat).allowed,'MODEL_USAGE_PAUSED',409);
+    await this.modelUsageRecord({attempt_id:wire.attempt_id,request_id:wire.request_id,environment:wire.environment,
+      owner,provider_id:wire.provider_id,model_id:wire.model_id,role:wire.role,revision:String(wire.revision),
+      owner_chat:ownerChat,...(archiveSource?{source_context:archiveSource}:{}),captured_at:wire.captured_at,status:wire.status,input_tokens:wire.input_tokens,
+      output_tokens:wire.output_tokens,cost:wire.cost,original_usage:usage,...(route.credential_version?{credential_version:route.credential_version}:{}),
+      ...(wire.fallback_reason?{fallback_reason:wire.fallback_reason}:{}),
+      ...(usage.cached_tokens!==undefined||usage.cache_read_input_tokens!==undefined?{cache_read_tokens:usage.cached_tokens??usage.cache_read_input_tokens}:{}),
+      ...(usage.cache_creation_input_tokens!==undefined?{cache_write_tokens:usage.cache_creation_input_tokens}:{}),
+      ...(usage.reasoning_tokens!==undefined?{reasoning_tokens:usage.reasoning_tokens}:{})},defaultCacheWriteBilling(route.provider!,wire.model_id));
+  }
+  async modelUsageAdmission(body:Record<string,unknown>) {
+    const fields=['environment','profile','run_id','session_id','role',...(body.source_context===undefined?[]:['source_context'])];
+    check(Object.keys(body).length===fields.length&&Object.keys(body).every(key=>fields.includes(key))&&
+      ['brain','delegation','build','cron'].includes(String(body.role))&&body.environment===this.modelUsageEnvironment&&
+      typeof body.run_id==='string'&&typeof body.session_id==='string','MODEL_USAGE_ADMISSION_INVALID');
+    check(this.modelUsage,'MODEL_USAGE_ADMISSION_REQUIRED',403);
+    const proof=body.source_context?await this.modelUsageSourceContext({...body,role:body.role==='build'?'build.workshop':body.role}):undefined;
+    check(!proof||proof.kind==='run','MODEL_USAGE_SOURCE_ROLE_DENIED',403);
+    const source=proof?undefined:this.admission.modelUsageSource(body.run_id,body.session_id);
+    check(source||proof,'MODEL_USAGE_ADMISSION_REQUIRED',403);
+    const roles=this.modelSettingsAuthority!.read().roles,ownerProfile=roles.some(role=>role.profile===body.profile&&role.id==='brain'&&role.activation_boundary==='brain_idle'),
+      buildProfile=roles.some(role=>role.profile===body.profile&&role.activation_boundary==='build_idle');
+    check(ownerProfile||buildProfile,'MODEL_USAGE_PROFILE_DENIED',403);
+    const identity=source?principalAttribution(source.d):null,ownerChat=!proof&&body.role==='brain'&&ownerProfile&&!isBuildTask(source!.d)&&identity!==null&&identity!=='owner_gesture';
+    const decision=this.modelUsage.admission(String(body.environment),proof?.principal_id??source!.d.principal_id,ownerChat);
+    return {...decision,...(!decision.allowed?{status:'paused',settings_entry:'模型与密钥'}:{})};
+  }
+  async modelUsageNotice(notice:BudgetNotice):Promise<void> {
+    const stored=await this.storage.read('system-events',digest([notice.principal_id,notice.id])).catch(error=>{
+      if((error as NodeJS.ErrnoException).code==='ENOENT')return undefined;throw error;
+    });
+    if(stored){const prior=JSON.parse(Buffer.from(stored).toString()) as {device_id:string};
+      await this.scheduledDelivery({...notice,device_id:prior.device_id});return;}
+    const devices=this.deviceInventory?await this.deviceInventory(notice.principal_id):[...this.paymentDevices.values()];
+    const target=devices.filter(device=>device.principal_id===notice.principal_id&&hasTerminalCapability(device,'chat_ui'))
+      .sort((a,b)=>Number(b.device_type==='phone')-Number(a.device_type==='phone')||a.device_id.localeCompare(b.device_id))[0];
+    check(target,'MODEL_USAGE_DEVICE_REQUIRED',503);
+    await this.scheduledDelivery({...notice,device_id:target.device_id});
+  }
   async scheduledDelivery(value:{principal_id:string;device_id:string;id:string;text:string;captured_at:string;reminder_id?:string;
     system_event?:{type:'release_rollback';release_id:string;reason:'restart_storm'|'unhealthy_window';images:{service:string;variable:string;candidate:string;previous:string}[]}
-      |{type:'release_shipped'|'release_reverted';release_id:string;commit:string;request_id?:string}|ReleaseRequestEvent}):Promise<void> {
+      |{type:'release_shipped'|'release_reverted';release_id:string;commit:string;request_id?:string}|ReleaseRequestEvent|BudgetNotice['system_event']}):Promise<void> {
     id(value.principal_id);id(value.device_id);id(value.id);utc(value.captured_at);if(value.reminder_id!==undefined)id(value.reminder_id);
     check(typeof value.text==='string'&&value.text.trim().length>0&&value.text.length<=4000,'SCHEDULE_TEXT_REQUIRED');
     if(value.system_event!==undefined){
@@ -1744,8 +2037,14 @@ export class PersonalAIOSRuntime {
         await this.storage.publish('system-notice-deliveries',key,Buffer.from(canonical({id:value.id})));
         return;
       }
-      // Release notices from the one release flow: the watchdog's rollback, and 依米's shipped repair or 「改回去」.
-      check(event&&typeof event==='object'&&['release_rollback','release_shipped','release_reverted'].includes(event.type)&&
+      if(event?.type==='budget_alert'){
+        check(event.threshold_version===1&&event.threshold_cny===10&&['known','estimated'].includes(event.alert_kind)&&
+          /^\d{4}-\d{2}-\d{2}$/.test(event.local_date)&&typeof event.environment==='string'&&
+          [event.known_cny,event.estimated_cny].every(amount=>Number.isFinite(amount)&&amount>=0)&&
+          Number.isSafeInteger(event.unknown_attempts)&&event.unknown_attempts>=0&&
+          value.id===`budget:${sha256(JSON.stringify([event.environment,value.principal_id])).slice(0,32)}:${event.local_date}:1:${event.alert_kind}`,
+          'SYSTEM_EVENT_REQUIRED');
+      }else check(event&&typeof event==='object'&&['release_rollback','release_shipped','release_reverted'].includes(event.type)&&
         typeof event.release_id==='string'&&/^[A-Za-z0-9_.-]{1,80}$/.test(event.release_id)&&
         value.id===`${event.type.replace('_','-')}:${event.release_id}`&&(event.type==='release_rollback'?
           ['restart_storm','unhealthy_window'].includes(event.reason)&&
@@ -1857,13 +2156,16 @@ export class PersonalAIOSRuntime {
       if(delivered)await this.output.recordCallResultDelivery(ctx,delivered);
     }finally{this.outreachInFlight.delete(flight);}
   }
-  async closeCall(device:RegisteredDevice,session:string,closed:{call_id:string;reason:string;final_turn:number;processed_event_ids:string[];closed_at:string}) {
-    const source=await this.registered(device),raw:RawEvent={schema_version:EVENT_SCHEMA,event_id:`call-closed:${digest([session,closed.call_id])}`,
+  async closeCall(device:RegisteredDevice,session:string,closed:CallClosed) {
+    return this.closeCallTrusted(await this.registered(device),session,closed);
+  }
+  private async closeCallTrusted(source:RegisteredDevice,session:string,closed:CallClosed) {
+    const raw:RawEvent={schema_version:EVENT_SCHEMA,event_id:`call-closed:${digest([session,closed.call_id])}`,
       captured_at:closed.closed_at,device_id:source.device_id,device_type:source.device_type,source:{channel:source.channel},media_type:'app_event',
       mime:'application/json',representation:'uploaded_original',payload:Buffer.from(canonical({kind:'call_closed',...closed}))};
     this.openCallWork.delete(canonical([source.principal_id,closed.call_id]));this.emitTurnWork(source.principal_id);
     if(closed.reason==='false_wake')return this.archive.archive(raw,{...source,submission:'observation'});
-    return this.submit(raw,source,session,false);
+    return this.submitTrusted(raw,source,session,'observation');
   }
   /** Connected, available terminals share one selection rule, including glasses wear state. Unconfirmed speech never changes the owner's active terminal. */
   terminals(principal:string):RegisteredDevice[] {
@@ -1964,6 +2266,12 @@ export class PersonalAIOSRuntime {
   async confirmVoice(device: RegisteredDevice, request: {confirmation_id: string;choice?:'approve'|'deny';auth?:string},trustCall?:(scope:{principal_id:string;device_id:string},confirmed_at?:string)=>string|undefined) {
     const confirmer = await this.capableDevice(device, 'owner_unlock', 'VOICE_CONFIRMATION_DEVICE_REQUIRED');
     const pending=await this.confirmations.record(request.confirmation_id,confirmer.principal_id);
+    if(pending.kind==='capability_call'){
+      check(request.choice==='approve'||request.choice==='deny','NATIVE_APPROVAL_CHOICE_REQUIRED');
+      check(this.capabilityConsent,'CAPABILITY_CONSENT_UNAVAILABLE',503);
+      await this.capabilityConsent.answer(request.confirmation_id,confirmer,request.choice);
+      return {approval:{confirmation_id:request.confirmation_id,choice:request.choice}};
+    }
     if(pending.kind==='capability_upgrade'){
       check(request.choice==='approve'||request.choice==='deny','NATIVE_APPROVAL_CHOICE_REQUIRED');
       check(this.capabilityGrants,'CAPABILITY_UPGRADE_UNAVAILABLE',503);
@@ -2051,17 +2359,19 @@ export class PersonalAIOSRuntime {
     check(audio.length > 0 && new Set(audio.map(part => `${part.chunk.track_id}\n${part.chunk.stream_epoch}`)).size === 1, 'VOICEPRINT_SAMPLE_INVALID');
     return enrollment.measure(source, Buffer.concat(audio.sort((a, b) => a.chunk.seq - b.chunk.seq).map(part => Buffer.from(part.bytes))));
   }
-  private async conversationDevice(device: RegisteredDevice) {
+  private async conversationDevice(device: RegisteredDevice, discard=false) {
     const source = await this.registered(device);
     // Glasses have no owner unlock: the paired phone approves each ordinary supplement with Face ID, bound to this wear session.
     check((hasTerminalCapability(source, 'owner_unlock') || source.device_type === 'mac' ||
-      source.device_type === 'glasses' && await this.payment?.enrolmentAllowed(source, 'voice_enrollment')) && hasTerminalCapability(source, 'microphone'),
+      source.device_type === 'glasses' && this.payment && (discard || await this.payment.enrolmentAllowed(source, 'voice_enrollment'))) && hasTerminalCapability(source, 'microphone'),
       'VOICEPRINT_DEVICE_REQUIRED', 403);
     check(this.conversationEnrollment, 'VOICE_ENROLLMENT_UNAVAILABLE', 503);
     return {source, enrollment: this.conversationEnrollment};
   }
   async voiceEnrollmentControl(device: RegisteredDevice, action: ConversationAction, id?: string, callId?: string) {
-    const {source, enrollment} = await this.conversationDevice(device);
+    const {source, enrollment} = await this.conversationDevice(device, action === 'discard');
+    if (action === 'discard' && source.device_type === 'glasses')
+      await this.payment!.cancelApproval(source, 'voice_enrollment');
     const state = await enrollment.control(source, action, id, callId);
     if (action === 'commit' && state.phase === 'committed' && source.device_type === 'glasses')
       await this.payment!.consumeEnrolment(source, 'enrolled', 'voice_enrollment');
@@ -2132,21 +2442,22 @@ export class PersonalAIOSRuntime {
   }
   // Durable ingress ACK releases capture bytes; publication and ordered consumer work remain separate.
   // resetConsume declares a source-observed gap, never a guessed recovery from a consumer error.
-  appendMedia(raw: RawEvent, device: RegisteredDevice, chunk: TrackChunk,publicationWaitSignal?:AbortSignal,lifecycle?:{onDurable:()=>void;beforeConsume:Promise<unknown>;consume?:boolean;resetConsume?:boolean}):Promise<MediaAppendResult> {
+  appendMedia(raw: RawEvent, device: RegisteredDevice, chunk: TrackChunk,publicationWaitSignal?:AbortSignal,lifecycle?:MediaAppendLifecycle):Promise<MediaAppendResult> {
     if(this.closing)return Promise.reject(new ContractError('RUNTIME_CLOSED',503));
     const work=this.appendMediaOwned(raw,device,chunk,publicationWaitSignal,lifecycle);this.mediaWork.add(work);
     void work.then(()=>this.mediaWork.delete(work),()=>this.mediaWork.delete(work));return work;
   }
-  private async appendMediaOwned(raw:RawEvent,device:RegisteredDevice,chunk:TrackChunk,publicationWaitSignal?:AbortSignal,lifecycle?:{onDurable:()=>void;beforeConsume:Promise<unknown>;consume?:boolean;resetConsume?:boolean}):Promise<MediaAppendResult> {
+  private async appendMediaOwned(raw:RawEvent,device:RegisteredDevice,chunk:TrackChunk,publicationWaitSignal?:AbortSignal,lifecycle?:MediaAppendLifecycle):Promise<MediaAppendResult> {
     check(this.media, 'MEDIA_NOT_CONFIGURED', 503);
     const source = await this.registered(device);
-    const archived=await this.media.append(raw, {...source, submission: 'observation'}, chunk,publicationWaitSignal,()=>{raw={...raw,payload:new Uint8Array()};lifecycle?.onDurable();});
-    if(lifecycle?.consume===false){this.media.reportContinuousAdmission(archived.event,chunk,new ContractError('FORMAL_PCM_PROCESSING_BACKLOG',429));
+    const archived=await this.media.append(raw, {...source,submission:'observation'}, chunk,publicationWaitSignal,()=>{raw={...raw,payload:new Uint8Array()};lifecycle?.onDurable();},this.mediaCaptureIntent(lifecycle));
+    if(lifecycle?.consume===false){await this.persistBackloggedAudioRoute(archived.event,source,chunk);
+      this.media.reportContinuousAdmission(archived.event,chunk,new ContractError('FORMAL_PCM_PROCESSING_BACKLOG',429));
       return {...archived,processing_admission:{status:'failed',error_code:'FORMAL_PCM_PROCESSING_BACKLOG'},processing_receipt_ref:null};}
     await lifecycle?.beforeConsume;
     return this.consumeArchived(archived,source,chunk,lifecycle?.resetConsume);
   }
-  appendMediaBatch(inputs:{raw:RawEvent;device:RegisteredDevice;chunk:TrackChunk}[],limit:{max_chunks:number;max_bytes:number},publicationWaitSignal?:AbortSignal,lifecycle?:{onDurable:()=>void;beforeConsume:Promise<unknown>;consume?:boolean;resetConsume?:boolean}):Promise<MediaAppendResult[]>{
+  appendMediaBatch(inputs:{raw:RawEvent;device:RegisteredDevice;chunk:TrackChunk}[],limit:{max_chunks:number;max_bytes:number},publicationWaitSignal?:AbortSignal,lifecycle?:MediaAppendLifecycle):Promise<MediaAppendResult[]>{
     if(this.closing)return Promise.reject(new ContractError('RUNTIME_CLOSED',503));
     inputs=inputs.map(x=>({...x,raw:structuredClone(x.raw),chunk:structuredClone(x.chunk)}));
     const work=(async()=>{
@@ -2154,8 +2465,9 @@ export class PersonalAIOSRuntime {
       const verified=new Map<RegisteredDevice,RegisteredDevice>(),sources:RegisteredDevice[]=[];
       for(const x of inputs){if(!verified.has(x.device))verified.set(x.device,await this.registered(x.device));sources.push(verified.get(x.device)!);}
       check(sources.every(x=>canonical(x)===canonical(sources[0])),'MEDIA_BATCH_SOURCE_CONFLICT',403);
-      const archived=await this.media.appendBatch(inputs.map(x=>({raw:x.raw,chunk:x.chunk})),{...sources[0]!,submission:'observation'},limit,publicationWaitSignal,()=>{for(const x of inputs)x.raw.payload=new Uint8Array();lifecycle?.onDurable();});
-      if(lifecycle?.consume===false){this.media.reportContinuousAdmission(archived.at(-1)!.event,inputs.at(-1)!.chunk,new ContractError('FORMAL_PCM_PROCESSING_BACKLOG',429));
+      const archived=await this.media.appendBatch(inputs.map(x=>({raw:x.raw,chunk:x.chunk})),{...sources[0]!,submission:'observation'},limit,publicationWaitSignal,()=>{for(const x of inputs)x.raw.payload=new Uint8Array();lifecycle?.onDurable();},this.mediaCaptureIntent(lifecycle));
+      if(lifecycle?.consume===false){for(let n=0;n<archived.length;n++)await this.persistBackloggedAudioRoute(archived[n]!.event,sources[n]!,inputs[n]!.chunk);
+        this.media.reportContinuousAdmission(archived.at(-1)!.event,inputs.at(-1)!.chunk,new ContractError('FORMAL_PCM_PROCESSING_BACKLOG',429));
         return archived.map(a=>({...a,processing_admission:{status:'failed' as const,error_code:'FORMAL_PCM_PROCESSING_BACKLOG'},processing_receipt_ref:null}));}
       await lifecycle?.beforeConsume;
       if(this.continuous&&inputs.every(x=>x.chunk.modality==='audio')){
@@ -2164,6 +2476,16 @@ export class PersonalAIOSRuntime {
       }
       const results=[];for(let n=0;n<archived.length;n++)results.push(await this.consumeArchived(archived[n]!,sources[n]!,inputs[n]!.chunk,n===0&&lifecycle?.resetConsume));return results;
     })();this.mediaWork.add(work);void work.then(()=>this.mediaWork.delete(work),()=>this.mediaWork.delete(work));return work;
+  }
+  private mediaCaptureIntent(lifecycle?:MediaAppendLifecycle):TrustedContext['audio_capture']{
+    const purpose=lifecycle?.audioPurpose;
+    return purpose?{purpose,lane:this.continuous&&purpose!=='request'?'continuous':'finite'}:undefined;
+  }
+  // Capture purpose belongs to the durable source even when semantic processing is backlogged.
+  private async persistBackloggedAudioRoute(event:ArchivedEvent,source:RegisteredDevice,chunk:TrackChunk):Promise<void>{
+    if(chunk.modality!=='audio')return;
+    const requested=await this.audioRoute?.(source,event);
+    await this.audioConsumers.select(event,this.continuous&&requested?.consumer!=='voice'?'continuous':'finite',requested);
   }
   private async consumeArchivedInterval(archived:Awaited<ReturnType<MediaService['append']>>[],source:RegisteredDevice,chunks:TrackChunk[],requested:AudioRoute,reset=false):Promise<MediaAppendResult[]>{
     const first=archived[0]!.event;let phases:NonNullable<MediaAppendResult['processing_admission']>[],failure:unknown,release:(()=>void)|undefined;
@@ -2281,11 +2603,11 @@ export class PersonalAIOSRuntime {
       // Acquisition end cannot wait for semantic work that yields to this closing call.
       if(this.continuous?.holds(event.raw_ref))await this.finishContinuousMedia(event,chunk);
     } catch(error) {
-      try {await this.archive.finalizeSession(event.raw_ref,endedBy);}
+      try {await this.archive.endSession(event.raw_ref,endedBy);}
       catch(finalizationError){throw new AggregateError([error,finalizationError],'MEDIA_SESSION_FINALIZATION_FAILED');}
       throw error;
     }
-    return this.archive.finalizeSession(event.raw_ref,endedBy);
+    return this.archive.endSession(event.raw_ref,endedBy);
   }
   continuousMedia(){check(this.continuous,'CONTINUOUS_NOT_CONFIGURED',503);return this.continuous;}
   async resetContinuousMedia(device:RegisteredDevice,event:ArchivedEvent,chunk:TrackChunk){
@@ -2447,7 +2769,7 @@ export class PersonalAIOSRuntime {
       const reread=async()=>{try{accept(await this.result(source,outcome!.session,outcome!.processed_event_id!,{text_replay:'sealed'}));}
         catch(error){if(sourceAuthenticationFailure(error)){done.reject(error);return;}
           if(!(error instanceof ContractError&&['SEALED_TEXT_NOT_AVAILABLE','SEALED_TEXT_OLD_EPOCH','RUN_NOT_ACCEPTED'].includes(error.code)))throw error;}};
-      stop=await this.subscribeResult(source,outcome.session,outcome.processed_event_id,async value=>accept(value),error=>sourceAuthenticationFailure(error)?done.reject(error):done.resolve({status:'failed',turn_id:turnId,reason:'processing_failed'}),{on_admission:reread});
+      stop=await this.subscribeResult(source,outcome.session,outcome.processed_event_id,async value=>accept(value),error=>sourceAuthenticationFailure(error)?done.reject(error):done.resolve({status:'failed',turn_id:turnId,reason:'processing_failed'}),{on_admission:reread,signal});
       // Subscription is installed before the canonical sealed-result re-read.
       try{accept(await this.result(source,outcome.session,outcome.processed_event_id,{text_replay:'sealed'}));}
       catch(error){if(!(error instanceof ContractError&&['SEALED_TEXT_NOT_AVAILABLE','SEALED_TEXT_OLD_EPOCH','RUN_NOT_ACCEPTED'].includes(error.code)))throw error;}
@@ -2595,7 +2917,7 @@ export class PersonalAIOSRuntime {
   private async ownerOrigin(d:ProcessedEvent):Promise<ProcessedEvent|undefined> {
     const app=d.content.app_event as ({kind?:string}&Partial<ErrandResult>)|undefined;
     const origin=app?.kind==='desktop_queue_task'?this.timeline?.queueOrigin(d):
-      ['scheduled_task','build_task','task_failure','release_approval_required'].includes(app?.kind??'')&&d.source.channel==='background_scheduled'?app?.origin_processed_event_id:
+      ['scheduled_task','build_task','task_failure','release_approval_required','capability_result'].includes(app?.kind??'')&&d.source.channel==='background_scheduled'?app?.origin_processed_event_id:
       ['errand_result','errand_delivery_failed','camera_result'].includes(app?.kind??'')&&d.origin==='device_observation'?await this.errandOrigin(d.principal_id,app):undefined;
     if(!origin)return;
     try{const original=await this.processed(d.principal_id,origin);return await this.archive.validateEvidence(original)?original:undefined;}
@@ -2671,6 +2993,8 @@ export class PersonalAIOSRuntime {
       if(!this.shownActivity(saved.packet.card))continue;
       this.activityDurable.set(key,saved);
       const projection=this.makeActivity(saved.principal,saved.packet.session_id,saved.packet.processed_event_id,saved);
+      const bound=await this.admission.readOnly(saved.principal,saved.packet.session_id,saved.packet.processed_event_id);
+      if(bound?.run_id)projection.receipts(await this.capabilityGateway.ledger.current({principal_id:saved.principal,run_id:bound.run_id}));
       if(saved.packet.card.state==='running'){
         const record=await this.admission.readOnly(saved.principal,saved.packet.session_id,saved.packet.processed_event_id);
         if(record&&['completed','failed','cancelled','expired'].includes(record.state)){
@@ -2703,6 +3027,7 @@ export class PersonalAIOSRuntime {
     await this.loadActivities();let origin:string;
     try {origin=JSON.parse(Buffer.from(await this.storage.read('errand-origins',digest({principal_id:principal,job_id:job.job_id}))).toString()).origin_processed_event_id;}
     catch(error){if((error as NodeJS.ErrnoException).code==='ENOENT')return;throw error;}
+    await this.phoneReceipts?.observe({...job,principal_id:principal},origin);
     for(const projection of this.activities.values())if(projection.principal===principal&&projection.processed===origin)projection.errand(job);
   }
   async replayActivity(device:RegisteredDevice,deliver:(packet:ActivityUpdate)=>Promise<void>):Promise<void> {
@@ -2899,13 +3224,17 @@ export class PersonalAIOSRuntime {
     finally {if(ownsOutput)this.automaticOutputs.delete(key);}
   }
   // Register before inspecting OUT so immediate native completion cannot be lost. No scheduler/history.
-  async subscribeResult(device:RegisteredDevice,session:string,dId:string,listener:(value:Awaited<ReturnType<PersonalAIOSRuntime['result']>>) => Promise<void>,onError:(error:unknown)=>void, options: {outreach?:'errand';voice_settlement?: true;on_admission?:(value:{processed_event:ProcessedEvent;admission:Admission})=>Promise<void>} = {}) {
+  async subscribeResult(device:RegisteredDevice,session:string,dId:string,listener:(value:Awaited<ReturnType<PersonalAIOSRuntime['result']>>) => Promise<void>,onError:(error:unknown)=>void, options: {outreach?:'errand';voice_settlement?: true;signal?:AbortSignal;on_admission?:(value:{processed_event:ProcessedEvent;admission:Admission})=>Promise<void>} = {}) {
     check(!this.closing,'RUNTIME_CLOSED',503);
     const ownRead=<T>(work:Promise<T>):Promise<T>=>this.resultRead(work);
     if(options.outreach){device=await ownRead(this.registered(device));check(!this.closing,'RUNTIME_CLOSED',503);}
     const initial=await ownRead(this.readEvent(device,session,dId,true,options.outreach??true)),{processed_event:d}=initial,key=this.resultKey(d.principal_id,session,dId);
     initial.admission=this.admission.get(d.principal_id,session,dId)??initial.admission;
     if(options.outreach){
+      if((d.content.app_event as {kind:string}).kind==='errand_result'){
+        const failure=await ownRead(this.errandReportFailure(d.principal_id,(d.content.app_event as {job_id:string}).job_id));
+        if(failure)throw failure;
+      }
       const report=this.errandReports.get((d.content.app_event as {job_id:string}).job_id);
       if(report?.failure)throw report.failure;
       if(report?.delivered||this.outreachInFlight.has(key)||
@@ -2915,7 +3244,7 @@ export class PersonalAIOSRuntime {
     let active=true,textDelivered=false,voiceDelivered=0,serial=Promise.resolve(),states=Promise.resolve(),pendingStates=0,lastState='',releaseOutput:(()=>void)|undefined;
     let stopState!:()=>void;
     const stopped=new Promise<void>(resolve=>{stopState=resolve;});
-    const unsubscribe=()=>{active=false;stopState();releaseOutput?.();const listeners=this.resultListeners.get(key);listeners?.delete(notify);if(!listeners?.size)this.resultListeners.delete(key);};
+    const unsubscribe=()=>{active=false;options.signal?.removeEventListener('abort',unsubscribe);stopState();releaseOutput?.();const listeners=this.resultListeners.get(key);listeners?.delete(notify);if(!listeners?.size)this.resultListeners.delete(key);};
     const publishState=(snapshot:{processed_event:ProcessedEvent;admission:Admission})=>{
       if(!options.on_admission || !active || this.closing)return Promise.resolve();
       const signature=canonical(snapshot.admission);if(signature===lastState)return Promise.resolve();
@@ -2968,6 +3297,8 @@ export class PersonalAIOSRuntime {
       if(state)return publishState({processed_event:state.d,admission:state.record});
       serial=serial.then(()=>deliver(failure));return Promise.resolve();
     },{close:unsubscribe,...(options.outreach?{outreach:options.outreach}:{})});
+    options.signal?.addEventListener('abort',unsubscribe,{once:true});
+    if(options.signal?.aborted){unsubscribe();return unsubscribe;}
     releaseOutput=this.output.reserve(d,Buffer.byteLength(canonical({d,device,session})),'subscription');
     if(!this.resultListeners.has(key))this.resultListeners.set(key,new Set());this.resultListeners.get(key)!.add(notify);
     void publishState(initial);await notify();await serial;return unsubscribe;
@@ -2991,6 +3322,7 @@ export class PersonalAIOSRuntime {
   }
   async cancelRun(device: RegisteredDevice, session: string, dId: string) {
     const {admission}=await this.event(device, session, dId);
+    await this.confirmations.cancelCalls(device.principal_id,dId);
     return this.admission.cancel(device.principal_id, admission.session_id, dId);
   }
   // Only the validated formal primary control frame invokes this operation.
@@ -3006,6 +3338,7 @@ export class PersonalAIOSRuntime {
     check(await this.admission.readOnly(device.principal_id,session,dId),'ADMISSION_NOT_FOUND',404);
     check(this.sourceAuthority.verifyRunController,'RUN_CONTROLLER_SCOPE_DENIED',403);
     await this.sourceAuthority.verifyRunController(device,d,(await this.routes.read(d)).route_version);
+    await this.confirmations.cancelCalls(device.principal_id,dId);
     return this.admission.cancel(device.principal_id,session,dId);
   }
   async cancelPlayback(device: RegisteredDevice, session: string, dId: string, epoch: number) {
@@ -3029,6 +3362,156 @@ export class PersonalAIOSRuntime {
     return effectConsent({admission:this.admission,storage:this.storage,ownerOrigin:d=>this.ownerOrigin(d),
       paymentSource:run=>this.paymentSource(run)},context,effect,approved,rideOk,approvalRequestId,confirmation);
   }
+  private frozenCapability(binding:GatewayBinding,call:GatewayCall,tool:PackageTool,effect:string,target:string):FrozenCall {
+    const context={run_id:call.api_request_id,session_id:call.session_id,tool_call_id:call.tool_call_id};
+    const admission=this.toolAdmission(context)!;
+    return {tool_name:this.capabilityGateway.resolve(call.tool_name)!.identity,task_id:call.task_id,args:call.args,
+      package:tool.package,invocation:this.capabilityGateway.invocation(call,tool),
+      ...(tool.version_digest?{package_digest:tool.version_digest}:{}),
+      idempotency_key:digest([binding.principal_id,context.run_id,call.task_id,context.tool_call_id]),admission,
+      check_with:tool.check_with??tool.name,consent:{context,effect:effect as EffectKind,
+        target:call.prepared?.target??target,task_type:call.prepared?.task_type??
+          (typeof call.args.task_type==='string'?call.args.task_type:tool.task_type??`${tool.package}:${tool.name}`),
+        owner_requested:call.args.owner_requested===true,...(call.prepared?.summary?{summary:call.prepared.summary}:{}),
+        ride_ok:call.args.ride_ok===true,scope_allowed:true,consent_required:true,invocation:binding.invocation}};
+  }
+  /** Bind package execution and confirmation to the existing native transport and the one receipt ledger. */
+  async wireCapabilities(selection=packageSelection()):Promise<void>{
+    const gateway=this.capabilityGateway,ledger=gateway.ledger;
+    const callWire=(call:FrozenCall):GatewayCall=>({tool_name:call.tool_name,args:call.args,task_id:call.task_id,
+      tool_call_id:call.consent.context.tool_call_id,api_request_id:call.consent.context.run_id,
+      session_id:call.consent.context.session_id,turn_id:''});
+    const records=(call:FrozenCall)=>ledger.current({principal_id:call.admission.d.principal_id,run_id:call.consent.context.run_id});
+    await this.attachCapabilityConsent({
+      execute:async call=>structuredResult(await this.native.capability('execute',call)) as Receipt,
+      receipt:async(call,body,phase)=>{
+        const wire=callWire(call);
+        await ledger.admit({principal_id:call.admission.d.principal_id,run_id:call.consent.context.run_id},
+          {...wire,phase,invocation:call.invocation!,package:call.package!,
+            ...(call.package_digest?{version_digest:call.package_digest}:{})},body);
+        (await this.activityFor(call.admission))?.receipts(await records(call));
+      },
+      followUp:async(call,_body,event)=>{
+        const rows=(await records(call)).filter(row=>row.call_id===digest([call.task_id,call.consent.context.tool_call_id]));
+        await this.capabilityFollowUp(call,{receipt_ref:rows.at(-1)!.id,
+          model_view:renderFacts(recordFacts(rows,call.consent.context.run_id),'text')},event);
+      },
+      spend:async call=>this.paymentSource(call.consent.context.run_id,String(call.args.payment_intent??'')).allowed?
+        {action:'allow'}:{action:'block',message:'PAYMENT_INTENT_SOURCE_REQUIRED'},
+      selfChange:(call,approval)=>this.native.capability('release-gate',{call,approval}),
+      error:error=>console.error('CAPABILITY_CONFIRMATION_FAILED',error instanceof ContractError?error.code:'unavailable')},false);
+    if(selection.enabled.includes('yimi')&&selection.gateway.includes('yimi')){
+      check(this.storage instanceof PosixStorage,'CAPABILITY_REGISTRY_STORAGE_REQUIRED');
+      const authority=new EnabledPackages(this.storage,gateway,this.native);
+      this.capabilityPackages=authority;
+      this.capabilityRegistry=new CapabilityRegistry(join(this.storage.root,'capability-registry'),authority,
+        workshopRegistrationRunner((path,files)=>this.native.capability('registration-check',files),
+          async version=>(await this.native.capability('package-health',{principal_id:
+            [...gateway.tools.values()].find(tool=>tool.version_digest===version.digest)!.principal_id,version})).healthy),ledger,
+        {hub:async query=>(await this.native.capability('discovery',{query,source:'hermes_hub'})),
+          mcp:async query=>(await this.native.capability('discovery',{query,source:'official_mcp'}))});
+    }
+    const jobRun=async(principal:string,job:string)=>{
+      const origin=JSON.parse(Buffer.from(await this.storage.read('errand-origins',digest({principal_id:principal,job_id:job}))).toString());
+      if(origin.run_id)return {principal_id:principal,run_id:origin.run_id};
+      const session=JSON.parse(Buffer.from(await this.storage.read('d-session-bindings',digest({principal_id:principal,processed_event_id:origin.origin_processed_event_id}))).toString()).session_id;
+      const entry=await this.admission.readOnly(principal,session,origin.origin_processed_event_id);
+      check(entry?.run_id,'CAPABILITY_JOB_BINDING_REQUIRED',403);return {principal_id:principal,run_id:entry.run_id};
+    };
+    const snapshot=[...gateway.tools].find(([,tool])=>tool.package==='phone'&&tool.name===tool.check_with&&tool.effect==='observe');
+    if(snapshot)this.phoneReceipts=new PhoneLifecycle(phoneGatewayPort({enabled:family=>[...gateway.tools.values()].some(tool=>tool.package===family),
+      ledger,snapshotTool:snapshot[0],jobRun,receiptFacts:receipts=>receipts.flatMap(receipt=>recordFacts([{id:'',tool:'',invocation:'',
+        fingerprint:'',task_id:'',tool_call_id:'',receipt}],'job')),
+      renderFacts,carry:async(binding,receipts)=>{
+        for(const receipt of receipts){const source=await jobRun(binding.principal_id,receipt.job!.id);
+          await ledger.carry(binding,(await ledger.records(source)).filter(row=>row.receipt.job?.id===receipt.job!.id&&row.receipt.job.revision===receipt.job!.revision));}
+      }}),{ensure:async request=>{
+        const origin=await this.processed(request.principal_id,request.origin_processed_event_id!);
+        const stamp=await ledger.source(await jobRun(request.principal_id,request.failed_card),`selfcheck:${request.id}`,{captured_at:new Date().toISOString()});
+        await this.scheduledTask({principal_id:request.principal_id,device_id:origin.device_id,job_id:request.failed_card,
+          occurrence_id:request.id,captured_at:stamp.captured_at,prompt:request.title,
+          failure:{failure_source:'errand',job_id:request.failed_card,title:Array.from(request.title).slice(0,40).join(''),
+            task:request.title,answer:'先只读核对原任务，不要重试原动作。',terminal_reason:'failed',evidence_ref:request.evidence_ref},
+          skills:['failure-selfcheck'],title:request.title,origin_processed_event_id:request.origin_processed_event_id!});
+      }});
+  }
+  async capabilityRegistryCall(action:Parameters<typeof capabilityRegistryRoute>[2],body:Record<string,unknown>){
+    check(this.capabilityRegistry,'CAPABILITY_REGISTRY_DISABLED',404);
+    const context=body.context as ToolCall['context'];
+    check(context&&typeof context.run_id==='string'&&typeof context.session_id==='string'&&typeof context.tool_call_id==='string',
+      'TOOL_CONTEXT_REQUIRED',403);
+    const entry=this.toolAdmission(context);
+    check(entry&&!['completed','cancelled','expired','failed'].includes(entry.record.state),'CAPABILITY_RUN_BINDING_REQUIRED',403);
+    const scope=isBuildTask(entry.d)?'build':runScope(entry.d);
+    check(['owner','build'].includes(scope),'CAPABILITY_SCOPE_DENIED',403);
+    await this.recoverCapabilityPackages();
+    return capabilityRegistryRoute(this.capabilityRegistry,{principal_id:entry.d.principal_id,run_id:context.run_id,
+      scope,tool_call_id:context.tool_call_id},action,body);
+  }
+  private async recoverCapabilityPackages(){
+    if(!this.capabilityPackages)return;
+    const ready=this.capabilityPackagesReady??=this.capabilityPackages.recover();
+    try{await ready;}catch(error){if(this.capabilityPackagesReady===ready)this.capabilityPackagesReady=undefined;throw error;}
+  }
+  /** The existing maintenance tick owns package health and version-scoped outcome rollback. */
+  async monitorCapabilities():Promise<void>{
+    if(!this.capabilityRegistry)return;
+    await this.recoverCapabilityPackages();
+    const packages=new Map([...this.capabilityGateway.tools.values()].filter(tool=>tool.principal_id&&tool.version_digest)
+      .map(tool=>[`${tool.principal_id}:${tool.package}`,tool]));
+    for(const tool of packages.values())await this.capabilityRegistry.monitor({principal_id:tool.principal_id!,
+      run_id:'system:capability-health',scope:'owner'},tool.package);
+  }
+  async capabilityCall(operation: 'decide'|'receipt'|'observe', body: unknown) {
+    this.capabilityGateway.validate(operation,body);
+    const call=structuredClone(body) as GatewayCall, entry=this.admission.find(call.api_request_id,call.session_id);
+    check(entry,'CAPABILITY_RUN_BINDING_REQUIRED',403);
+    const kind=(entry.d.content.app_event as {kind?:unknown}|undefined)?.kind;
+    const binding={principal_id:entry.d.principal_id,run_id:entry.record.run_id!,
+      scope:isBuildTask(entry.d)?'build':kind==='proactive_care'?'care':runScope(entry.d),
+      invocation:kind==='scheduled_task'?'cron' as const:kind==='desktop_queue_task'?'background' as const:'interactive' as const};
+    if(operation==='decide') {
+      check(!['completed','failed','cancelled','expired'].includes(entry.record.state),'CAPABILITY_RUN_TERMINAL',409);
+      const resolved=this.capabilityGateway.resolve(call.tool_name);
+      if(resolved&&resolved.tool.scopes.includes(binding.scope)){
+        const context={run_id:call.api_request_id,session_id:call.session_id,tool_call_id:call.tool_call_id};
+        const fields:Record<string,unknown>={context,_context:context,principal_id:entry.d.principal_id,
+          idempotency_key:digest([entry.d.principal_id,context.run_id,call.task_id,context.tool_call_id]),self_check_of:null};
+        const failure=entry.d.content.app_event as {kind?:string;failure_source?:string;job_id?:string}|undefined;
+        if(failure?.kind==='task_failure')call.args.owner_requested=false;
+        if(failure?.kind==='task_failure'&&failure.failure_source==='errand')fields.self_check_of=`${failure.job_id}:0`;
+        const inject=resolved.tool.context_inject??[];
+        if(resolved.tool.effect==='observe'&&inject.includes('idempotency_key')){
+          const checked=(await this.capabilityGateway.ledger.current(binding)).findLast(row=>row.tool!==resolved.identity&&
+            (row.receipt.next.check_with??this.capabilityGateway.resolve(row.tool)?.tool.check_with)===resolved.tool.name);
+          if(checked)fields.idempotency_key=digest([entry.d.principal_id,checked.origin_run??binding.run_id,checked.task_id,checked.tool_call_id]);
+        }
+        if(inject.some(key=>['job_id','check_job_id','origin_processed_event_id'].includes(key))){
+          const job=await this.phoneTaskContext(context);Object.assign(fields,job,{check_job_id:job.job_id});
+        }
+        for(const key of inject){check(key in fields,'CAPABILITY_CONTEXT_FIELD_UNSUPPORTED');call.args[key]=fields[key];}
+        if(call.args.payment_intent||call.args.ride_ok){
+          const source=this.paymentSource(context.run_id,typeof call.args.payment_intent==='string'?call.args.payment_intent:undefined);
+          check(!call.args.payment_intent||source.allowed,'PAYMENT_INTENT_SOURCE_REQUIRED',403);
+          check(call.args.ride_ok!==true||source.ride_allowed,'RIDE_OWNER_SOURCE_REQUIRED',403);
+        }
+        if(resolved.tool.transport_name?.startsWith('mcp__platform_ts__')){
+          const {prepareTSCall}=await import('./capability/ts/host.ts');
+          call.args=(await prepareTSCall(resolved.tool,call.args)).args;
+        }else if(resolved.tool.transport_name?.startsWith('mcp__yimi_shared__')){
+          const prepared=await this.native.capability('prepare',{tool_name:resolved.identity,args:call.args});
+          call.args=prepared.args;call.prepared=prepared.consent;
+        }
+      }
+      const decision=await this.capabilityGateway.decide(binding,call);
+      if(decision.action==='allow'&&resolved&&canonical(call.args)!==canonical((body as GatewayCall).args))return {action:'modify',args:call.args};
+      return decision;
+    }
+    if(operation==='observe')return this.capabilityGateway.observe(binding,call);
+    const result=await this.capabilityGateway.receipt(binding,call);
+    (await this.activityFor(entry))?.receipts(await this.capabilityGateway.ledger.current(binding));
+    return result;
+  }
   async tool(name: string, call: ToolCall) {
     if(name!=='paios_ride'&&name!=='paios_navigate'&&!(name==='paios_senses'&&call.args.sense==='phone_location'))return this.executeTool(name,call);
     const deadline_ms=name==='paios_navigate'?40000:name==='paios_ride'?16000:12000;
@@ -3045,15 +3528,18 @@ export class PersonalAIOSRuntime {
   }
   private async executeTool(name:string,call:ToolCall) {
     id(call.context.run_id); id(call.context.session_id); id(call.context.tool_call_id);
-    const entry = this.admission.find(call.context.run_id, call.context.session_id);
+    const entry = this.toolAdmission(call.context);
     if (!entry || ['completed','cancelled','expired','failed'].includes(entry.record.state))
       return {status: 'pending', error_code: 'RUN_BINDING_PENDING'};
     const ctx = await this.outputContext(entry.d, call.context.session_id, call.context.run_id, call.context.tool_call_id);
     this.terminalToolSignal.getStore()?.throwIfAborted();
     // The D's run scope, not what the native side advertised: an unverified voice gets reply routing only.
     const toolScope=isBuildTask(entry.d)?'build':(entry.d.content.app_event as {kind?:unknown}|undefined)?.kind==='proactive_care'?'care':runScope(entry.d);
+    const policy=this.capabilityGateway.resolve(name)?.tool;
+    const scopeRead=toolScope==='owner'&&policy&&toolEffect(policy,call.args)==='observe';
+    const ownerAccess=()=>scopeRead?Promise.resolve(true):ownerActionGrant(entry.d,d=>this.ownerOrigin(d)).then(grants=>grants.length>0);
     const paymentRequest=name==='paios_payment'&&call.args.action==='request';
-    const ownerRequest=name==='paios_desktop_queue'&&(await ownerActionGrant(entry.d,d=>this.ownerOrigin(d))).length>0;
+    const ownerRequest=name==='paios_desktop_queue'&&await ownerAccess();
     if(name==='paios_desktop_queue')check(ownerRequest,'DESKTOP_QUEUE_OWNER_REQUIRED',403);
     if(paymentRequest&&toolScope!=='owner')return {status:'rejected',error_code:this.payment?.config.enabled?'PAYMENT_SOURCE_NOT_OWNER':'PAYMENT_DISABLED'};
     check(name==='paios_desktop_queue'||toolScope==='owner'||NATIVE_RUN_SCOPE_TOOLS[toolScope].includes(name),'RUN_SCOPE_TOOL_DENIED',403);
@@ -3064,6 +3550,25 @@ export class PersonalAIOSRuntime {
     const schema = this.toolSchemas().find(tool => tool.name === name);
     check(schema, 'TOOL_NOT_ENABLED', 404);
     check(Object.keys(call.args).every(key => key in schema.parameters.properties), 'UNKNOWN_TOOL_ARGUMENT');
+    if(name==='paios_model_settings_read'||name==='paios_model_settings_draft'){
+      check(this.modelSettings,'MODEL_SETTINGS_UNAVAILABLE',503);
+      check(new Ajv({strict:false}).compile(schema.parameters)(call.args),'MODEL_SETTINGS_TOOL_INVALID');
+      check(toolScope==='owner'&&await ownerAccess(),'MODEL_SETTINGS_OWNER_REQUEST_REQUIRED',403);
+      const held=this.paymentDevices.get(entry.d.device_id);check(held,'MODEL_SETTINGS_SOURCE_NOT_CONNECTED',409);
+      const source=await this.registered(held,true);check(hasTerminalCapability(source,'chat_ui')&&source.principal_id===entry.d.principal_id,
+        'MODEL_SETTINGS_CHAT_SOURCE_REQUIRED',403);
+      check(scopeRead||!['scheduled_task','desktop_queue_task','proactive_care','build_task'].includes(String((entry.d.content.app_event as {kind?:string}|undefined)?.kind)),
+        'MODEL_SETTINGS_OWNER_REQUEST_REQUIRED',403);
+      if(name==='paios_model_settings_read')return {...modelSettingsPage(this.modelSettings,source,call.args as ModelSettingsPageRequest,
+        this.modelUsage?.summary(this.modelSettings.environment_id,source.principal_id)??null),
+        attempts:this.modelUsage?.recentAttempts(this.modelSettings.environment_id,source.principal_id)??[],settings_entry:'模型与密钥'};
+      let draft:Record<string,unknown>;
+      try{draft=await this.modelSettingsControls!.dispatch(source,{operation:'model_settings_draft',request:call.args}) as Record<string,unknown>;}
+      catch(error){if(!(error instanceof ContractError)||!['MODEL_SETTINGS_KEY_REQUIRED','MODEL_SETTINGS_KEY_REENTRY_REQUIRED'].includes(error.code))throw error;
+        return {status:'key_required',error_code:error.code,settings_entry:'模型与密钥'};}
+      return {status:'awaiting_owner_signature',draft,settings_entry:{label:'模型与密钥',draft_id:draft.draft_id},
+        confirmation:'Open the frozen draft in 模型与密钥, review every draft page, then sign through the existing owner formal channel.'};
+    }
     if(name==='paios_avatar'){
       check(new Ajv({strict:false}).compile(schema.parameters)(call.args),'AVATAR_TOOL_INVALID');
       if(call.args.action==='list')return {looks:this.avatar?await this.avatar.looks():[]};
@@ -3076,7 +3581,7 @@ export class PersonalAIOSRuntime {
         expected_version:call.args.expected_version as number,look_id:call.args.look_id as string,owner_request:request});
     }
     if(name==='paios_task_amend'){
-      check((await ownerActionGrant(entry.d,d=>this.ownerOrigin(d))).length>0,'AMENDMENT_OWNER_REQUIRED',403);
+      check(await ownerAccess(),'AMENDMENT_OWNER_REQUIRED',403);
       check(new Ajv({strict:false}).compile(schema.parameters)(call.args),'AMENDMENT_ARGUMENT_INVALID');
       if(call.args.action==='list')return {tasks:this.admission.taskTargets(ctx.principal_id).filter(task=>task.run_id!==ctx.run_id),
         pending_amendments:await this.admission.pendingAmendments(ctx.principal_id)};
@@ -3119,7 +3624,7 @@ export class PersonalAIOSRuntime {
       consumed();return requested;
     }
     if(name==='paios_senses'){
-      check((await ownerActionGrant(entry.d,d=>this.ownerOrigin(d))).length>0,'OWNER_REQUEST_REQUIRED',403);
+      check(await ownerAccess(),'OWNER_REQUEST_REQUIRED',403);
       check(new Ajv({strict:false}).compile(schema.parameters)(call.args),'SENSE_ARGUMENT_INVALID');
       if(call.args.sense==='heart_rate'){
         if(!this.health)return {status:'unavailable',error_code:'HEALTH_NOT_CONFIGURED'};
@@ -3218,7 +3723,7 @@ export class PersonalAIOSRuntime {
       try {
         check(this.visual,'VISUAL_NOT_CONFIGURED',503);
         if(name==='paios_visual_recall')return {...await this.visual.recall(ctx.principal_id,call.args),camera_statuses:this.capturePolicies.statusesFor(ctx.principal_id)};
-        return await this.native.analyzeVision(await this.visual.imageBytes(ctx.principal_id,call.args.frame_id as string,call.args.full===true),call.args.question as string);
+        return await this.native.analyzeVision(await this.visual.imageBytes(ctx.principal_id,call.args.frame_id as string,call.args.full===true),call.args.question as string,undefined,{run_id:ctx.run_id,session_id:ctx.session_id});
       }catch(error){
         const missing=(error as NodeJS.ErrnoException).code==='ENOENT';
         return {status:'failed',error_code:error instanceof ContractError?error.code:missing?'OBJECT_NOT_FOUND':'INTERNAL_ERROR',http_status:error instanceof ContractError?error.status:missing?404:500,
@@ -3271,11 +3776,14 @@ export class PersonalAIOSRuntime {
       check(this.memory, 'MEMORY_NOT_CONFIGURED', 503);
       if (name === 'paios_l3_inspect') return this.memory.inspect(ctx, call.args as {assertion_id: string});
       if (name === 'paios_l3_query') return this.memory.query(ctx, call.args as MemoryQuery);
-      if (name === 'paios_l3_forget') return this.memory.forget(ctx, call.args as unknown as Parameters<MemoryToolAuthority['forget']>[1]);
+      if (name === 'paios_l3_forget') {const receipt=await this.memory.forget(ctx, call.args as unknown as Parameters<MemoryToolAuthority['forget']>[1]);
+        await this.refreshCoreProfile(ctx.principal_id);return receipt;}
       check(name === 'paios_l3_commit', 'TOOL_NOT_ENABLED', 404);
       const {MemoryArgumentError} = await import('./memory/tools.ts');
-      if(Object.hasOwn(call.args,'proposal_ref'))return this.memory.commitProposal(ctx,call.args as unknown as {proposal_ref:string;decision_ref:string});
-      try {return await this.memory.commit(ctx, call.args as unknown as import('./memory/tools.ts').MemoryCommandInput);}
+      if(Object.hasOwn(call.args,'proposal_ref')) {const receipt=await this.memory.commitProposal(ctx,call.args as unknown as {proposal_ref:string;decision_ref:string});
+        await this.refreshCoreProfile(ctx.principal_id);return receipt;}
+      try {const receipt=await this.memory.commit(ctx, call.args as unknown as import('./memory/tools.ts').MemoryCommandInput);
+        await this.refreshCoreProfile(ctx.principal_id);return receipt;}
       catch (error) {
         if (!(error instanceof MemoryArgumentError)) throw error;
         return {status:'rejected', error_code:error.code, http_status:error.status, field_errors:error.field_errors};
@@ -3329,6 +3837,7 @@ export class PersonalAIOSRuntime {
   cancelMediaProcessing() {for(const operation of this.mediaOperations.values())operation.abort.abort();}
   close(): Promise<void> {
     if (this.closing) return this.closing;
+    for(const stop of this.modelSettingsWatchers)stop();
     this.voiceprint?.clearTrustWindows();
     this.ownerDataIngest.close();this.photoRequests.close();
     for(const stop of this.overrideWatchers)stop();
@@ -3336,19 +3845,21 @@ export class PersonalAIOSRuntime {
     for(const listeners of this.resultListeners.values())for(const listener of listeners)listener.close();
     for(const watcher of this.careWatchers){this.capturePolicies.pause(watcher.source);watcher.errands?.publisher?.stop();}
     for(const watcher of this.confirmationWatchers)watcher.stop();
+    const capabilities=this.capabilityConsent?.close();
     this.terminalCards.close();this.resultListeners.clear();this.turnWatchers.clear();this.careWatchers.clear();this.confirmationWatchers.clear();this.ownerInputs.clear();this.care?.close();this.ambientVoiceWatchers.clear();this.ambientVoiceBindings.clear();this.confirmations.close();
     this.cancelMediaProcessing();
     // Attach every owner's rejection handler before waiting for any sibling work.
-    const timeline=this.timeline?.drain();
+    const timeline=capabilities?capabilities.then(()=>this.timeline?.drain()):this.timeline?.drain();
     // Subscriptions have stopped; their in-flight reads still own admission. OUT close retains sealed read views.
-    const reads=Promise.resolve().then(async()=>{while(this.resultReads.size)await Promise.allSettled([...this.resultReads]);});
+    const reads=Promise.resolve(capabilities).then(async()=>{while(this.resultReads.size)await Promise.allSettled([...this.resultReads]);});
     const owners = Promise.allSettled([
       ...[...this.reminderWatchers].map(watcher=>watcher.stop()),
-      Promise.resolve().then(() => this.media?.close()),
+      Promise.resolve(capabilities).then(() => this.media?.close()),
       Promise.all([timeline,reads]).then(() => this.admission.close()).then(async()=>{for(const projection of this.activities.values())projection.close();await this.activityWrites;}),
       Promise.resolve(timeline).then(() => this.output.close())
     ]);
     this.closing = Promise.resolve().then(async () => {
+      if(capabilities)await capabilities;
       while (this.mediaWork.size) await Promise.allSettled([...this.mediaWork]);
       const settled = await owners;
       this.payment?.close();this.locations.close();await this.timeline?.close();

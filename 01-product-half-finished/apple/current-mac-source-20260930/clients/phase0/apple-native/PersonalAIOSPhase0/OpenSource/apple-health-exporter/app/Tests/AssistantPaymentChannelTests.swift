@@ -3,6 +3,38 @@ import XCTest
 @testable import HealthKitExporter
 
 final class AssistantPaymentChannelTests: XCTestCase {
+    func testModelSettingsShareCorrelationButNeverPaymentProjection() async throws {
+        let channel = AssistantPaymentChannel()
+        let sent = expectation(description: "settings request published")
+        let observed = expectation(description: "settings receipt and state only")
+        observed.expectedFulfillmentCount = 2
+        await channel.setObserver { event in if case .output = event { XCTFail("model settings entered payment projection") } }
+        await channel.setModelSettingsObserver { event in if case .output = event { observed.fulfill() } }
+        await channel.attach(binding: binding) { bytes, _, dispatch in
+            try dispatch.begin()
+            let fields = try JSONSerialization.jsonObject(with: bytes) as! [String: Any]
+            if fields["control_id"] as? String == "settings-1" { sent.fulfill() }
+        }
+        let bytes = try AssistantCentralTextWire.encode("model_settings_read", fields: ["control_id": "settings-1"])
+        let response = Task { try await channel.request(bytes, id: "settings-1", timeout: 2) }
+        await fulfillment(of: [sent], timeout: 1)
+        func settingsReceipt(session: String) throws -> CentralTextPacket {
+            try AssistantCentralTextWire.decode(JSONSerialization.data(withJSONObject: [
+                "schema_version": "paios.central.text-envelope.v1", "operation": "model_settings_receipt",
+                "session_id": session, "control_id": "settings-1", "ok": true, "result": [:]]))
+        }
+        _ = await channel.accept(try settingsReceipt(session: "old-session"))
+        let packet = try settingsReceipt(session: binding.sessionID)
+        _ = await channel.accept(packet)
+        let received = try await response.value
+        XCTAssertEqual(received, packet)
+        let state = try AssistantCentralTextWire.decode(JSONSerialization.data(withJSONObject: [
+            "schema_version": "paios.central.text-envelope.v1", "operation": "model_settings_state",
+            "session_id": binding.sessionID, "state": ["environment_id": "test", "desired": 1, "groups": [:]]]))
+        _ = await channel.accept(state)
+        await fulfillment(of: [observed], timeout: 1)
+    }
+
     func testNonPhoneAttachmentDoesNotPublishPhonePresence() async throws {
         for deviceClass in ["mac", "glasses"] {
             let channel = AssistantPaymentChannel()

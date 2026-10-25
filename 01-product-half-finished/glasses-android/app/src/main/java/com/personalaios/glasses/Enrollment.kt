@@ -100,7 +100,9 @@ class Enrollment internal constructor(private val preferences: android.content.S
             val body = JSONObject().put("token", payload.getString("token")).put("registration", JSONObject(registrationText())).toString().toByteArray(Charsets.UTF_8)
             connection.setFixedLengthStreamingMode(body.size)
             connection.outputStream.use { it.write(body) }
-            check(connection.responseCode == 200) { "配对码已失效或无法使用，请在 iPhone 上重新添加眼镜" }
+            val status = connection.responseCode
+            ServerClock.shared.learn(connection)
+            check(status == 200) { "配对码已失效或无法使用，请在 iPhone 上重新添加眼镜" }
             val pairing = connection.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }
             currentCoroutineContext().ensureActive()
             importPairing(pairing, configuredGateway)
@@ -135,13 +137,15 @@ class Enrollment internal constructor(private val preferences: android.content.S
 }
 
 internal fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
-internal fun parseEnrollmentPayload(text: String, configuredGateway: String, now: Long = System.currentTimeMillis()): JSONObject {
+internal fun parseEnrollmentPayload(text: String, configuredGateway: String, now: Long? = ServerClock.shared.knownTime()): JSONObject {
     require(text.toByteArray().size in 2..2048) { "二维码无法用于眼镜配对" }
     val value = JSONObject(text)
     require(value.keys().asSequence().toSet() == setOf("schema", "origin", "token", "expires_at") &&
         value.getString("schema") == "paios.glasses-enrollment.v1" && value.getString("origin") == gatewayOrigin(configuredGateway) &&
         Regex("^[A-Za-z0-9_-]{43}$").matches(value.getString("token"))) { "请扫描已配对 iPhone 上的眼镜配对码" }
-    require(java.time.Instant.parse(value.getString("expires_at")).toEpochMilli() > now) { "配对码已过期，请在 iPhone 上重新添加眼镜" }
+    val expires = java.time.Instant.parse(value.getString("expires_at")).toEpochMilli()
+    // Until an HTTPS response establishes time, the exchange authority checks expiry.
+    require(now == null || expires > now) { "配对码已过期，请在 iPhone 上重新添加眼镜" }
     return value
 }
 internal fun gatewayOrigin(value: String): String {

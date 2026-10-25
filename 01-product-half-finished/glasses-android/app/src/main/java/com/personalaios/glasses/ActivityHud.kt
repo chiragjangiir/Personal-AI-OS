@@ -17,7 +17,7 @@ import java.time.Duration
 import java.time.Instant
 import java.util.Locale
 
-enum class ActivityPhase { running, succeeded, failed, partial, cancelled }
+enum class ActivityPhase { running, succeeded, failed, partial, cancelled, unknown, waiting }
 
 /** Tool-reported work units. Activity counts never supply a progress denominator. */
 data class ActivityProgress(val version: Int, val value: Double, val total: Double) {
@@ -39,8 +39,9 @@ data class ActivityProgress(val version: Int, val value: Double, val total: Doub
 data class ActivityCard(val id: String, val revision: Long, val processedEventId: String,
     val phase: ActivityPhase, val summary: String, val step: String?, val running: Int,
     val elapsedMs: Long, val progressAgeMs: Long, val receivedAt: Long, val failure: String?, val progress: ActivityProgress? = null) {
-    fun elapsed(now: Long) = elapsedMs + if (phase == ActivityPhase.running) now - receivedAt else 0
-    fun alpha(now: Long): Float = if (phase == ActivityPhase.running) 1f
+    val ongoing get() = phase == ActivityPhase.running || phase == ActivityPhase.waiting
+    fun elapsed(now: Long) = elapsedMs + if (ongoing) now - receivedAt else 0
+    fun alpha(now: Long): Float = if (ongoing) 1f
         else ((3500 - (now - receivedAt)) / 500f).coerceIn(0f, 1f)
 
     companion object {
@@ -52,7 +53,7 @@ data class ActivityCard(val id: String, val revision: Long, val processedEventId
             val age = Duration.between(Instant.parse(c.getString("last_progress_at")),
                 Instant.parse(c.getString("observed_at"))).toMillis()
             val running = c.getJSONObject("counts").getInt("running"); require(running >= 0)
-            if (phase != ActivityPhase.running) Instant.parse(c.getString("completed_at"))
+            if (phase != ActivityPhase.running && phase != ActivityPhase.waiting) Instant.parse(c.getString("completed_at"))
             val failure = if (phase == ActivityPhase.failed || phase == ActivityPhase.partial)
                 c.getString("failure_reason") else null
             return ActivityCard(c.getString("id"), revision, message.getString("processed_event_id"),
@@ -73,13 +74,15 @@ fun activityLine(state: HudState, screen: HudScreen, wallNow: Long, now: Long): 
         wallNow < state.paymentLock.bannerUntil || state.payment?.let { it.until > wallNow } == true ||
         captionWindow(state.captions, wallNow).isNotEmpty() || state.avatarPhase == "Playing" ||
         (base != HudScreen.Idle && base != HudScreen.Talking)) return null
-    val active = state.activities.filter { it.phase == ActivityPhase.running }
+    val active = state.activities.filter { it.ongoing }
     val card = state.activities.lastOrNull { it.alpha(now) > 0 } ?: return null
     val text = when (card.phase) {
         ActivityPhase.succeeded -> "已完成"
         ActivityPhase.failed -> "未办成 · ${card.failure}"
         ActivityPhase.partial -> "部分完成 · ${card.failure}"
         ActivityPhase.cancelled -> "已取消"
+        ActivityPhase.unknown -> "结果待核对"
+        ActivityPhase.waiting -> "正在等待"
         ActivityPhase.running -> {
             val detail = card.step ?: card.summary
             val prefix = if (card.step != null) "${card.summary} · " else ""
@@ -89,8 +92,8 @@ fun activityLine(state: HudState, screen: HudScreen, wallNow: Long, now: Long): 
         }
     }
     val age = now - card.receivedAt
-    val nextUpdate = if (card.phase == ActivityPhase.running) 1000L else if (age < 3000) 3000 - age else 50L
-    val others = active.size - if (card.phase == ActivityPhase.running) 1 else 0
+    val nextUpdate = if (card.ongoing) 1000L else if (age < 3000) 3000 - age else 50L
+    val others = active.size - if (card.ongoing) 1 else 0
     return ActivityLine(text, activityDuration(card.elapsed(now)),
         if (others > 0) "另 $others 件" else null, card.alpha(now), nextUpdate,
         card.progress.takeIf { card.phase == ActivityPhase.running },
@@ -100,7 +103,8 @@ fun activityLine(state: HudState, screen: HudScreen, wallNow: Long, now: Long): 
 /** Suppress the legacy chip while activity owns the band, and retain coverage by formal request identity. */
 fun legacyProgressCard(state: HudState, activityVisible: Boolean): HudCard? =
     state.cards.lastOrNull { it.progress != null }?.takeUnless { errand ->
-        activityVisible || state.activities.any { it.processedEventId == errand.ack?.getString("processed_event_id") }
+        activityVisible || state.legacyProgressCovered ||
+            state.activities.any { it.processedEventId == errand.ack?.getString("processed_event_id") }
     }
 
 /** Explicit units distinguish elapsed work from the device clock. */

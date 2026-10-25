@@ -13,7 +13,7 @@ def test_selfcheck_is_native_product_skill(profile):
     from tools.delegate_tool_progress import _build_child_system_prompt
     result = json.loads(skill_view('failure-selfcheck'))
     assert result['success'], result
-    assert Path(result['_source_path']) == PRODUCT / 'errands/failure-selfcheck/SKILL.md'
+    assert (Path(result['skill_dir']) / 'SKILL.md') == PRODUCT / 'errands/failure-selfcheck/SKILL.md'
     child = _build_child_system_prompt('自检：查店铺', context=result['content'])
     for required in ('phone_status', 'session_search', 'CheckoutStop', 'build_input_ref',
                      'cancelled_by_user', '只读核对', 'skill_manage', 'applied=false'):

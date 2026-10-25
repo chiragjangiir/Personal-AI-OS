@@ -27,7 +27,7 @@ import XCTest
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
         let control = FakeDesktopControl(), composer = DesktopComposer(desktop: control, attachments: root)
-        do { try await composer.attach([root], via: .drag); XCTFail("folder attached") } catch { XCTAssertEqual(error.localizedDescription, "文件夹请在设置里授权") }
+        do { try await composer.attach([root], via: .drag); XCTFail("folder attached") } catch { XCTAssertEqual(error.localizedDescription, "文件夹请到设置里添加") }
         let paths = await control.grantedURLs; XCTAssertTrue(paths.isEmpty)
         do { try await composer.attach(Array(repeating: root, count: 11), via: .paste); XCTFail("11 files attached") } catch { XCTAssertEqual(error.localizedDescription, "每条消息最多添加 10 个文件") }
         let after = await control.grantedURLs; XCTAssertTrue(after.isEmpty)

@@ -10,7 +10,7 @@ protocol AssistantPaymentSigning {
 }
 
 struct AssistantPaymentKeys: AssistantPaymentSigning {
-    enum Role: String { case device, user }
+    enum Role: String { case device, user, modelSettings = "model_settings" }
     enum KeyError: Error { case missing, security(OSStatus), unavailable }
     let deviceID: String
 
@@ -37,8 +37,9 @@ struct AssistantPaymentKeys: AssistantPaymentSigning {
         do { return try existing(role, context: context) }
         catch KeyError.missing { /* Creation is restricted to explicit first registration. */ }
         var error: Unmanaged<CFError>?
-        let flags: SecAccessControlCreateFlags = role == .device ? [.privateKeyUsage] : [.privateKeyUsage, .userPresence]
-        let protection = role == .device ? kSecAttrAccessibleWhenUnlockedThisDeviceOnly : kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly
+        let flags: SecAccessControlCreateFlags = role == .device ? [.privateKeyUsage]
+            : role == .modelSettings ? [.privateKeyUsage, .biometryCurrentSet] : [.privateKeyUsage, .userPresence]
+        let protection = role == .user ? kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly : kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         guard let access = SecAccessControlCreateWithFlags(nil, protection, flags, &error) else {
             throw error?.takeRetainedValue() as Error? ?? KeyError.unavailable
         }
@@ -62,6 +63,10 @@ struct AssistantPaymentKeys: AssistantPaymentSigning {
     func publicKey(role: Role, context: LAContext? = nil) throws -> Data {
         try external(existing(role, context: context))
     }
+    /// Explicit Mac enrollment reuses this key on later publication attempts.
+    func modelSettingsPublicKey(context: LAContext) throws -> Data {
+        try external(createForRegistration(.modelSettings, context: context))
+    }
     private func signature(_ bytes: Data, key: SecKey) throws -> Data {
         var error: Unmanaged<CFError>?
         guard let signature = SecKeyCreateSignature(key, .ecdsaSignatureMessageX962SHA256, bytes as CFData, &error) else {
@@ -75,7 +80,7 @@ struct AssistantPaymentKeys: AssistantPaymentSigning {
     /// Caller invokes only when the authority reports this role is unregistered.
     /// User-key registration reuses the caller's authenticated context and requires the existing device key.
     func registration(controlID: String, deviceID: String, nonce: String, role: Role, context: LAContext? = nil) throws -> Data {
-        guard deviceID == self.deviceID, role != .user || context != nil else { throw KeyError.unavailable }
+        guard deviceID == self.deviceID, role != .modelSettings, role != .user || context != nil else { throw KeyError.unavailable }
         let deviceKey = role == .user ? try existing(.device, context: nil) : nil
         _ = try createForRegistration(role, context: context)
         // Reload the new private key with the same authenticated context used for app unlock.

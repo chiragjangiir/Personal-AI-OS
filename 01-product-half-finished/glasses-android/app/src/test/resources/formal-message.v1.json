@@ -1404,7 +1404,9 @@
             "succeeded",
             "failed",
             "partial",
-            "cancelled"
+            "cancelled",
+            "unknown",
+            "waiting"
           ]
         },
         "summary": {
@@ -1522,7 +1524,9 @@
             "succeeded",
             "failed",
             "partial",
-            "cancelled"
+            "cancelled",
+            "unknown",
+            "waiting"
           ]
         },
         "summary": {
@@ -1606,6 +1610,16 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 9007199254740991
+            },
+            "unknown": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "waiting": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
             }
           }
         },
@@ -1659,7 +1673,8 @@
                   "succeeded",
                   "failed",
                   "partial",
-                  "cancelled"
+                  "cancelled",
+                  "unknown"
                 ]
               }
             }
@@ -2276,7 +2291,10 @@
             "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
           },
           "cached_fix_age_ms": {
-            "type": ["integer", "null"],
+            "type": [
+              "integer",
+              "null"
+            ],
             "minimum": 0
           },
           "unavailable_reason": {
@@ -6489,6 +6507,11 @@
       "contract": "appearance-message.v1.json",
       "version": 2,
       "sha256": "ae6c1ad3df5f58dd37cba218b3355b1e6906078607cbd862c890e91681aa2649"
+    },
+    {
+      "contract": "model-settings.v1.json",
+      "version": 1,
+      "sha256": "d826317396dac6ccf28f68c0086b4e83ca7e5dbeb1d0453731dd90217d444f4f"
     }
   ]
 }

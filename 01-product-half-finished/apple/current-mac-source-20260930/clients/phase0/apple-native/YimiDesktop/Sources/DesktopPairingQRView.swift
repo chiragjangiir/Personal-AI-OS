@@ -10,7 +10,7 @@ struct DesktopPairingQRView: View {
         VStack(spacing: 14) {
             Text("用 iPhone 连接这台 Mac").font(.title2.weight(.semibold))
             Text("电脑名称：" + pairing.computerName).accessibilityIdentifier("mac.pairing.computerName")
-            Text("iPhone「设备 → 添加电脑」扫码").foregroundStyle(Yimi.ink2)
+            Text("在 iPhone「设备 → 添加电脑」扫码").foregroundStyle(Yimi.ink2)
             if let data = pairing.qrData, let image = qrImage(data) {
                 Image(nsImage: image).interpolation(.none).resizable()
                     .frame(width: 240, height: 240).padding(12).background(.white)

@@ -1,0 +1,20 @@
+{
+  "receipt": 1,
+  "status": {
+    "state": "failed",
+    "started_at": "2026-10-24T13:03:10Z",
+    "ended_at": "2026-10-24T13:03:12Z",
+    "reason_code": "MIJIA_LOGIN_REQUIRED"
+  },
+  "effects": [],
+  "values": [],
+  "content": [],
+  "unknowns": [],
+  "next": {
+    "retry": "after_check",
+    "check_with": "get_login_status",
+    "needs_confirmation": null,
+    "waiting_on": "owner",
+    "waiting_detail": "Scan a new Mi Home login QR code."
+  }
+}

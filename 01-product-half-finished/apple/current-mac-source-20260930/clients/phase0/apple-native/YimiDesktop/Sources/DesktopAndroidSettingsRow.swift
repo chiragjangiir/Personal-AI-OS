@@ -24,9 +24,9 @@ struct DesktopAndroidSettingsRow: View {
                     HStack(spacing: 7) {
                         Image(systemName: "iphone").font(.system(size: 16)).frame(width: 16, height: 19)
                             .foregroundStyle(Yimi.ink2).accessibilityHidden(true)
-                        Text("手机执行器").font(.system(size: 13, weight: .medium))
+                        Text("安卓手机").font(.system(size: 13, weight: .medium))
                     }
-                    Text(status.state == .notInstalled ? "首次开启时下载组件，之后保留这台手机。" : "让依米在这台 Mac 上使用手机 App。")
+                    Text(status.state == .notInstalled ? "首次开启时下载组件，之后这台手机会一直保留。" : "让依米在这台 Mac 上用安卓手机 App。")
                         .font(.system(size: 11)).foregroundStyle(Yimi.ink2).frame(minHeight: 18)
                 }
                 Spacer(minLength: 0)
@@ -35,10 +35,10 @@ struct DesktopAndroidSettingsRow: View {
                         .overlay(Circle().fill(.white).frame(width: 15, height: 15).offset(x: enabled ? 6.5 : -6.5))
                         .opacity(busy || status.state == .starting ? 0.5 : 1)
                 } else {
-                    Toggle("启用手机执行器", isOn: Binding(get: { enabled }, set: setEnabled))
+                    Toggle("启用安卓手机", isOn: Binding(get: { enabled }, set: setEnabled))
                         .labelsHidden().toggleStyle(.switch).controlSize(.small)
                         .disabled(busy || status.state == .starting)
-                        .accessibilityLabel("启用手机执行器").accessibilityIdentifier("settings.android.enabled")
+                        .accessibilityLabel("启用安卓手机").accessibilityIdentifier("settings.android.enabled")
                 }
             }
             HStack(spacing: 10) {
@@ -47,14 +47,14 @@ struct DesktopAndroidSettingsRow: View {
                         .frame(width: 5, height: 5).accessibilityHidden(true)
                     Text(statusText).font(.system(size: 12))
                 }.foregroundStyle(Yimi.ink2).accessibilityElement(children: .combine)
-                    .accessibilityLabel("手机执行器状态：" + statusText).accessibilityIdentifier("settings.android.status")
+                    .accessibilityLabel("安卓手机状态：" + statusText).accessibilityIdentifier("settings.android.status")
                 Spacer()
                 Button("显示手机画面", action: showPhone).buttonStyle(DesktopAndroidSettingsButtonStyle())
                     .disabled(!enabled || busy || status.state == .notInstalled || status.state == .starting)
                     .accessibilityLabel("显示手机画面").accessibilityIdentifier("settings.android.showPhone")
-                    .help("首次打开用于登录，之后查看手机画面。")
+                    .help("第一次打开时在这里登录，之后用来查看手机画面。")
             }
-            Text("磁盘约 8–9 GB · 内存约 3–4 GB（运行时）")
+            Text("占用磁盘约 8–9 GB，运行时内存约 3–4 GB")
                 .font(.system(size: 11)).foregroundStyle(Yimi.ink2).frame(minHeight: 18)
                 .accessibilityIdentifier("settings.android.footprint")
             if let error = status.last_error {

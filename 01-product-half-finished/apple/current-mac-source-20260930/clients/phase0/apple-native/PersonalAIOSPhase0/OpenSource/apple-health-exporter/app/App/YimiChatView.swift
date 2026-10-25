@@ -26,6 +26,7 @@ struct YimiChatView: View {
     var body: some View {
         let all = conversation.chatItems
         let items = window.rows(all)
+        let activityLayout = YimiActivityLayout(items: all, activities: vm.activities, consumer: vm.centralSnapshot)
         let viewport = viewportHeight
         ScrollViewReader { proxy in
             ScrollView {
@@ -44,15 +45,13 @@ struct YimiChatView: View {
                         }
                         row(item)
                             .id(item.id)
-                        ForEach(activities(under: item, in: all)) { activity in
-                            YimiActivityCard(activity: activity, collapsed: activity.collapsed(replyProcessedIDs: replyIDs(in: all)))
+                        ForEach(activityLayout.under[item.id] ?? []) { activity in
+                            YimiActivityCard(activity: activity, collapsed: activity.collapsed(replyProcessedIDs: activityLayout.replyProcessedIDs))
                                 .padding(.trailing, 24)
                         }
                             .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .opacity))
                     }
-                    ForEach(vm.activities.filter { activity in
-                        !all.contains { activityAnchor($0, in: all, activity: activity) }
-                    }) { activity in
+                    ForEach(activityLayout.unanchored) { activity in
                         YimiActivityCard(activity: activity).padding(.trailing, 24)
                     }
                     if let outcome = vm.careOutcome { Text(outcome).font(.system(size: 13)).foregroundStyle(Yimi.ink3) }
@@ -241,20 +240,6 @@ struct YimiChatView: View {
         if scroll.pinned { proxy.scrollTo("latest", anchor: .bottom) }
     }
 
-    private func replyIDs(in items: [YimiItem]) -> Set<String> {
-        Set(items.filter { $0.kind == .her }.compactMap(\.processedEventID))
-    }
-    private func activityAnchor(_ item: YimiItem, in items: [YimiItem], activity: ActivityPresentation) -> Bool {
-        if activity.collapsed(replyProcessedIDs: replyIDs(in: items)) {
-            return item.kind == .her && item.processedEventID == activity.processedEventID
-        }
-        guard item.kind == .me else { return false }
-        return item.activityProcessedEventID(consumer: vm.centralSnapshot) == activity.processedEventID
-    }
-    private func activities(under item: YimiItem, in items: [YimiItem]) -> [ActivityPresentation] {
-        vm.activities.filter { activityAnchor(item, in: items, activity: $0) }
-    }
-
     @ViewBuilder
     private func row(_ item: YimiItem) -> some View {
         switch item.kind {
@@ -437,6 +422,8 @@ struct CallRecordCard: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(title + (expanded ? "，收起对话" : "，展开对话"))
+            .accessibilityIdentifier("yimi.call.record." + item.id)
+            .accessibilityValue(live ? "通话中" : "已结束")
             ForEach(expanded ? lines : Array(lines.suffix(2))) { line in
                 HStack(alignment: .top, spacing: 6) {
                     Text(line.role == "user" ? "你" : line.role == "main_agent" ? "依米·补充" : "依米")

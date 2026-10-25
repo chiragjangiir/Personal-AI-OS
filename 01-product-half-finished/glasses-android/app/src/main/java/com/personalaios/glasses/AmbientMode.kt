@@ -51,7 +51,7 @@ data class AmbientDisplay(val text: String, val retry: Boolean = false, val conf
 internal const val AMBIENT_APPLY_TIMEOUT_MS = 10_000L
 
 /** Intent is durable; this readout reports only capture policy and microphone application receipts. */
-fun ambientDisplay(state: HudState, now: Long = System.currentTimeMillis()): AmbientDisplay {
+fun ambientDisplay(state: HudState, now: Long = monotonicMillis()): AmbientDisplay {
     if (state.ambientConfirmation) return AmbientDisplay("开启随身？请确认")
     val intent = if (state.ambient) "开" else "关"
     if (!state.paired) return AmbientDisplay("未连接 · 上次随身$intent · 到手机处理")
@@ -89,7 +89,7 @@ internal class AmbientSwitch(private val enrollment: Enrollment, private val hud
         enrollment.ambientMode = on
         val idle = hud.value.status == idleStatus(hud.value)
         hud.value = hud.value.copy(ambient = on, ambientConfirmation = false,
-            ambientRequestedAt = System.currentTimeMillis(), microphoneApplied = null, ambientError = null).let {
+            ambientRequestedAt = monotonicMillis(), microphoneApplied = null, ambientError = null).let {
             if (idle) it.copy(status = idleStatus(it)) else it
         }
         apply(on)
@@ -104,7 +104,7 @@ internal val enrolmentWindow = setOf(VoiceEnrollmentPhase.Opening, VoiceEnrollme
 
 /** What the one published microphone should be now. With 随身模式 off only an owner action needs it: a talk or call he
  *  opened or answered (tap, wake-free), 录入我的声音's reading window, or a payment he started that asks for 「付吧」. */
-fun microphone(state: HudState, now: Long = System.currentTimeMillis(), wakeCallId: String? = null): Microphone = when {
+fun microphone(state: HudState, now: Long = monotonicMillis(), wakeCallId: String? = null): Microphone = when {
     state.phoneAudio && (state.callId == null || state.callClosing) -> Microphone.Off
     state.callClosing -> if (state.recording || ambientStatus(state) in setOf(AmbientStatus.Active, AmbientStatus.NotWorn)) Microphone.On else Microphone.Off
     wakeCallId != null && state.callId == wakeCallId && state.busy && !state.ambient && !state.recording -> Microphone.Off

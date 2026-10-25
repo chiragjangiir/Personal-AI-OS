@@ -7,7 +7,7 @@ def project_result(receipt, result):
     if not result:
         return receipt
     closed = result.get('finished_at') and not result.get('ready_for_production')
-    pending = receipt and receipt.get('state') in ('queued', 'awaiting_owner', 'approved')
+    pending = receipt and receipt.get('state') in ('queued', 'awaiting_owner', 'approved', 'stale_base', 'rebuilding')
     completed_pending = pending and result.get('finished_at')
     approval_required = receipt and receipt.get('state') == 'queued' and result.get('state') == 'awaiting_owner'
     if closed or not receipt or completed_pending or approval_required:

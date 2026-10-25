@@ -231,3 +231,41 @@ private final class PairingMemoryPersistence: DesktopPairingPersisting, DesktopR
     }
     func removeRecipientPrivateKey() throws { key = nil; removals += 1 }
 }
+
+
+extension DesktopPairingTests {
+    @MainActor func testExt13UnpairAndPendingRestartClearActiveIdentityWhileRevokeIsOffline() async throws {
+        for restarting in [false, true] {
+            let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: root) }
+            let id = "01900000-0000-7000-8000-000000000001"
+            let pairing = RealtimeDevicePairing(schema: RealtimeDevicePairing.schema, origin: "https://example.test", deviceID: id, userID: id, token: "test-pairing-token-00000000",
+                governance: .init(purposeScopes: ["personal_assistant"], consentRecordRefs: [id], policyDecisionRefs: [id], purposeTokenRefs: [id], capabilityGrantRefs: [id]), media: ["data"], pairedAt: "2026-10-24T00:00:00Z", deviceType: "mac", capabilities: ["display", "chat_ui", "desktop_tools"])
+            let persistence = PairingMemoryPersistence(); persistence.data = try JSONEncoder().encode(pairing)
+            let store = try DesktopPairingStore(pairingStore: persistence, recipientStore: persistence)
+            let controller = try DesktopPairingController(store: store), intents = PairingRevokeFixture()
+            if restarting { intents.intents = [.init(origin: pairing.origin, deviceID: id, token: pairing.token)] }
+            let config = URLSessionConfiguration.ephemeral; config.protocolClasses = [OfflinePairingRevoke.self]
+            let session = URLSession(configuration: config); defer { session.invalidateAndCancel() }
+            let ssh = DesktopOwnerSSH(directory: root.appendingPathComponent("ssh"), session: session, revocations: intents, sleep: { _ in throw CancellationError() })
+            let model = try DesktopAppModel(desktop: FakeDesktopControl(), pairingController: controller, storeURL: root, ownerSSH: ssh)
+            if restarting { await model.activate() } else { await model.unpair() }
+            XCTAssertNil(try store.loadPairingData()); XCTAssertNil(model.pairing); XCTAssertFalse(model.connected)
+            XCTAssertEqual(persistence.removals, 2)
+            XCTAssertEqual(intents.intents.count, 1, "Offline revocation retains only its independent intent")
+        }
+    }
+}
+
+private final class PairingRevokeFixture: DesktopRevocationPersisting {
+    var intents: [DesktopRevocation] = []
+    func load() -> [DesktopRevocation] { intents }
+    func save(_ intents: [DesktopRevocation]) { self.intents = intents }
+}
+private final class OfflinePairingRevoke: URLProtocol {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() { client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet)) }
+    override func stopLoading() {}
+}

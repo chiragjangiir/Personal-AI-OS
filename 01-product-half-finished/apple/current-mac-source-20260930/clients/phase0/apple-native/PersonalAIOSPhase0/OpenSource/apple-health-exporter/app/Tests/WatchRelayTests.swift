@@ -53,14 +53,14 @@ final class WatchRelayTests: XCTestCase {
         source.ride = CentralRideFeedback(ride_id: UUID().uuidString.lowercased(), at: "2026-10-17T00:00:00.000Z",
             hr_zone: 5, text: "源端提醒", max_hr_bpm: 160)
         let state = source.state(revision: 1, scope: scopeA, currentOwner: { _, _ in true })
-        XCTAssertEqual(state.ride, WatchYimiRide(hr_zone: 5, text: "源端提醒", max_hr_bpm: 160))
+        XCTAssertEqual(state.ride, WatchYimiRide(hr_zone: 5, text: "源端提醒", max_hr_bpm: 160, feedback_at: "2026-10-17T00:00:00.000Z"))
         _ = try state.encodedStrict()
         XCTAssertNil(source.state(revision: 2, scope: scopeA, currentOwner: { _, _ in false }).ride)
         XCTAssertNil(source.state(revision: 3, scope: nil, currentOwner: { _, _ in true }).ride)
         source.ride = CentralRideFeedback(ride_id: UUID().uuidString.lowercased(), at: "2026-10-17T00:00:01.000Z",
             hr_zone: nil, text: nil, max_hr_bpm: nil)
         XCTAssertEqual(source.state(revision: 4, scope: scopeA, currentOwner: { _, _ in true }).ride,
-            WatchYimiRide(hr_zone: nil, text: nil, max_hr_bpm: nil))
+            WatchYimiRide(hr_zone: nil, text: nil, max_hr_bpm: nil, feedback_at: "2026-10-17T00:00:01.000Z"))
     }
 
     func testPhoneMetricsSurviveRelayAndMatchOnlyTheirWorkout() throws {
@@ -69,7 +69,8 @@ final class WatchRelayTests: XCTestCase {
         _ = session.startRide(by: "watch", at: started)
         let metrics = WatchYimiRideMetrics(ride_id: session.rideID!, workout_id: "live-workout", ended: false,
             speed_kmh: 23.4, avg_kmh: 20.1, max_kmh: 29.0, distance_m: 402.5,
-            elapsed_s: 80, moving_s: 60, hr_bpm: 133, hr_avg: nil, hr_max: nil, kcal: 20)
+            elapsed_s: 80, moving_s: 60, hr_bpm: 133, hr_avg: nil, hr_max: nil, kcal: 20,
+            hr_sample_at: "1970-01-01T00:02:59.125Z", speed_sample_at: "1970-01-01T00:02:59.000Z")
         var source = sources()
         source.rideMetrics = metrics
         let encoded = try source.state(revision: 1, scope: scopeA, currentOwner: { _, _ in true }).encodedStrict()

@@ -157,7 +157,9 @@ export async function createDesktopSimulator(scratch:string,room:ReturnType<type
       if(name==='list_allowed_directories')result=folders.map(path=>({path,label:basename(path),write:true}));
       else if(name==='list_directory'||name==='list_directory_with_sizes')result=(await listing(path!)).sort((x,y)=>a.sortBy==='size'?y.size-x.size:x.name.localeCompare(y.name));
       else if(name==='find_files'||name==='search_files'){
-        result=(await listing(await scoped(a.folder??a.path,name),true)).filter(item=>name==='search_files'?matchesGlob(item.path,a.pattern)&&!(a.excludePatterns??[]).some((pattern:string)=>matchesGlob(item.path,pattern)):
+        const folder=await scoped(a.folder??a.path,name);
+        const matches=(path:string,pattern:string)=>matchesGlob(isAbsolute(pattern)?path:relative(folder,path),pattern);
+        result=(await listing(folder,true)).filter(item=>name==='search_files'?matches(item.path,a.pattern)&&!(a.excludePatterns??[]).some((pattern:string)=>matches(item.path,pattern)):
           (!a.query||item.name.toLowerCase().includes(a.query.toLowerCase()))&&(!a.kinds||a.kinds.includes(item.kind))&&(!a.modified_after||item.modified>=a.modified_after)&&(!a.modified_before||item.modified<=a.modified_before)).slice(0,a.limit??500);
       }else if(name==='get_file_info'){const info=await fs.stat(path!);result={size:info.size,created:info.birthtime.toISOString(),modified:info.mtime.toISOString(),isFile:info.isFile(),isDirectory:info.isDirectory()};}
       else if(name==='read_text_file'||name==='extract_text'){

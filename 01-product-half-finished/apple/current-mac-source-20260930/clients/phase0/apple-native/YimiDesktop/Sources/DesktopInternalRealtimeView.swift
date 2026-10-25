@@ -20,7 +20,7 @@ struct DesktopCallView: View {
     private var problem: String? {
         if let failure { return failure }
         guard let code = model.callSnapshot?.callFailure else { return nil }
-        return ComponentVideoFailureCode(rawValue: code)?.message ?? "通话未接通。请重试，或回到语音。"
+        return ComponentVideoFailureCode(rawValue: code)?.message ?? "通话没接通。请重试，或回到语音。"
     }
     var body: some View {
         ScrollView {
@@ -36,12 +36,15 @@ struct DesktopCallView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity).frame(minHeight: 200)
                     Text(avatar ? (model.call.videoFrameRendered ? "数字人：开" : "数字人：正在连接") : "数字人：关").foregroundStyle(Yimi.ink2).accessibilityIdentifier("call.avatar.status")
                     if thinking {
-                        Text("思考模式不提供数字人，镜头仍可使用").foregroundStyle(Yimi.ink2)
+                        Text("思考模式下不能用数字人，镜头仍可使用").foregroundStyle(Yimi.ink2)
+                            .accessibilityIdentifier("call.avatar.reason")
+                    } else {
+                        Text(DesktopCallError.avatarUnavailableMessage).foregroundStyle(Yimi.ink2)
                             .accessibilityIdentifier("call.avatar.reason")
                     }
                     Text(muteStatus).foregroundStyle(mic == .unknown ? Yimi.danger : Yimi.ink2)
                         .accessibilityIdentifier("call.mute.status").accessibilityLabel(muteAnnouncement)
-                    if mic == .closing { Text("正在关闭通话声音，暂时不能保证对方听不到。").foregroundStyle(Yimi.ink2) }
+                    if mic == .closing { Text("正在关闭麦克风，对方暂时仍可能听到你。").foregroundStyle(Yimi.ink2) }
                     if mic == .unknown { Text("你仍可能被听到。请重试静音，或结束通话。").foregroundStyle(Yimi.danger) }
                     HStack(spacing: 16) {
                         Button(muteAction, systemImage: mic == .off ? "mic.slash" : "mic") {
@@ -54,7 +57,7 @@ struct DesktopCallView: View {
                             Button(avatar ? "关闭数字人" : "开启数字人") {
                                 swapped = false
                                 run { try await $0.setAvatar(!avatar) }
-                            }.disabled(!model.call.avatarAllowed).accessibilityIdentifier("call.avatar")
+                            }.disabled(!avatar || !model.call.avatarAllowed).accessibilityIdentifier("call.avatar")
                             deviceChoices
                         }.disabled(working || !model.call.isActive).accessibilityIdentifier("call.more")
                         Button(mic == .unknown ? "结束通话" : "挂断", systemImage: "phone.down.fill", role: .destructive) {
@@ -69,7 +72,7 @@ struct DesktopCallView: View {
                         YimiPortrait(breathes: false).frame(width: 100, height: 136).clipShape(RoundedRectangle(cornerRadius: 16))
                     }
                     Text(model.call.id == nil ? "和依米通话" : "通话已结束").font(.title3)
-                    Text("语音使用麦克风；视频还会请求摄像头权限。数字人默认关闭。")
+                    Text("语音通话用麦克风；视频通话还需要摄像头权限。" + DesktopCallError.avatarUnavailableMessage)
                         .foregroundStyle(Yimi.ink2).multilineTextAlignment(.center)
                     HStack(spacing: 16) {
                         Button("语音通话", systemImage: "phone") { start(video: false) }.accessibilityIdentifier("call.start.voice")
@@ -86,9 +89,8 @@ struct DesktopCallView: View {
                     HStack {
                         Button("重试") {
                             if let retryAction { run(retryAction) }
-                            else if active { run { try await $0.setAvatar(true) } }
-                            else { start(video: lastVideo) }
-                        }.accessibilityIdentifier("call.retry")
+                            else if !active { start(video: lastVideo) }
+                        }.disabled(active && retryAction == nil).accessibilityIdentifier("call.retry")
                         Button("回到语音") {
                             if active { run { engine in try await engine.setAvatar(false); try await engine.setCamera(false) } }
                             else { start(video: false) }
@@ -138,7 +140,7 @@ struct DesktopCallView: View {
                         .accessibilityIdentifier("call.thinking.status")
                     HStack(spacing: 16) {
                         if status.actions.contains("retry") {
-                            Button(model.call.thinkingRetryFailure != nil ? "重新发送重试" : model.call.thinkingRetryPending ? "正在重试…" : "重试") {
+                            Button(model.call.thinkingRetryFailure != nil ? "重新发送" : model.call.thinkingRetryPending ? "正在重试…" : "重试") {
                                 run(sharedFailure: true) { try await $0.retryThinking() }
                             }.frame(minHeight: 44)
                                 .disabled(working || !model.call.canRetryThinking && model.call.thinkingRetryFailure == nil)
@@ -161,14 +163,14 @@ struct DesktopCallView: View {
     }
     private var status: String {
         if model.callSnapshot?.isDialing == true || ["opening", "connecting"].contains(model.call.state) { return "正在接通…" }
-        return model.call.isActive ? "通话中" : "通话入口"
+        return model.call.isActive ? "通话中" : "未在通话"
     }
     private var muteStatus: String {
-        if model.callSnapshot?.isDialing == true, mic == .off { return "麦克风尚未开启" }
+        if model.callSnapshot?.isDialing == true, mic == .off { return "麦克风还没打开" }
         return AssistantCallMuteState(mic).statusText
     }
     private var muteAnnouncement: String {
-        if mic == .unknown { return "静音未确认。你仍可能被听到。重试静音，或结束通话。" }
+        if mic == .unknown { return "不确定是否已静音，你仍可能被听到。请重试静音，或结束通话。" }
         return muteStatus + ((mic == .opening || mic == .closing) ? "，请稍候。" : mic == .off ? "。按钮，取消静音。" : "")
     }
     private var muteAction: String { mic == .unknown ? "重试静音" : mic == .off ? "取消静音" : "静音" }
@@ -201,13 +203,13 @@ struct DesktopCallView: View {
         run { engine in
             let cameraOn = try await engine.start(video: video)
             if video && !cameraOn {
-                failure = "摄像头未获授权。语音通话继续；请在系统设置中允许摄像头后重试开视频。"
+                failure = "摄像头未获允许，语音通话继续。请在系统设置中允许摄像头，再重新开视频。"
                 retryAction = { try await $0.setCamera(true) }
             }
         }
     }
     private func run(sharedFailure: Bool = false, _ action: @escaping @MainActor (DesktopCallEngine) async throws -> Void) {
-        guard let engine = model.callEngine else { failure = "尚未连接。请先连接，再开始通话。"; return }
+        guard let engine = model.callEngine else { failure = "还没连接。请先连接，再开始通话。"; return }
         failure = nil; retryAction = nil; working = true
         Task {
             defer { working = false }
@@ -257,7 +259,7 @@ private struct DesktopCallStage: View {
         switch camera {
         case .opening: return "正在开启镜头…"
         case .closing: return "正在关闭镜头…"
-        case .unknown: return "镜头关闭未确认。请重试关镜头，或结束通话。"
+        case .unknown: return "不确定镜头是否已关。请重试关镜头，或结束通话。"
         case .off: return avatar ? "镜头已关" : "语音通话"
         case .on: return "视频通话"
         }
@@ -266,7 +268,7 @@ private struct DesktopCallStage: View {
         ZStack {
             if let view = preview.artcRemoteView { DesktopCallARTCView(view: view).id(ObjectIdentifier(view)) }
             else if let track = preview.remoteVideoTrack { SwiftUIVideoView(track, layoutMode: .fit) }
-            if !ready { ProgressView("数字人正在连接…").foregroundStyle(Yimi.ink2) }
+            if !ready { ProgressView("数字人连接中…").foregroundStyle(Yimi.ink2) }
         }
     }
 }

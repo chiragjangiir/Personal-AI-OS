@@ -10,7 +10,7 @@ from aiohttp.test_utils import TestClient, TestServer
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("maximum,rejection", [(15, None), (15, "approval"), (3, None), (3, "denied"), (2, "unknown")])
+@pytest.mark.parametrize("maximum,rejection", [(15, None), (15, "approval"), (4, None), (3, None), (3, "denied"), (2, "unknown")])
 async def test_detached_native_run_accepts_next_owner_turn_then_synthesizes(tmp_path, monkeypatch, maximum, rejection):
     from hermes_constants import set_hermes_home_override, reset_hermes_home_override
     token = set_hermes_home_override(tmp_path)
@@ -31,22 +31,24 @@ async def test_detached_native_run_accepts_next_owner_turn_then_synthesizes(tmp_
             return ('Fixture owner refused this action', args) if name == 'dispatcher_wait' else original_pre_tool(name, args, **kwargs)
         monkeypatch.setattr(plugins, '_dispatch_pre_tool_call_hooks', deny_wait)
     started, release = threading.Event(), threading.Event()
-    observed, agents, identities = [], [], []
+    observed, agents, identities, child_budgets = [], [], [], []
+    consent_requests = []
     def worker_tool(args, **kwargs):
+        from tools.personal_aios_dispatch import current_dispatch
+        child_budgets.append(current_dispatch.get()[0].tool_call_budget)
         started.set()
         if rejection == 'approval':
             from types import SimpleNamespace
             from integrations.hermes.personal_aios.effects import _check_effect
-            requests = []
             def consent(path, body):
-                requests.append(body)
+                consent_requests.append(body)
                 return {'status':'allowed', 'approval':body['confirmation']} if body.get('approved') else {
                     'status':'confirmation_required',
                     'scope':{'kind':'send', 'task_type':'send_message:email:send', 'recipient':'email:fixture@example.com'}}
             blocked = _check_effect(SimpleNamespace(_request=consent),
                 {'effect':{'kind':'send','task_type':'send_message:email:send','recipient':'email:fixture@example.com',
                            'requested':True}}, 'owner-fixture', 'first-send')
-            assert blocked['confirmation_id'] == 'fixture' and requests[-1].get('approved') is True
+            assert blocked['confirmation_id'] == 'fixture' and consent_requests[-1].get('approved') is True
             assert blocked['confirmed_by'] == 'owner-fixture' and blocked['confirmed_at'].endswith('Z')
         assert release.wait(15), 'test did not release native child'
         from tools.personal_aios_dispatch import dispatch_nested_tool
@@ -56,6 +58,9 @@ async def test_detached_native_run_accepts_next_owner_turn_then_synthesizes(tmp_
                 'parameters': {'type': 'object', 'properties': {}}}, handler=worker_tool)
     def probe_tool(args, **kwargs):
         from gateway.session_context import get_api_run_id
+        from tools.personal_aios_dispatch import current_dispatch
+        assert current_dispatch.get()[0].tool_call_budget is child_budgets[0]
+        assert child_budgets[0].used == 3
         identities.append(get_api_run_id(kwargs.get('session_id', '')))
         return json.dumps({'evidence': 'native-child-tool-output'})
     registry.register(name='dispatcher_probe', toolset='dispatcher_fixture',
@@ -69,6 +74,9 @@ async def test_detached_native_run_accepts_next_owner_turn_then_synthesizes(tmp_
             return [{'name':'dispatcher_provider_probe', 'description':'Return native provider evidence.',
                      'parameters':{'type':'object', 'properties':{}}}]
         def handle_tool_call(self, name, args, **kwargs):
+            from tools.personal_aios_dispatch import current_dispatch
+            assert current_dispatch.get()[0].tool_call_budget is child_budgets[0]
+            assert child_budgets[0].used == 2
             from gateway.session_context import get_api_run_id
             assert kwargs['session_id'] == 'owner-fixture'
             assert get_api_run_id(kwargs['session_id']) == kwargs['run_id']
@@ -86,13 +94,21 @@ async def test_detached_native_run_accepts_next_owner_turn_then_synthesizes(tmp_
         name = None
         from agent.context_compressor import MAX_ITERATIONS_SUMMARY_REQUEST
         if MAX_ITERATIONS_SUMMARY_REQUEST in str(last) or not body.get('tools'):
-            text = 'shared-cap-stop'
+            text = json.dumps({'outcome':'failed', 'reason':'fixture task cap reached',
+                               'summary':'fixture task cap reached before a verified result'})
         elif 'fixture_rejected' in str(last):
             name, args, text = ('missing_fixture_tool' if rejection == 'unknown' else 'dispatcher_wait'), {}, None
         elif 'Native delegated work completed' in str(last):
-            assert 'native-child-tool-output' in str(last)
             assert any(m.get('content') == 'quick-owner-answer' for m in messages)
-            text = 'synthesized-native-result'
+            if maximum == 3:
+                assert 'fixture task cap reached' in str(last)
+                text = 'reported-native-task-cap-failure'
+            else:
+                assert 'native-child-tool-output' in str(last)
+                text = 'synthesized-native-result'
+        elif '自检：' in str(last):
+            text = json.dumps({'outcome':'failed', 'reason':'fixture recovery unavailable',
+                               'summary':'fixture task cap reached; recovery unavailable'})
         elif 'fixture_quick' in str(last):
             text = 'quick-owner-answer'
         elif 'fixture_worker' in str(last):
@@ -198,34 +214,47 @@ async def test_detached_native_run_accepts_next_owner_turn_then_synthesizes(tmp_
             completion = next(i for i, c in enumerate(contents) if c.startswith('Native delegated work completed'))
             assert quick_input < quick_reply < completion
             completions = [message for message in persisted if str(message.get('content')).startswith('Native delegated work completed')]
-            assert len(completions) == (1 if maximum == 15 else 2)
+            assert len(completions) == (2 if maximum == 3 else 1)
             assert all(message['role'] == 'system' for message in completions)
             assert not any(m.get('role') == 'user' and 'Native delegated work completed' in str(m.get('content')) for m in persisted)
-            if maximum == 15:
+            if maximum > 3:
                 assert done['status'] == 'completed' and done['output'] == 'synthesized-native-result', done
                 completed_children = [event for event in done['activity_events'] if event['event'] == 'subagent.complete']
                 assert len(completed_children) == 1 and completed_children[0]['outcome'] == 'succeeded'
                 assert completed_children[0]['outcome_reason'] == ''
-                assert agents[0].tool_call_budget.used == 4
+                assert agents[0].tool_call_budget.used == 1
+                assert child_budgets[0] is not agents[0].tool_call_budget
+                assert child_budgets[0].maximum == maximum and child_budgets[0].used == 3
                 assert identities == [first]
             else:
-                assert done['status'] == 'failed' and done['turn_exit_reason'] == 'tool_call_cap_reached', done
-                assert agents[0].tool_call_budget.used == 3
-                assert identities == []
-                assert 'native_final_response' not in done
+                assert done['status'] == 'completed' and done['output'] == 'reported-native-task-cap-failure', done
+                assert agents[0].tool_call_budget.used == 1
+                assert child_budgets[0] is not agents[0].tool_call_budget
+                assert child_budgets[0].used == 3
+                assert identities == [first]
                 selfcheck_cards = [event for event in done['activity_events']
                     if event['event'] == 'subagent.start' and event.get('goal', '').startswith('自检：')]
                 assert len(selfcheck_cards) == 1 and selfcheck_cards[0]['goal'] == '自检：fixture_worker'
                 assert any('self_check_of' in str(message['content']) for message in completions)
+            if rejection == 'approval':
+                assert len(consent_requests) == 2
+                assert sum(request.get('approved') is True for request in consent_requests) == 1
             assert any(name == 'dispatcher_wait' for _,name in observed)
             from tools import async_delegation as native
             with native._DB_LOCK, native._transaction() as db:
                 rows = db.execute('SELECT delivery_state,task_json,result_json FROM async_delegations WHERE origin_session=?', (first,)).fetchall()
                 assert rows and all(row[0] == 'delivered' for row in rows)
                 selfchecks = [row for row in rows if json.loads(row[1]).get('self_check_of')]
-                assert len(selfchecks) == (0 if maximum == 15 else 1)
+                assert len(selfchecks) == (1 if maximum == 3 else 0)
                 if selfchecks:
-                    assert json.loads(selfchecks[0][2])['results'][0]['status'] == 'failed'
+                    recovery = json.loads(selfchecks[0][2])['results'][0]
+                    assert recovery['status'] == 'completed' and recovery['outcome'] == 'failed'
+                    assert recovery['outcome_reason'] == 'fixture recovery unavailable'
+                    failed_task = next(json.loads(row[2])['results'][0] for row in rows
+                                       if not json.loads(row[1]).get('self_check_of'))
+                    assert failed_task['status'] == 'failed' and failed_task['exit_reason'] == 'error'
+                    assert failed_task['outcome_reason'] == 'fixture task cap reached'
+                    assert failed_task['outcome'] == 'failed'
     finally:
         release.set()
         for agent in agents:

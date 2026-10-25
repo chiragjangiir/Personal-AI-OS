@@ -40,7 +40,7 @@ def test_sequential_registry_preserves_host_owned_conversation(monkeypatch, argu
     assert child.session_id == 'child-transcript'
 
 
-def test_shared_tool_invocations_are_atomic_across_nested_tree():
+def test_task_tool_invocations_are_atomic_across_nested_tree():
     budget = ToolCallBudget(31, 5)
     agents = [SimpleNamespace(tool_call_budget=budget) for _ in range(4)]
     with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:
@@ -53,6 +53,60 @@ def test_shared_tool_invocations_are_atomic_across_nested_tree():
     assert sorted(n for a in agents for n in getattr(a, '_tool_call_milestones', [])) == []
     all_milestones = ''.join(m['content'] for m in messages)
     assert all(str(n) in all_milestones for n in (5, 10, 15, 20, 25, 30))
+
+
+
+@pytest.mark.parametrize('background', [False, True])
+def test_independent_delegate_tasks_have_fresh_budgets_and_nested_work_shares_them(tmp_path, monkeypatch, background):
+    from run_agent import AIAgent
+    from tools import delegate_tool as delegate
+    import tools.delegate_tool_config as delegate_config
+    token = set_hermes_home_override(tmp_path)
+    (tmp_path / 'config.yaml').write_text('agent:\n  max_tool_calls: 3\n  tool_call_milestone_interval: 2\n')
+    cfg = {'max_spawn_depth': 2, 'max_concurrent_children': 3}
+    monkeypatch.setattr(delegate, '_load_config', lambda: cfg)
+    monkeypatch.setattr(delegate_config, '_load_config', lambda: cfg)
+    from tools import delegation_live_log
+    monkeypatch.setattr(delegation_live_log, 'create_live_transcripts', lambda *a, **kw: (None, [], []))
+    batches, agents = [], []
+    # Capture the actual constructed tasks at the shared sync/async dispatch boundary.
+    def dispatch(batch, detached):
+        assert detached is background
+        batches.append(batch)
+        agents.extend(child for _, _, child in batch.children)
+        return '{}'
+    monkeypatch.setattr(delegate, '_run_batch', dispatch)
+    try:
+        parent = AIAgent(session_id='budget-owner', api_key='k', base_url='https://openrouter.ai/api/v1',
+            provider='openrouter', api_mode='chat_completions', model='anthropic/claude-sonnet-4.6', platform='cli',
+            quiet_mode=True, skip_context_files=True, skip_memory=True, save_trajectories=False, enabled_toolsets=['file'])
+        agents.append(parent)
+        assert (parent.tool_call_budget.maximum, parent.tool_call_budget.interval) == (3, 2)
+        assert claim_tool_call(parent) is None
+        dispatched = delegate.delegate_task(tasks=[{'goal': 'inspect first artifact'}, {'goal': 'inspect sibling artifact'}], parent_agent=parent, background=background)
+        assert batches, dispatched
+        first, sibling = (child for _, _, child in batches[0].children)
+        assert first.tool_call_budget is not parent.tool_call_budget
+        assert sibling.tool_call_budget is not first.tool_call_budget
+        assert (first.tool_call_budget.maximum, first.tool_call_budget.interval) == (3, 2)
+        assert claim_tool_call(first) is None
+        nested = delegate._build_child_agent(task_index=0, goal='nested work', context=None, toolsets=None,
+            model=None, max_iterations=4, task_count=1, parent_agent=first)
+        agents.append(nested)
+        assert nested.tool_call_budget is first.tool_call_budget
+        assert [claim_tool_call(nested) for _ in range(3)][-1].startswith('Task tool-call cap reached')
+        assert (first.tool_call_budget.used, sibling.tool_call_budget.used, parent.tool_call_budget.used) == (3, 0, 1)
+        delegate.delegate_task(goal='later independent task', parent_agent=parent, background=background)
+        later = batches[1].children[0][2]
+        assert later.tool_call_budget.used == 0 and later.tool_call_budget is not first.tool_call_budget
+        assert claim_tool_call(later) is None
+        # Continuing/steering the same object cannot replenish the exhausted task.
+        assert claim_tool_call(first).startswith('Task tool-call cap reached')
+        assert 'depth limit reached' in delegate.delegate_task(goal='too deep', parent_agent=nested)
+    finally:
+        for agent in reversed(agents):
+            agent.close()
+        reset_hermes_home_override(token)
 
 
 def test_completion_uses_native_registry_and_resumes_same_run(tmp_path):

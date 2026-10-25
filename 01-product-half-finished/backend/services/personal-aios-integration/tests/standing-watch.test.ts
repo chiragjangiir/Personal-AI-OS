@@ -31,7 +31,7 @@ for(const staging of [false,true])test(`standing watch cron/tool transcript reac
   const storage=new PosixStorage(join(root,'storage')),notifications:unknown[]=[],runs:any[]=[];
   const nativeRuns=new Map<string,any>();
   const native=sourceClient({create:async body=>{runs.push(body);const run={run_id:`run-${runs.length}`,session_id:body.session_id,
-    conversation_session_id:body.session_id,status:'running',memory_write:false};nativeRuns.set(run.run_id,run);return run;},
+    conversation_session_id:body.session_id,status:'running'};nativeRuns.set(run.run_id,run);return run;},
     status:async (id:string)=>nativeRuns.get(id),cancel:async (id:string)=>({...nativeRuns.get(id),status:'cancelled'})});
   const authority=Object.assign(new StaticFixtureDeviceAuthority([{principal_id:'owner',device_id:'phone',device_type:'phone',
     channel:'background_scheduled',consent_ref:'fixture',route_version:'fixture',output_modes:['text'],token_sha256:sha256('fixture')}]),{

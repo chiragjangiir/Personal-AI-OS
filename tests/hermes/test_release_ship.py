@@ -120,6 +120,11 @@ class Production(Stack):
         self.idle = True
         monkeypatch.setattr(release, 'idle', lambda host: self.idle)
         monkeypatch.setattr(release_transfer, 'load', lambda config, package: {'loaded': True})
+        monkeypatch.setattr(release.release_identity, 'capture', lambda host, **kwargs: {
+            'schema': 'paios.production-state.v1', 'commit': host.commit(host.release('current')),
+            'release': host.release('current').name, 'images': IMAGE})
+        monkeypatch.setattr(release_transfer, 'production_package', lambda host, state: {'files': []})
+        monkeypatch.setattr(release_transfer, 'rsync', lambda *args: None)
         self.delivered = []
         monkeypatch.setattr(release_checks, 'notice', lambda run, suffix, body: self.delivered.append(body))
         monkeypatch.setattr(release_checks, 'containers', lambda run: [

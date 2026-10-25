@@ -4,7 +4,6 @@ import {mkdtemp,readFile,rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {decodeNativeRun,nativeConversationSession,type NativeRun} from './native-source-fixture.ts';
-import {readSourceMemory} from './native-source-fixture.ts';
 import {RunAdmission,type AdmissionEntry} from './native-source-fixture.ts';
 import {PersonalAIOSRuntime} from './native-source-fixture.ts';
 import {OutputAuthority,type OutputContext} from '../src/output.ts';
@@ -33,7 +32,7 @@ async function setup(t:test.TestContext,initial:NativeRun,automatic=false) {
     resolveReceipt:(ref,context)=>runtime.resolveReceipt(ref,context)});
   runtime=new PersonalAIOSRuntime({storage,archive:new RawArchive(storage,8192),admission,native,output:out,
     devices:[device],skill:'source fixture',max_read_bytes:8192,
-    native_memory_receipts:{enabled:true,profile_home:nativeProof.profile_home!},
+    core_profile:{enabled:true,profile_home:nativeProof.profile_home!},
     ...(automatic?{automatic_output:{onError:(error:unknown)=>errors.push(error)}}:{})});
   t.after(async()=>{statusRelease.resolve();await runtime.close();await rm(path,{recursive:true,force:true});});
   const trusted=await runtime.authenticate('fixture-token');
@@ -55,7 +54,7 @@ function damaged(fields:Record<string,unknown>):NativeRun {
   return value as NativeRun;
 }
 
-test('real native GET proof reaches existing Admission, L2 reader and OUT with one unchanged D/run',{timeout:10000},async t=>{
+test('real native GET proof reaches existing Admission and OUT with one unchanged D/run',{timeout:10000},async t=>{
   assert.notEqual(nativeProof.session_id,scope);
   const f=await setup(t,nativeProof,true);
   await eventually(()=>!!f.admission.find(nativeProof.run_id,scope));
@@ -69,8 +68,8 @@ test('real native GET proof reaches existing Admission, L2 reader and OUT with o
     async value=>delivered.resolve(value),error=>delivered.reject(error));
   f.statusRelease.resolve();const result=await delivered.promise;
   assert.equal(result.admission.run_id,nativeProof.run_id);assert.equal(result.admission.session_id,scope);
-  assert.equal(result.result.receipt_status,'complete');
-  assert.deepEqual(result.result.l2_updates,(nativeProof.memory_receipt_source as {receipts:{summary:unknown}[]}).receipts.map(r=>r.summary));
+  assert.equal(result.result.receipt_status,'unknown');
+  assert.deepEqual(result.result.l2_updates,[]);
   const replay=await f.runtime.submit(f.event,f.trusted,scope,true);
   assert.deepEqual(replay.processed_event,f.submitted.processed_event);assert.equal(f.creates(),1);assert.equal(f.errors.length,0);
 });
@@ -82,7 +81,6 @@ test('missing conversation or transcript identity rejects explicit new contract 
     // Raw wire type errors fail at the original decoder; absent/empty identities keep the native availability error.
     const expected=typeof bad.conversation_session_id==='number' || typeof bad.session_id==='number' ?
       /^HERMES_NATIVE_RUN_VERSION_OR_SCOPE_INVALID$/ : /NATIVE_(CONVERSATION_SCOPE|TRANSCRIPT_IDENTITY)_UNAVAILABLE/;
-    await assert.rejects(readSourceMemory(bad,f.ctx,nativeProof.profile_home!),error=>error instanceof Error && expected.test(error.message));
     await assert.rejects(f.out.seal(f.ctx,bad),/NATIVE_(CONVERSATION_SCOPE|TRANSCRIPT_IDENTITY)_UNAVAILABLE/);
   }
 });

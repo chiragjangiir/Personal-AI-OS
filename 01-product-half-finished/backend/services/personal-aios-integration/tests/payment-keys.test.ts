@@ -60,3 +60,43 @@ test('challenge limit evicts oldest, binds device and purpose; card signatures b
   await assert.rejects(keys.register({...phone,device_id:'other'},{role:'device',public_x963_b64:dev.public_x963_b64,...signed(dev,{purpose:'keys_register',role:'device',device_id:'other',nonce:first.nonce,key_sha256:createHash('sha256').update(Buffer.from(dev.public_x963_b64,'base64')).digest('hex')})}),/PAYMENT_CHALLENGE_INVALID/);
  } finally {store.close();rmSync(home,{recursive:true,force:true});}
 });
+
+test('model settings Mac authorization uses existing registry, single-use nonce and cannot unlock payments',async()=>{
+ const home=mkdtempSync(join(tmpdir(),'model-settings-keys-')),store=PaymentStore.open(home),keys=new PaymentKeys({store,challenge_ttl_s:120,now:()=>1000,revalidate:async s=>s});
+ const user=pair(),macKey=pair(),mac={...phone,device_id:'mac',device_type:'mac' as const};
+ try {
+  store.db.prepare('INSERT INTO device_keys VALUES(?,?,?,?,?,NULL)').run(phone.device_id,'user',phone.principal_id,user.public_x963_b64,1000);
+  await assert.rejects(keys.challenge(mac,'model_settings'),/MODEL_SETTINGS_MAC_UNAUTHORIZED/);
+  store.db.prepare('INSERT INTO device_keys VALUES(?,?,?,?,?,NULL)').run(mac.device_id,'model_settings_pending',mac.principal_id,macKey.public_x963_b64,1000);
+  const expected={action:'authorize_mac',draft_id:'draft',expected_revision:1,change_sha256:'a'.repeat(64),expires_at_ms:2000,principal_id:'owner'};
+  const {nonce}=await keys.challenge(phone,'model_settings');
+  const verified=await keys.verify(phone,'model_settings',signed(user,{purpose:'model_settings',device_id:'phone',nonce,...expected}),expected);
+  await keys.registerModelSettings(phone,mac,macKey.public_x963_b64,verified);
+  assert.equal(keys.registered(mac,'model_settings')?.public_x963_b64,macKey.public_x963_b64);
+  await assert.rejects(keys.registerModelSettings(phone,mac,macKey.public_x963_b64,verified),/PAYMENT_CHALLENGE_INVALID/);
+  const challenge=await keys.challenge(mac,'model_settings'),commit={...expected,action:'commit'};
+  const input=signed(macKey,{purpose:'model_settings',device_id:'mac',nonce:challenge.nonce,...commit});
+  const a=await keys.verify(mac,'model_settings',input,commit),b=await keys.verify(mac,'model_settings',input,commit);
+  assert.throws(()=>a.commit(()=>{throw Error('CAS');}),/CAS/);b.commit(()=>1);
+  assert.throws(()=>a.commit(()=>2),/PAYMENT_CHALLENGE_INVALID/);
+  await assert.rejects(keys.challenge(mac,'phone_unlock'),/PAYMENT_SETTINGS_DEVICE_REQUIRED/);
+  await assert.rejects(keys.verify(mac,'payment_decide',input,{}),/PAYMENT_SETTINGS_DEVICE_REQUIRED/);
+  await assert.rejects(keys.verify(mac,'model_settings',input,{...commit,principal_id:'other'}),/PAYMENT_SIGNATURE_INVALID/);
+  const expiredNonce=(await keys.challenge(mac,'model_settings')).nonce;
+  await assert.rejects(keys.verify(mac,'model_settings',signed(macKey,{purpose:'model_settings',device_id:'mac',nonce:expiredNonce,...commit,expires_at_ms:999}),{...commit,expires_at_ms:999}),/MODEL_SETTINGS_SIGNATURE_EXPIRED/);
+ }finally{store.close();rmSync(home,{recursive:true,force:true});}
+});
+
+test('existing payment database migrates the device key role constraint without changing payment keys',()=>{
+ const home=mkdtempSync(join(tmpdir(),'payment-key-migrate-'));let store=PaymentStore.open(home);const key=pair();
+ try {
+  store.db.exec("DROP TABLE device_keys;CREATE TABLE device_keys(device_id TEXT NOT NULL,role TEXT NOT NULL CHECK(role IN ('device','user')),principal_id TEXT NOT NULL,public_x963_b64 TEXT NOT NULL,created_at_ms INTEGER NOT NULL,revoked_at_ms INTEGER,PRIMARY KEY(device_id,role)) STRICT;");
+  store.db.prepare('INSERT INTO device_keys VALUES(?,?,?,?,?,NULL)').run('phone','user','owner',key.public_x963_b64,1000);store.close();
+  store=PaymentStore.open(home);
+  const row=store.db.prepare('SELECT * FROM device_keys WHERE device_id=?').get('phone');
+  assert.equal(row?.public_x963_b64,key.public_x963_b64);assert.equal(row?.role,'user');assert.equal(row?.revoked_at_ms,null);
+  store.db.prepare('INSERT INTO device_keys VALUES(?,?,?,?,?,NULL)').run('mac','model_settings','owner',key.public_x963_b64,2000);
+  store.db.prepare('INSERT INTO device_keys VALUES(?,?,?,?,?,NULL)').run('mac','model_settings_pending','owner',key.public_x963_b64,2000);
+  store.close();store=PaymentStore.open(home);assert.equal(store.db.prepare('SELECT count(*) AS n FROM device_keys').get()?.n,3);
+ }finally{store.close();rmSync(home,{recursive:true,force:true});}
+});

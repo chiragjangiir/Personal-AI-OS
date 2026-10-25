@@ -6,7 +6,8 @@ Requires=docker.service
 [Service]
 Type=oneshot
 WorkingDirectory=/srv/paios/current
-ExecStart=/usr/bin/python3 /srv/paios/current/deploy/cloud/staging_snapshot.py capture --settings /etc/paios/staging-snapshot-production.json
+# Structural capture omits raw L5 until folding conversion has been verified within the capture budget.
+ExecStart=/usr/bin/python3 /srv/paios/current/deploy/cloud/staging_snapshot.py capture --settings /etc/paios/staging-snapshot-production.json --omit-raw
 UMask=0077
 Nice=10
 IOSchedulingClass=idle

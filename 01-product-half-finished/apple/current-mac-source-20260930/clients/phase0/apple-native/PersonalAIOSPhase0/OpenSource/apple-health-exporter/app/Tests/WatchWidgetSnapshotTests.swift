@@ -43,14 +43,28 @@ final class WatchWidgetSnapshotTests: XCTestCase {
         XCTAssertEqual(snapshot.items[1].detail, "第 3 步")
     }
 
-    func testRunningRideComesFirstAndFallsBackAfterItsHorizon() {
+    func testPendingQuestionPrecedesRideAndRideFallsBackAfterItsHorizon() {
         let ride = WatchWidgetRide(paused: false, figures: "27.4 km/h · ♥ 142", startedAt: now.addingTimeInterval(-600))
         let snapshot = WatchWidgetSnapshot.make(state: state(question: true, latest: true), ride: ride, now: now)
-        XCTAssertEqual(snapshot.items.map(\.kind), [.ride, .question, .reply])
-        XCTAssertEqual(snapshot.items[0].header, "骑行中"); XCTAssertEqual(snapshot.items[0].since, ride.startedAt)
-        XCTAssertEqual(snapshot.items[1].from, now.addingTimeInterval(WatchWidgetSnapshot.rideHorizon))
+        XCTAssertEqual(snapshot.items.map(\.kind), [.question, .question, .reply])
+        XCTAssertEqual(snapshot.items[0].link, WatchDeepLink.card("q-1").url)
+        let riding = WatchWidgetSnapshot.make(state: state(errand: true, latest: true), ride: ride, now: now)
+        XCTAssertEqual(riding.items.map(\.kind), [.ride, .errand])
+        XCTAssertEqual(riding.items[0].header, "骑行中"); XCTAssertEqual(riding.items[0].since, ride.startedAt)
+        XCTAssertEqual(riding.items[1].from, now.addingTimeInterval(WatchWidgetSnapshot.rideHorizon))
         let paused = WatchWidgetSnapshot.make(state: state(), ride: .init(paused: true, figures: "-- km/h · ♥ --", startedAt: ride.startedAt), now: now)
         XCTAssertEqual(paused.items[0].header, "已暂停"); XCTAssertNil(paused.items[0].since)
+    }
+
+    func testRideSensorNumbersExpireOnTimelineWithoutAnAppReload() {
+        let expires = now.addingTimeInterval(3)
+        let ride = WatchWidgetRide(paused: false, figures: "27.4 km/h · ♥ 142", startedAt: now.addingTimeInterval(-600), sensorsExpireAt: expires)
+        let snapshot = WatchWidgetSnapshot.make(state: state(latest: true), ride: ride, now: now)
+        XCTAssertEqual(snapshot.items.map(\.kind), [.ride, .ride, .reply])
+        XCTAssertEqual(snapshot.item(at: expires.addingTimeInterval(-0.01))?.title, ride.figures)
+        XCTAssertEqual(snapshot.item(at: expires)?.title, "-- km/h · ♥ --")
+        XCTAssertEqual(snapshot.item(at: expires)?.since, ride.startedAt)
+        XCTAssertEqual(snapshot.item(at: now.addingTimeInterval(120))?.kind, .reply)
     }
 
     func testUnregisteredAndRevokedStateCarryNoContent() throws {

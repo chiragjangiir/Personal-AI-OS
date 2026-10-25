@@ -32,7 +32,7 @@ def test_failure_selfcheck_completion_preserves_original_execution_and_delivery(
         bridge._start_failure_selfchecks([event])
     finally:
         reset_hermes_home_override(token)
-    expected = RunDelegation.failure_metadata(event, event)
+    expected = {**RunDelegation.failure_metadata(event, event), 'request_context': []}
     assert completions[0]['source_failure'] == expected
     assert completions[0]['source_failure']['execution']['success'] is True
     assert completions[0]['summary'] == 'The original task failed.'

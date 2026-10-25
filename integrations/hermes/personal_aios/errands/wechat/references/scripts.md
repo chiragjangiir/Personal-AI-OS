@@ -4,6 +4,8 @@
 
 | 文件 | 作用 |
 | --- | --- |
+| [install.py](../scripts/install.py) | 无 GUI：按本版源码 key 安装/复用缓存；同版本编译受文件锁保护。 |
+| [cache-key.txt](cache-key.txt) | 本版完整源码缓存身份；改源码后用 install.py --print-key 更新。 |
 | [Support.swift](../scripts/Support.swift) | 每个入口都要编译的公共支持和系统权限弹窗拒绝。 |
 | [activate.swift](../scripts/activate.swift) | 激活微信并返回原前台 PID。 |
 | [AX.swift](../scripts/AX.swift) | 仅 ax-read、ax-write 共用的 AX 读取。 |
@@ -17,4 +19,4 @@
 | [restore.swift](../scripts/restore.swift) | 恢复原前台 App。 |
 | [wechat-bridge-mac-LICENSE](wechat-bridge-mac-LICENSE) | 社区源码许可与署名。 |
 
-`file_path` 一律相对本技能根，如 `scripts/click.swift` 和 `references/wechat-bridge-mac-LICENSE`。主技能返回的 `skill_dir` 是 Hermes 主机上的真实目录。用 `owner_mac.put(source='<skill_dir>/scripts/Support.swift', path='<本次 Mac 私有目录>/Support.swift')` 传送原文件，再传本次所需入口和许可。源码已存在，不另写 click/key/paste 代替它。
+`file_path` 一律相对本技能根，如 `scripts/click.swift` 和 `references/wechat-bridge-mac-LICENSE`。主技能返回的 `skill_dir` 是 Hermes 主机上的真实目录。先读 cache-key.txt 并检查设备库存中的对应缓存，命中时直接运行。只有缓存缺失才用 `owner_mac.put` 按原目录结构传送上述全部源码、install.py 与许可，然后执行 install.py --key。源码已存在，不另写 click/key/paste 代替它。

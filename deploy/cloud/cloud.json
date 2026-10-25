@@ -1,5 +1,47 @@
 {
   "executionOwner": "hermes_text",
+  "capability_packages": {
+    "enabled": [
+      "mijia",
+      "phone",
+      "messaging",
+      "wechat-mac",
+      "ts-delivery",
+      "ts-erasure",
+      "ts-health",
+      "ts-location",
+      "ts-memory",
+      "ts-model-settings",
+      "ts-personal",
+      "ts-schedule",
+      "desktop",
+      "owner-mac",
+      "yimi"
+    ],
+    "gateway": [
+      "mijia",
+      "phone",
+      "messaging",
+      "wechat-mac",
+      "ts-delivery",
+      "ts-erasure",
+      "ts-health",
+      "ts-location",
+      "ts-memory",
+      "ts-model-settings",
+      "ts-personal",
+      "ts-schedule",
+      "desktop",
+      "owner-mac",
+      "yimi"
+    ],
+    "single_host_flags": {
+      "mijia": "PAIOS_ENABLE_MIHOME",
+      "wechat-mac": "PAIOS_ENABLE_WECHAT",
+      "desktop": "PAIOS_ENABLE_OWNER_MAC",
+      "owner-mac": "PAIOS_ENABLE_OWNER_MAC"
+    }
+  },
   "l3": {
     "namespace": "public"
   },
@@ -28,6 +70,12 @@
     "call_rejoin_window_s": 120
   },
   "storage_root": "${PAIOS_DATA_ROOT}/central-storage",
+  "model_settings": {
+    "environment_id": "${PAIOS_MODEL_SETTINGS_ENVIRONMENT}",
+    "master_key_file": "${PAIOS_SECRET_ROOT}/model-settings-master.key",
+    "service_key_file": "${PAIOS_SECRET_ROOT}/model-settings-service.key",
+    "projection_dir": "${PAIOS_DATA_ROOT}/model-projections"
+  },
   "timeline": {
     "enabled": true,
     "fanout_classes": [
@@ -246,9 +294,10 @@
       }
     }
   },
-  "native_memory_receipts": {
+  "core_profile": {
     "enabled": true,
-    "profile_home": "/opt/data"
+    "profile_home": "${PAIOS_DATA_ROOT}/core-profile",
+    "native_profile_home": "/opt/data"
   },
   "voiceprint": {
     "speaker_model": {
@@ -364,14 +413,14 @@
       "push": false
     }
   },
-  "session_folding": false,
+  "session_folding": true,
   "archive_tiering": {
     "cold": {
       "url": "http://cold-webdav:5244/dav",
       "username": "paios-archive",
       "password_file": "${PAIOS_SECRET_ROOT}/cold-webdav.password"
     },
-    "hot_days": 2,
+    "hot_days": 1,
     "min_free_bytes": 4294967296,
     "min_free_inodes": 500000,
     "max_upload_kbps": 2000

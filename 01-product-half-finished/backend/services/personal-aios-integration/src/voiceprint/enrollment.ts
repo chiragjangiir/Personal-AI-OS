@@ -218,6 +218,11 @@ export class ConversationVoiceprintEnrollment {
   control(owner: Owner, action: ConversationAction, id?: string, callId?: string): Promise<ConversationEnrollmentState> {
     return this.serial(async () => {
       if (action === 'status') return this.state(owner);
+      if (action === 'discard' && id === undefined) {
+        const current = this.sessions.get(this.key(owner));
+        if (!current) return this.state(owner);
+        id = current.id;
+      }
       check(this.available, 'VOICE_ENROLLMENT_UNAVAILABLE', 503);
       check(['start','resume','pause','stop','check','commit','discard','preview'].includes(action), 'VOICE_ENROLLMENT_ACTION_INVALID');
       if (action === 'start') {
@@ -231,7 +236,10 @@ export class ConversationVoiceprintEnrollment {
         check(session.phase === 'checked' && session.preview, 'VOICE_ENROLLMENT_PREVIEW_UNAVAILABLE', 409);
         return {...await this.state(owner), preview_audio_base64: session.preview};
       }
-      if (action === 'discard') {session.samples = []; delete session.preview; session.speech = 0; session.recorded = 0; session.phase = 'discarded'; session.issue = null;}
+      if (action === 'discard') {
+        check(callId === undefined || callId === session.call, 'VOICE_ENROLLMENT_CALL_REQUIRED', 409);
+        session.samples = []; delete session.preview; session.speech = 0; session.recorded = 0; session.phase = 'discarded'; session.issue = null;
+      }
       else if (action === 'resume') {
         check(session.phase === 'paused', 'VOICE_ENROLLMENT_PHASE_INVALID', 409);
         check(typeof callId === 'string' && callId.length > 0 && callId.length <= 200 && callId !== session.call, 'VOICE_ENROLLMENT_CALL_REQUIRED');

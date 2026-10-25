@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "deploy/cloud"))
 import release_watchdog as watchdog
 from watchdog_platform import Platform
+import watchdog_platform
 
 
 def record():
@@ -172,6 +173,83 @@ class Decisions(unittest.TestCase):
 
 
 class ComposeSwitch(unittest.TestCase):
+    def test_unchanged_front_receipt_ignores_backups_from_a_previous_attempt(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for name in ("cand", "prev"):
+                state = root / "releases" / name / ".release"
+                state.mkdir(parents=True)
+                (state / "env").write_text("")
+            state = root / "releases/cand/.release"
+            (state / "front-before.conf").write_text("stale front backup")
+            (state / "front-before.js").write_text("stale guard backup")
+            (state / "front.json").write_text(json.dumps({"changed": False}))
+            os.symlink("releases/cand", root / "current")
+            os.symlink("releases/prev", root / "previous")
+            release = {**record(), "root": str(root), "candidate_release": str(root / "releases/cand"),
+                       "previous_release": str(root / "releases/prev")}
+            platform = Platform(root)
+            with (root / "release.lock").open("a") as lock, patch.object(watchdog_platform, "engine") as engine, \
+                    patch("os.execvpe") as execute:
+                platform.lock = lock
+                platform.rollback(release)
+            engine.assert_not_called()
+            execute.assert_called_once()
+            self.assertEqual((root / "current").resolve(), (root / "releases/prev").resolve())
+            (state / "front.json").write_text(json.dumps({"changed": True, "container": "front-instance"}))
+            (state / "front-before.conf").unlink()
+            mounts = [{"Destination": "/etc/nginx/conf.d/default.conf", "Source": str(root / "front.conf")},
+                      {"Destination": "/etc/paios-roaming/paios_roaming_guard.js", "Source": str(root / "front.js")}]
+            with patch.object(watchdog_platform, "engine", return_value={"Mounts": mounts}), \
+                    patch("os.execvpe") as execute, self.assertRaises(FileNotFoundError):
+                platform.rollback(release)
+            execute.assert_not_called()
+
+    def test_automatic_rollback_restores_reviewed_front_before_switching_images(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            candidate, previous = root / "releases/cand", root / "releases/prev"
+            for directory in (candidate, previous):
+                (directory / ".release").mkdir(parents=True)
+                (directory / ".release/env").write_text("")
+            os.symlink("releases/cand", root / "current")
+            os.symlink("releases/prev", root / "previous")
+            config, guard = root / "front.conf", root / "front.js"
+            config.write_text("candidate front")
+            guard.write_text("candidate guard")
+            state = candidate / ".release"
+            (state / "front-before.conf").write_text("previous front")
+            (state / "front-before.js").write_text("previous guard")
+            (state / "front.json").write_text(json.dumps({"changed": True, "container": "front-instance"}))
+            release = {**record(), "root": str(root), "candidate_release": str(candidate), "previous_release": str(previous)}
+            mounts = [{"Destination": "/etc/nginx/conf.d/default.conf", "Source": str(config)},
+                      {"Destination": "/etc/paios-roaming/paios_roaming_guard.js", "Source": str(guard)}]
+            commands = []
+            def docker(path, payload=None):
+                commands.append((path, payload))
+                if path == "/containers/front-instance/json":
+                    return {"Mounts": mounts}
+                self.assertEqual(config.read_text(), "previous front")
+                self.assertEqual(guard.read_text(), "previous guard")
+                if path == "/containers/front-instance/exec":
+                    return {"Id": "nginx-exec"}
+                if path.endswith("/json"):
+                    return {"ExitCode": 0}
+            def compose(*args):
+                self.assertEqual(config.read_text(), "previous front")
+                self.assertEqual(guard.read_text(), "previous guard")
+                self.assertEqual((root / "current").resolve(), previous.resolve())
+            platform = Platform(root)
+            with (root / "release.lock").open("a") as lock, patch.object(watchdog_platform, "engine", side_effect=docker), \
+                    patch("os.execvpe", side_effect=compose):
+                platform.lock = lock
+                platform.rollback(release)
+            self.assertEqual(commands, [("/containers/front-instance/json", None),
+                ("/containers/front-instance/exec", {"Cmd": ["nginx", "-t", "-q"]}),
+                ("/exec/nginx-exec/start", {"Detach": False, "Tty": False}), ("/exec/nginx-exec/json", None),
+                ("/containers/front-instance/exec", {"Cmd": ["nginx", "-s", "reload"]}),
+                ("/exec/nginx-exec/start", {"Detach": False, "Tty": False}), ("/exec/nginx-exec/json", None)])
+
     def test_previous_container_with_starting_health_is_not_ready(self):
         with tempfile.TemporaryDirectory() as temporary:
             platform = Platform(Path(temporary))

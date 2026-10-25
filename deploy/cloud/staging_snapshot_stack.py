@@ -45,6 +45,8 @@ class Stack:
         self.compose = migrate.compose_cloud(SimpleNamespace(**settings), 'staging' if stage else 'production')
         if 'compose_project' in settings:
             self.compose += ['--project-name', settings['compose_project']]
+        if settings.get('parity_compose'):
+            self.compose += ['-f', settings['parity_compose']]
         # Restore compares staging with the production services and volumes it must never share, so it reads both.
         profiles = ['--profile', 'production'] if stage else []
         self.definition = json.loads(self.run(profiles + ['config', '--format', 'json'], capture_output=True, text=True).stdout)
@@ -124,6 +126,15 @@ if raw and cold.exists():
   with sqlite3.connect(temporary+'/cold.sqlite') as db:
    n,b=db.execute('SELECT count(*),coalesce(sum(size),0) FROM locations').fetchone()
    files+=n; size+=b
+sessions=pathlib.Path('/source/owner/central-storage/session-records.sqlite')
+if raw and sessions.exists():
+ with tempfile.TemporaryDirectory(dir='/work') as temporary:
+  for suffix in ('','-wal','-shm'):
+   path=pathlib.Path(str(sessions)+suffix)
+   if path.exists(): shutil.copyfile(path,temporary+'/session-records.sqlite'+suffix)
+  with sqlite3.connect(temporary+'/session-records.sqlite') as db:
+   # Folded finals and source receipts incur logical work even with one shared audio object.
+   files+=2*db.execute('SELECT count(*) FROM sessions').fetchone()[0]
 pathlib.Path('/work/capacity.json').write_text(json.dumps({'files':files,'bytes':size}))
 """
         self.tools(['python3', '-c', script, 'raw' if raw else 'structural'], work,

@@ -1,0 +1,766 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Yimi capability gateway",
+    "version": "1",
+    "description": "Hermes v0.22.5 documented hook fields, pinned to bf0203a794a07aac3ff764972ab9087baa4e4f4e. Allow means no directive. Modify args are shallow-merged by Hermes; omission cannot delete a key. Only the gateway writes rejected receipts."
+  },
+  "x-yimi-gateway-api": 1,
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "externalDocs": {
+    "url": "https://github.com/NousResearch/hermes-agent/blob/bf0203a794a07aac3ff764972ab9087baa4e4f4e/website/docs/user-guide/features/hooks.md"
+  },
+  "paths": {
+    "/gateway/decide": {
+      "post": {
+        "operationId": "decide",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreToolCall"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Gateway response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Decision"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/gateway/receipt": {
+      "post": {
+        "operationId": "receipt",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransformToolResult"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Gateway response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/gateway/observe": {
+      "post": {
+        "operationId": "observe",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostToolCall"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Observation recorded; no response body"
+          }
+        }
+      }
+    },
+    "/gateway/lineage": {
+      "post": {
+        "operationId": "lineage",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubagentStart"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Observation recorded; no response body"
+          }
+        }
+      }
+    },
+    "/gateway/find": {
+      "post": {
+        "operationId": "capability_find",
+        "description": "Authenticated internal registration RPC. Admission derives principal and scope from context; neither comes from caller arguments. P1 owns enabled-package CAS and live host refresh.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapabilityFindRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Registration evidence or package version state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/gateway/check": {
+      "post": {
+        "operationId": "capability_check",
+        "description": "Authenticated internal registration RPC. Admission derives principal and scope from context; neither comes from caller arguments. P1 owns enabled-package CAS and live host refresh.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapabilityCheckRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Registration evidence or package version state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/gateway/publish": {
+      "post": {
+        "operationId": "capability_publish",
+        "description": "Authenticated internal registration RPC. Admission derives principal and scope from context; neither comes from caller arguments. P1 owns enabled-package CAS and live host refresh.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapabilityPublishRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Registration evidence or package version state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/gateway/rollback": {
+      "post": {
+        "operationId": "capability_rollback",
+        "description": "Authenticated internal registration RPC. Admission derives principal and scope from context; neither comes from caller arguments. P1 owns enabled-package CAS and live host refresh.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapabilityRollbackRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Registration evidence or package version state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/gateway/status": {
+      "post": {
+        "operationId": "capability_status",
+        "description": "Authenticated internal registration RPC. Admission derives principal and scope from context; neither comes from caller arguments. P1 owns enabled-package CAS and live host refresh.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapabilityStatusRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Registration evidence or package version state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/gateway/monitor": {
+      "post": {
+        "operationId": "capability_monitor",
+        "description": "Authenticated internal registration RPC. Admission derives principal and scope from context; neither comes from caller arguments. P1 owns enabled-package CAS and live host refresh.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapabilityMonitorRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Registration evidence or package version state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PreToolCall": {
+        "type": "object",
+        "properties": {
+          "tool_name": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "args": {
+            "type": "object"
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "tool_call_id": {
+            "type": "string"
+          },
+          "turn_id": {
+            "type": "string"
+          },
+          "api_request_id": {
+            "type": "string"
+          },
+          "middleware_trace": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "telemetry_schema_version": {
+            "const": "hermes.observer.v1"
+          }
+        },
+        "required": [
+          "tool_name",
+          "args",
+          "task_id",
+          "session_id",
+          "tool_call_id",
+          "turn_id",
+          "api_request_id",
+          "middleware_trace"
+        ],
+        "additionalProperties": false
+      },
+      "TransformToolResult": {
+        "type": "object",
+        "properties": {
+          "tool_name": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "args": {
+            "type": "object"
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "tool_call_id": {
+            "type": "string"
+          },
+          "turn_id": {
+            "type": "string"
+          },
+          "api_request_id": {
+            "type": "string"
+          },
+          "result": {},
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "status": {
+            "type": "string"
+          },
+          "error_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "error_message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "telemetry_schema_version": {
+            "const": "hermes.observer.v1"
+          }
+        },
+        "required": [
+          "tool_name",
+          "args",
+          "task_id",
+          "session_id",
+          "tool_call_id",
+          "turn_id",
+          "api_request_id",
+          "result",
+          "duration_ms",
+          "status",
+          "error_type",
+          "error_message"
+        ],
+        "additionalProperties": false
+      },
+      "PostToolCall": {
+        "type": "object",
+        "properties": {
+          "tool_name": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "args": {
+            "type": "object"
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "tool_call_id": {
+            "type": "string"
+          },
+          "turn_id": {
+            "type": "string"
+          },
+          "api_request_id": {
+            "type": "string"
+          },
+          "result": {},
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "status": {
+            "type": "string"
+          },
+          "error_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "error_message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "middleware_trace": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "telemetry_schema_version": {
+            "const": "hermes.observer.v1"
+          }
+        },
+        "required": [
+          "tool_name",
+          "args",
+          "task_id",
+          "session_id",
+          "tool_call_id",
+          "turn_id",
+          "api_request_id",
+          "result",
+          "duration_ms",
+          "status",
+          "error_type",
+          "error_message",
+          "middleware_trace"
+        ],
+        "additionalProperties": false
+      },
+      "SubagentStart": {
+        "type": "object",
+        "properties": {
+          "parent_session_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parent_turn_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parent_subagent_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "child_session_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "child_subagent_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "child_role": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "child_goal": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "telemetry_schema_version": {
+            "const": "hermes.observer.v1"
+          }
+        },
+        "required": [
+          "parent_session_id",
+          "parent_turn_id",
+          "parent_subagent_id",
+          "child_session_id",
+          "child_subagent_id",
+          "child_role",
+          "child_goal"
+        ],
+        "additionalProperties": false
+      },
+      "Decision": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "action": {
+                "const": "allow"
+              }
+            },
+            "required": [
+              "action"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "action": {
+                "const": "modify"
+              },
+              "args": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "action",
+              "args"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "action": {
+                "const": "block"
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              }
+            },
+            "required": [
+              "action",
+              "message"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "action": {
+                "const": "approve"
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              "rule_key": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              }
+            },
+            "required": [
+              "action",
+              "message",
+              "rule_key"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "ReceiptView": {
+        "type": "object",
+        "properties": {
+          "model_view": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "model_view"
+        ],
+        "additionalProperties": false
+      },
+      "CapabilityRegistryContext": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "run_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "tool_call_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "session_id",
+          "run_id",
+          "tool_call_id"
+        ],
+        "additionalProperties": false
+      },
+      "CapabilityFindRequest": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "context": {
+            "$ref": "#/components/schemas/CapabilityRegistryContext"
+          }
+        },
+        "required": [
+          "query",
+          "context"
+        ],
+        "additionalProperties": false
+      },
+      "CapabilityCheckRequest": {
+        "type": "object",
+        "properties": {
+          "files": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "candidate_id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "context": {
+            "$ref": "#/components/schemas/CapabilityRegistryContext"
+          }
+        },
+        "required": [
+          "context"
+        ],
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "required": [
+              "files"
+            ],
+            "not": {
+              "required": [
+                "candidate_id"
+              ]
+            }
+          },
+          {
+            "required": [
+              "candidate_id"
+            ],
+            "not": {
+              "required": [
+                "files"
+              ]
+            }
+          }
+        ]
+      },
+      "CapabilityPublishRequest": {
+        "type": "object",
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "context": {
+            "$ref": "#/components/schemas/CapabilityRegistryContext"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "context"
+        ],
+        "additionalProperties": false
+      },
+      "CapabilityRollbackRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "context": {
+            "$ref": "#/components/schemas/CapabilityRegistryContext"
+          }
+        },
+        "required": [
+          "context"
+        ],
+        "additionalProperties": false
+      },
+      "CapabilityStatusRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "include_files": {
+            "type": "boolean"
+          },
+          "context": {
+            "$ref": "#/components/schemas/CapabilityRegistryContext"
+          }
+        },
+        "required": [
+          "context"
+        ],
+        "additionalProperties": false
+      },
+      "CapabilityMonitorRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "context": {
+            "$ref": "#/components/schemas/CapabilityRegistryContext"
+          }
+        },
+        "required": [
+          "name",
+          "context"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

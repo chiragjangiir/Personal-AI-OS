@@ -43,6 +43,7 @@
         },
         "x-watch-duration-ms": {
           "type": "string",
+          "description": "Nearest millisecond of the stopped file's valid audio frame count divided by its sample rate; never the recorder timer.",
           "pattern": "^(?:[1-9][0-9]{0,3}|[12][0-9]{4}|30000)$"
         },
         "content-type": {
@@ -312,6 +313,7 @@
       "body": "Unmodified MPEG-4 audio container with AAC-LC, 16000 Hz, one channel; binary, not JSON or base64.",
       "max_body_bytes": 1000000,
       "max_duration_ms": 30000,
+      "max_duration_difference_ms": 192,
       "response_schema": "#/$defs/utterance_response"
     },
     "turn": {
@@ -338,7 +340,7 @@
     "reply": "GET resolves only the authenticated Watch key and its persisted processed event/session. Reply reuses canonical result output and owning iPhone conversation. It does not create another run. Do not return another Watch or user reply. Return replied only for canonical completed/sealed output with admission visible, never for a partial streaming chunk. Subscribe before re-reading the scoped result to close the completion race; release subscriptions on result, timeout or disconnect. Publication and phone mirroring keep existing authoritative output identities.",
     "wait": "Wait at most 25 seconds, then HTTP 200 working. Client cancellation ends only its wait. Processing continues. Unknown keys including query keys are rejected.",
     "http_status": "heard/working/replied:200; malformed input:400; absent/invalid/expired credential:401; revoked/unregistered/scope denial:403; missing turn:404; turn conflict:409; size or duration:413; codec:415; invalid audio/not heard:422; busy:429; unavailable:503; processing failed:502. All failures use failed+reason; turn_id is omitted only if unavailable or unsafe to echo.",
-    "binary_validation": "HTTP boundary enforces content length and actual streamed byte count <=1,000,000, nonempty audio, AAC-LC/16kHz/mono decoded properties, actual duration <=30s and consistency with duration header. JSON Schema cannot validate binary content or credential ownership.",
+    "binary_validation": "HTTP boundary enforces content length and actual streamed byte count <=1,000,000, nonempty audio, AAC-LC/16kHz/mono decoded properties and actual duration <=30s. Duration header reports the stopped file's valid sample count rounded to milliseconds. Apple AAC priming (observed 2112 samples at 16kHz) can remain in ffmpeg's decoded timeline; decoded/header difference is bounded by three 1024-sample AAC frames (192ms). All downstream processing uses actual decoded duration. The tolerance never extends the 30s actual-duration limit. JSON Schema cannot validate binary content or credential ownership.",
     "verification": "Gateway image installs ffmpeg; source has MP4 demux to PCM but no direct Watch endpoint. Deployment acceptance must prove an AAC-LC audio/mp4 fixture decodes in the staged gateway image and traverses archive, ASR, confirmation, admission and scoped reply. Contract tests prove JSON shape only.",
     "archive": "Every authenticated, bounded accepted upload enters existing RawArchive/OriginalAdmission before decoding or ASR. Keep original AAC container bytes and source/turn metadata in L5, including not_heard and later processing failures. PCM is a derived ASR input, never a replacement for the original. Over-limit bodies are rejected at ingress."
   },

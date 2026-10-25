@@ -1,0 +1,1669 @@
+{
+  "version": 1,
+  "schema": "paios.model-settings.wire.v1",
+  "$defs": {
+    "ms_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "ms_b64": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
+    },
+    "ms_parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "thinking": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "budget": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "max_output_tokens": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "context_limit": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reasoning_effort": {
+          "enum": [
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ]
+        }
+      }
+    },
+    "ms_route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider_ref",
+        "model_id",
+        "parameters"
+      ],
+      "properties": {
+        "provider_ref": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"
+        },
+        "model_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "parameters": {
+          "$ref": "#/$defs/ms_parameters"
+        }
+      }
+    },
+    "ms_provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "display_name",
+        "wire_protocol",
+        "base_url",
+        "credential_ref"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "wire_protocol": {
+          "enum": [
+            "chat_completions",
+            "codex_responses",
+            "anthropic_messages",
+            "local_onnx"
+          ]
+        },
+        "base_url": {
+          "type": "string"
+        },
+        "credential_ref": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "region": {
+          "type": "string"
+        },
+        "catalog_capability": {
+          "enum": [
+            "models",
+            "unavailable"
+          ]
+        },
+        "usage_capability": {
+          "enum": [
+            "balance",
+            "subscription",
+            "unknown"
+          ]
+        },
+        "session_affinity": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]{1,64}$"
+        }
+      }
+    },
+    "ms_role": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "profile",
+        "parameters",
+        "ordered_fallbacks",
+        "activation_boundary"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"
+        },
+        "profile": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"
+        },
+        "provider_ref": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"
+        },
+        "model_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "parameters": {
+          "$ref": "#/$defs/ms_parameters"
+        },
+        "ordered_fallbacks": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/ms_route"
+          }
+        },
+        "inherit_from": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "read_only": {
+          "type": "boolean"
+        },
+        "activation_boundary": {
+          "enum": [
+            "brain_idle",
+            "build_idle",
+            "read_only"
+          ]
+        }
+      }
+    },
+    "ms_key_publication_statement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "purpose",
+        "device_id",
+        "principal_id",
+        "nonce",
+        "key_sha256"
+      ],
+      "properties": {
+        "purpose": {
+          "const": "model_settings_publish_key"
+        },
+        "device_id": {
+          "$ref": "#/$defs/ms_id"
+        },
+        "principal_id": {
+          "$ref": "#/$defs/ms_id"
+        },
+        "nonce": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{43}$"
+        },
+        "key_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "ms_key_challenge_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nonce",
+        "expires_in_ms",
+        "server_public_key_b64",
+        "algorithm"
+      ],
+      "properties": {
+        "nonce": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{43}$"
+        },
+        "expires_in_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "server_public_key_b64": {
+          "$ref": "#/$defs/ms_b64"
+        },
+        "algorithm": {
+          "const": "X25519-HKDF-SHA256-HMAC-SHA256"
+        }
+      }
+    },
+    "ms_pending_macs_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items",
+        "next_offset"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "device_id",
+              "purpose",
+              "public_x963_b64",
+              "key_sha256"
+            ],
+            "properties": {
+              "device_id": {
+                "$ref": "#/$defs/ms_id"
+              },
+              "purpose": {
+                "const": "model_settings"
+              },
+              "public_x963_b64": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/ms_b64"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "key_sha256": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "next_offset": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "ms_catalog_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "source",
+        "fetched_at",
+        "models",
+        "message",
+        "safe_error",
+        "next_offset",
+        "draft_id",
+        "change_sha256",
+        "provider_ref",
+        "credential_ref",
+        "credential_version"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "available",
+            "unavailable",
+            "failed"
+          ]
+        },
+        "source": {
+          "enum": [
+            "provider_models_api",
+            "provider_no_list"
+          ]
+        },
+        "fetched_at": {
+          "type": "string"
+        },
+        "models": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "display_name": {
+                "type": "string",
+                "maxLength": 200
+              }
+            }
+          }
+        },
+        "message": {
+          "anyOf": [
+            {
+              "const": "服务商未提供模型列表，可填写模型 ID"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "safe_error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ms_id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "next_offset": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "draft_id": {
+          "$ref": "#/$defs/ms_id"
+        },
+        "change_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "provider_ref": {
+          "$ref": "#/$defs/ms_id"
+        },
+        "credential_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ms_id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "credential_version": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "inputs": {
+    "model_settings_read": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "model_settings_read"
+          },
+          "control_id": {
+            "$ref": "#/$defs/ms_id"
+          },
+          "request": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "revision": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "offset": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "draft_id": {
+                "$ref": "#/$defs/ms_id"
+              }
+            },
+            "not": {
+              "required": [
+                "revision",
+                "draft_id"
+              ],
+              "properties": {
+                "revision": {},
+                "draft_id": {}
+              }
+            }
+          }
+        }
+      },
+      "error": "MODEL_SETTINGS_INPUT_INVALID"
+    },
+    "model_settings_watch": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "model_settings_watch"
+          },
+          "control_id": {
+            "$ref": "#/$defs/ms_id"
+          }
+        }
+      },
+      "error": "MODEL_SETTINGS_INPUT_INVALID"
+    },
+    "model_settings_challenge": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "model_settings_challenge"
+          },
+          "control_id": {
+            "$ref": "#/$defs/ms_id"
+          }
+        }
+      },
+      "error": "MODEL_SETTINGS_INPUT_INVALID"
+    },
+    "model_settings_draft": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "request"
+        ],
+        "properties": {
+          "operation": {
+            "const": "model_settings_draft"
+          },
+          "control_id": {
+            "$ref": "#/$defs/ms_id"
+          },
+          "request": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "expected_revision",
+                  "providers",
+                  "roles",
+                  "change_summary"
+                ],
+                "properties": {
+                  "action": {
+                    "const": "commit"
+                  },
+                  "expected_revision": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "providers": {
+                    "type": "array",
+                    "maxItems": 100,
+                    "items": {
+                      "$ref": "#/$defs/ms_provider"
+                    }
+                  },
+                  "roles": {
+                    "type": "array",
+                    "maxItems": 200,
+                    "items": {
+                      "$ref": "#/$defs/ms_role"
+                    }
+                  },
+                  "change_summary": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "action",
+                  "expected_revision",
+                  "revision"
+                ],
+                "properties": {
+                  "action": {
+                    "const": "undo"
+                  },
+                  "expected_revision": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "action",
+                  "expected_revision",
+                  "device_id",
+                  "public_x963_b64"
+                ],
+                "properties": {
+                  "action": {
+                    "const": "authorize_mac"
+                  },
+                  "expected_revision": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "device_id": {
+                    "$ref": "#/$defs/ms_id"
+                  },
+                  "public_x963_b64": {
+                    "$ref": "#/$defs/ms_b64"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "action",
+                  "expected_revision",
+                  "pause_on_limit"
+                ],
+                "properties": {
+                  "action": {
+                    "const": "pause"
+                  },
+                  "expected_revision": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "pause_on_limit": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "默认仅提醒。明确签名开启后，仅上海当日已知 CNY 消费 >10 才停止新增付费工作；估算/未知不触发暂停。"
+                  },
+                  "owner_reserve_cny": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 9007199254,
+                    "default": 1,
+                    "description": "暂停期间 owner 对话的每日保留额，不能低于 1 CNY。"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "action",
+                  "expected_revision"
+                ],
+                "properties": {
+                  "action": {
+                    "const": "resume"
+                  },
+                  "expected_revision": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "error": "MODEL_SETTINGS_INPUT_INVALID"
+    },
+    "model_settings_test": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "request"
+        ],
+        "properties": {
+          "operation": {
+            "const": "model_settings_test"
+          },
+          "control_id": {
+            "$ref": "#/$defs/ms_id"
+          },
+          "request": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "draft_id",
+              "profile",
+              "role"
+            ],
+            "properties": {
+              "draft_id": {
+                "$ref": "#/$defs/ms_id"
+              },
+              "profile": {
+                "$ref": "#/$defs/ms_id"
+              },
+              "role": {
+                "$ref": "#/$defs/ms_id"
+              }
+            }
+          }
+        }
+      },
+      "error": "MODEL_SETTINGS_INPUT_INVALID"
+    },
+    "model_settings_commit": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "request",
+          "statement_b64",
+          "signature_b64"
+        ],
+        "properties": {
+          "operation": {
+            "const": "model_settings_commit"
+          },
+          "control_id": {
+            "$ref": "#/$defs/ms_id"
+          },
+          "request": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "draft_id"
+            ],
+            "properties": {
+              "draft_id": {
+                "$ref": "#/$defs/ms_id"
+              }
+            }
+          },
+          "statement_b64": {
+            "$ref": "#/$defs/ms_b64"
+          },
+          "signature_b64": {
+            "$ref": "#/$defs/ms_b64"
+          }
+        }
+      },
+      "error": "MODEL_SETTINGS_INPUT_INVALID"
+    },
+    "model_settings_undo": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "request",
+          "statement_b64",
+          "signature_b64"
+        ],
+        "properties": {
+          "operation": {
+            "const": "model_settings_undo"
+          },
+          "control_id": {
+            "$ref": "#/$defs/ms_id"
+          },
+          "request": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "draft_id"
+            ],
+            "properties": {
+              "draft_id": {
+                "$ref": "#/$defs/ms_id"
+              }
+            }
+          },
+          "statement_b64": {
+            "$ref": "#/$defs/ms_b64"
+          },
+          "signature_b64": {
+            "$ref": "#/$defs/ms_b64"
+          }
+        }
+      },
+      "error": "MODEL_SETTINGS_INPUT_INVALID"
+    },
+    "model_settings_authorize_mac": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "request",
+          "statement_b64",
+          "signature_b64"
+        ],
+        "properties": {
+          "operation": {
+            "const": "model_settings_authorize_mac"
+          },
+          "control_id": {
+            "$ref": "#/$defs/ms_id"
+          },
+          "request": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "draft_id"
+            ],
+            "properties": {
+              "draft_id": {
+                "$ref": "#/$defs/ms_id"
+              }
+            }
+          },
+          "statement_b64": {
+            "$ref": "#/$defs/ms_b64"
+          },
+          "signature_b64": {
+            "$ref": "#/$defs/ms_b64"
+          }
+        }
+      },
+      "error": "MODEL_SETTINGS_INPUT_INVALID"
+    },
+    "model_settings_pause": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "request",
+          "statement_b64",
+          "signature_b64"
+        ],
+        "properties": {
+          "operation": {
+            "const": "model_settings_pause"
+          },
+          "control_id": {
+            "$ref": "#/$defs/ms_id"
+          },
+          "request": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "draft_id"
+            ],
+            "properties": {
+              "draft_id": {
+                "$ref": "#/$defs/ms_id"
+              }
+            }
+          },
+          "statement_b64": {
+            "$ref": "#/$defs/ms_b64"
+          },
+          "signature_b64": {
+            "$ref": "#/$defs/ms_b64"
+          }
+        }
+      },
+      "error": "MODEL_SETTINGS_INPUT_INVALID"
+    },
+    "model_settings_resume": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "request",
+          "statement_b64",
+          "signature_b64"
+        ],
+        "properties": {
+          "operation": {
+            "const": "model_settings_resume"
+          },
+          "control_id": {
+            "$ref": "#/$defs/ms_id"
+          },
+          "request": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "draft_id"
+            ],
+            "properties": {
+              "draft_id": {
+                "$ref": "#/$defs/ms_id"
+              }
+            }
+          },
+          "statement_b64": {
+            "$ref": "#/$defs/ms_b64"
+          },
+          "signature_b64": {
+            "$ref": "#/$defs/ms_b64"
+          }
+        },
+        "description": "独立签名解除上海当日预算暂停，自动继续原准入队列，不关闭 pause_on_limit，不依赖或等待主脑。提醒在所有状态继续。"
+      },
+      "error": "MODEL_SETTINGS_INPUT_INVALID"
+    },
+    "model_settings_set_key": {
+      "definition": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "operation",
+              "control_id",
+              "request"
+            ],
+            "properties": {
+              "operation": {
+                "const": "model_settings_set_key"
+              },
+              "control_id": {
+                "$ref": "#/$defs/ms_id"
+              },
+              "request": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "credential_ref",
+                  "key",
+                  "expected_revision"
+                ],
+                "properties": {
+                  "credential_ref": {
+                    "$ref": "#/$defs/ms_id"
+                  },
+                  "key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16384
+                  },
+                  "expected_revision": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "operation",
+              "control_id",
+              "request",
+              "statement_b64",
+              "signature_b64"
+            ],
+            "properties": {
+              "operation": {
+                "const": "model_settings_set_key"
+              },
+              "control_id": {
+                "$ref": "#/$defs/ms_id"
+              },
+              "request": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "draft_id"
+                ],
+                "properties": {
+                  "draft_id": {
+                    "$ref": "#/$defs/ms_id"
+                  }
+                }
+              },
+              "statement_b64": {
+                "$ref": "#/$defs/ms_b64"
+              },
+              "signature_b64": {
+                "$ref": "#/$defs/ms_b64"
+              }
+            }
+          }
+        ]
+      },
+      "error": "MODEL_SETTINGS_INPUT_INVALID"
+    },
+    "model_settings_key_challenge": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "model_settings_key_challenge"
+          },
+          "control_id": {
+            "$ref": "#/$defs/ms_id"
+          }
+        }
+      },
+      "error": "MODEL_SETTINGS_INPUT_INVALID"
+    },
+    "model_settings_publish_key": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "request",
+          "statement_b64",
+          "signature_b64"
+        ],
+        "properties": {
+          "operation": {
+            "const": "model_settings_publish_key"
+          },
+          "control_id": {
+            "$ref": "#/$defs/ms_id"
+          },
+          "request": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "public_x963_b64"
+            ],
+            "properties": {
+              "public_x963_b64": {
+                "$ref": "#/$defs/ms_b64"
+              }
+            }
+          },
+          "statement_b64": {
+            "$ref": "#/$defs/ms_b64"
+          },
+          "signature_b64": {
+            "$ref": "#/$defs/ms_b64"
+          }
+        }
+      },
+      "error": "MODEL_SETTINGS_INPUT_INVALID"
+    },
+    "model_settings_pending_macs": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id"
+        ],
+        "properties": {
+          "operation": {
+            "const": "model_settings_pending_macs"
+          },
+          "control_id": {
+            "$ref": "#/$defs/ms_id"
+          },
+          "request": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [],
+            "properties": {
+              "offset": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      },
+      "error": "MODEL_SETTINGS_INPUT_INVALID"
+    },
+    "model_settings_catalog": {
+      "definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "control_id",
+          "request"
+        ],
+        "properties": {
+          "operation": {
+            "const": "model_settings_catalog"
+          },
+          "control_id": {
+            "$ref": "#/$defs/ms_id"
+          },
+          "request": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "draft_id",
+              "provider_ref"
+            ],
+            "properties": {
+              "draft_id": {
+                "$ref": "#/$defs/ms_id"
+              },
+              "provider_ref": {
+                "$ref": "#/$defs/ms_id"
+              },
+              "offset": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      },
+      "error": "MODEL_SETTINGS_INPUT_INVALID"
+    }
+  },
+  "outputs": {
+    "model_settings_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "session_id",
+        "control_id",
+        "ok",
+        "schema_version"
+      ],
+      "properties": {
+        "operation": {
+          "const": "model_settings_receipt"
+        },
+        "session_id": {
+          "$ref": "#/$defs/ms_id"
+        },
+        "control_id": {
+          "$ref": "#/$defs/ms_id"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "usage": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "estimate_note": {
+                      "type": "string",
+                      "maxLength": 160
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "error_code": {
+          "$ref": "#/$defs/ms_id"
+        },
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        }
+      }
+    },
+    "model_settings_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "session_id",
+        "state",
+        "schema_version"
+      ],
+      "properties": {
+        "operation": {
+          "const": "model_settings_state"
+        },
+        "session_id": {
+          "$ref": "#/$defs/ms_id"
+        },
+        "state": {
+          "type": "object"
+        },
+        "schema_version": {
+          "const": "paios.central.text-envelope.v1"
+        }
+      }
+    }
+  },
+  "examples": {
+    "model_settings_read": [
+      {
+        "operation": "model_settings_read",
+        "control_id": "settings:1"
+      },
+      {
+        "operation": "model_settings_read",
+        "control_id": "read-page:2",
+        "request": {
+          "revision": 1,
+          "offset": 8
+        }
+      },
+      {
+        "operation": "model_settings_read",
+        "control_id": "draft-page:1",
+        "request": {
+          "draft_id": "draft:1",
+          "offset": 0
+        }
+      }
+    ],
+    "model_settings_watch": [
+      {
+        "operation": "model_settings_watch",
+        "control_id": "settings:1"
+      }
+    ],
+    "model_settings_challenge": [
+      {
+        "operation": "model_settings_challenge",
+        "control_id": "settings:1"
+      }
+    ],
+    "model_settings_draft": [
+      {
+        "operation": "model_settings_draft",
+        "control_id": "settings:2",
+        "request": {
+          "expected_revision": 0,
+          "providers": [
+            {
+              "id": "deepseek",
+              "display_name": "DeepSeek",
+              "wire_protocol": "chat_completions",
+              "base_url": "https://api.deepseek.com",
+              "credential_ref": "deepseek"
+            }
+          ],
+          "roles": [
+            {
+              "id": "main",
+              "profile": "owner",
+              "provider_ref": "deepseek",
+              "model_id": "deepseek-flash",
+              "parameters": {
+                "max_output_tokens": 4096
+              },
+              "ordered_fallbacks": [],
+              "activation_boundary": "brain_idle"
+            }
+          ],
+          "change_summary": "Update routes"
+        }
+      },
+      {
+        "operation": "model_settings_draft",
+        "control_id": "settings:prepare-undo",
+        "request": {
+          "action": "undo",
+          "expected_revision": 1,
+          "revision": 0
+        }
+      },
+      {
+        "operation": "model_settings_draft",
+        "control_id": "settings:prepare-authorize_mac",
+        "request": {
+          "action": "authorize_mac",
+          "expected_revision": 1,
+          "device_id": "paired-mac",
+          "public_x963_b64": "e30="
+        }
+      },
+      {
+        "operation": "model_settings_draft",
+        "control_id": "settings:prepare-pause",
+        "request": {
+          "action": "pause",
+          "expected_revision": 1,
+          "pause_on_limit": true,
+          "owner_reserve_cny": 1
+        }
+      },
+      {
+        "operation": "model_settings_draft",
+        "control_id": "settings:prepare-resume",
+        "request": {
+          "action": "resume",
+          "expected_revision": 1
+        }
+      },
+      {
+        "operation": "model_settings_draft",
+        "control_id": "settings:remind-only",
+        "request": {
+          "action": "pause",
+          "expected_revision": 1,
+          "pause_on_limit": false,
+          "owner_reserve_cny": 1
+        }
+      }
+    ],
+    "model_settings_test": [
+      {
+        "operation": "model_settings_test",
+        "control_id": "settings:3",
+        "request": {
+          "draft_id": "draft:1",
+          "profile": "owner",
+          "role": "main"
+        }
+      }
+    ],
+    "model_settings_commit": [
+      {
+        "operation": "model_settings_commit",
+        "control_id": "settings:4",
+        "request": {
+          "draft_id": "draft:1"
+        },
+        "statement_b64": "e30=",
+        "signature_b64": "e30="
+      }
+    ],
+    "model_settings_undo": [
+      {
+        "operation": "model_settings_undo",
+        "control_id": "settings:4",
+        "request": {
+          "draft_id": "draft:1"
+        },
+        "statement_b64": "e30=",
+        "signature_b64": "e30="
+      }
+    ],
+    "model_settings_authorize_mac": [
+      {
+        "operation": "model_settings_authorize_mac",
+        "control_id": "settings:4",
+        "request": {
+          "draft_id": "draft:1"
+        },
+        "statement_b64": "e30=",
+        "signature_b64": "e30="
+      }
+    ],
+    "model_settings_pause": [
+      {
+        "operation": "model_settings_pause",
+        "control_id": "settings:4",
+        "request": {
+          "draft_id": "draft:1"
+        },
+        "statement_b64": "e30=",
+        "signature_b64": "e30="
+      }
+    ],
+    "model_settings_resume": [
+      {
+        "operation": "model_settings_resume",
+        "control_id": "settings:4",
+        "request": {
+          "draft_id": "draft:1"
+        },
+        "statement_b64": "e30=",
+        "signature_b64": "e30="
+      }
+    ],
+    "model_settings_set_key": [
+      {
+        "operation": "model_settings_set_key",
+        "control_id": "settings:4",
+        "request": {
+          "draft_id": "draft:1"
+        },
+        "statement_b64": "e30=",
+        "signature_b64": "e30="
+      },
+      {
+        "operation": "model_settings_set_key",
+        "control_id": "settings:5",
+        "request": {
+          "credential_ref": "cred:1",
+          "key": "fixture-only-not-a-real-key",
+          "expected_revision": 0
+        }
+      }
+    ],
+    "model_settings_receipt": [
+      {
+        "operation": "model_settings_receipt",
+        "session_id": "session:1",
+        "control_id": "settings:1",
+        "ok": true,
+        "result": {
+          "environment_id": "staging",
+          "revision": 1,
+          "desired": 1,
+          "groups": {},
+          "items": [],
+          "next_offset": null
+        },
+        "schema_version": "paios.central.text-envelope.v1"
+      },
+      {
+        "operation": "model_settings_receipt",
+        "session_id": "session:1",
+        "control_id": "settings:key-challenge",
+        "ok": true,
+        "result": {
+          "nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "expires_in_ms": 120000,
+          "server_public_key_b64": "e30=",
+          "algorithm": "X25519-HKDF-SHA256-HMAC-SHA256"
+        },
+        "schema_version": "paios.central.text-envelope.v1"
+      },
+      {
+        "operation": "model_settings_receipt",
+        "session_id": "session:1",
+        "control_id": "settings:pending",
+        "ok": true,
+        "result": {
+          "items": [
+            {
+              "device_id": "paired-mac",
+              "purpose": "model_settings",
+              "public_x963_b64": "e30=",
+              "key_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ],
+          "next_offset": null
+        },
+        "schema_version": "paios.central.text-envelope.v1"
+      },
+      {
+        "operation": "model_settings_receipt",
+        "session_id": "session:1",
+        "control_id": "settings:catalog",
+        "ok": true,
+        "result": {
+          "draft_id": "draft:1",
+          "change_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "provider_ref": "provider:1",
+          "credential_ref": "credential:1",
+          "credential_version": 1,
+          "next_offset": null,
+          "fetched_at": "2026-10-24T12:00:00.000Z",
+          "safe_error": null,
+          "status": "available",
+          "source": "provider_models_api",
+          "models": [
+            {
+              "id": "provider-model"
+            }
+          ],
+          "message": null
+        },
+        "schema_version": "paios.central.text-envelope.v1"
+      },
+      {
+        "operation": "model_settings_receipt",
+        "session_id": "session:1",
+        "control_id": "settings:no-catalog",
+        "ok": true,
+        "result": {
+          "draft_id": "draft:1",
+          "change_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "provider_ref": "provider:1",
+          "credential_ref": "credential:1",
+          "credential_version": 1,
+          "next_offset": null,
+          "fetched_at": "2026-10-24T12:00:00.000Z",
+          "safe_error": null,
+          "status": "unavailable",
+          "source": "provider_no_list",
+          "models": [],
+          "message": "服务商未提供模型列表，可填写模型 ID"
+        },
+        "schema_version": "paios.central.text-envelope.v1"
+      },
+      {
+        "operation": "model_settings_receipt",
+        "session_id": "session:1",
+        "control_id": "settings:budget-remind-only",
+        "ok": true,
+        "result": {
+          "usage": {
+            "environment": "staging",
+            "owner": "owner",
+            "local_date": "2026-10-24",
+            "attempts": 1,
+            "known_cny": 11,
+            "estimated_cny": 0,
+            "unknown_attempts": 0,
+            "foreign_currency_attempts": 0,
+            "subscription_remaining": "套餐余量未知",
+            "threshold_cny": 10,
+            "owner_reserve_cny": 1,
+            "pause_on_limit": false,
+            "paused": false,
+            "resumed_local_date": null,
+            "estimate_note": "按配置标准价估算，不含时段折扣，不是账单。"
+          }
+        },
+        "schema_version": "paios.central.text-envelope.v1"
+      },
+      {
+        "operation": "model_settings_receipt",
+        "session_id": "session:1",
+        "control_id": "settings:budget-paused",
+        "ok": true,
+        "result": {
+          "usage": {
+            "environment": "staging",
+            "owner": "owner",
+            "local_date": "2026-10-24",
+            "attempts": 1,
+            "known_cny": 11,
+            "estimated_cny": 0,
+            "unknown_attempts": 0,
+            "foreign_currency_attempts": 0,
+            "subscription_remaining": "套餐余量未知",
+            "threshold_cny": 10,
+            "owner_reserve_cny": 1,
+            "pause_on_limit": true,
+            "paused": true,
+            "resumed_local_date": null,
+            "estimate_note": "按配置标准价估算，不含时段折扣，不是账单。"
+          }
+        },
+        "schema_version": "paios.central.text-envelope.v1"
+      },
+      {
+        "operation": "model_settings_receipt",
+        "session_id": "session:1",
+        "control_id": "settings:budget-resumed",
+        "ok": true,
+        "result": {
+          "usage": {
+            "environment": "staging",
+            "owner": "owner",
+            "local_date": "2026-10-24",
+            "attempts": 1,
+            "known_cny": 11,
+            "estimated_cny": 0,
+            "unknown_attempts": 0,
+            "foreign_currency_attempts": 0,
+            "subscription_remaining": "套餐余量未知",
+            "threshold_cny": 10,
+            "owner_reserve_cny": 1,
+            "pause_on_limit": true,
+            "paused": false,
+            "resumed_local_date": "2026-10-24",
+            "estimate_note": "按配置标准价估算，不含时段折扣，不是账单。"
+          }
+        },
+        "schema_version": "paios.central.text-envelope.v1"
+      },
+      {
+        "operation": "model_settings_receipt",
+        "session_id": "session:1",
+        "control_id": "settings:budget-pause-off",
+        "ok": true,
+        "result": {
+          "usage": {
+            "environment": "staging",
+            "owner": "owner",
+            "local_date": "2026-10-24",
+            "attempts": 1,
+            "known_cny": 11,
+            "estimated_cny": 0,
+            "unknown_attempts": 0,
+            "foreign_currency_attempts": 0,
+            "subscription_remaining": "套餐余量未知",
+            "threshold_cny": 10,
+            "owner_reserve_cny": 1,
+            "pause_on_limit": false,
+            "paused": false,
+            "resumed_local_date": null,
+            "estimate_note": "按配置标准价估算，不含时段折扣，不是账单。"
+          }
+        },
+        "schema_version": "paios.central.text-envelope.v1"
+      }
+    ],
+    "model_settings_state": [
+      {
+        "operation": "model_settings_state",
+        "session_id": "session:1",
+        "state": {
+          "environment_id": "staging",
+          "desired": 1,
+          "groups": {}
+        },
+        "schema_version": "paios.central.text-envelope.v1"
+      }
+    ],
+    "model_settings_key_challenge": [
+      {
+        "operation": "model_settings_key_challenge",
+        "control_id": "settings:key-challenge"
+      }
+    ],
+    "model_settings_publish_key": [
+      {
+        "operation": "model_settings_publish_key",
+        "control_id": "settings:publish",
+        "request": {
+          "public_x963_b64": "e30="
+        },
+        "statement_b64": "e30=",
+        "signature_b64": "e30="
+      }
+    ],
+    "model_settings_pending_macs": [
+      {
+        "operation": "model_settings_pending_macs",
+        "control_id": "settings:pending",
+        "request": {
+          "offset": 0
+        }
+      }
+    ],
+    "model_settings_catalog": [
+      {
+        "operation": "model_settings_catalog",
+        "control_id": "settings:catalog",
+        "request": {
+          "draft_id": "draft:1",
+          "provider_ref": "provider:1",
+          "offset": 0
+        }
+      }
+    ]
+  }
+}

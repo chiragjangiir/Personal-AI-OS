@@ -1,0 +1,13 @@
+fixtures:
+  - name: posted_is_not_delivery
+    tool: wechat_send_text
+    state: unknown
+  - name: file_posted_is_not_delivery
+    tool: wechat_send_file
+    state: unknown
+  - name: drafted_reply_is_distinct
+    tool: wechat_reply
+    state: unknown
+  - name: visible_chat
+    tool: wechat_read_recent
+    state: succeeded

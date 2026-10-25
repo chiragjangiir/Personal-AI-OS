@@ -25,7 +25,7 @@ class FakeNative implements NativeClient {
     if (previous) return {...previous, replayed: true};
     if (this.busy-- > 0) throw new NativeNotAcceptedError('gateway_draining');
     const run: NativeRun = {run_id: `run-${++this.logicalRuns}`, session_id: body.session_id, conversation_session_id: body.session_id, status: 'running'};
-    if (body.care_decision) {run.session_id = `paios-care-${run.run_id}`; run.memory_write = false;}
+    if (body.care_decision) {run.session_id = `paios-care-${run.run_id}`; }
     this.runs.set(key, run); this.inputs.push(JSON.parse(body.input).processed_event_id);
     if (this.lost) {this.lost = false; throw new Error('RESPONSE_LOST');}
     return {...run};

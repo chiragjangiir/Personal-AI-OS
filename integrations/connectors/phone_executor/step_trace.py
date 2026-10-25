@@ -18,6 +18,7 @@ class StepTrace:
         self.index, self.model_since, self.model_spans = 0, None, set()
         self.changed, self.frozen = changed, None
         self.ledger, self.last_screen_text = "", ""
+        self.screen_observed_at = None
         self.ledger_truncated = self.screen_truncated = False
 
     def start(self):
@@ -86,6 +87,7 @@ class StepTrace:
             collect(ev.ui_state)
             text = "\n".join(dict.fromkeys(texts))
             self.last_screen_text, self.screen_truncated = text[:4000], len(text) > 4000
+            self.screen_observed_at = _now()
         elif name in ("FastAgentToolCallEvent", "ExecutorActionEvent"):
             self.start()
             action = ev.tool_calls_repr if name == "FastAgentToolCallEvent" else ev.action_json
@@ -117,6 +119,8 @@ class StepTrace:
             if stalled or self.frozen is not None:
                 step["status"] = "stalled"
         result = dict(steps=list(self.steps), in_progress=step, truncated_steps=self.truncated_steps)
+        if self.screen_observed_at is not None:
+            result["screen_observed_at"] = self.screen_observed_at
         if self.ledger or self.last_screen_text:
             rows = re.findall(r"^\[([^]]+)\] (.+)$", self.ledger, re.M)
             result["findings"] = dict(verified=[text for status, text in rows if status == "claimed_verified"],

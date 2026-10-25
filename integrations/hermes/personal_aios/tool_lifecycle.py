@@ -1,4 +1,4 @@
-"""Test and release native Hermes skills; pending writes and the native ledger own state."""
+"""Release capability packages through the platform; retain the legacy native skill path."""
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -63,10 +63,13 @@ class ToolLifecycle:
     """The host supplies a trusted sandbox verifier: (registered_skill_dir) -> result dict.
 
     Calls operate on the current production profile. Build-home files are explicit inputs.
-    Repair is another staged candidate; production remains available until promotion succeeds.
+    Repair is another pending candidate; production remains available until promotion succeeds.
+    Tested packages promote directly in this profile; no staging environment is required.
     """
-    def __init__(self, verifier):
+    def __init__(self, verifier, registry=None):
         self.verifier = verifier
+        # The platform owns candidates, versions and the enabled-package authority.
+        self.registry = registry
 
     def _skill(self, name):
         manager, _, _ = _native()
@@ -121,7 +124,7 @@ class ToolLifecycle:
         with manager._skill_mutation_lock(record['tool_candidate']['name']):
             record = self._pending(pending_id)
             budget = record['tool_candidate']['budget']
-            if budget['status'] != 'needs_approval' or 'approval' in budget:
+            if budget['status'] != 'needs_approval':
                 return self._outcome(record)
             session = get_current_session_key()
             notify = _gateway_notify_cb(session)
@@ -138,13 +141,21 @@ class ToolLifecycle:
             answer = _await_gateway_decision(session, notify, {
                 'request_id': request_id, 'command': f'Tool budget {pending_id}', 'description': question,
                 'pattern_key': 'tool-budget:' + pending_id, 'allow_permanent': False, 'allow_session': False})
-            budget['approval'] = {'request_id': request_id, **answer}
-            if answer.get('resolved') and not answer.get('cancelled'):
+            decided = answer.get('resolved') and not answer.get('cancelled') and answer.get('choice') in {'once', 'deny'}
+            budget.pop('approval', None)
+            budget.pop('approval_attempt', None)
+            budget['approval' if decided else 'approval_attempt'] = {'request_id': request_id, **answer}
+            if decided:
                 budget['status'] = 'approved' if answer['choice'] == 'once' else 'denied'
             self._save(record)
             return self._outcome(record)
 
     def stage(self, name, files, expected_previous=None):
+        if 'plugin.json' in files:
+            if self.registry is None:
+                raise ValueError('Capability packages require the platform registry')
+            result = self.registry('check', {'files': files})
+            return {**result, 'pending_id': result['candidate_id'], 'status': 'ready', 'promoted': False}
         manager, _, approval = _native()
         root = self._skill(name)
         if not isinstance(files, dict) or 'SKILL.md' not in files:
@@ -168,6 +179,8 @@ class ToolLifecycle:
         return self._outcome(record)
 
     def test(self, pending_id):
+        if self.registry is not None and len(pending_id) == 64:
+            return self.registry('check', {'candidate_id': pending_id})
         from hermes_constants import set_hermes_home_override, reset_hermes_home_override
         manager, _, _ = _native()
         record = self._pending(pending_id)
@@ -214,6 +227,8 @@ class ToolLifecycle:
         return {'success': True, 'pending_id': pending_id, 'verification': result}
 
     def promote(self, pending_id):
+        if self.registry is not None and len(pending_id) == 64:
+            return self.registry('publish', {'candidate_id': pending_id})
         manager, ledger, approval = _native()
         record = self._pending(pending_id)
         self._require_budget(record)
@@ -238,6 +253,8 @@ class ToolLifecycle:
         return {**result, 'release_id': release_id, 'name': name, 'budget': candidate.get('budget')}
 
     def monitor(self, name):
+        if self.registry is not None:
+            return self.registry('monitor', {'name': name})
         root = self._skill(name)
         if root is None:
             raise ValueError('Skill is not installed')
@@ -254,6 +271,8 @@ class ToolLifecycle:
                              for i in r['before'] + r['after'])), None)
 
     def revert(self, name=''):
+        if self.registry is not None:
+            return self.registry('rollback', {'name': name})
         manager, ledger, _ = _native()
         selected = self._active_release(name)
         if selected is None:
@@ -293,6 +312,8 @@ class ToolLifecycle:
             return {**result, 'reverted_release_id': release['id']}
 
     def status(self, name=''):
+        if self.registry is not None:
+            return self.registry('status', {'name': name, 'include_files': True})
         _, ledger, approval = _native()
         selected = self._active_release(name)
         name = name or (selected['skill'] if selected else '')

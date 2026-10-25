@@ -5,6 +5,19 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ActivityHudTest {
+    @Test fun capabilityUnknownAndWaitingDecodeAndKeepWaitingVisible() {
+        for (phase in listOf("unknown", "waiting")) {
+            val message = JSONObject(fixtures.getJSONObject("single_running").toString())
+            val card = message.getJSONObject("card").put("state", phase).put("summary", "结果还不清楚。")
+            if (phase == "unknown") card.put("completed_at", card.getString("observed_at"))
+            val decoded = ActivityCard.from(message, 1000)
+            assertEquals(ActivityPhase.valueOf(phase), decoded.phase)
+            if (phase == "waiting") {
+                assertEquals(1f, decoded.alpha(10000), 0f)
+                assertEquals(decoded.elapsedMs + 9000, decoded.elapsed(10000))
+            }
+        }
+    }
     private var now = 1000L
     private val inbox = HudCards("glasses", monotonic = { now })
     private val fixtures = JSONObject(javaClass.getResource("/activity-update.fixtures.json")!!.readText()).getJSONObject("fixtures")
@@ -108,6 +121,35 @@ class ActivityHudTest {
         assertNull(line()!!.others)
     }
 
+    @Test fun terminalRetirementPreservesRunningWorkAndRevisionReplayScope() {
+        accept("parallel_six")
+        for (index in 0 until 40) {
+            val terminal = packet("succeeded")
+            terminal.getJSONObject("card").put("id", "terminal-$index")
+            inbox.accept(terminal, 0)
+        }
+        assertEquals(41, inbox.activities().size)
+        now += 3499
+        assertEquals(41, inbox.activities().size)
+        now += 1
+        assertEquals(listOf("a:fixture-six"), inbox.activities().map { it.id })
+
+        val replay = packet("succeeded").also { it.getJSONObject("card").put("id", "terminal-0") }
+        inbox.accept(replay, 0)
+        inbox.accept(packet("single_running").also { it.getJSONObject("card").put("id", "terminal-0") }, 0)
+        assertEquals(1, inbox.activities().size)
+        val newer = JSONObject(replay.toString())
+        newer.getJSONObject("card").put("revision", replay.getJSONObject("card").getLong("revision") + 1)
+        inbox.accept(newer, 0)
+        assertEquals(2, inbox.activities().size)
+        now += 3500
+        inbox.accept(replay, 0)
+        assertEquals(1, inbox.activities().size)
+        inbox.clear()
+        inbox.accept(replay, 0)
+        assertEquals("terminal-0", inbox.activities().single().id)
+    }
+
     @Test fun terminalTextHoldsForThreeSecondsThenFadesWithAFakeMonotonicClock() {
         for ((fixture, text) in listOf("succeeded" to "已完成", "failed_timeout" to "未办成 · 超时，结果未知",
             "partial_done" to "部分完成 · 1 件未办成：千问还没登录，查不到价格")) {
@@ -157,10 +199,15 @@ class ActivityHudTest {
         accept("single_running")
         assertNull(legacyProgressCard(state().copy(cards = listOf(errand)), line() != null))
         accept("succeeded"); now += 3500
-        assertNull(legacyProgressCard(state().copy(cards = listOf(errand)), line() != null))
+        assertTrue(inbox.activities().isEmpty())
+        val retired = state().copy(cards = listOf(errand), legacyProgressCovered = inbox.legacyProgressCovered(errand))
+        assertTrue(retired.legacyProgressCovered)
+        assertNull(legacyProgressCard(retired, line() != null))
         val unrelated = errand.copy(ack = JSONObject().put("processed_event_id", "another-request"))
         assertEquals(unrelated, legacyProgressCard(state().copy(cards = listOf(unrelated)), line() != null))
-        inbox.clear(); accept("single_running")
+        inbox.clear()
+        assertFalse(inbox.legacyProgressCovered(errand))
+        accept("single_running")
         val notice = HudCard("notice", "消息", listOf("稍后见"), 1, Long.MAX_VALUE)
         val hidden = state().copy(cards = listOf(unrelated, notice))
         val visible = line(hidden, HudScreen.Card(notice.id)) != null
