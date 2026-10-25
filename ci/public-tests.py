@@ -118,7 +118,8 @@ def main():
         for name, reason in PYTHON_OMISSIONS.items():
             print(f'OMITTED {name}: {reason}', flush=True)
         command = [env['PAIOS_HERMES_PYTHON'], '-m', 'pytest', '-q', '-p', 'no:cacheprovider',
-                   *['--deselect=' + name for name in PYTHON_OMISSIONS], 'tests/hermes/']
+                   *['--deselect=' + name for name in PYTHON_OMISSIONS], 'tests/hermes/',
+                   'capability/sdk/python/test_yimi_receipt.py']
         return subprocess.run(command, cwd=ROOT, env=env).returncode
     python = ROOT / '.scratch/executor-venv/bin/python'
     package = ROOT / 'integrations/connectors/phone_executor'
