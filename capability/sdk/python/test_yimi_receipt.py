@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 
+import jsonschema
 import pytest
 
 from capability.sdk.python import yimi_receipt as sdk
@@ -44,3 +45,30 @@ def test_summary_is_one_text_block_and_serialization_captures_a_snapshot():
     body["unknowns"][0]["why"] = "changed later"
     assert result["content"] == [{"type": "text", "text": "unknown check first"}]
     assert result["structuredContent"]["unknowns"][0]["why"] == "No acknowledgement."
+
+
+def test_deliberately_invalid_receipt_is_rejected_without_external_service():
+    schema_path = Path(__file__).parents[2] / "contracts/receipt.v1.schema.json"
+    schema = json.loads(schema_path.read_text())
+
+    # Valid receipt validates successfully
+    valid = sdk.succeeded()
+    jsonschema.validate(instance=valid, schema=schema)
+
+    # Missing required next container
+    missing_next = sdk.succeeded()
+    del missing_next["next"]
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(instance=missing_next, schema=schema)
+
+    # Invalid state string
+    invalid_state = sdk.succeeded()
+    invalid_state["status"]["state"] = "unrecognized_state"
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(instance=invalid_state, schema=schema)
+
+    # Non-conforming receipt version
+    invalid_version = sdk.succeeded()
+    invalid_version["receipt"] = 2
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(instance=invalid_version, schema=schema)
